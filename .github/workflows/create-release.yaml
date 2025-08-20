@@ -1,0 +1,64 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create ZIP
+        run: |
+          cd custom_components/dessmonitor
+          zip -r dessmonitor-${{ github.event.inputs.version }}.zip . \
+            -x "*.pyc" -x "__pycache__/*" -x ".*" -x "README.md"
+          cp dessmonitor-${{ github.event.inputs.version }}.zip dessmonitor.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ github.event.inputs.version }}"
+          name: "Release v${{ github.event.inputs.version }}"
+          body: |
+            ## DessMonitor v${{ github.event.inputs.version }}
+            
+            🎉 **Initial Release**
+            
+            ### Features
+            - Support for multiple inverter/collector monitoring
+            - Real-time sensor data: power, voltage, current, frequency, temperature
+            - UI-based configuration with Home Assistant config flow
+            - Automatic device discovery via DessMonitor API
+            - Configurable update intervals (1-60 minutes)
+            - Secure token-based authentication with 7-day renewal
+            - Binary sensors for device status and operating mode
+            - Energy Dashboard integration compatibility
+            - HACS marketplace compatibility
+            
+            ### Installation
+            - Install via HACS or download the ZIP file
+            - Add to Home Assistant: Settings → Devices & Services → Add Integration → "DessMonitor"
+            
+            ### Requirements
+            - Home Assistant 2024.1.0 or newer
+            - DessMonitor account with active inverter(s)
+            - Internet connection to api.dessmonitor.com
+          files: |
+            custom_components/dessmonitor/dessmonitor-${{ github.event.inputs.version }}.zip
+            custom_components/dessmonitor/dessmonitor.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
