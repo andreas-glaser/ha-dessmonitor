@@ -1,8 +1,9 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       version:
@@ -23,9 +24,11 @@ jobs:
       - name: "Extract version"
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            VERSION="${{ github.event.release.tag_name }}"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Extract from tag when triggered by tag push
+            VERSION="${{ github.ref_name }}"
           else
+            # Extract from workflow input when manually triggered
             VERSION="${{ github.event.inputs.version }}"
           fi
           
@@ -147,7 +150,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "Commit version updates"
+      - name: "Update version files"
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
@@ -160,6 +163,5 @@ jobs:
           git commit -m "Bump version to $VERSION"
           git push origin main
           
-          # Create and push tag
-          git tag -a "v$VERSION" -m "Release version $VERSION"
-          git push origin "v$VERSION"
+          echo "✅ Version files updated successfully"
+          echo "Note: When using manual workflow dispatch, version files are updated automatically"
