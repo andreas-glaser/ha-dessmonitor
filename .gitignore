@@ -1,0 +1,30 @@
+.mydata
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+test_env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files (for future use)
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local development files
+auth_tokens.json
+*.log

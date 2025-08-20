@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout the repository"
+        uses: "actions/checkout@v4"
+
+      - name: "Adjust version number"
+        shell: bash
+        run: |
+          yq eval -i -P '.version="${{ github.event.release.tag_name }}"' \
+            ${{ github.workspace }}/custom_components/dessmonitor/manifest.json
+
+      - name: "ZIP the integration directory"
+        shell: bash
+        run: |
+          cd ${{ github.workspace }}/custom_components/dessmonitor
+          zip dessmonitor.zip -r ./
+
+      - name: "Upload the ZIP file to the release"
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ github.workspace }}/custom_components/dessmonitor/dessmonitor.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

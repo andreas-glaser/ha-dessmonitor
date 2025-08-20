@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "DessMonitor Setup",
+        "description": "Set up your DessMonitor integration to monitor your energy storage system.",
+        "data": {
+          "username": "Username",
+          "password": "Password",
+          "company_key": "Company Key (leave default unless specified by your installer)",
+          "update_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "username": "Your DessMonitor account username",
+          "password": "Your DessMonitor account password",
+          "company_key": "Your company/vendor key (default: {default_company_key})",
+          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes). Premium accounts can use 60 seconds (1 minute) or faster."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to DessMonitor API. Please check your internet connection.",
+      "invalid_auth": "Invalid username or password. Please verify your credentials.",
+      "unknown": "Unexpected error occurred. Please try again."
+    },
+    "abort": {
+      "already_configured": "This DessMonitor account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DessMonitor Options",
+        "description": "Configure advanced options for your DessMonitor integration.",
+        "data": {
+          "update_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "update_interval": "How often to fetch data from DessMonitor (minimum 60 seconds)"
+        }
+      }
+    }
+  }
+}
