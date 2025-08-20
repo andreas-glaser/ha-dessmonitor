@@ -78,21 +78,32 @@ jobs:
           NEW_VERSION="${{ steps.version.outputs.version }}"
           DATE=$(date +%Y-%m-%d)
           
-          # Create new unreleased section
-          sed -i "/^## \[Unreleased\]/a\\
-\\
-### Added\\
-- \\
-\\
-### Changed\\
-- \\
-\\
-### Fixed\\
-- \\
-\\
-## [$NEW_VERSION] - $DATE" CHANGELOG.md
+          # Create temporary file with new changelog entry
+          cat > temp_changelog.md << EOF
+          ## [Unreleased]
           
-          # Update links section
+          ### Added
+          - 
+          
+          ### Changed
+          - 
+          
+          ### Fixed
+          - 
+          
+          ## [$NEW_VERSION] - $DATE
+          EOF
+          
+          # Insert new entry after existing Unreleased section
+          sed -i "/^## \[Unreleased\]/r temp_changelog.md" CHANGELOG.md
+          sed -i "/^## \[Unreleased\]/d" CHANGELOG.md
+          
+          # Clean up temp file
+          rm temp_changelog.md
+          
+          # Update links at bottom of file
+          # Remove old unreleased link and add new ones
+          sed -i '/^\[Unreleased\]:/d' CHANGELOG.md
           echo "" >> CHANGELOG.md
           echo "[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v$NEW_VERSION...HEAD" >> CHANGELOG.md
           echo "[$NEW_VERSION]: https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v$NEW_VERSION" >> CHANGELOG.md
@@ -105,13 +116,7 @@ jobs:
           git config --local user.name "GitHub Action"
           
           git add VERSION custom_components/dessmonitor/manifest.json CHANGELOG.md
-          git commit -m "Bump version to $NEW_VERSION
-
-- Update VERSION file
-- Update manifest.json
-- Add changelog entry for v$NEW_VERSION
-          
-Version bumped: ${{ github.event.inputs.bump_type }} (${{ github.event.inputs.bump_type }} increment)"
+          git commit -m "Bump version to $NEW_VERSION" -m "- Update VERSION file" -m "- Update manifest.json" -m "- Add changelog entry for v$NEW_VERSION" -m "" -m "Version bumped: ${{ github.event.inputs.bump_type }} increment"
           
           git push origin ${{ github.event.inputs.branch }}
           
