@@ -27,4 +27,4 @@ htmlcov/
 
 # Local development files
 auth_tokens.json
-*.log
+*.logformat_env/
