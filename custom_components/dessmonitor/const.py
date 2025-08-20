@@ -1,4 +1,5 @@
 """Constants for the DessMonitor integration."""
+
 from typing import Final
 
 DOMAIN: Final = "dessmonitor"
@@ -17,8 +18,8 @@ UPDATE_INTERVAL_OPTIONS: Final = {
     60: "1 minute (Premium)",
     300: "5 minutes (Standard)",
     600: "10 minutes",
-    1800: "30 minutes", 
-    3600: "1 hour"
+    1800: "30 minutes",
+    3600: "1 hour",
 }
 
 API_BASE_URL: Final = "http://api.dessmonitor.com/public/"

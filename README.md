@@ -7,7 +7,7 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 ## 🌟 Features
 
 - Real-time monitoring of multiple inverters/collectors
-- Comprehensive sensor data**: Power, voltage, current, frequency, temperature, and more
+- Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
 - UI-based configuration - No YAML editing required
 - Automatic device discovery for all inverters on your account
 - Configurable update intervals (1-60 minutes based on your subscription)
