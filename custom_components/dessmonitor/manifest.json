@@ -1,16 +1,16 @@
 {
   "domain": "dessmonitor",
   "name": "DessMonitor",
+  "after_dependencies": ["http"],
   "codeowners": ["@andreas-glaser"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/andreas-glaser/ha-dessmonitor",
+  "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/andreas-glaser/ha-dessmonitor/issues",
+  "loggers": ["custom_components.dessmonitor"],
   "quality_scale": "silver",
   "requirements": ["aiohttp>=3.8.0"],
-  "version": "1.0.0",
-  "integration_type": "hub",
-  "loggers": ["custom_components.dessmonitor"],
-  "after_dependencies": ["http"]
+  "version": "1.0.0"
 }

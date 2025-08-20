@@ -1,0 +1,123 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor  
+          - major
+        default: 'patch'
+      branch:
+        description: 'Branch to bump version on'
+        required: true
+        default: 'develop'
+        type: string
+
+jobs:
+  bump-version:
+    name: Bump version
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout the repository"
+        uses: "actions/checkout@v4"
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          fetch-depth: 0
+
+      - name: "Setup Python"
+        uses: "actions/setup-python@v5"
+        with:
+          python-version: "3.12"
+
+      - name: "Install semver"
+        run: pip install semver
+
+      - name: "Calculate new version"
+        id: version
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(cat VERSION)
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Calculate new version using semver
+          case "${{ github.event.inputs.bump_type }}" in
+            "patch")
+              NEW_VERSION=$(python -c "import semver; print(semver.bump_patch('$CURRENT_VERSION'))")
+              ;;
+            "minor")
+              NEW_VERSION=$(python -c "import semver; print(semver.bump_minor('$CURRENT_VERSION'))")
+              ;;
+            "major")
+              NEW_VERSION=$(python -c "import semver; print(semver.bump_major('$CURRENT_VERSION'))")
+              ;;
+          esac
+          
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: "Update version files"
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          
+          # Update VERSION file
+          echo "$NEW_VERSION" > VERSION
+          
+          # Update manifest.json  
+          yq eval -i -P ".version=\"$NEW_VERSION\"" \
+            custom_components/dessmonitor/manifest.json
+            
+          echo "✅ Updated version to: $NEW_VERSION"
+
+      - name: "Update CHANGELOG.md"
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          
+          # Create temporary file with new changelog entry
+          cat > temp_changelog.md << EOF
+          ## [Unreleased]
+          
+          ### Added
+          - 
+          
+          ### Changed
+          - 
+          
+          ### Fixed
+          - 
+          
+          ## [$NEW_VERSION] - $DATE
+          EOF
+          
+          # Insert new entry after existing Unreleased section
+          sed -i "/^## \[Unreleased\]/r temp_changelog.md" CHANGELOG.md
+          sed -i "/^## \[Unreleased\]/d" CHANGELOG.md
+          
+          # Clean up temp file
+          rm temp_changelog.md
+          
+          # Update links at bottom of file
+          # Remove old unreleased link and add new ones
+          sed -i '/^\[Unreleased\]:/d' CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v$NEW_VERSION...HEAD" >> CHANGELOG.md
+          echo "[$NEW_VERSION]: https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v$NEW_VERSION" >> CHANGELOG.md
+
+      - name: "Commit version bump"
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add VERSION custom_components/dessmonitor/manifest.json CHANGELOG.md
+          git commit -m "Bump version to $NEW_VERSION" -m "- Update VERSION file" -m "- Update manifest.json" -m "- Add changelog entry for v$NEW_VERSION" -m "" -m "Version bumped: ${{ github.event.inputs.bump_type }} increment"
+          
+          git push origin ${{ github.event.inputs.branch }}
+          
+          echo "✅ Version bumped to $NEW_VERSION on ${{ github.event.inputs.branch }} branch"
