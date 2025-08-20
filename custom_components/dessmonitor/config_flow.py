@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
@@ -14,16 +13,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import DessMonitorAPI, DessMonitorError
-from .const import (
-    CONF_COMPANY_KEY,
-    CONF_PASSWORD,
-    CONF_UPDATE_INTERVAL,
-    CONF_USERNAME,
-    DEFAULT_COMPANY_KEY,
-    DEFAULT_UPDATE_INTERVAL,
-    DOMAIN,
-    UPDATE_INTERVAL_OPTIONS,
-)
+from .const import (CONF_COMPANY_KEY, CONF_PASSWORD, CONF_UPDATE_INTERVAL,
+                    CONF_USERNAME, DEFAULT_COMPANY_KEY,
+                    DEFAULT_UPDATE_INTERVAL, DOMAIN, UPDATE_INTERVAL_OPTIONS)
 
 _LOGGER = logging.getLogger(__name__)
 
