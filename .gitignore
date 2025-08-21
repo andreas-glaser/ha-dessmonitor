@@ -28,3 +28,4 @@ htmlcov/
 # Local development files
 auth_tokens.json
 *.logformat_env/
+CLAUDE.md

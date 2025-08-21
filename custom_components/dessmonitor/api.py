@@ -141,7 +141,6 @@ class DessMonitorAPI:
         """Authenticate with the DessMonitor API."""
         _LOGGER.debug("Starting authentication process for user: %s", self.username)
         try:
-            # Clear existing tokens for re-authentication
             self.token = None
             self.secret = None
             self.token_expire = None
@@ -152,7 +151,7 @@ class DessMonitorAPI:
                 "company-key": self.company_key,
                 "source": "1",
                 "_app_client_": "web",
-                "_app_id_": "dessmonitor-api-client",
+                "_app_id_": "ha-dessmonitor",
                 "_app_version_": "1.0.0",
             }
             _LOGGER.debug(
@@ -175,7 +174,6 @@ class DessMonitorAPI:
                 _LOGGER.debug("Secret received: %s", "Yes" if self.secret else "No")
                 _LOGGER.debug("Expire duration: %s seconds", expire_duration)
 
-                # The API returns expiration as duration in seconds, not absolute timestamp
                 if expire_duration:
                     self.token_expire = int(time.time()) + expire_duration
                     _LOGGER.debug(
@@ -207,7 +205,6 @@ class DessMonitorAPI:
         collectors = []
 
         try:
-            # First try to get projects which contain collectors
             _LOGGER.debug("Querying projects to discover collectors")
             projects_response = await self._make_request(
                 "queryPlants", {"pagesize": 50}
@@ -217,14 +214,12 @@ class DessMonitorAPI:
                 projects = projects_response["dat"]["plant"]
                 _LOGGER.debug("Found %d projects", len(projects))
 
-                # For each project, query its collectors with pagination
                 for project in projects:
                     pid = project.get("pid")
                     if pid:
                         try:
                             _LOGGER.debug("Querying collectors for project ID: %s", pid)
 
-                            # Handle pagination - keep fetching until we get all collectors
                             page = 0
                             pagesize = 50  # Request up to 50 collectors per page
                             total_collectors = 0
@@ -253,7 +248,6 @@ class DessMonitorAPI:
                                             total_from_api,
                                         )
 
-                                        # Check if we've got all collectors
                                         if (
                                             total_collectors >= total_from_api
                                             or current_page_size < pagesize
@@ -277,7 +271,6 @@ class DessMonitorAPI:
                                 "Failed to get collectors for project %s: %s", pid, err
                             )
 
-            # If no collectors found via projects, try direct collector query
             if not collectors:
                 _LOGGER.debug(
                     "No collectors found via projects, trying direct collector query"
@@ -285,7 +278,6 @@ class DessMonitorAPI:
                 try:
                     direct_response = await self._make_request("queryCollectorCountEs")
                     if "dat" in direct_response:
-                        # This might give us collector count or basic info to work with
                         _LOGGER.debug(
                             "Direct collector query response: %s",
                             (
@@ -301,7 +293,6 @@ class DessMonitorAPI:
         except Exception as err:
             _LOGGER.error("Failed to discover collectors via API: %s", err)
             _LOGGER.debug("Collector discovery error details", exc_info=True)
-            # Fallback: return empty list rather than hardcoded PNs
 
         _LOGGER.info("Successfully discovered %d collectors via API", len(collectors))
         return collectors
@@ -357,6 +348,169 @@ class DessMonitorAPI:
             _LOGGER.debug("Data point types for device %s: %s", sn, data_types)
 
         return device_data
+
+    async def get_device_summary_data(self, pid: int) -> dict[str, dict[str, Any]]:
+        """Get device summary data from webQueryDeviceEs API."""
+        _LOGGER.debug("Fetching device summary data for project ID: %s", pid)
+        
+        response = await self._make_request(
+            "webQueryDeviceEs", {"pid": pid, "pagesize": 50}
+        )
+        
+        project_data = response.get("dat", {})
+        devices = project_data.get("device", [])
+        
+        _LOGGER.debug("Retrieved summary data for %d devices", len(devices))
+        
+        summary_data = {}
+        for device in devices:
+            sn = device.get("sn")
+            if sn:
+                device_summary = []
+                device_alias = device.get("devalias", "Unknown")
+                
+                if "outpower" in device:
+                    device_summary.append({
+                        "title": "outpower",
+                        "val": device["outpower"],
+                        "unit": "kW"
+                    })
+                    _LOGGER.debug(
+                        "Added Total PV Power for %s (%s): %s kW",
+                        device_alias, sn, device["outpower"]
+                    )
+                
+                if "energyToday" in device:
+                    device_summary.append({
+                        "title": "energyToday", 
+                        "val": device["energyToday"],
+                        "unit": "kWh"
+                    })
+                    _LOGGER.debug(
+                        "Added Energy Today for %s (%s): %s kWh",
+                        device_alias, sn, device["energyToday"]
+                    )
+                
+                if "energyTotal" in device:
+                    device_summary.append({
+                        "title": "energyTotal",
+                        "val": device["energyTotal"],
+                        "unit": "kWh"
+                    })
+                    _LOGGER.debug(
+                        "Added Energy Total for %s (%s): %s kWh",
+                        device_alias, sn, device["energyTotal"]
+                    )
+                
+                summary_data[sn] = {
+                    "data": device_summary,
+                    "device": {
+                        "alias": device.get("devalias", "DessMonitor"),
+                        "sn": sn,
+                        "status": device.get("status", 0)
+                    }
+                }
+                
+                _LOGGER.debug(
+                    "Summary data for device %s: %d data points", 
+                    sn, len(device_summary)
+                )
+        
+        return summary_data
+
+
+    async def get_device_control_fields(self, pn: str, devcode: int, devaddr: int, sn: str) -> dict[str, Any]:
+        """Get device control fields (configuration options)."""
+        _LOGGER.debug("Fetching device control fields for device: %s", sn)
+        
+        response = await self._make_request(
+            "queryDeviceCtrlField",
+            {
+                "i18n": "en_US",
+                "source": "1", 
+                "pn": pn,
+                "devcode": devcode,
+                "devaddr": devaddr,
+                "sn": sn,
+            }
+        )
+        
+        control_data = response.get("dat", {})
+        fields = control_data.get("field", [])
+        
+        _LOGGER.debug("Retrieved %d control fields for device %s", len(fields), sn)
+        
+        config_settings = {}
+        
+        for field in fields:
+            field_name = field.get("name", "")
+            field_id = field.get("id", "")
+            
+            if any(keyword in field_name.lower() for keyword in [
+                "battery", "charge", "voltage", "current", "priority", "protection",
+                "bulk", "floating", "cutoff", "type", "output"
+            ]):
+                
+                if "item" in field and field["item"]:
+                    options = {}
+                    for item in field["item"]:
+                        key = item.get("key", "")
+                        val = item.get("val", "")
+                        options[key] = val
+                    
+                    config_settings[field_name] = {
+                        "id": field_id,
+                        "type": "options",
+                        "options": options
+                    }
+                else:
+                    config_settings[field_name] = {
+                        "id": field_id,
+                        "type": "value"
+                    }
+                
+                _LOGGER.debug("Added control field: %s (%s)", field_name, field_id)
+        
+        return config_settings
+
+    async def get_device_parameters(self, pn: str, devcode: int, devaddr: int, sn: str) -> dict[str, Any]:
+        """Get device parameters (current parameter values)."""
+        _LOGGER.debug("Fetching device parameters for device: %s", sn)
+        
+        response = await self._make_request(
+            "queryDeviceParsEs",
+            {
+                "i18n": "en_US",
+                "source": "1",
+                "pn": pn,
+                "devcode": devcode,
+                "devaddr": devaddr,
+                "sn": sn,
+            }
+        )
+        
+        param_data = response.get("dat", {})
+        parameters = param_data.get("parameter", [])
+        
+        _LOGGER.debug("Retrieved %d parameters for device %s", len(parameters), sn)
+        
+        param_settings = {}
+        
+        for param in parameters:
+            param_name = param.get("name", "")
+            param_value = param.get("val", "")
+            param_unit = param.get("unit", "")
+            param_id = param.get("par", "")
+            
+            param_settings[param_name] = {
+                "value": param_value,
+                "unit": param_unit,
+                "id": param_id
+            }
+            
+            _LOGGER.debug("Added parameter: %s = %s %s", param_name, param_value, param_unit)
+        
+        return param_settings
 
 
 class DessMonitorError(Exception):

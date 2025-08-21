@@ -10,10 +10,12 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
+    UnitOfEnergy,
     UnitOfFrequency,
     UnitOfPower,
     UnitOfTemperature,
@@ -24,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import DOMAIN, SENSOR_TYPES
+from .const import DOMAIN, OPERATING_MODES, SENSOR_TYPES, DIAGNOSTIC_SENSOR_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,11 +61,10 @@ async def async_setup_entry(
             seen_sensors = set()
             supported_sensors = 0
             duplicate_sensors = 0
-
+            
             for data_point in device_data:
                 sensor_type = data_point.get("title")
                 if sensor_type in SENSOR_TYPES:
-                    # Create unique key to prevent duplicates
                     sensor_key = f"{device_sn}_{sensor_type}"
                     if sensor_key not in seen_sensors:
                         seen_sensors.add(sensor_key)
@@ -134,7 +135,6 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         self._attr_name = f"{device_alias} {sensor_name}"
 
-        # Create a more robust unique ID using the sensor config key instead of raw sensor type
         sensor_key = None
         for key, config in SENSOR_TYPES.items():
             if key == sensor_type:
@@ -161,12 +161,20 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if unit == "W":
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
             self._attr_device_class = SensorDeviceClass.POWER
+        elif unit == "kW":
+            self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
+            self._attr_device_class = SensorDeviceClass.POWER
+        elif unit == "kWh":
+            self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+            self._attr_device_class = SensorDeviceClass.ENERGY
         elif unit == "V":
             self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
             self._attr_device_class = SensorDeviceClass.VOLTAGE
+            self._attr_suggested_display_precision = 1
         elif unit == "A":
             self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
             self._attr_device_class = SensorDeviceClass.CURRENT
+            self._attr_suggested_display_precision = 1
         elif unit == "Hz" or unit == "HZ":
             self._attr_native_unit_of_measurement = UnitOfFrequency.HERTZ
             self._attr_device_class = SensorDeviceClass.FREQUENCY
@@ -178,12 +186,33 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         else:
             self._attr_native_unit_of_measurement = unit
 
+        if sensor_config.get("device_class") == "enum":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            if self._sensor_type == "Operating mode":
+                self._attr_options = OPERATING_MODES
+        
+
         if sensor_config.get("state_class"):
             if sensor_config["state_class"] == "measurement":
                 self._attr_state_class = SensorStateClass.MEASUREMENT
+            elif sensor_config["state_class"] == "total_increasing":
+                self._attr_state_class = SensorStateClass.TOTAL_INCREASING
 
         if sensor_config.get("icon"):
             self._attr_icon = sensor_config["icon"]
+        
+        diagnostic_sensors = [
+            "Output Voltage Setting",  # Configuration setting as sensor
+            "Output priority",  # Priority setting from API data 
+            "Charger Source Priority",  # Charger priority from API data
+        ]
+        
+        if self._sensor_type in diagnostic_sensors:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+            _LOGGER.debug(
+                "Set entity category to DIAGNOSTIC for sensor %s",
+                self._sensor_type
+            )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -245,6 +274,11 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
                     value,
                     type(value).__name__,
                 )
+
+                if self._sensor_type in ["Operating mode", "Output priority", "Charger Source Priority"]:
+                    if value is not None and value != "":
+                        return str(value)
+                    return "Unknown"
 
                 try:
                     if value is not None and value != "":

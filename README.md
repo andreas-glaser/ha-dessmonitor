@@ -2,7 +2,7 @@
 
 A custom Home Assistant integration for monitoring DessMonitor energy storage systems in real-time.
 
-> **Also known as:** SmartESS, Smart ESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
+> **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
 ## 🌟 Features
 
@@ -19,20 +19,46 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 ### Power Monitoring
 - **Output Power** (W) - Current inverter output
+- **Total PV Power** (kW) - Real-time solar output power per inverter
 - **Battery Power** (W) - Charging/discharging power (+ = charging, - = discharging)  
 - **Solar Power** (W) - Current solar panel generation
 - **Grid Power** (W) - Grid import/export power
+- **PV Charge Power** (W) - Solar charging power to batteries
+- **AC Charging Power** (W) - Grid charging power to batteries
 
 ### Electrical Measurements
 - **Voltages** (V) - Output, Battery, Solar voltages
 - **Currents** (A) - Output, Battery, Solar currents
 - **Frequencies** (Hz) - Output and Grid frequency monitoring
 
-### System Status
+### Energy Tracking
+- **Energy Today** (kWh) - Daily energy production per inverter
+- **Energy Total** (kWh) - Lifetime energy production per inverter
+- **Output Apparent Power** (VA) - Total apparent power output
+
+### System Status  
 - **Load Percentage** (%) - Current system load
-- **Operating Mode** - Off-Grid, Grid, or Hybrid mode
+- **Operating Mode** - Off-Grid, Grid, Hybrid, Standby, Fault, or Shutdown Approaching
 - **Device Connectivity** - Online/offline status
 - **Temperatures** (°C) - Inverter and DC module temperatures
+
+### Diagnostic Sensors (Disabled by Default)
+The integration provides several diagnostic sensors that show battery and inverter configuration settings. These sensors are **disabled by default** to keep your dashboard clean, but can be selectively enabled as needed:
+
+- **Output Priority** - Power source priority setting (SBU, SUB, UTI, SOL)
+- **Charger Source Priority** - Battery charging source preference
+- **Output Voltage Setting** (V) - Configured output voltage target (e.g., 220.0V)
+
+#### Enabling Diagnostic Sensors
+1. Go to **Settings** > **Devices & Services** > **DessMonitor**
+2. Click on your device (e.g., "Inverter 1")
+3. Find the diagnostic sensor you want to enable
+4. Click the sensor and toggle **"Enable"**
+5. The sensor will now appear in your dashboard and be available for automations
+
+### Additional Measurement Sensors
+- **AC Charging Current** (A) - Current from grid charging
+- **PV Charging Current** (A) - Current from solar charging
 
 ## 🚀 Installation
 
@@ -85,9 +111,10 @@ To add DessMonitor data to Home Assistant's Energy Dashboard:
 
 1. Navigate to **Settings** > **Dashboards** > **Energy**
 2. Configure energy sources:
-   - **Solar Production**: Add your `*_solar_power` sensors
+   - **Solar Production**: Add your `*_total_pv_power` sensors (recommended) or `*_solar_power` sensors
    - **Battery Storage**: Add your `*_battery_power` sensors
    - **Grid Consumption**: Add your `*_grid_power` sensors
+   - **Individual Device Production**: Use `*_energy_today` sensors for daily tracking
 
 ### Automation Examples
 
@@ -143,6 +170,27 @@ automation:
             {{ ns.total }}W across all inverters
 ```
 
+#### Configuration Change Alert (Diagnostic Sensors)
+```yaml
+automation:
+  - alias: "DessMonitor Configuration Change Alert"
+    trigger:
+      - platform: state
+        entity_id: 
+          - sensor.inverter_1_output_priority
+          - sensor.inverter_1_charger_source_priority
+    condition:
+      - condition: template
+        value_template: "{{ trigger.from_state.state != trigger.to_state.state }}"
+    action:
+      - service: notify.persistent_notification
+        data:
+          title: "⚙️ Inverter Configuration Changed"
+          message: |
+            {{ trigger.to_state.attributes.friendly_name }} changed from 
+            "{{ trigger.from_state.state }}" to "{{ trigger.to_state.state }}"
+```
+
 ## 🛠️ Troubleshooting
 
 ### Common Issues
@@ -166,6 +214,11 @@ automation:
 - Check your network connectivity to api.dessmonitor.com
 - Verify your account subscription supports your chosen update interval
 - Review integration logs for specific error messages
+
+**Diagnostic sensors not visible**
+- Diagnostic sensors are disabled by default to keep dashboards clean
+- Enable them manually: Settings > Devices & Services > DessMonitor > [Device] > [Sensor] > Enable
+- Only enable the diagnostic sensors you actually need to monitor
 
 ### Debug Logging
 

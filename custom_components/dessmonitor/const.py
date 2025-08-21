@@ -10,9 +10,9 @@ CONF_COMPANY_KEY: Final = "company_key"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
 
 DEFAULT_COMPANY_KEY: Final = "bnrl_frRFjEz8Mkn"
-DEFAULT_UPDATE_INTERVAL: Final = 300  # 5 minutes
-MIN_UPDATE_INTERVAL: Final = 60  # 1 minute
-MAX_UPDATE_INTERVAL: Final = 3600  # 1 hour
+DEFAULT_UPDATE_INTERVAL: Final = 300
+MIN_UPDATE_INTERVAL: Final = 60
+MAX_UPDATE_INTERVAL: Final = 3600
 
 UPDATE_INTERVAL_OPTIONS: Final = {
     60: "1 minute (Premium)",
@@ -31,6 +31,44 @@ CURRENT_UNIT: Final = "A"
 FREQUENCY_UNIT: Final = "Hz"
 TEMPERATURE_UNIT: Final = "°C"
 PERCENTAGE_UNIT: Final = "%"
+
+OUTPUT_PRIORITIES = [
+    "SBU",
+    "SUB",
+    "UTI",
+    "SOL",
+]
+
+CHARGER_PRIORITIES = [
+    "Utility First",
+    "PV First", 
+    "PV Is At The Same Level As Utility",
+    "Only PV",
+    "Only PV charging is allowed"
+]
+
+BATTERY_TYPES = [
+    "AGM",
+    "FLD", 
+    "USER",
+    "Li1",
+    "Li2",
+    "Li3",
+    "Li4"
+]
+
+OPERATING_MODES = [
+    "Power On",
+    "Standby", 
+    "Line",
+    "Battery",
+    "Fault",
+    "Shutdown Approaching",
+    "Off-Grid Mode",
+    "Grid Mode",
+    "Hybrid Mode", 
+    "Unknown"
+]
 
 SENSOR_TYPES = {
     "Output Active Power": {
@@ -137,18 +175,101 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:thermometer",
     },
-}
-
-BINARY_SENSOR_TYPES = {
     "Operating mode": {
         "name": "Operating Mode",
-        "device_class": None,
+        "unit": "",
+        "device_class": "enum",
         "icon": "mdi:power-settings",
-    }
+    },
+    "Grid Voltage": {
+        "name": "Grid Voltage",
+        "unit": VOLTAGE_UNIT,
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "AC charging power": {
+        "name": "AC Charging Power",
+        "unit": POWER_UNIT,
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
+    "Output Apparent Power": {
+        "name": "Output Apparent Power",
+        "unit": "VA",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+    },
+    "PV Charge Power": {
+        "name": "PV Charge Power",
+        "unit": POWER_UNIT,
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "AC charging current": {
+        "name": "AC Charging Current",
+        "unit": CURRENT_UNIT,
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-ac",
+    },
+    "PV charging current": {
+        "name": "PV Charging Current",
+        "unit": CURRENT_UNIT,
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-ac",
+    },
+    "Output Voltage Setting": {
+        "name": "Output Voltage Setting",
+        "unit": VOLTAGE_UNIT,
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:cog",
+    },
+    "outpower": {
+        "name": "Total PV Power",
+        "unit": "kW",
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "energyToday": {
+        "name": "Energy Today",
+        "unit": "kWh",
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:flash",
+    },
+    "energyTotal": {
+        "name": "Energy Total",
+        "unit": "kWh", 
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:flash",
+    },
+    "Output priority": {
+        "name": "Output Priority",
+        "unit": "",
+        "device_class": "enum",
+        "options": OUTPUT_PRIORITIES,
+        "icon": "mdi:electric-switch",
+        "entity_category": "diagnostic",
+    },
+    "Charger Source Priority": {
+        "name": "Charger Source Priority",
+        "unit": "",
+        "device_class": "enum",
+        "options": CHARGER_PRIORITIES,
+        "icon": "mdi:battery-charging",
+        "entity_category": "diagnostic",
+    },
 }
 
-OPERATING_MODES = {
-    "Off-Grid Mode": "off_grid",
-    "Grid Mode": "grid",
-    "Hybrid Mode": "hybrid",
-}
+BINARY_SENSOR_TYPES = {}
+
+DIAGNOSTIC_SENSOR_TYPES = {}
+
+
