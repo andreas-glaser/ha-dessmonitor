@@ -38,9 +38,21 @@
    git merge dev --no-ff -m "Merge dev for vX.Y.Z release"
    ```
 
-7. **Create & push tag**
+7. **Create & push tag with changelog message**
    ```bash
-   git tag vX.Y.Z
+   # Create annotated tag with changelog excerpt
+   git tag -a vX.Y.Z -m "Release vX.Y.Z
+
+   ## Added
+   - Feature 1
+   - Feature 2
+   
+   ## Fixed  
+   - Bug fix 1
+   
+   ## Changed
+   - Improvement 1"
+   
    git push origin main --tags
    ```
 
@@ -53,7 +65,7 @@
    ```bash
    # Check workflow status via CLI
    gh workflow view "Release"
-   gh run list --workflow=release.yml
+   gh run list --workflow="Release" --limit 3
    ```
    - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
 
