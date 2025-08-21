@@ -30,6 +30,14 @@
    git commit -m "<type>: <description>"
    ```
 
+5. **Verify CI/CD (if applicable)**
+   ```bash
+   # Check GitHub Actions via CLI
+   gh run list --limit 5
+   gh run view  # Interactive selection
+   ```
+   - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
+
 ## Commit Message Format
 
 **Types:**

@@ -49,9 +49,17 @@
    - Creates ZIP package for HACS
    - Publishes GitHub release
 
+9. **Verify GitHub Actions**
+   ```bash
+   # Check workflow status via CLI
+   gh workflow view "Release"
+   gh run list --workflow=release.yml
+   ```
+   - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
+
 ## Post-Release
 
-9. **Sync dev with main**
+10. **Sync dev with main**
    ```bash
    git checkout dev
    git merge main
