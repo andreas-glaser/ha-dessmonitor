@@ -10,7 +10,6 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfElectricCurrent,
@@ -22,11 +21,12 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import DOMAIN, OPERATING_MODES, SENSOR_TYPES, DIAGNOSTIC_SENSOR_TYPES
+from .const import DIAGNOSTIC_SENSOR_TYPES, DOMAIN, OPERATING_MODES, SENSOR_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ async def async_setup_entry(
             seen_sensors = set()
             supported_sensors = 0
             duplicate_sensors = 0
-            
+
             for data_point in device_data:
                 sensor_type = data_point.get("title")
                 if sensor_type in SENSOR_TYPES:
@@ -190,7 +190,6 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             self._attr_device_class = SensorDeviceClass.ENUM
             if self._sensor_type == "Operating mode":
                 self._attr_options = OPERATING_MODES
-        
 
         if sensor_config.get("state_class"):
             if sensor_config["state_class"] == "measurement":
@@ -200,18 +199,17 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         if sensor_config.get("icon"):
             self._attr_icon = sensor_config["icon"]
-        
+
         diagnostic_sensors = [
             "Output Voltage Setting",  # Configuration setting as sensor
-            "Output priority",  # Priority setting from API data 
+            "Output priority",  # Priority setting from API data
             "Charger Source Priority",  # Charger priority from API data
         ]
-        
+
         if self._sensor_type in diagnostic_sensors:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
             _LOGGER.debug(
-                "Set entity category to DIAGNOSTIC for sensor %s",
-                self._sensor_type
+                "Set entity category to DIAGNOSTIC for sensor %s", self._sensor_type
             )
 
     @property
@@ -275,7 +273,11 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
                     type(value).__name__,
                 )
 
-                if self._sensor_type in ["Operating mode", "Output priority", "Charger Source Priority"]:
+                if self._sensor_type in [
+                    "Operating mode",
+                    "Output priority",
+                    "Charger Source Priority",
+                ]:
                     if value is not None and value != "":
                         return str(value)
                     return "Unknown"

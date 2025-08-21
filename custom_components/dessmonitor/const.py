@@ -41,33 +41,25 @@ OUTPUT_PRIORITIES = [
 
 CHARGER_PRIORITIES = [
     "Utility First",
-    "PV First", 
+    "PV First",
     "PV Is At The Same Level As Utility",
     "Only PV",
-    "Only PV charging is allowed"
+    "Only PV charging is allowed",
 ]
 
-BATTERY_TYPES = [
-    "AGM",
-    "FLD", 
-    "USER",
-    "Li1",
-    "Li2",
-    "Li3",
-    "Li4"
-]
+BATTERY_TYPES = ["AGM", "FLD", "USER", "Li1", "Li2", "Li3", "Li4"]
 
 OPERATING_MODES = [
     "Power On",
-    "Standby", 
+    "Standby",
     "Line",
     "Battery",
     "Fault",
     "Shutdown Approaching",
     "Off-Grid Mode",
     "Grid Mode",
-    "Hybrid Mode", 
-    "Unknown"
+    "Hybrid Mode",
+    "Unknown",
 ]
 
 SENSOR_TYPES = {
@@ -245,7 +237,7 @@ SENSOR_TYPES = {
     },
     "energyTotal": {
         "name": "Energy Total",
-        "unit": "kWh", 
+        "unit": "kWh",
         "device_class": "energy",
         "state_class": "total_increasing",
         "icon": "mdi:flash",
@@ -271,5 +263,3 @@ SENSOR_TYPES = {
 BINARY_SENSOR_TYPES = {}
 
 DIAGNOSTIC_SENSOR_TYPES = {}
-
-
