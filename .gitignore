@@ -34,4 +34,5 @@ CLAUDE.md
 tools/cli/.dessmonitor_cli_config.json
 
 # Docker development config
-tools/docker/config/
+tools/docker/config/*
+!tools/docker/config/.gitkeep
