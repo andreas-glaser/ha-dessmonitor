@@ -2,12 +2,8 @@
   "name": "DessMonitor Solar System Integration",
   "content_in_root": false,
   "render_readme": true,
-  "country": "ALL",
+  "zip_release": true,
+  "filename": "ha-dessmonitor.zip",
   "homeassistant": "2024.1.0",
-  "hacs": "1.6.0",
-  "domains": ["sensor", "binary_sensor"],
-  "iot_class": "cloud_polling",
-  "documentation": "https://github.com/andreas-glaser/ha-dessmonitor",
-  "issue_tracker": "https://github.com/andreas-glaser/ha-dessmonitor/issues",
-  "codeowners": ["@andreas-glaser"]
+  "hacs": "1.6.0"
 }
