@@ -62,6 +62,10 @@ OPERATING_MODES = [
     "Unknown",
 ]
 
+# Dynamic operating modes - automatically populated from devcode mappings
+# This list is extended at runtime with transformed values
+
+
 SENSOR_TYPES = {
     "Output Active Power": {
         "name": "Output Power",

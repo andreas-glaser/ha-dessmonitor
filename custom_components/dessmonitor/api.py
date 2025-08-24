@@ -152,7 +152,7 @@ class DessMonitorAPI:
                 "source": "1",
                 "_app_client_": "web",
                 "_app_id_": "ha-dessmonitor",
-                "_app_version_": "1.0.0",
+                "_app_version_": "1.1.0",
             }
             _LOGGER.debug(
                 "Authentication parameters: %s",
