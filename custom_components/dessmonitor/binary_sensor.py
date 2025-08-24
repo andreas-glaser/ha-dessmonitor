@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import BINARY_SENSOR_TYPES, DOMAIN, OPERATING_MODES
+from .const import BINARY_SENSOR_TYPES, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

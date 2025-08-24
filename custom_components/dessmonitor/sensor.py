@@ -26,8 +26,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import DIAGNOSTIC_SENSOR_TYPES, DOMAIN, OPERATING_MODES, SENSOR_TYPES
-from .device_support import apply_devcode_transformations, map_sensor_title
+from .const import DOMAIN, SENSOR_TYPES
+from .device_support import apply_devcode_transformations
 
 _LOGGER = logging.getLogger(__name__)
 

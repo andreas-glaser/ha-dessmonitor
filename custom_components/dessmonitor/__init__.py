@@ -175,7 +175,6 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     )
 
             if collectors:
-                first_collector = collectors[0]
                 try:
                     _LOGGER.debug("Fetching project information for summary data")
                     projects_response = await self.api._make_request(

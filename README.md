@@ -246,14 +246,89 @@ logger:
 - **Rate limiting respect** to avoid API overuse
 - **No data collection** - integration only communicates with DessMonitor API
 
+## 🛠️ Development Tools
+
+### DessMonitor CLI Tool
+
+For integration contributors and developers, we provide a comprehensive CLI tool for device analysis:
+
+**Location**: `tools/cli/`
+
+**Features**:
+- **Device Discovery**: List all collectors and devices in your account
+- **Real-time Data**: Query current sensor readings from any device
+- **DevCode Analysis**: Generate device support configurations
+- **API Exploration**: Test DessMonitor endpoints for development
+
+**Quick Start**:
+```bash
+cd tools/cli
+pip install -r requirements.txt
+python3 dessmonitor_cli.py auth --username USER --password PASS --company-key KEY
+python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE_SN --output analysis.json
+```
+
+**Use Cases**:
+- Adding support for new DessMonitor hardware models
+- Understanding device sensor capabilities
+- Creating device-specific configurations
+- Contributing to the integration
+
+See `tools/cli/README.md` for complete documentation.
+
+### Docker Development Environment
+
+A pre-configured Home Assistant development environment:
+
+**Location**: `tools/docker/`
+
+**Quick Start**:
+```bash
+cd tools/docker
+docker compose up -d
+# Visit http://localhost:8123
+```
+
+**Features**:
+- Latest Home Assistant stable image
+- Auto-mounted custom components
+- Isolated development environment
+- Easy integration testing
+
+## 🧩 Device Support Architecture
+
+The integration now includes an extensible device support system:
+
+### DevCode System
+- **Automatic Detection**: Devices are automatically classified by their devcode
+- **Device-Specific Mappings**: Sensor names and values are transformed per device type
+- **Extensible Architecture**: Easy to add support for new device models
+
+### Current Device Support
+- **DevCode 2376**: Full support with sensor mappings and value transformations
+- **Generic Fallback**: Unsupported devices still work with basic functionality
+
+### Adding New Device Support
+1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`
+2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
+3. Test with the Docker development environment
+4. Submit a pull request with your analysis JSON
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to:
 
 - **Report bugs** via [GitHub Issues](https://github.com/andreas-glaser/ha-dessmonitor/issues)
 - **Request features** for additional sensor types or functionality
+- **Add device support** using the CLI tool for analysis
 - **Submit pull requests** for improvements or bug fixes
 - **Improve documentation** with better examples or translations
+
+### For Device Support Contributors
+1. **Use the CLI tool** to analyze your device and generate configuration data
+2. **Include analysis JSON** in pull requests for new device support
+3. **Test thoroughly** with multiple devices of the same model when possible
+4. **Follow the devcode template** in `device_support/devcode_template.py`
 
 ## 📄 License
 
