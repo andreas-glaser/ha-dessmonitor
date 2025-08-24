@@ -1,0 +1,10 @@
+services:
+  homeassistant:
+    container_name: ha-dessmonitor-dev
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./config:/config
+      - ../../custom_components:/config/custom_components
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    network_mode: host

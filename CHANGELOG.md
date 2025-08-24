@@ -10,6 +10,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.2.0] - 2025-08-24
+
+### Added
+- **DessMonitor CLI Tool** for device analysis and development (`tools/cli/`)
+  - Device discovery and analysis commands
+  - Real-time sensor data querying
+  - DevCode analysis for creating device support configurations
+  - Comprehensive documentation for contributors
+- **Device Support Architecture** with extensible DevCode system
+  - Automatic device classification by DevCode
+  - Device-specific sensor name and value mappings
+  - Support for DevCode 2376 with complete transformations
+  - Template system for adding new device support
+- **Docker Development Environment** (`tools/docker/`)
+  - Pre-configured Home Assistant development setup
+  - Auto-mounted custom components for testing
+  - Easy integration testing workflow
+- **Enhanced Documentation**
+  - Complete CLI tool usage guide
+  - Device support contribution workflow
+  - Development environment setup instructions
+
+### Changed
+- **API Version Update** to 1.1.0 for improved compatibility
+- **Integration Architecture** now supports device-specific transformations
+- **Sensor Creation** process enhanced with DevCode-based mappings
+- **Operating Mode Options** now dynamically generated from device mappings
+
+### Fixed
+- **Code Quality** improvements with resolved linting issues
+- **Import Optimization** removed unused imports across modules
+
 ## [1.1.0] - 2025-08-21
 
 ### Added

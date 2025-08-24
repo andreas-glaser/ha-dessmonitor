@@ -26,7 +26,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import DIAGNOSTIC_SENSOR_TYPES, DOMAIN, OPERATING_MODES, SENSOR_TYPES
+from .const import DOMAIN, SENSOR_TYPES
+from .device_support import apply_devcode_transformations
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,8 +64,20 @@ async def async_setup_entry(
             duplicate_sensors = 0
 
             for data_point in device_data:
-                sensor_type = data_point.get("title")
-                if sensor_type in SENSOR_TYPES:
+                # Check original sensor type first (before transformations)
+                original_sensor_type = data_point.get("title")
+
+                if original_sensor_type in SENSOR_TYPES:
+                    # Apply devcode-specific transformations after confirming it's a valid sensor
+                    devcode = device_meta.get("devcode")
+                    if devcode:
+                        data_point = apply_devcode_transformations(
+                            devcode, data_point.copy()
+                        )
+
+                    sensor_type = (
+                        original_sensor_type  # Use original type for sensor creation
+                    )
                     sensor_key = f"{device_sn}_{sensor_type}"
                     if sensor_key not in seen_sensors:
                         seen_sensors.add(sensor_key)
@@ -92,7 +105,7 @@ async def async_setup_entry(
                 else:
                     _LOGGER.debug(
                         "Unsupported sensor type: %s for device %s",
-                        sensor_type,
+                        original_sensor_type,
                         device_sn,
                     )
 
@@ -189,7 +202,10 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if sensor_config.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
             if self._sensor_type == "Operating mode":
-                self._attr_options = OPERATING_MODES
+                # Build dynamic options list including all devcode transformations
+                from .device_support import get_all_operating_modes
+
+                self._attr_options = get_all_operating_modes()
 
         if sensor_config.get("state_class"):
             if sensor_config["state_class"] == "measurement":
@@ -260,9 +276,17 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             return None
 
         device_data = device_info.get("data", [])
+        device = device_info.get("device", {})
+        devcode = device.get("devcode")
 
         for data_point in device_data:
+            # Check original title first, then apply transformations for display
             if data_point.get("title") == self._sensor_type:
+                # Apply devcode transformations for value processing
+                if devcode:
+                    data_point = apply_devcode_transformations(
+                        devcode, data_point.copy()
+                    )
                 value = data_point.get("val")
 
                 _LOGGER.debug(
@@ -320,12 +344,23 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             return None
 
         device_data = device_info.get("data", [])
+        device = device_info.get("device", {})
+        devcode = device.get("devcode")
 
         attrs = {}
         for data_point in device_data:
-            if data_point.get("title") == "Timestamp":
+            original_title = data_point.get("title")
+
+            if original_title == "Timestamp":
                 attrs["last_updated"] = data_point.get("val")
-            elif data_point.get("title") == "Operating mode":
-                attrs["operating_mode"] = data_point.get("val")
+            elif original_title == "Operating mode":
+                # Apply transformations for operating mode display value
+                if devcode:
+                    transformed_point = apply_devcode_transformations(
+                        devcode, data_point.copy()
+                    )
+                    attrs["operating_mode"] = transformed_point.get("val")
+                else:
+                    attrs["operating_mode"] = data_point.get("val")
 
         return attrs if attrs else None
