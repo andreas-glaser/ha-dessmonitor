@@ -1,5 +1,16 @@
 # DessMonitor Home Assistant Integration
 
+[![GitHub Release][releases-shield]][releases]
+[![GitHub Activity][commits-shield]][commits]
+[![License][license-shield]](LICENSE)
+
+[![hacs][hacsbadge]][hacs]
+[![HACS Action][hacs-action-shield]][hacs-action]
+[![Hassfest][hassfest-shield]][hassfest]
+
+[![Project Maintenance][maintenance-shield]][user_profile]
+[![Community Forum][forum-shield]][forum]
+
 A custom Home Assistant integration for monitoring DessMonitor energy storage systems in real-time.
 
 > **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
@@ -64,8 +75,10 @@ The integration provides several diagnostic sensors that show battery and invert
 
 ### Method 1: HACS (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andreas-glaser&repository=ha-dessmonitor&category=Integration)
+
 1. **Install HACS** if you haven't already
-2. **Add Custom Repository**:
+2. **Click the button above** or add custom repository manually:
    - Go to HACS > Integrations > ⋮ > Custom repositories
    - Add: `https://github.com/andreas-glaser/ha-dessmonitor`
    - Category: Integration
@@ -356,3 +369,20 @@ This integration is **not officially endorsed** by DessMonitor. It uses reverse-
 - **Discussions**: [Home Assistant Community](https://community.home-assistant.io/)
 
 **Enjoying this integration?** ⭐ Star the repository to show your support!
+
+<!-- Badge Links -->
+[releases-shield]: https://img.shields.io/github/release/andreas-glaser/ha-dessmonitor.svg?style=for-the-badge
+[releases]: https://github.com/andreas-glaser/ha-dessmonitor/releases
+[commits-shield]: https://img.shields.io/github/commit-activity/y/andreas-glaser/ha-dessmonitor.svg?style=for-the-badge
+[commits]: https://github.com/andreas-glaser/ha-dessmonitor/commits/main
+[license-shield]: https://img.shields.io/github/license/andreas-glaser/ha-dessmonitor.svg?style=for-the-badge
+[hacs]: https://github.com/hacs/integration
+[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
+[hacs-action-shield]: https://img.shields.io/github/actions/workflow/status/andreas-glaser/ha-dessmonitor/hacs.yaml?label=HACS%20Action&style=for-the-badge
+[hacs-action]: https://github.com/andreas-glaser/ha-dessmonitor/actions/workflows/hacs.yaml
+[hassfest-shield]: https://img.shields.io/github/actions/workflow/status/andreas-glaser/ha-dessmonitor/hassfest.yaml?label=Hassfest&style=for-the-badge
+[hassfest]: https://github.com/andreas-glaser/ha-dessmonitor/actions/workflows/hassfest.yaml
+[maintenance-shield]: https://img.shields.io/badge/maintainer-%40andreas--glaser-blue.svg?style=for-the-badge
+[user_profile]: https://github.com/andreas-glaser
+[forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
+[forum]: https://community.home-assistant.io/

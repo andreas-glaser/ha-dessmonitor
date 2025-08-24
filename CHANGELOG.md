@@ -10,6 +10,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.3.0] - 2025-08-24
+
+### Added
+- **Enhanced CLI Tool Features**
+  - Device data fallback for devices not in collectors
+  - DevCode template generation with `--template` flag
+  - Automatic typo detection in sensor names
+  - Sensor pattern analysis (units, priorities, operating modes)
+  - Debug mode with `--debug` flag for verbose logging
+  - Raw JSON output with `--raw` flag for all commands
+- **HACS Repository Support**
+  - Complete hacs.json configuration for HACS submission
+  - Status badges in README (Release, Activity, License, HACS, Hassfest)
+  - One-click HACS repository installation button
+  - GitHub Actions validation for HACS and Hassfest
+
+### Changed
+- **Documentation Improvements**
+  - Added visual status badges to README
+  - Enhanced installation instructions with HACS button
+  - Updated metadata for better HACS discovery
+
+### Fixed
+- **CLI Tool** inverter online/offline status display (status=0 means online)
+- **HACS Validation** country code configuration (using ALL for worldwide)
+
 ## [1.2.0] - 2025-08-24
 
 ### Added
