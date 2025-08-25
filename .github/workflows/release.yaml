@@ -112,14 +112,14 @@ jobs:
           cd ${{ github.workspace }}/custom_components/dessmonitor
           
           # Create ZIP with version in filename
-          zip -r "dessmonitor-$VERSION.zip" . \
+          zip -r "ha-dessmonitor-$VERSION.zip" . \
             -x "*.pyc" \
             -x "__pycache__/*" \
             -x ".*" \
             -x "README.md"
           
           # Also create generic filename for HACS compatibility
-          cp "dessmonitor-$VERSION.zip" "dessmonitor.zip"
+          cp "ha-dessmonitor-$VERSION.zip" "ha-dessmonitor.zip"
           
           echo "Created release packages:"
           ls -la *.zip
@@ -143,8 +143,8 @@ jobs:
           name: "Release v${{ needs.validate-version.outputs.version }}"
           body_path: release-notes.md
           files: |
-            custom_components/dessmonitor/dessmonitor-${{ needs.validate-version.outputs.version }}.zip
-            custom_components/dessmonitor/dessmonitor.zip
+            custom_components/dessmonitor/ha-dessmonitor-${{ needs.validate-version.outputs.version }}.zip
+            custom_components/dessmonitor/ha-dessmonitor.zip
           draft: false
           prerelease: false
         env:
