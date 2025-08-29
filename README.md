@@ -20,6 +20,7 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 - [🚀 Quick Start](#-quick-start)
 - [🌟 Features](#-features)
+- [🖼️ Screenshots](#-screenshots)
 - [📊 Available Sensors](#-available-sensors)
 - [🚀 Installation](#-installation)
 - [⚙️ Configuration](#%EF%B8%8F-configuration)
@@ -49,6 +50,12 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 - Secure token-based authentication with automatic renewal
 - Energy Dashboard integration for production/consumption tracking
 - Smart device naming with collector part numbers for easy identification
+
+## 🖼️ Screenshots
+
+![DessMonitor integration overview](docs/assets/screenshot1.png)
+
+![Device details and sensors](docs/assets/screenshot2.png)
 
 ## 📊 Available Sensors
 
