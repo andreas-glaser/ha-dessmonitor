@@ -3,6 +3,7 @@
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
+![Version](https://img.shields.io/badge/version-1.3.1-blue?style=for-the-badge)
 
 [![hacs][hacsbadge]][hacs]
 [![HACS Action][hacs-action-shield]][hacs-action]
@@ -15,6 +16,30 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 > **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
+## 📚 Table of Contents
+
+- [🚀 Quick Start](#-quick-start)
+- [🌟 Features](#-features)
+- [🖼️ Screenshots](#-screenshots)
+- [📊 Available Sensors](#-available-sensors)
+- [🚀 Installation](#-installation)
+- [⚙️ Configuration](#%EF%B8%8F-configuration)
+- [🔧 Advanced Configuration](#-advanced-configuration)
+- [🛠️ Troubleshooting](#%EF%B8%8F-troubleshooting)
+- [🛠️ Development Tools](#%EF%B8%8F-development-tools)
+- [🤝 Contributing](#-contributing)
+- [📞 Support](#-support)
+
+## 🚀 Quick Start
+
+**New to DessMonitor Integration? Get started in 3 steps:**
+
+1. **Install via HACS**: [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andreas-glaser&repository=ha-dessmonitor&category=Integration)
+2. **Restart** Home Assistant
+3. **Add Integration**: Go to Settings → Devices & Services → Add Integration → "DessMonitor"
+
+**Already have an account?** Enter your DessMonitor credentials and you're monitoring your solar system in minutes!
+
 ## 🌟 Features
 
 - Real-time monitoring of multiple inverters/collectors
@@ -22,9 +47,15 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 - UI-based configuration - No YAML editing required
 - Automatic device discovery for all inverters on your account
 - Configurable update intervals (1-60 minutes based on your subscription)
-- Secure token-based authentication with automatic restar7-day renewal
+- Secure token-based authentication with automatic renewal
 - Energy Dashboard integration for production/consumption tracking
-- Smart device naming with PN identifiers for easy identification
+- Smart device naming with collector part numbers for easy identification
+
+## 🖼️ Screenshots
+
+![DessMonitor integration overview](docs/assets/screenshot1.png)
+
+![Device details and sensors](docs/assets/screenshot2.png)
 
 ## 📊 Available Sensors
 
@@ -291,7 +322,7 @@ See `tools/cli/README.md` for complete documentation.
 
 ### Docker Development Environment
 
-A pre-configured Home Assistant development environment:
+A pre-configured Home Assistant development environment for testing and development:
 
 **Location**: `tools/docker/`
 
@@ -303,10 +334,36 @@ docker compose up -d
 ```
 
 **Features**:
-- Latest Home Assistant stable image
-- Auto-mounted custom components
-- Isolated development environment
-- Easy integration testing
+- **Latest Home Assistant** stable image with auto-updates
+- **Auto-mounted components** - changes reflect immediately
+- **Development configuration** with debug logging enabled
+- **Isolated environment** - no impact on production systems
+- **Pre-configured secrets** for quick testing
+
+**Development Workflow**:
+1. Make changes to integration code
+2. Restart Home Assistant container: `docker compose restart homeassistant`
+3. Test changes in the isolated environment
+4. Check logs: `docker compose logs -f homeassistant`
+
+### Testing Framework
+
+**Code Quality Tools**:
+```bash
+# Run linting and formatting
+black custom_components/
+isort custom_components/
+flake8 custom_components/
+
+# Run type checking
+mypy custom_components/dessmonitor --ignore-missing-imports
+```
+
+**CI/CD Pipeline**:
+- **Automated testing** with GitHub Actions
+- **HACS validation** ensures marketplace compatibility  
+- **Hassfest validation** verifies Home Assistant integration standards
+- **Code quality checks** with Black, isort, and flake8
 
 ## 🧩 Device Support Architecture
 
@@ -349,7 +406,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⚠️ Disclaimer
 
-This integration is **not officially endorsed** by DessMonitor. It uses reverse-engineered API calls for personal use only. Please:
+This integration is **not officially endorsed** by DessMonitor. It uses the public API https://api.dessmonitor.com/
 
 - **Respect DessMonitor's terms of service**
 - **Use reasonable update intervals** to avoid API overload

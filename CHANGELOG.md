@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.4.0] - 2025-08-29
+
+### Added
+- **Brand Assets** for improved HACS integration visibility
+- **Screenshots Section** with visual documentation of the integration
+
+### Changed
+- **Documentation Improvements**
+  - Enhanced README with quick start guide
+  - Improved structure and navigation
+  - Added visual examples with screenshots
+
 ## [1.3.1] - 2025-08-25
 
 ### Fixed
