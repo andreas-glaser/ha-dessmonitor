@@ -12,7 +12,7 @@
 [![Project Maintenance][maintenance-shield]][user_profile]
 [![Community Forum][forum-shield]][forum]
 
-A Home Assistant integration for monitoring solar inverters via DessMonitor/SmartESS platform with periodic updates (5-minute default; 1-minute with Collection Acceleration subscription).
+A Home Assistant integration for monitoring solar inverters via DessMonitor/SmartESS platform with periodic updates (5-minute default; 1-minute with Detailed Data Collection Acceleration).
 
 > **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
@@ -43,7 +43,7 @@ A Home Assistant integration for monitoring solar inverters via DessMonitor/Smar
 ## 🌟 Features
 
 - Periodic monitoring of multiple inverters/collectors (5-minute default)
-- 1-minute updates available with Collection Acceleration Recharge subscription
+- 1-minute updates available with Detailed Data Collection Acceleration (￥144 per collector)
 - Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
 - UI-based configuration - No YAML editing required
 - Automatic device discovery for all inverters on your account
@@ -136,18 +136,18 @@ The integration provides several diagnostic sensors that show battery and invert
    - **Password**: Your DessMonitor account password
    - **Company Key**: Leave default unless specified by installer
    - **Update Interval**: Choose based on your DessMonitor subscription:
-     - **1 minute**: Only available with "Collection Acceleration Recharge" purchased from DessMonitor
+     - **1 minute**: Requires "Detailed Data Collection Acceleration" (￥144/collector) from DessMonitor
      - **5 minutes**: Standard update rate for all accounts (recommended default)
      - **10+ minutes**: Reduced frequency to minimize API usage
 
 ### Update Interval Configuration
 
-**Important**: The 1-minute update interval only works if you have purchased the "Collection Acceleration Recharge (Energy Flow Acceleration)" upgrade from the DessMonitor website. Without this subscription, setting the interval to 1 minute will not provide faster updates and may cause unnecessary API calls.
+**Important**: The 1-minute update interval only works if you have purchased the "Detailed Data Collection Acceleration" upgrade from the DessMonitor website. This is a one-time fee of ￥144.00 RMB per data collector. Without this upgrade, setting the interval to 1 minute will not provide faster updates and may cause unnecessary API calls.
 
-**To purchase Collection Acceleration**:
+**To purchase Detailed Data Collection Acceleration**:
 1. Log into your DessMonitor web account at www.dessmonitor.com
 2. Navigate to your account settings or subscription page
-3. Purchase the "Collection Acceleration Recharge" upgrade
+3. Purchase the "Detailed Data Collection Acceleration" upgrade (￥144 per collector)
 4. Once activated, you can set the integration to 1-minute updates
 
 **To modify update interval**:

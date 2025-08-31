@@ -1,14 +1,14 @@
 # DessMonitor Home Assistant Integration
 
 A custom integration to monitor your DessMonitor solar inverter system in Home Assistant. 
-Updates are periodic: 5 minutes by default, or 1 minute with Collection Acceleration Recharge subscription.
+Updates are periodic: 5 minutes by default, or 1 minute with Detailed Data Collection Acceleration (￥144 per collector).
 
 ## Quick Setup
 1. In Home Assistant: Settings → Devices & Services → Add Integration → "DessMonitor".
 2. Enter credentials: Username, Password, Company Key (default is usually correct).
 3. Choose Update Interval:
    - 5 minutes: Standard rate (recommended)
-   - 1 minute: Requires "Collection Acceleration Recharge" from DessMonitor
+   - 1 minute: Requires "Detailed Data Collection Acceleration" from DessMonitor
 
 ## Key Features
 - Multiple inverter support with automatic discovery.
