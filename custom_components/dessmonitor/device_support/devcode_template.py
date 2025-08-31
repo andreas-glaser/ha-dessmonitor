@@ -33,7 +33,7 @@ DEVICE_INFO = {
 # Output Priority Mappings
 # Map the actual API values your data collector returns to user-friendly descriptions
 # To find these: check your collector's API response for "Output priority" sensor
-OUTPUT_PRIORITY_MAPPING = {
+OUTPUT_PRIORITY_MAPPING: dict = {
     # Example mappings - replace with your device's actual values:
     # "API_VALUE": "User Friendly Description",
     # "0": "Utility First",
@@ -44,7 +44,7 @@ OUTPUT_PRIORITY_MAPPING = {
 # Charger Priority Mappings
 # Map the actual API values your data collector returns to user-friendly descriptions
 # To find these: check your collector's API response for "Charger Source Priority" sensor
-CHARGER_PRIORITY_MAPPING = {
+CHARGER_PRIORITY_MAPPING: dict = {
     # Example mappings - replace with your device's actual values:
     # "API_VALUE": "User Friendly Description",
     # "Utility First": "Grid charging priority",
@@ -54,7 +54,7 @@ CHARGER_PRIORITY_MAPPING = {
 # Operating Mode Mappings
 # Map the actual API values your data collector returns to user-friendly descriptions
 # To find these: check your collector's API response for "Operating mode" sensor
-OPERATING_MODE_MAPPING = {
+OPERATING_MODE_MAPPING: dict = {
     # Example mappings - replace with your device's actual values:
     # "API_VALUE": "User Friendly Description",
     # "Power On": "Starting up",
@@ -66,7 +66,7 @@ OPERATING_MODE_MAPPING = {
 # Sensor Title Mappings
 # Map API sensor titles to cleaner, standardized display names
 # This is useful for fixing typos or making names more consistent
-SENSOR_TITLE_MAPPINGS = {
+SENSOR_TITLE_MAPPINGS: dict = {
     # Example mappings - add any sensors that need better names:
     # "API Sensor Name": "Better Display Name",
     # "INV Module Termperature": "Inverter Temperature",  # Fix typo
@@ -76,7 +76,7 @@ SENSOR_TITLE_MAPPINGS = {
 # Sensor Value Transformations
 # Define functions to transform sensor values if needed
 # This is for more complex transformations than simple mappings
-VALUE_TRANSFORMATIONS = {
+VALUE_TRANSFORMATIONS: dict = {
     # Example: Convert units or apply calculations
     # "sensor_name": lambda value: float(value) * 1000,  # Convert kW to W
     # "temperature_sensor": lambda value: float(value) * 9/5 + 32,  # C to F

@@ -72,7 +72,7 @@ SENSOR_TITLE_MAPPINGS = {
 
 # Sensor Value Transformations
 # Define any special value transformations needed for this devcode
-VALUE_TRANSFORMATIONS = {
+VALUE_TRANSFORMATIONS: dict = {
     # Example: Convert specific units or formats
     # "sensor_name": lambda value: transform_function(value),
 }

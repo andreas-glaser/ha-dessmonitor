@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -143,7 +143,9 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         self._sensor_type = sensor_type
 
         device_alias = device_meta.get("alias", "DessMonitor")
-        sensor_config = SENSOR_TYPES.get(sensor_type, {})
+        sensor_config: dict[str, Any] = cast(
+            dict[str, Any], SENSOR_TYPES.get(sensor_type, {})
+        )
         sensor_name = sensor_config.get("name", sensor_type)
 
         self._attr_name = f"{device_alias} {sensor_name}"
@@ -169,8 +171,10 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             sensor_type,
         )
 
-        sensor_config = SENSOR_TYPES[sensor_type]
-        unit = sensor_config.get("unit", "")
+        sensor_config_final: dict[str, Any] = cast(
+            dict[str, Any], SENSOR_TYPES[sensor_type]
+        )
+        unit = sensor_config_final.get("unit", "")
         if unit == "W":
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
             self._attr_device_class = SensorDeviceClass.POWER
@@ -199,7 +203,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         else:
             self._attr_native_unit_of_measurement = unit
 
-        if sensor_config.get("device_class") == "enum":
+        if sensor_config_final.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
             if self._sensor_type == "Operating mode":
                 # Build dynamic options list including all devcode transformations
@@ -207,14 +211,16 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
                 self._attr_options = get_all_operating_modes()
 
-        if sensor_config.get("state_class"):
-            if sensor_config["state_class"] == "measurement":
+        if sensor_config_final.get("state_class"):
+            state_class = sensor_config_final["state_class"]
+            if state_class == "measurement":
                 self._attr_state_class = SensorStateClass.MEASUREMENT
-            elif sensor_config["state_class"] == "total_increasing":
+            elif state_class == "total_increasing":
                 self._attr_state_class = SensorStateClass.TOTAL_INCREASING
 
-        if sensor_config.get("icon"):
-            self._attr_icon = sensor_config["icon"]
+        icon = sensor_config_final.get("icon")
+        if icon:
+            self._attr_icon = str(icon)
 
         diagnostic_sensors = [
             "Output Voltage Setting",  # Configuration setting as sensor

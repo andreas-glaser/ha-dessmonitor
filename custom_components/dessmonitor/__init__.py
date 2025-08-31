@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -113,7 +114,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialize."""
         self.api = api
-        self._control_fields_cache = {}
+        self._control_fields_cache: dict = {}
         super().__init__(
             hass,
             _LOGGER,
@@ -344,7 +345,7 @@ async def async_get_device_diagnostics(
     device_meta = device_info.get("device", {})
     collector_meta = device_info.get("collector", {})
 
-    diagnostics = {
+    diagnostics: dict[str, Any] = {
         "device_info": {
             "serial_number": device_sn,
             "alias": device_meta.get("alias", "Unknown"),

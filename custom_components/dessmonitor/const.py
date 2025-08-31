@@ -16,11 +16,11 @@ MIN_UPDATE_INTERVAL: Final = 60
 MAX_UPDATE_INTERVAL: Final = 3600
 
 UPDATE_INTERVAL_OPTIONS: Final = {
-    60: "1 minute (Premium)",
+    60: "1 minute (Collection Acceleration)",
     300: "5 minutes (Standard)",
-    600: "10 minutes",
-    1800: "30 minutes",
-    3600: "1 hour",
+    600: "10 minutes (Reduced API usage)",
+    1800: "30 minutes (Low usage)",
+    3600: "1 hour (Minimal usage)",
 }
 
 API_BASE_URL: Final = "http://api.dessmonitor.com/public/"
@@ -265,6 +265,6 @@ SENSOR_TYPES = {
     },
 }
 
-BINARY_SENSOR_TYPES = {}
+BINARY_SENSOR_TYPES: dict = {}
 
-DIAGNOSTIC_SENSOR_TYPES = {}
+DIAGNOSTIC_SENSOR_TYPES: dict = {}
