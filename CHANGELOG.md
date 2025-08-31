@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.4.1] - 2025-08-31
+
+### Changed
+- **Documentation Updates**
+  - Clarified update intervals are periodic, not real-time
+  - Added "Detailed Data Collection Acceleration" subscription details (￥144 per collector)
+  - Updated repository description to mention solar inverters instead of energy storage
+  - Added Energy-Mate and Fronus Solar to list of compatible apps
+  - Improved clarity on 1-minute update requirements
+
 ## [1.4.0] - 2025-08-29
 
 ### Added
