@@ -10,6 +10,8 @@ from typing import Any
 import aiohttp
 import async_timeout
 
+from .const import UNITS
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -371,7 +373,11 @@ class DessMonitorAPI:
 
                 if "outpower" in device:
                     device_summary.append(
-                        {"title": "outpower", "val": device["outpower"], "unit": "kW"}
+                        {
+                            "title": "outpower",
+                            "val": device["outpower"],
+                            "unit": UNITS["POWER_KW"],
+                        }
                     )
                     _LOGGER.debug(
                         "Added Total PV Power for %s (%s): %s kW",
@@ -385,7 +391,7 @@ class DessMonitorAPI:
                         {
                             "title": "energyToday",
                             "val": device["energyToday"],
-                            "unit": "kWh",
+                            "unit": UNITS["ENERGY"],
                         }
                     )
                     _LOGGER.debug(
@@ -400,7 +406,7 @@ class DessMonitorAPI:
                         {
                             "title": "energyTotal",
                             "val": device["energyTotal"],
-                            "unit": "kWh",
+                            "unit": UNITS["ENERGY"],
                         }
                     )
                     _LOGGER.debug(

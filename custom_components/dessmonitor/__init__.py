@@ -13,7 +13,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import DessMonitorAPI
-from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN
+from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
@@ -507,9 +507,9 @@ async def async_get_device_diagnostics(
                 diagnostics["configuration"][field_name] = {
                     "value": current_value,
                     "unit": (
-                        "V"
+                        UNITS["VOLTAGE"]
                         if "Voltage" in field_name
-                        else ("A" if "Current" in field_name else "")
+                        else (UNITS["CURRENT"] if "Current" in field_name else "")
                     ),
                     "id": field_data["id"],
                 }

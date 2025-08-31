@@ -26,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import DOMAIN, SENSOR_TYPES
+from .const import DOMAIN, SENSOR_TYPES, UNITS
 from .device_support import apply_devcode_transformations
 
 _LOGGER = logging.getLogger(__name__)
@@ -175,31 +175,34 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             dict[str, Any], SENSOR_TYPES[sensor_type]
         )
         unit = sensor_config_final.get("unit", "")
-        if unit == "W":
+        if unit == UNITS["POWER"]:
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
             self._attr_device_class = SensorDeviceClass.POWER
-        elif unit == "kW":
+        elif unit == UNITS["POWER_KW"]:
             self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
             self._attr_device_class = SensorDeviceClass.POWER
-        elif unit == "kWh":
+        elif unit == UNITS["ENERGY"]:
             self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
             self._attr_device_class = SensorDeviceClass.ENERGY
-        elif unit == "V":
+        elif unit == UNITS["VOLTAGE"]:
             self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
             self._attr_device_class = SensorDeviceClass.VOLTAGE
             self._attr_suggested_display_precision = 1
-        elif unit == "A":
+        elif unit == UNITS["CURRENT"]:
             self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
             self._attr_device_class = SensorDeviceClass.CURRENT
             self._attr_suggested_display_precision = 1
-        elif unit == "Hz" or unit == "HZ":
+        elif unit == UNITS["FREQUENCY"] or unit == "HZ":
             self._attr_native_unit_of_measurement = UnitOfFrequency.HERTZ
             self._attr_device_class = SensorDeviceClass.FREQUENCY
-        elif unit == "°C":
+        elif unit == UNITS["TEMPERATURE"]:
             self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        elif unit == "%":
-            self._attr_native_unit_of_measurement = "%"
+        elif unit == UNITS["PERCENTAGE"]:
+            self._attr_native_unit_of_measurement = UNITS["PERCENTAGE"]
+        elif unit == UNITS["APPARENT_POWER"]:
+            self._attr_native_unit_of_measurement = unit
+            self._attr_device_class = SensorDeviceClass.POWER
         else:
             self._attr_native_unit_of_measurement = unit
 

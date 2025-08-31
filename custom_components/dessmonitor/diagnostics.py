@@ -20,10 +20,9 @@ from . import DessMonitorDataUpdateCoordinator
 from .const import (
     BATTERY_TYPES,
     CHARGER_PRIORITIES,
-    CURRENT_UNIT,
     DOMAIN,
     OUTPUT_PRIORITIES,
-    VOLTAGE_UNIT,
+    UNITS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +60,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Max Charging Current": {
         "name": "Max Charging Current",
-        "unit": CURRENT_UNIT,
+        "unit": UNITS["CURRENT"],
         "device_class": "current",
         "state_class": "measurement",
         "icon": "mdi:current-dc",
@@ -71,7 +70,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Max AC Charging Current": {
         "name": "Max AC Charging Current",
-        "unit": CURRENT_UNIT,
+        "unit": UNITS["CURRENT"],
         "device_class": "current",
         "state_class": "measurement",
         "icon": "mdi:current-ac",
@@ -81,7 +80,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "High DC Protection Voltage": {
         "name": "High DC Protection Voltage",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash-triangle",
@@ -91,7 +90,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Low DC Protection Voltage (Mains)": {
         "name": "Low DC Protection Voltage (Mains)",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash-triangle-outline",
@@ -101,7 +100,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Low DC Protection Voltage (Off-Grid)": {
         "name": "Low DC Protection Voltage (Off-Grid)",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash-triangle-outline",
@@ -111,7 +110,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Bulk Charging Voltage": {
         "name": "Bulk Charging Voltage",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:battery-charging-high",
@@ -121,7 +120,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Floating Charging Voltage": {
         "name": "Floating Charging Voltage",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:battery-charging-medium",
