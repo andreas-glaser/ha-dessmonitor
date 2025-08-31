@@ -28,9 +28,13 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_USERNAME): str,
-        vol.Required(CONF_PASSWORD): str,
-        vol.Optional(CONF_COMPANY_KEY, default=DEFAULT_COMPANY_KEY): str,
+        vol.Required(CONF_USERNAME): vol.All(
+            str, vol.Length(min=1, max=100), vol.Schema(lambda x: x.strip())
+        ),
+        vol.Required(CONF_PASSWORD): vol.All(str, vol.Length(min=1, max=100)),
+        vol.Optional(CONF_COMPANY_KEY, default=DEFAULT_COMPANY_KEY): vol.All(
+            str, vol.Length(min=1, max=100), vol.Schema(lambda x: x.strip())
+        ),
         vol.Optional(CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): vol.In(
             UPDATE_INTERVAL_OPTIONS
         ),
@@ -48,9 +52,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     update_interval = data[CONF_UPDATE_INTERVAL]
 
     _LOGGER.debug(
-        "Validating input for user: %s, company_key: %s, interval: %ds",
-        username,
-        company_key,
+        "Validating input for user: %s, interval: %ds",
+        username[:3] + "***" if len(username) > 3 else "***",
         update_interval,
     )
 
@@ -95,7 +98,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise CannotConnect from err
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for DessMonitor."""
 
     VERSION = 1

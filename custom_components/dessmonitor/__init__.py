@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -12,7 +13,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import DessMonitorAPI
-from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN
+from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
@@ -26,11 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     username = entry.data["username"]
     company_key = entry.data.get("company_key", "bnrl_frRFjEz8Mkn")
-    _LOGGER.debug(
-        "Initializing API client for user: %s with company key: %s",
-        username,
-        company_key,
-    )
+    _LOGGER.debug("Initializing API client for user: %s", username)
 
     api = DessMonitorAPI(
         username=username,
@@ -113,7 +110,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialize."""
         self.api = api
-        self._control_fields_cache = {}
+        self._control_fields_cache: dict = {}
         super().__init__(
             hass,
             _LOGGER,
@@ -344,7 +341,7 @@ async def async_get_device_diagnostics(
     device_meta = device_info.get("device", {})
     collector_meta = device_info.get("collector", {})
 
-    diagnostics = {
+    diagnostics: dict[str, Any] = {
         "device_info": {
             "serial_number": device_sn,
             "alias": device_meta.get("alias", "Unknown"),
@@ -506,9 +503,9 @@ async def async_get_device_diagnostics(
                 diagnostics["configuration"][field_name] = {
                     "value": current_value,
                     "unit": (
-                        "V"
+                        UNITS["VOLTAGE"]
                         if "Voltage" in field_name
-                        else ("A" if "Current" in field_name else "")
+                        else (UNITS["CURRENT"] if "Current" in field_name else "")
                     ),
                     "id": field_data["id"],
                 }

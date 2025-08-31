@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -20,11 +21,11 @@ from . import DessMonitorDataUpdateCoordinator
 from .const import (
     BATTERY_TYPES,
     CHARGER_PRIORITIES,
-    CURRENT_UNIT,
     DOMAIN,
     OUTPUT_PRIORITIES,
-    VOLTAGE_UNIT,
+    UNITS,
 )
+from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Max Charging Current": {
         "name": "Max Charging Current",
-        "unit": CURRENT_UNIT,
+        "unit": UNITS["CURRENT"],
         "device_class": "current",
         "state_class": "measurement",
         "icon": "mdi:current-dc",
@@ -71,7 +72,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Max AC Charging Current": {
         "name": "Max AC Charging Current",
-        "unit": CURRENT_UNIT,
+        "unit": UNITS["CURRENT"],
         "device_class": "current",
         "state_class": "measurement",
         "icon": "mdi:current-ac",
@@ -81,7 +82,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "High DC Protection Voltage": {
         "name": "High DC Protection Voltage",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash-triangle",
@@ -91,7 +92,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Low DC Protection Voltage (Mains)": {
         "name": "Low DC Protection Voltage (Mains)",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash-triangle-outline",
@@ -101,7 +102,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Low DC Protection Voltage (Off-Grid)": {
         "name": "Low DC Protection Voltage (Off-Grid)",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash-triangle-outline",
@@ -111,7 +112,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Bulk Charging Voltage": {
         "name": "Bulk Charging Voltage",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:battery-charging-high",
@@ -121,7 +122,7 @@ DIAGNOSTIC_SENSORS = {
     },
     "Floating Charging Voltage": {
         "name": "Floating Charging Voltage",
-        "unit": VOLTAGE_UNIT,
+        "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:battery-charging-medium",
@@ -262,13 +263,9 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
         if sensor_config.get("state_class") == "measurement":
             self._attr_state_class = SensorStateClass.MEASUREMENT
 
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, device_sn)},
-            "name": device_alias,
-            "manufacturer": "DessMonitor",
-            "model": f"Collector {collector_meta.get('pn', 'Unknown')}",
-            "sw_version": collector_meta.get("fireware", "Unknown"),
-        }
+        self._attr_device_info = create_device_info(
+            device_sn, device_meta, collector_meta
+        )
 
     @property
     def native_value(self) -> str | float | None:

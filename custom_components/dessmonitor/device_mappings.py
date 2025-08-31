@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .const import DEVCODE_MAPPINGS
+from .device_support.device_registry import _DEVICE_REGISTRY as DEVCODE_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -26,8 +26,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import DOMAIN, SENSOR_TYPES
+from .const import DOMAIN, SENSOR_TYPES, UNITS
 from .device_support import apply_devcode_transformations
+from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -143,7 +144,9 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         self._sensor_type = sensor_type
 
         device_alias = device_meta.get("alias", "DessMonitor")
-        sensor_config = SENSOR_TYPES.get(sensor_type, {})
+        sensor_config: dict[str, Any] = cast(
+            dict[str, Any], SENSOR_TYPES.get(sensor_type, {})
+        )
         sensor_name = sensor_config.get("name", sensor_type)
 
         self._attr_name = f"{device_alias} {sensor_name}"
@@ -169,37 +172,42 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             sensor_type,
         )
 
-        sensor_config = SENSOR_TYPES[sensor_type]
-        unit = sensor_config.get("unit", "")
-        if unit == "W":
+        sensor_config_final: dict[str, Any] = cast(
+            dict[str, Any], SENSOR_TYPES[sensor_type]
+        )
+        unit = sensor_config_final.get("unit", "")
+        if unit == UNITS["POWER"]:
             self._attr_native_unit_of_measurement = UnitOfPower.WATT
             self._attr_device_class = SensorDeviceClass.POWER
-        elif unit == "kW":
+        elif unit == UNITS["POWER_KW"]:
             self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
             self._attr_device_class = SensorDeviceClass.POWER
-        elif unit == "kWh":
+        elif unit == UNITS["ENERGY"]:
             self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
             self._attr_device_class = SensorDeviceClass.ENERGY
-        elif unit == "V":
+        elif unit == UNITS["VOLTAGE"]:
             self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
             self._attr_device_class = SensorDeviceClass.VOLTAGE
             self._attr_suggested_display_precision = 1
-        elif unit == "A":
+        elif unit == UNITS["CURRENT"]:
             self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
             self._attr_device_class = SensorDeviceClass.CURRENT
             self._attr_suggested_display_precision = 1
-        elif unit == "Hz" or unit == "HZ":
+        elif unit == UNITS["FREQUENCY"] or unit == "HZ":
             self._attr_native_unit_of_measurement = UnitOfFrequency.HERTZ
             self._attr_device_class = SensorDeviceClass.FREQUENCY
-        elif unit == "°C":
+        elif unit == UNITS["TEMPERATURE"]:
             self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        elif unit == "%":
-            self._attr_native_unit_of_measurement = "%"
+        elif unit == UNITS["PERCENTAGE"]:
+            self._attr_native_unit_of_measurement = UNITS["PERCENTAGE"]
+        elif unit == UNITS["APPARENT_POWER"]:
+            self._attr_native_unit_of_measurement = unit
+            self._attr_device_class = SensorDeviceClass.POWER
         else:
             self._attr_native_unit_of_measurement = unit
 
-        if sensor_config.get("device_class") == "enum":
+        if sensor_config_final.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
             if self._sensor_type == "Operating mode":
                 # Build dynamic options list including all devcode transformations
@@ -207,14 +215,16 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
                 self._attr_options = get_all_operating_modes()
 
-        if sensor_config.get("state_class"):
-            if sensor_config["state_class"] == "measurement":
+        if sensor_config_final.get("state_class"):
+            state_class = sensor_config_final["state_class"]
+            if state_class == "measurement":
                 self._attr_state_class = SensorStateClass.MEASUREMENT
-            elif sensor_config["state_class"] == "total_increasing":
+            elif state_class == "total_increasing":
                 self._attr_state_class = SensorStateClass.TOTAL_INCREASING
 
-        if sensor_config.get("icon"):
-            self._attr_icon = sensor_config["icon"]
+        icon = sensor_config_final.get("icon")
+        if icon:
+            self._attr_icon = str(icon)
 
         diagnostic_sensors = [
             "Output Voltage Setting",  # Configuration setting as sensor
@@ -231,30 +241,8 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        collector_pn = self._collector_meta.get("pn", "Unknown")
-        device_alias = self._device_meta.get("alias")
-        firmware = self._collector_meta.get("fireware", "Unknown")
-
-        if not device_alias:
-            device_name = f"Inverter {collector_pn}"
-        else:
-            device_name = f"{device_alias} ({collector_pn})"
-
-        _LOGGER.debug(
-            "Device info for %s: name='%s', pn='%s', firmware='%s'",
-            self._device_sn,
-            device_name,
-            collector_pn,
-            firmware,
-        )
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_sn)},
-            name=device_name,
-            manufacturer="DessMonitor",
-            model="Energy Storage Inverter",
-            sw_version=firmware,
-            serial_number=self._device_sn,
+        return create_device_info(
+            self._device_sn, self._device_meta, self._collector_meta
         )
 
     @property
