@@ -23,7 +23,7 @@ UPDATE_INTERVAL_OPTIONS: Final = {
     3600: "1 hour (Minimal usage)",
 }
 
-API_BASE_URL: Final = "http://api.dessmonitor.com/public/"
+API_BASE_URL: Final = "https://api.dessmonitor.com/public/"
 
 UNITS: Final = {
     "POWER": "W",
@@ -269,6 +269,10 @@ SENSOR_TYPES = {
     },
 }
 
+# Binary sensor types from API data points
+# Currently empty but structure is in place for future binary sensors
 BINARY_SENSOR_TYPES: dict = {}
 
+# Reserved for future diagnostic sensor types
+# Not currently used but maintained for future expansion
 DIAGNOSTIC_SENSOR_TYPES: dict = {}

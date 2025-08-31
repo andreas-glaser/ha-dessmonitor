@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -24,6 +25,7 @@ from .const import (
     OUTPUT_PRIORITIES,
     UNITS,
 )
+from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -261,13 +263,9 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
         if sensor_config.get("state_class") == "measurement":
             self._attr_state_class = SensorStateClass.MEASUREMENT
 
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, device_sn)},
-            "name": device_alias,
-            "manufacturer": "DessMonitor",
-            "model": f"Collector {collector_meta.get('pn', 'Unknown')}",
-            "sw_version": collector_meta.get("fireware", "Unknown"),
-        }
+        self._attr_device_info = create_device_info(
+            device_sn, device_meta, collector_meta
+        )
 
     @property
     def native_value(self) -> str | float | None:

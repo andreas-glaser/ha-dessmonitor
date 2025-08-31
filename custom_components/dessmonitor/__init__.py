@@ -27,11 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     username = entry.data["username"]
     company_key = entry.data.get("company_key", "bnrl_frRFjEz8Mkn")
-    _LOGGER.debug(
-        "Initializing API client for user: %s with company key: %s",
-        username,
-        company_key,
-    )
+    _LOGGER.debug("Initializing API client for user: %s", username)
 
     api = DessMonitorAPI(
         username=username,

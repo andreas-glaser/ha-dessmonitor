@@ -10,7 +10,7 @@ from typing import Any
 import aiohttp
 import async_timeout
 
-from .const import UNITS
+from .const import API_BASE_URL, UNITS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class DessMonitorAPI:
         self.username = username
         self.password = password
         self.company_key = company_key
-        self.base_url = "http://api.dessmonitor.com/public/"
+        self.base_url = API_BASE_URL
 
         self._session = session
         self._close_session = False

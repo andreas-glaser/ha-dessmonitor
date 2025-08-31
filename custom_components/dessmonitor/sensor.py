@@ -28,6 +28,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN, SENSOR_TYPES, UNITS
 from .device_support import apply_devcode_transformations
+from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -240,30 +241,8 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        collector_pn = self._collector_meta.get("pn", "Unknown")
-        device_alias = self._device_meta.get("alias")
-        firmware = self._collector_meta.get("fireware", "Unknown")
-
-        if not device_alias:
-            device_name = f"Inverter {collector_pn}"
-        else:
-            device_name = f"{device_alias} ({collector_pn})"
-
-        _LOGGER.debug(
-            "Device info for %s: name='%s', pn='%s', firmware='%s'",
-            self._device_sn,
-            device_name,
-            collector_pn,
-            firmware,
-        )
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_sn)},
-            name=device_name,
-            manufacturer="DessMonitor",
-            model="Energy Storage Inverter",
-            sw_version=firmware,
-            serial_number=self._device_sn,
+        return create_device_info(
+            self._device_sn, self._device_meta, self._collector_meta
         )
 
     @property

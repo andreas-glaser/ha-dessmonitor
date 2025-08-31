@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import BINARY_SENSOR_TYPES, DOMAIN
+from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,20 +95,8 @@ class DessMonitorBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        collector_pn = self._collector_meta.get("pn", "Unknown")
-        device_name = self._device_meta.get("alias")
-        if not device_name:
-            device_name = f"Inverter {collector_pn}"
-        else:
-            device_name = f"{device_name} ({collector_pn})"
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_sn)},
-            name=device_name,
-            manufacturer="DessMonitor",
-            model="Energy Storage Inverter",
-            sw_version=self._collector_meta.get("fireware"),
-            serial_number=self._device_sn,
+        return create_device_info(
+            self._device_sn, self._device_meta, self._collector_meta
         )
 
     @property
@@ -156,20 +145,8 @@ class DessMonitorStatusSensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        collector_pn = self._collector_meta.get("pn", "Unknown")
-        device_name = self._device_meta.get("alias")
-        if not device_name:
-            device_name = f"Inverter {collector_pn}"
-        else:
-            device_name = f"{device_name} ({collector_pn})"
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_sn)},
-            name=device_name,
-            manufacturer="DessMonitor",
-            model="Energy Storage Inverter",
-            sw_version=self._collector_meta.get("fireware"),
-            serial_number=self._device_sn,
+        return create_device_info(
+            self._device_sn, self._device_meta, self._collector_meta
         )
 
     @property
