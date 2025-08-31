@@ -14,7 +14,7 @@
 
 A Home Assistant integration for monitoring solar inverters via DessMonitor/SmartESS platform with periodic updates (5-minute default; 1-minute with Detailed Data Collection Acceleration).
 
-> **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
+> **Also known as:** SmartESS, WatchPower, Energy-Mate, Fronus Solar, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
 ## 📚 Table of Contents
 
