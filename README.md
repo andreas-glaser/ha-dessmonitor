@@ -12,7 +12,7 @@
 [![Project Maintenance][maintenance-shield]][user_profile]
 [![Community Forum][forum-shield]][forum]
 
-A custom Home Assistant integration for monitoring DessMonitor energy storage systems in real-time.
+A custom Home Assistant integration for monitoring DessMonitor energy storage systems with periodic updates (default 5 minutes; 1 minute with premium).
 
 > **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
@@ -42,7 +42,7 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 ## 🌟 Features
 
-- Real-time monitoring of multiple inverters/collectors
+- Periodic monitoring of multiple inverters/collectors (5 min default; 1 min with premium)
 - Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
 - UI-based configuration - No YAML editing required
 - Automatic device discovery for all inverters on your account
@@ -61,7 +61,7 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 ### Power Monitoring
 - **Output Power** (W) - Current inverter output
-- **Total PV Power** (kW) - Real-time solar output power per inverter
+- **Total PV Power** (kW) - Instantaneous solar output per update interval
 - **Battery Power** (W) - Charging/discharging power (+ = charging, - = discharging)  
 - **Solar Power** (W) - Current solar panel generation
 - **Grid Power** (W) - Grid import/export power
@@ -168,13 +168,13 @@ automation:
   - alias: "DessMonitor Battery Low Warning"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.inverter_1_test001234567890_battery_voltage
+        entity_id: sensor.inverter_1_battery_voltage
         below: 48
     action:
       - service: notify.mobile_app_your_phone
         data:
           title: "⚠️ Battery Low"
-          message: "Battery voltage: {{ states('sensor.inverter_1_test001234567890_battery_voltage') }}V"
+          message: "Battery voltage: {{ states('sensor.inverter_1_battery_voltage') }}V"
 ```
 
 #### High Load Notification
@@ -183,13 +183,13 @@ automation:
   - alias: "DessMonitor High Load Alert"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.inverter_1_test001234567890_load_percentage
+        entity_id: sensor.inverter_1_load_percentage
         above: 90
     action:
       - service: notify.persistent_notification
         data:
           title: "🔥 High Load Warning"
-          message: "System load at {{ states('sensor.inverter_1_test001234567890_load_percentage') }}%"
+          message: "System load at {{ states('sensor.inverter_1_load_percentage') }}%"
 ```
 
 #### Daily Solar Summary
@@ -300,7 +300,7 @@ For integration contributors and developers, we provide a comprehensive CLI tool
 
 **Features**:
 - **Device Discovery**: List all collectors and devices in your account
-- **Real-time Data**: Query current sensor readings from any device
+- **Live Data**: Query current readings (subject to account update interval)
 - **DevCode Analysis**: Generate device support configurations
 - **API Exploration**: Test DessMonitor endpoints for development
 
