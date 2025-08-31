@@ -12,7 +12,7 @@
 [![Project Maintenance][maintenance-shield]][user_profile]
 [![Community Forum][forum-shield]][forum]
 
-A custom Home Assistant integration for monitoring DessMonitor energy storage systems with periodic updates (default 5 minutes; 1 minute with premium).
+A Home Assistant integration for monitoring solar inverters via DessMonitor/SmartESS platform with periodic updates (5-minute default; 1-minute with Collection Acceleration subscription).
 
 > **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
@@ -42,7 +42,8 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 ## 🌟 Features
 
-- Periodic monitoring of multiple inverters/collectors (5 min default; 1 min with premium)
+- Periodic monitoring of multiple inverters/collectors (5-minute default)
+- 1-minute updates available with Collection Acceleration Recharge subscription
 - Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
 - UI-based configuration - No YAML editing required
 - Automatic device discovery for all inverters on your account
@@ -61,7 +62,7 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 ### Power Monitoring
 - **Output Power** (W) - Current inverter output
-- **Total PV Power** (kW) - Instantaneous solar output per update interval
+- **Total PV Power** (kW) - Solar output at last update interval
 - **Battery Power** (W) - Charging/discharging power (+ = charging, - = discharging)  
 - **Solar Power** (W) - Current solar panel generation
 - **Grid Power** (W) - Grid import/export power
@@ -134,14 +135,22 @@ The integration provides several diagnostic sensors that show battery and invert
    - **Username**: Your DessMonitor account username
    - **Password**: Your DessMonitor account password
    - **Company Key**: Leave default unless specified by installer
-   - **Update Interval**: Choose based on your subscription:
-     - **1 minute**: Premium accounts with paid faster updates
-     - **5 minutes**: Standard free accounts (default)
-     - **10+ minutes**: Reduced frequency options
+   - **Update Interval**: Choose based on your DessMonitor subscription:
+     - **1 minute**: Only available with "Collection Acceleration Recharge" purchased from DessMonitor
+     - **5 minutes**: Standard update rate for all accounts (recommended default)
+     - **10+ minutes**: Reduced frequency to minimize API usage
 
-### Changing Settings Later
+### Update Interval Configuration
 
-You can modify the update interval anytime:
+**Important**: The 1-minute update interval only works if you have purchased the "Collection Acceleration Recharge (Energy Flow Acceleration)" upgrade from the DessMonitor website. Without this subscription, setting the interval to 1 minute will not provide faster updates and may cause unnecessary API calls.
+
+**To purchase Collection Acceleration**:
+1. Log into your DessMonitor web account at www.dessmonitor.com
+2. Navigate to your account settings or subscription page
+3. Purchase the "Collection Acceleration Recharge" upgrade
+4. Once activated, you can set the integration to 1-minute updates
+
+**To modify update interval**:
 1. Go to **Settings** > **Devices & Services**
 2. Find your DessMonitor integration
 3. Click the **Configure** button (gear icon)
