@@ -29,6 +29,7 @@ htmlcov/
 auth_tokens.json
 *.logformat_env/
 CLAUDE.md
+AGENT.md
 
 # CLI tool config
 tools/cli/.dessmonitor_cli_config.json

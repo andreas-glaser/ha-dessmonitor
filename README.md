@@ -12,9 +12,9 @@
 [![Project Maintenance][maintenance-shield]][user_profile]
 [![Community Forum][forum-shield]][forum]
 
-A custom Home Assistant integration for monitoring DessMonitor energy storage systems in real-time.
+A Home Assistant integration for monitoring solar inverters via DessMonitor/SmartESS platform with periodic updates (5-minute default; 1-minute with Detailed Data Collection Acceleration).
 
-> **Also known as:** SmartESS, WatchPower, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
+> **Also known as:** SmartESS, WatchPower, Energy-Mate, Fronus Solar, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
 ## 📚 Table of Contents
 
@@ -42,7 +42,8 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 ## 🌟 Features
 
-- Real-time monitoring of multiple inverters/collectors
+- Periodic monitoring of multiple inverters/collectors (5-minute default)
+- 1-minute updates available with Detailed Data Collection Acceleration (￥144 per collector)
 - Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
 - UI-based configuration - No YAML editing required
 - Automatic device discovery for all inverters on your account
@@ -61,7 +62,7 @@ A custom Home Assistant integration for monitoring DessMonitor energy storage sy
 
 ### Power Monitoring
 - **Output Power** (W) - Current inverter output
-- **Total PV Power** (kW) - Real-time solar output power per inverter
+- **Total PV Power** (kW) - Solar output at last update interval
 - **Battery Power** (W) - Charging/discharging power (+ = charging, - = discharging)  
 - **Solar Power** (W) - Current solar panel generation
 - **Grid Power** (W) - Grid import/export power
@@ -134,14 +135,22 @@ The integration provides several diagnostic sensors that show battery and invert
    - **Username**: Your DessMonitor account username
    - **Password**: Your DessMonitor account password
    - **Company Key**: Leave default unless specified by installer
-   - **Update Interval**: Choose based on your subscription:
-     - **1 minute**: Premium accounts with paid faster updates
-     - **5 minutes**: Standard free accounts (default)
-     - **10+ minutes**: Reduced frequency options
+   - **Update Interval**: Choose based on your DessMonitor subscription:
+     - **1 minute**: Requires "Detailed Data Collection Acceleration" (￥144/collector) from DessMonitor
+     - **5 minutes**: Standard update rate for all accounts (recommended default)
+     - **10+ minutes**: Reduced frequency to minimize API usage
 
-### Changing Settings Later
+### Update Interval Configuration
 
-You can modify the update interval anytime:
+**Important**: The 1-minute update interval only works if you have purchased the "Detailed Data Collection Acceleration" upgrade from the DessMonitor website. This is a one-time fee of ￥144.00 RMB per data collector. Without this upgrade, setting the interval to 1 minute will not provide faster updates and may cause unnecessary API calls.
+
+**To purchase Detailed Data Collection Acceleration**:
+1. Log into your DessMonitor web account at www.dessmonitor.com
+2. Navigate to your account settings or subscription page
+3. Purchase the "Detailed Data Collection Acceleration" upgrade (￥144 per collector)
+4. Once activated, you can set the integration to 1-minute updates
+
+**To modify update interval**:
 1. Go to **Settings** > **Devices & Services**
 2. Find your DessMonitor integration
 3. Click the **Configure** button (gear icon)
@@ -168,13 +177,13 @@ automation:
   - alias: "DessMonitor Battery Low Warning"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.inverter_1_test001234567890_battery_voltage
+        entity_id: sensor.inverter_1_battery_voltage
         below: 48
     action:
       - service: notify.mobile_app_your_phone
         data:
           title: "⚠️ Battery Low"
-          message: "Battery voltage: {{ states('sensor.inverter_1_test001234567890_battery_voltage') }}V"
+          message: "Battery voltage: {{ states('sensor.inverter_1_battery_voltage') }}V"
 ```
 
 #### High Load Notification
@@ -183,13 +192,13 @@ automation:
   - alias: "DessMonitor High Load Alert"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.inverter_1_test001234567890_load_percentage
+        entity_id: sensor.inverter_1_load_percentage
         above: 90
     action:
       - service: notify.persistent_notification
         data:
           title: "🔥 High Load Warning"
-          message: "System load at {{ states('sensor.inverter_1_test001234567890_load_percentage') }}%"
+          message: "System load at {{ states('sensor.inverter_1_load_percentage') }}%"
 ```
 
 #### Daily Solar Summary
@@ -300,7 +309,7 @@ For integration contributors and developers, we provide a comprehensive CLI tool
 
 **Features**:
 - **Device Discovery**: List all collectors and devices in your account
-- **Real-time Data**: Query current sensor readings from any device
+- **Live Data**: Query current readings (subject to account update interval)
 - **DevCode Analysis**: Generate device support configurations
 - **API Exploration**: Test DessMonitor endpoints for development
 
