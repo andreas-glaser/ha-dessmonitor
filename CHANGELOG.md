@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.4.2] - 2025-08-31
+
+### Fixed
+- **Security Improvements**
+  - Switched from HTTP to HTTPS for all API communications
+  - Removed sensitive data from debug logs (company keys, full usernames)
+  - Added input validation with length limits for config flow fields
+- **Code Quality**
+  - Resolved all mypy type annotation errors
+  - Fixed ConfigFlow domain registration issue
+  - Consolidated unit constants into centralized UNITS dictionary
+  - Extracted common device info logic to reduce code duplication
+
+### Changed
+- **Technical Debt Reduction**
+  - Created shared utils module for common functionality
+  - Improved exception handling with better context
+  - Enhanced input validation for user credentials
+
 ## [1.4.1] - 2025-08-31
 
 ### Changed
