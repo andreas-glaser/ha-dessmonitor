@@ -98,6 +98,32 @@ python3 dessmonitor_cli.py data --device-sn Q0045xxxxxxxxxYYYYYYY --days 1
 - Understand sensor naming conventions
 - Test sensor data availability
 
+### `sp-keys` - Query SP Key Parameters
+Fetch the list of SP key parameter identifiers available for a device.
+
+```bash
+python3 dessmonitor_cli.py sp-keys --device-sn DEVICE_SN [--raw]
+```
+
+**Example:**
+```bash
+python3 dessmonitor_cli.py sp-keys --device-sn Q0045xxxxxxxxxYYYYYYY
+```
+
+**Example Output:**
+```
+=== SP Key Parameters for Q0045xxxxxxxxxYYYYYYY ===
+- PV_OUTPUT_POWER
+- LOAD_ACTIVE_POWER
+- GRID_ACTIVE_POWER
+- BT_BATTERY_CAPACITY
+- BATTERY_ACTIVE_POWER
+```
+
+**Notes:**
+- Use `--raw` to print the full JSON response from the API (usually under `dat.keys`).
+- The command auto-discovers `pn`, `devcode`, and `devaddr` when possible to maximize compatibility.
+
 ### `analyze` - Device Analysis
 Generate structured analysis of device capabilities for devcode development.
 
@@ -138,9 +164,10 @@ python3 dessmonitor_cli.py data --device-sn YOUR_DEVICE_SN
 
 ### 3. Create Device Support
 Use the analysis output to create device support configurations in:
-- `custom_components/dessmonitor/device_mappings.py` (devcode mapping)
-- `custom_components/dessmonitor/device_support/` (device-specific configurations)
+- `custom_components/dessmonitor/device_support/` (device-specific configurations per devcode)
 
+Notes:
+- Add a new `devcode_XXXX.py` based on the template and register it in `device_support/device_registry.py`.
 ## Configuration
 
 ### Authentication Storage
