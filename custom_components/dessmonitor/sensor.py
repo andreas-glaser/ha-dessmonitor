@@ -202,8 +202,14 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         elif unit == UNITS["PERCENTAGE"]:
             self._attr_native_unit_of_measurement = UNITS["PERCENTAGE"]
         elif unit == UNITS["APPARENT_POWER"]:
+            # Apparent power (VA)
             self._attr_native_unit_of_measurement = unit
-            self._attr_device_class = SensorDeviceClass.POWER
+            # Prefer device class if available in this HA version
+            try:
+                self._attr_device_class = SensorDeviceClass.APPARENT_POWER
+            except AttributeError:
+                # Older HA versions may not support APPARENT_POWER
+                pass
         else:
             self._attr_native_unit_of_measurement = unit
 

@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.4.3] - 2025-09-05
+
+### Fixed
+- Home Assistant warnings for apparent power sensors by setting device_class to `apparent_power` when unit is `VA` (Output Apparent Power)
+
+### Changed
+- Clarified unit/device class handling for apparent power in code comments
+
 ## [1.4.2] - 2025-08-31
 
 ### Fixed
