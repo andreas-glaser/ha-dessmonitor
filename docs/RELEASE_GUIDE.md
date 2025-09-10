@@ -88,3 +88,4 @@
 - `custom_components/dessmonitor/const.py`
 - `VERSION`
 - `CHANGELOG.md`
+- `README.md`

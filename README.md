@@ -3,7 +3,6 @@
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
-![Version](https://img.shields.io/badge/version-1.3.1-blue?style=for-the-badge)
 
 [![hacs][hacsbadge]][hacs]
 [![HACS Action][hacs-action-shield]][hacs-action]
