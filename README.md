@@ -3,7 +3,6 @@
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
-![Version](https://img.shields.io/badge/version-1.3.1-blue?style=for-the-badge)
 
 [![hacs][hacsbadge]][hacs]
 [![HACS Action][hacs-action-shield]][hacs-action]
@@ -15,6 +14,22 @@
 A Home Assistant integration for monitoring solar inverters via DessMonitor/SmartESS platform with periodic updates (5-minute default; 1-minute with Detailed Data Collection Acceleration).
 
 > **Also known as:** SmartESS, WatchPower, Energy-Mate, Fronus Solar, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
+
+## 🧰 Supported Inverter Brands
+
+DessMonitor/SmartESS data collectors are typically installed alongside inverter systems from a variety of brands. This integration targets the DessMonitor backend and therefore works across many rebrands/OEM models that use the same platform.
+
+- PowMr
+- EASUN Power
+- MPP Solar
+- MUST Power
+- Voltronic Power “Axpert” rebrands (various regional labels)
+- Fronus Solar
+
+Notes:
+- This is a non-exhaustive list. Many Axpert/Voltronic-derived models and regional rebrands work when connected via a DessMonitor/SmartESS data collector.
+- If your installer provided SmartESS or DessMonitor app access, or your system uses WatchPower/Energy‑Mate and logs into dessmonitor.com, it’s very likely supported.
+- Don’t see your brand? If it reports to https://www.dessmonitor.com/ with a collector on your account, it should work. Open an issue with your device details if unsure.
 
 ## 📚 Table of Contents
 
@@ -34,7 +49,8 @@ A Home Assistant integration for monitoring solar inverters via DessMonitor/Smar
 
 **New to DessMonitor Integration? Get started in 3 steps:**
 
-1. **Install via HACS**: [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andreas-glaser&repository=ha-dessmonitor&category=Integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andreas-glaser&repository=ha-dessmonitor&category=Integration)
+1. **Install via HACS**: 
 2. **Restart** Home Assistant
 3. **Add Integration**: Go to Settings → Devices & Services → Add Integration → "DessMonitor"
 

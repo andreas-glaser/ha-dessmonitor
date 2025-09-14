@@ -368,6 +368,43 @@ class DessMonitorCLI:
             
             # If all else fails, raise original error
             raise Exception(f"Unable to retrieve data for device {device_sn}")
+
+    async def get_sp_key_parameters(self, device_sn: str) -> Dict[str, Any]:
+        """Query SP key parameters (querySPKeyParameters) for a device.
+
+        Tries with full parameters first (pn/devcode/devaddr/sn/i18n) and
+        falls back to lighter parameter sets if required by the endpoint.
+        """
+        device_info = await self._find_device_info(device_sn)
+
+        attempts: List[Dict[str, Any]] = []
+        if device_info:
+            attempts.append({
+                "pn": device_info["pn"],
+                "devcode": device_info["devcode"],
+                "devaddr": device_info["devaddr"],
+                "sn": device_sn,
+                "i18n": "en",
+            })
+            attempts.append({
+                "devcode": device_info["devcode"],
+                "devaddr": device_info["devaddr"],
+                "sn": device_sn,
+                "i18n": "en",
+            })
+
+        attempts.append({"sn": device_sn, "i18n": "en"})
+
+        last_err: Optional[Exception] = None
+        for params in attempts:
+            try:
+                resp = await self._make_request("querySPKeyParameters", params)
+                return resp
+            except Exception as e:
+                last_err = e
+                logger.debug(f"querySPKeyParameters failed with params {params}: {e}")
+
+        raise Exception(f"Unable to query SP key parameters for {device_sn}: {last_err}")
     
     def generate_devcode_template(self, analysis: Dict[str, Any]) -> str:
         """Generate a devcode template file based on analysis results."""
@@ -645,6 +682,11 @@ def setup_argparser() -> argparse.ArgumentParser:
     data_parser.add_argument("--device-sn", required=True, help="Device serial number")
     data_parser.add_argument("--days", type=int, default=1, help="Number of days (default: 1)")
     data_parser.add_argument("--raw", action="store_true", help="Print raw JSON response")
+
+    # SP Key Parameters command
+    sp_parser = subparsers.add_parser("sp-keys", help="Query SP key parameters for a device")
+    sp_parser.add_argument("--device-sn", required=True, help="Device serial number")
+    sp_parser.add_argument("--raw", action="store_true", help="Print raw JSON response")
     
     # Analyze command
     analyze_parser = subparsers.add_parser("analyze", help="Analyze device for devcode mapping")
@@ -710,6 +752,34 @@ async def main():
                         value = point.get("val", "N/A")
                         timestamp = point.get("time", "Unknown")
                         print(f"{title}: {value} ({timestamp})")
+
+            elif args.command == "sp-keys":
+                resp = await cli.get_sp_key_parameters(args.device_sn)
+                dat = resp.get("dat", resp)
+                if args.raw:
+                    print(json.dumps(resp, indent=2))
+                else:
+                    print(f"\n=== SP Key Parameters for {args.device_sn} ===")
+                    # Try to present common shapes nicely; otherwise dump keys
+                    if isinstance(dat, list):
+                        for item in dat[:100]:
+                            if isinstance(item, dict):
+                                name = item.get("name") or item.get("key") or item.get("title") or "(unnamed)"
+                                desc = item.get("desc") or item.get("description") or ""
+                                print(f"- {name}: {desc}")
+                            else:
+                                print(f"- {item}")
+                    elif isinstance(dat, dict):
+                        # If server returns {"keys": [...]}
+                        keys_list = dat.get("keys")
+                        if isinstance(keys_list, list):
+                            for key in keys_list[:200]:
+                                print(f"- {key}")
+                        else:
+                            for k, v in list(dat.items())[:100]:
+                                print(f"- {k}: {v if isinstance(v, (str, int, float)) else type(v).__name__}")
+                    else:
+                        print(dat)
             
             elif args.command == "analyze":
                 if args.raw:
