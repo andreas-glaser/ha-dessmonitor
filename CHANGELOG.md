@@ -12,8 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.4.4] - 2025-09-14
 
+### Added
+- CLI: New `sp-keys` command to query SP Key Parameters for a device, with graceful fallbacks and `--raw` output option.
+- CLI Docs: Usage section for `sp-keys` with examples and notes.
+
 ### Changed
-- Documentation: Added "Supported Inverter Brands" section to README, noting PowMr, EASUN Power, MPP Solar, MUST Power, Voltronic Axpert rebrands, and Fronus Solar, plus guidance on verifying DessMonitor/SmartESS compatibility.
+- README: Added "Supported Inverter Brands" section (PowMr, EASUN Power, MPP Solar, MUST Power, Voltronic Axpert rebrands, Fronus Solar) and improved Quick Start HACS link formatting.
+- Release Guide: Added practical git log commands and branch sync guidance for preparing changelogs.
+
+### Removed
+- Deprecated `custom_components/dessmonitor/device_mappings.py` in favor of `device_support/` devcode-based architecture.
 
 ## [1.4.3] - 2025-09-05
 
@@ -183,6 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.4...HEAD
+[1.4.4]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.3...v1.4.4
 [1.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v1.0.0
