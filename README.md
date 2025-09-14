@@ -15,6 +15,22 @@ A Home Assistant integration for monitoring solar inverters via DessMonitor/Smar
 
 > **Also known as:** SmartESS, WatchPower, Energy-Mate, Fronus Solar, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
 
+## 🧰 Supported Inverter Brands
+
+DessMonitor/SmartESS data collectors are typically installed alongside inverter systems from a variety of brands. This integration targets the DessMonitor backend and therefore works across many rebrands/OEM models that use the same platform.
+
+- PowMr
+- EASUN Power
+- MPP Solar
+- MUST Power
+- Voltronic Power “Axpert” rebrands (various regional labels)
+- Fronus Solar
+
+Notes:
+- This is a non-exhaustive list. Many Axpert/Voltronic-derived models and regional rebrands work when connected via a DessMonitor/SmartESS data collector.
+- If your installer provided SmartESS or DessMonitor app access, or your system uses WatchPower/Energy‑Mate and logs into dessmonitor.com, it’s very likely supported.
+- Don’t see your brand? If it reports to https://www.dessmonitor.com/ with a collector on your account, it should work. Open an issue with your device details if unsure.
+
 ## 📚 Table of Contents
 
 - [🚀 Quick Start](#-quick-start)
