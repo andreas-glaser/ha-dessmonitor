@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.4.4] - 2025-09-14
+
+### Changed
+- Documentation: Added "Supported Inverter Brands" section to README, noting PowMr, EASUN Power, MPP Solar, MUST Power, Voltronic Axpert rebrands, and Fronus Solar, plus guidance on verifying DessMonitor/SmartESS compatibility.
+
 ## [1.4.3] - 2025-09-05
 
 ### Fixed
