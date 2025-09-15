@@ -15,7 +15,7 @@ on:
       branch:
         description: 'Branch to bump version on'
         required: true
-        default: 'develop'
+        default: 'dev'
         type: string
 
 jobs:
