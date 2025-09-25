@@ -122,7 +122,38 @@ def map_operating_mode(devcode: int, api_value: str) -> str:
         return api_value
 
     mode_mappings = config.get("operating_mode_mapping", {})
-    return mode_mappings.get(api_value, api_value)
+    if not isinstance(api_value, str):
+        return api_value
+
+    normalized_value = api_value.strip()
+
+    if normalized_value in mode_mappings:
+        mapped = mode_mappings[normalized_value]
+        _LOGGER.debug(
+            "Operating mode map (devcode %s): '%s' -> '%s'",
+            devcode,
+            api_value,
+            mapped,
+        )
+        return mapped
+
+    for candidate, mapped_value in mode_mappings.items():
+        if isinstance(candidate, str) and candidate.lower().strip() == normalized_value.lower():
+            _LOGGER.debug(
+                "Operating mode map (devcode %s - case-insensitive): '%s' -> '%s'",
+                devcode,
+                api_value,
+                mapped_value,
+            )
+            return mapped_value
+
+    _LOGGER.debug(
+        "Operating mode map (devcode %s): '%s' -> '%s' (no mapping)",
+        devcode,
+        api_value,
+        normalized_value,
+    )
+    return normalized_value
 
 
 def apply_devcode_transformations(

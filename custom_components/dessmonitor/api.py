@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import time
@@ -116,8 +117,10 @@ class DessMonitorAPI:
         )
         _LOGGER.debug("Request URL: %s", url)
 
+        timeout_seconds = 30
+
         try:
-            async with async_timeout.timeout(30):
+            async with async_timeout.timeout(timeout_seconds):
                 async with self._session.get(url) as response:
                     response.raise_for_status()
                     data = await response.json()
@@ -135,8 +138,15 @@ class DessMonitorAPI:
 
                     return data
 
+        except asyncio.TimeoutError as err:
+            _LOGGER.error(
+                "API request for action '%s' timed out after %ss", action, timeout_seconds
+            )
+            raise DessMonitorError("Request timed out") from err
         except aiohttp.ClientError as err:
-            _LOGGER.error("HTTP request failed for action '%s': %s", action, err)
+            _LOGGER.error(
+                "HTTP request failed for action '%s': %s", action, err
+            )
             raise DessMonitorError(f"Request failed: {err}") from err
 
     async def authenticate(self) -> bool:

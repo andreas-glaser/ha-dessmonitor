@@ -59,7 +59,8 @@ OPERATING_MODE_MAPPING: dict = {
     # "API_VALUE": "User Friendly Description",
     # "Power On": "Starting up",
     # "Standby": "Standby mode",
-    # "Line": "Grid mode",
+    # "Line": "Grid Mode",
+    # "Mains Mode": "Grid Mode",  # Example: normalize synonyms to avoid enum errors
     # "Battery": "Battery mode",
 }
 
