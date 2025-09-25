@@ -85,21 +85,28 @@
    ```
 
 8. **GitHub Actions auto-creates release**
-   - Workflow triggers on tag push
-   - Creates ZIP package for HACS
-   - Publishes GitHub release
+  - Workflow triggers on tag push
+  - Creates ZIP package for HACS
+  - Publishes GitHub release
 
-9. **Verify GitHub Actions**
-   ```bash
-   # Check workflow status via CLI
-   gh workflow view "Release"
-   gh run list --workflow="Release" --limit 3
-   ```
+9. **Update GitHub release notes**
+  ```bash
+  gh release edit vX.Y.Z --notes "<copy of changelog entry>"
+  ```
+  - Ensure the release body includes highlights; HACS surfaces this text in the “Read release announcement” link.
+  - If editing via the web UI, copy the `CHANGELOG.md` section so users see the summary.
+
+10. **Verify GitHub Actions**
+  ```bash
+  # Check workflow status via CLI
+  gh workflow view "Release"
+  gh run list --workflow="Release" --limit 3
+  ```
    - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
 
 ## Post-Release
 
-10. **Sync dev with main**
+11. **Sync dev with main**
   ```bash
   git checkout dev
   git merge main
