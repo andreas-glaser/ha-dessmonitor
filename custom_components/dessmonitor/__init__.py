@@ -9,10 +9,11 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .api import DessMonitorAPI
+from .api import DessMonitorAPI, DessMonitorError
 from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
@@ -39,12 +40,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.debug("Attempting initial authentication")
         await api.authenticate()
         _LOGGER.info("Initial authentication successful for DessMonitor integration")
-    except Exception as err:
+    except DessMonitorError as err:
+        _LOGGER.warning(
+            "DessMonitor authentication failed during setup (will retry): %s", err
+        )
+        raise ConfigEntryNotReady from err
+    except Exception as err:  # pylint: disable=broad-except
         _LOGGER.error(
-            "Failed to authenticate with DessMonitor API during setup: %s", err
+            "Unexpected error during DessMonitor authentication: %s", err
         )
         _LOGGER.debug("Authentication setup error details", exc_info=True)
-        return False
+        raise ConfigEntryNotReady from err
 
     update_interval = entry.options.get(
         CONF_UPDATE_INTERVAL,
@@ -58,10 +64,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         await coordinator.async_config_entry_first_refresh()
         _LOGGER.debug("First data refresh completed successfully")
-    except Exception as err:
+    except DessMonitorError as err:
+        _LOGGER.warning(
+            "DessMonitor data refresh failed during setup (will retry): %s", err
+        )
+        raise ConfigEntryNotReady from err
+    except Exception as err:  # pylint: disable=broad-except
         _LOGGER.error("Failed to perform initial data refresh: %s", err)
         _LOGGER.debug("Initial refresh error details", exc_info=True)
-        return False
+        raise ConfigEntryNotReady from err
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
