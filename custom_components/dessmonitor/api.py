@@ -122,8 +122,27 @@ class DessMonitorAPI:
         try:
             async with async_timeout.timeout(timeout_seconds):
                 async with self._session.get(url) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+                    try:
+                        response.raise_for_status()
+                    except aiohttp.ClientResponseError as err:
+                        _LOGGER.error(
+                            "HTTP %s error for action '%s': %s",
+                            err.status,
+                            action,
+                            err.message,
+                        )
+                        raise
+
+                    try:
+                        data = await response.json()
+                    except aiohttp.ContentTypeError:
+                        text_preview = await response.text()
+                        _LOGGER.error(
+                            "Invalid JSON response for action '%s': %s",
+                            action,
+                            text_preview[:500],
+                        )
+                        raise DessMonitorError("Invalid response from server")
 
                     if data.get("err", 0) != 0:
                         error_code = data.get("err")
@@ -143,10 +162,12 @@ class DessMonitorAPI:
                 "API request for action '%s' timed out after %ss", action, timeout_seconds
             )
             raise DessMonitorError("Request timed out") from err
+        except aiohttp.ClientResponseError as err:
+            raise DessMonitorError(
+                f"Server returned HTTP {err.status}: {err.message or 'Unknown error'}"
+            ) from err
         except aiohttp.ClientError as err:
-            _LOGGER.error(
-                "HTTP request failed for action '%s': %s", action, err
-            )
+            _LOGGER.error("HTTP request failed for action '%s': %s", action, err)
             raise DessMonitorError(f"Request failed: {err}") from err
 
     async def authenticate(self) -> bool:
