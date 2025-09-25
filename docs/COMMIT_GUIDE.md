@@ -31,12 +31,13 @@
    ```
 
 5. **Verify CI/CD (if applicable)**
-   ```bash
-   # Check GitHub Actions via CLI
-   gh run list --limit 5
-   gh run view  # Interactive selection
-   ```
-   - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
+  ```bash
+  # Check GitHub Actions via CLI
+  gh run list --limit 5
+  gh run view  # Interactive selection
+  ```
+  - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
+  - Ensure the latest commit is green before creating release tags; never push a tag while CI is red.
 
 ## Commit Message Format
 

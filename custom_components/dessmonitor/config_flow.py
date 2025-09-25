@@ -206,9 +206,7 @@ class OptionsFlow(config_entries.OptionsFlow):
 
         current_interval = self._config_entry.options.get(
             CONF_UPDATE_INTERVAL,
-            self._config_entry.data.get(
-                CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
-            ),
+            self._config_entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
         )
         _LOGGER.debug(
             "Showing options form with current interval: %ds", current_interval

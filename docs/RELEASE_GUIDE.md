@@ -102,7 +102,8 @@
   gh workflow view "Release"
   gh run list --workflow="Release" --limit 3
   ```
-   - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
+  - Or manually: https://github.com/andreas-glaser/ha-dessmonitor/actions
+  - Only proceed to tagging once the release-prep commit on `main` passes all required checks.
 
 ## Post-Release
 
