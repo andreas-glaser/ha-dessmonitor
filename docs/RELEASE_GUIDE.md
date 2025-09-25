@@ -3,16 +3,16 @@
 ## Pre-Release Steps
 
 0. **Sync local `dev` with remote**
-   ```bash
-   git fetch origin
-   git checkout dev
-   git rebase origin/dev  # or `git pull --rebase`
-   ```
+  ```bash
+  git fetch origin
+  git checkout dev
+  git rebase origin/dev  # or `git pull --rebase`
+  ```
 
 1. **Ensure on `dev` branch**
-   ```bash
-   git checkout dev
-   ```
+  ```bash
+  git checkout dev
+  ```
 
 2. **Run code quality checks**
    ```bash
@@ -23,9 +23,9 @@
    ```
 
 3. **Update version files**
-   - `custom_components/dessmonitor/manifest.json` → `"version": "X.Y.Z"`
-   - `custom_components/dessmonitor/const.py` → `VERSION = "X.Y.Z"`
-   - `VERSION` → `X.Y.Z`
+  - `custom_components/dessmonitor/manifest.json` → `"version": "X.Y.Z"`
+  - `custom_components/dessmonitor/const.py` → `VERSION = "X.Y.Z"`
+  - `VERSION` → `X.Y.Z`
 
 4. **Update CHANGELOG.md**
    - Add section `## [X.Y.Z] - YYYY-MM-DD`
@@ -60,10 +60,10 @@
 ## Release Process
 
 6. **Merge to main**
-   ```bash
-   git checkout main
-   git merge dev --no-ff -m "Merge dev for vX.Y.Z release"
-   ```
+  ```bash
+  git checkout main
+  git merge dev --no-ff -m "Merge dev for vX.Y.Z release"
+  ```
 
 7. **Create & push tag with changelog message**
    ```bash
@@ -100,11 +100,11 @@
 ## Post-Release
 
 10. **Sync dev with main**
-   ```bash
-   git checkout dev
-   git merge main
-   git push origin dev
-   ```
+  ```bash
+  git checkout dev
+  git merge main
+  git push origin dev
+  ```
 
 ## Version Bumping Rules
 - **Patch (X.Y.Z+1)**: Bug fixes only

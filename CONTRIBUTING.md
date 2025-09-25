@@ -2,6 +2,12 @@
 
 Thank you for your interest in contributing to the DessMonitor Home Assistant integration!
 
+## 🔗 Related Guides
+
+- Commit Guide: `docs/COMMIT_GUIDE.md`
+- Release Guide: `docs/RELEASE_GUIDE.md`
+- Git/Branching & Tagging: `docs/GIT_GUIDE.md`
+
 ## 📋 Development Workflow
 
 ### Branching Strategy
@@ -10,38 +16,40 @@ We use a **Git Flow** inspired branching model:
 
 ```
 main (production/stable)
-├── develop (integration branch)  
+├── dev (integration branch)
 ├── feature/* (new features)
+├── fix/* (bug fixes)
 ├── hotfix/* (critical fixes)
 └── release/* (release preparation)
 ```
 
 **Branch Descriptions:**
 - **`main`**: Production-ready releases only. Protected branch.
-- **`develop`**: Integration branch for tested features. Default development branch.
-- **`feature/*`**: Individual feature development (e.g., `feature/new-sensor-type`)
-- **`hotfix/*`**: Critical bug fixes for production (e.g., `hotfix/auth-failure`)
-- **`release/*`**: Release preparation and final testing (e.g., `release/1.1.0`)
+- **`dev`**: Integration branch for tested features. Default development branch.
+- **`feature/*`**: Individual feature development (e.g., `feature/new-sensor-type`).
+- **`fix/*`**: Bug fixes targeting the next release (e.g., `fix/timeout-handling`).
+- **`hotfix/*`**: Critical bug fixes for production (e.g., `hotfix/auth-failure`).
+- **`release/*`**: Release preparation and final testing (e.g., `release/1.1.0`).
 
 ### Development Process
 
 1. **For new features:**
    ```bash
-   git checkout develop
-   git pull origin develop
+   git checkout dev
+   git pull origin dev
    git checkout -b feature/your-feature-name
-   # ... develop your feature
+   # ... dev your feature
    git push origin feature/your-feature-name
-   # Create PR to develop branch
+   # Create PR to dev branch
    ```
 
 2. **For bug fixes:**
    ```bash
-   git checkout develop  
+   git checkout dev  
    git checkout -b fix/issue-description
    # ... fix the issue
    git push origin fix/issue-description
-   # Create PR to develop branch
+   # Create PR to dev branch
    ```
 
 3. **For hotfixes (critical production fixes):**
@@ -50,7 +58,7 @@ main (production/stable)
    git checkout -b hotfix/critical-fix
    # ... fix the critical issue
    git push origin hotfix/critical-fix
-   # Create PR to main AND develop branches
+   # Create PR to main AND dev branches
    ```
 
 ## 🏷️ Versioning Strategy
@@ -77,7 +85,7 @@ Use the GitHub Actions workflow to bump versions:
 
 1. **Go to Actions** → **Bump Version**
 2. **Choose bump type**: patch, minor, or major
-3. **Select branch**: usually `develop`
+3. **Select branch**: usually `dev`
 4. **Run workflow**
 
 This will:
@@ -104,14 +112,16 @@ git add VERSION custom_components/dessmonitor/manifest.json CHANGELOG.md
 git commit -m "Bump version to 1.1.0"
 ```
 
+Note: The manual snippet requires `yq` to be installed locally.
+
 ## 🚀 Release Process
 
-### Standard Release (from develop)
+### Standard Release (from dev)
 
-1. **Ensure develop branch is ready:**
+1. **Ensure dev branch is ready:**
    ```bash
-   git checkout develop
-   git pull origin develop
+   git checkout dev
+   git pull origin dev
    # Verify all tests pass
    ```
 
@@ -138,11 +148,11 @@ git commit -m "Bump version to 1.1.0"
    - **Run workflow** with version `1.1.0`
    - This will create GitHub release with ZIP files
 
-6. **Merge back to develop:**
+6. **Merge back to dev:**
    ```bash
-   git checkout develop
+   git checkout dev
    git merge release/1.1.0
-   git push origin develop
+   git push origin dev
    git branch -d release/1.1.0
    ```
 
@@ -166,11 +176,11 @@ git commit -m "Bump version to 1.1.0"
 4. **Create release:**
    - Use GitHub Actions Release workflow
 
-5. **Merge to develop:**
+5. **Merge to dev:**
    ```bash
-   git checkout develop
+   git checkout dev
    git merge hotfix/1.0.1
-   git push origin develop
+   git push origin dev
    git branch -d hotfix/1.0.1
    ```
 
@@ -224,6 +234,17 @@ Before submitting a PR:
    - Handle errors gracefully
    - Update documentation as needed
 
+### Pre-Commit Checks
+
+Run basic quality checks before pushing (see `docs/COMMIT_GUIDE.md` for details):
+
+```bash
+black custom_components/dessmonitor
+isort custom_components/dessmonitor
+flake8 custom_components/dessmonitor --max-line-length=127
+mypy custom_components/dessmonitor --ignore-missing-imports
+```
+
 ## 🎯 Pull Request Guidelines
 
 ### PR Titles
@@ -257,5 +278,10 @@ Include:
 - **Provide detailed** bug reports and feature requests
 - **Test thoroughly** before submitting PRs
 - **Follow the established** patterns and conventions
+
+### PR Target Branch
+
+- Target `dev` for features and regular fixes (`feature/*`, `fix/*`).
+- Hotfix PRs target `main` and will be forward-merged back to `dev` by maintainers.
 
 Thank you for contributing to making DessMonitor integration better! 🎉

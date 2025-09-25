@@ -179,20 +179,20 @@ class OptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
         _LOGGER.debug(
-            "Options flow init called for entry: %s", self.config_entry.entry_id
+            "Options flow init called for entry: %s", self._config_entry.entry_id
         )
 
         if user_input is not None:
-            old_interval = self.config_entry.options.get(
+            old_interval = self._config_entry.options.get(
                 CONF_UPDATE_INTERVAL,
-                self.config_entry.data.get(
+                self._config_entry.data.get(
                     CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
                 ),
             )
@@ -204,9 +204,11 @@ class OptionsFlow(config_entries.OptionsFlow):
             )
             return self.async_create_entry(title="", data=user_input)
 
-        current_interval = self.config_entry.options.get(
+        current_interval = self._config_entry.options.get(
             CONF_UPDATE_INTERVAL,
-            self.config_entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
+            self._config_entry.data.get(
+                CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+            ),
         )
         _LOGGER.debug(
             "Showing options form with current interval: %ds", current_interval

@@ -45,7 +45,9 @@ CHARGER_PRIORITY_MAPPING = {
 OPERATING_MODE_MAPPING = {
     "Power On": "Starting up",
     "Standby": "Standby mode",
-    "Line": "Grid mode",
+    "Line": "Grid Mode",
+    "Mains": "Grid Mode",
+    "Mains Mode": "Grid Mode",
     "Battery": "Battery mode",
     "Fault": "Fault condition",
     "Off-Grid Mode": "Off-grid operation",

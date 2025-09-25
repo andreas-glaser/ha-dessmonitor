@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.4.5] - 2025-09-25
+
+### Changed
+- Improved DessMonitor API error logging with detailed HTTP status and response diagnostics for easier troubleshooting of 500 errors.
+- Added Git/GitHub workflow guide covering branching, tagging, and release process.
+
+### Fixed
+- Normalized operating mode values reported as "Mains Mode" to prevent enum sensor setup failures in Home Assistant.
+
 ## [1.4.4] - 2025-09-14
 
 ### Added
@@ -191,7 +200,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.4...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.5...HEAD
+[1.4.5]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.3...v1.4.4
 [1.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v1.0.0
