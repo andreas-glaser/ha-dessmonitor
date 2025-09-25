@@ -159,7 +159,9 @@ class DessMonitorAPI:
 
         except asyncio.TimeoutError as err:
             _LOGGER.error(
-                "API request for action '%s' timed out after %ss", action, timeout_seconds
+                "API request for action '%s' timed out after %ss",
+                action,
+                timeout_seconds,
             )
             raise DessMonitorError("Request timed out") from err
         except asyncio.CancelledError as err:

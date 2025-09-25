@@ -46,9 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         raise ConfigEntryNotReady from err
     except Exception as err:  # pylint: disable=broad-except
-        _LOGGER.error(
-            "Unexpected error during DessMonitor authentication: %s", err
-        )
+        _LOGGER.error("Unexpected error during DessMonitor authentication: %s", err)
         _LOGGER.debug("Authentication setup error details", exc_info=True)
         raise ConfigEntryNotReady from err
 

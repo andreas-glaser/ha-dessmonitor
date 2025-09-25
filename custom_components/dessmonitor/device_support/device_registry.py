@@ -138,7 +138,10 @@ def map_operating_mode(devcode: int, api_value: str) -> str:
         return mapped
 
     for candidate, mapped_value in mode_mappings.items():
-        if isinstance(candidate, str) and candidate.lower().strip() == normalized_value.lower():
+        if (
+            isinstance(candidate, str)
+            and candidate.lower().strip() == normalized_value.lower()
+        ):
             _LOGGER.debug(
                 "Operating mode map (devcode %s - case-insensitive): '%s' -> '%s'",
                 devcode,
