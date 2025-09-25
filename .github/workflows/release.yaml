@@ -129,10 +129,20 @@ jobs:
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
           
-          # Extract changelog section for this version
-          awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md | \
-            head -n -1 | tail -n +2 > release-notes.md
-          
+          # Extract changelog section for this version (until next heading)
+          awk -v version="$VERSION" '
+            $0 ~ /^## \[/ {
+              if (found) exit
+              if ($0 ~ "^## \\[" version "\\]") { found=1; next }
+            }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if [[ ! -s release-notes.md ]]; then
+            echo "Error: Failed to extract changelog entry for version $VERSION"
+            exit 1
+          fi
+
           echo "Generated release notes:"
           cat release-notes.md
 
