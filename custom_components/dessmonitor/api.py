@@ -162,6 +162,12 @@ class DessMonitorAPI:
                 "API request for action '%s' timed out after %ss", action, timeout_seconds
             )
             raise DessMonitorError("Request timed out") from err
+        except asyncio.CancelledError as err:
+            _LOGGER.error(
+                "API request for action '%s' was cancelled (likely due to timeout)",
+                action,
+            )
+            raise DessMonitorError("Request cancelled") from err
         except aiohttp.ClientResponseError as err:
             raise DessMonitorError(
                 f"Server returned HTTP {err.status}: {err.message or 'Unknown error'}"
