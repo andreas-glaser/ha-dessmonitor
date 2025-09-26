@@ -11,6 +11,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import DessMonitorAPI, DessMonitorError
@@ -30,16 +31,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     company_key = entry.data.get("company_key", "bnrl_frRFjEz8Mkn")
     _LOGGER.debug("Initializing API client for user: %s", username)
 
+    store = Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_auth")
+
     api = DessMonitorAPI(
         username=username,
         password=entry.data["password"],
         company_key=company_key,
+        store=store,
     )
 
     try:
-        _LOGGER.debug("Attempting initial authentication")
-        await api.authenticate()
-        _LOGGER.info("Initial authentication successful for DessMonitor integration")
+        _LOGGER.debug("Attempting to load cached token")
+        if await api.load_saved_token():
+            _LOGGER.info("Reused saved token for DessMonitor integration")
+        else:
+            _LOGGER.debug("No valid cached token, performing initial authentication")
+            try:
+                await api.authenticate()
+                _LOGGER.info(
+                    "Initial authentication successful for DessMonitor integration"
+                )
+            except DessMonitorError:
+                _LOGGER.info(
+                    "Cached DessMonitor token rejected during initial refresh, requesting a new token"
+                )
+                await api.clear_saved_token()
+                try:
+                    await api.authenticate()
+                    _LOGGER.info(
+                        "Fresh authentication successful for DessMonitor integration"
+                    )
+                except DessMonitorError as refresh_err:
+                    _LOGGER.warning(
+                        "DessMonitor authentication failed during setup (will retry): %s",
+                        refresh_err,
+                    )
+                    raise ConfigEntryNotReady from refresh_err
     except DessMonitorError as err:
         _LOGGER.warning(
             "DessMonitor authentication failed during setup (will retry): %s", err
@@ -133,7 +160,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             data = {}
             _LOGGER.debug("Fetching collectors list")
-            collectors = await self.api.get_collectors()
+            collectors, _projects = await self.api.get_collectors()
             _LOGGER.debug("Found %d collectors to process", len(collectors))
 
             for i, collector in enumerate(collectors):

@@ -39,7 +39,7 @@ class DessMonitorCLI:
     """DessMonitor API client for CLI usage."""
     
     def __init__(self):
-        self.base_url = "http://api.dessmonitor.com/public/"
+        self.base_url = "https://api.dessmonitor.com/public/"
         self.session: Optional[aiohttp.ClientSession] = None
         self.token: Optional[str] = None
         self.secret: Optional[str] = None

@@ -10,8 +10,9 @@ from typing import Any
 
 import aiohttp
 import async_timeout
+from homeassistant.helpers.storage import Store
 
-from .const import API_BASE_URL, UNITS
+from .const import API_BASE_URL, UNITS, VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class DessMonitorAPI:
         password: str,
         company_key: str = "bnrl_frRFjEz8Mkn",
         session: aiohttp.ClientSession | None = None,
+        store: Store | None = None,
     ) -> None:
         """Initialize the API client."""
         self.username = username
@@ -38,6 +40,7 @@ class DessMonitorAPI:
         self.token: str | None = None
         self.secret: str | None = None
         self.token_expire: int | None = None
+        self._store = store
 
         if self._session is None:
             self._session = aiohttp.ClientSession()
@@ -193,7 +196,7 @@ class DessMonitorAPI:
                 "source": "1",
                 "_app_client_": "web",
                 "_app_id_": "ha-dessmonitor",
-                "_app_version_": "1.1.0",
+                "_app_version_": VERSION,
             }
             _LOGGER.debug(
                 "Authentication parameters: %s",
@@ -231,6 +234,10 @@ class DessMonitorAPI:
                     expire_duration or 0,
                     self.token_expire,
                 )
+
+                if self._store and self.token and self.secret and self.token_expire:
+                    await self._save_token()
+
                 return True
 
             raise DessMonitorError("No authentication data received")
@@ -240,7 +247,81 @@ class DessMonitorAPI:
             _LOGGER.debug("Authentication error details", exc_info=True)
             raise DessMonitorError(f"Authentication failed: {err}") from err
 
-    async def get_collectors(self) -> list[dict[str, Any]]:
+    async def load_saved_token(self) -> bool:
+        """Load saved token from storage."""
+        if not self._store:
+            return False
+
+        try:
+            data = await self._store.async_load()
+        except Exception as err:
+            _LOGGER.debug("Failed to load saved token: %s", err)
+            return False
+
+        if not data:
+            return False
+
+        saved_token = data.get("token")
+        saved_secret = data.get("secret")
+        saved_expire = data.get("token_expire")
+
+        if not (saved_token and saved_secret and saved_expire):
+            _LOGGER.debug("Saved token missing required fields, ignoring cached value")
+            await self.clear_saved_token()
+            return False
+
+        current_time = int(time.time())
+        # Add safety buffer so Home Assistant refreshes the token before expiry
+        if current_time >= saved_expire - 300:
+            _LOGGER.debug(
+                "Saved token expired or about to expire, requesting new token"
+            )
+            await self.clear_saved_token()
+            return False
+
+        self.token = saved_token
+        self.secret = saved_secret
+        self.token_expire = saved_expire
+
+        remaining = saved_expire - current_time
+        _LOGGER.info("Reused saved token, valid for %d more seconds", remaining)
+        return True
+
+    async def _save_token(self) -> None:
+        """Save current token to storage."""
+        if not self._store:
+            return
+
+        try:
+            await self._store.async_save(
+                {
+                    "token": self.token,
+                    "secret": self.secret,
+                    "token_expire": self.token_expire,
+                }
+            )
+            _LOGGER.debug("Token saved to storage")
+        except Exception as err:
+            _LOGGER.debug("Failed to save token: %s", err)
+
+    async def clear_saved_token(self) -> None:
+        """Remove any saved token from storage and reset local state."""
+        self.token = None
+        self.secret = None
+        self.token_expire = None
+
+        if not self._store:
+            return
+
+        try:
+            await self._store.async_remove()
+            _LOGGER.debug("Cleared cached DessMonitor token from storage")
+        except FileNotFoundError:
+            _LOGGER.debug("Cached DessMonitor token file already removed")
+        except Exception as err:
+            _LOGGER.debug("Failed to clear cached token: %s", err)
+
+    async def get_collectors(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Get list of collectors (inverters) via API discovery."""
         _LOGGER.debug("Fetching collectors list via API discovery")
         collectors = []
@@ -336,7 +417,20 @@ class DessMonitorAPI:
             _LOGGER.debug("Collector discovery error details", exc_info=True)
 
         _LOGGER.info("Successfully discovered %d collectors via API", len(collectors))
-        return collectors
+
+        projects = []
+        seen_projects = set()
+        for collector in collectors:
+            if "pid" in collector and collector["pid"] not in seen_projects:
+                projects.append(
+                    {
+                        "pid": collector["pid"],
+                        "pname": collector.get("pname", "Unknown Project"),
+                    }
+                )
+                seen_projects.add(collector["pid"])
+
+        return collectors, projects
 
     async def get_collector_devices(self, pn: str) -> dict[str, Any]:
         """Get devices under a collector."""

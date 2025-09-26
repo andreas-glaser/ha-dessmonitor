@@ -71,7 +71,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             raise InvalidAuth("Authentication failed")
 
         _LOGGER.debug("Authentication successful, fetching collectors")
-        collectors = await api.get_collectors()
+        collectors, _projects = await api.get_collectors()
         if not collectors:
             _LOGGER.error("No collectors found for user: %s", username)
             raise CannotConnect("No collectors found")
