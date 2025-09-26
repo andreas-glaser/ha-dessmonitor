@@ -28,12 +28,10 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_USERNAME): vol.All(
-            str, vol.Length(min=1, max=100), vol.Schema(lambda x: x.strip())
-        ),
+        vol.Required(CONF_USERNAME): vol.All(str, vol.Length(min=1, max=100)),
         vol.Required(CONF_PASSWORD): vol.All(str, vol.Length(min=1, max=100)),
         vol.Optional(CONF_COMPANY_KEY, default=DEFAULT_COMPANY_KEY): vol.All(
-            str, vol.Length(min=1, max=100), vol.Schema(lambda x: x.strip())
+            str, vol.Length(min=1, max=100)
         ),
         vol.Optional(CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): vol.In(
             UPDATE_INTERVAL_OPTIONS
@@ -47,8 +45,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    username = data[CONF_USERNAME]
-    company_key = data[CONF_COMPANY_KEY]
+    username = data[CONF_USERNAME].strip()
+    company_key = data[CONF_COMPANY_KEY].strip()
     update_interval = data[CONF_UPDATE_INTERVAL]
 
     _LOGGER.debug(
