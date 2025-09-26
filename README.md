@@ -293,12 +293,17 @@ automation:
 
 To enable detailed logging for troubleshooting:
 
+1. Add to your `configuration.yaml`:
 ```yaml
 # configuration.yaml
 logger:
   logs:
     custom_components.dessmonitor: debug
 ```
+
+2. **Restart Home Assistant** to apply the logging configuration
+
+3. **View debug logs**: Settings > System > Logs (or check the Home Assistant log file)
 
 ## 📋 Requirements
 
