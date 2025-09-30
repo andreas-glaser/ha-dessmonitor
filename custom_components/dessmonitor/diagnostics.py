@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import CHARGER_PRIORITIES, DOMAIN, OUTPUT_PRIORITIES
+from .device_support import map_charger_priority, map_output_priority
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,8 +58,22 @@ async def async_setup_entry(
     for device_sn, device_info in coordinator.data.items():
         device_meta = device_info.get("device", {})
         collector_meta = device_info.get("collector", {})
+        existing_titles = {
+            str(data_point.get("title")).strip().lower()
+            for data_point in device_info.get("data", [])
+            if data_point.get("title")
+        }
 
         for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items():
+            if sensor_key.lower() in existing_titles:
+                _LOGGER.debug(
+                    "Skipping diagnostic sensor %s for device %s because primary sensor "
+                    "exists",
+                    sensor_key,
+                    device_sn,
+                )
+                continue
+
             entities.append(
                 DessMonitorDiagnosticSensor(
                     coordinator=coordinator,
@@ -114,7 +129,7 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
 
         if sensor_config.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
-            self._attr_options = sensor_config.get("options", [])
+            self._attr_options = self._build_enum_options(sensor_config)
         elif sensor_config.get("device_class") == "voltage":
             self._attr_device_class = SensorDeviceClass.VOLTAGE
             self._attr_native_unit_of_measurement = sensor_config.get("unit")
@@ -165,6 +180,29 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
                 return value
 
         return None
+
+    def _build_enum_options(self, sensor_config: dict[str, Any]) -> list[str]:
+        """Return enum options aligned with device-specific transformations."""
+        options = [str(option) for option in sensor_config.get("options", [])]
+        device_meta = self._device_meta
+        devcode = device_meta.get("devcode") if isinstance(device_meta, dict) else None
+
+        if not devcode or not options:
+            return options
+
+        transformed_options: set[str] = set()
+        for option in options:
+            mapped = option
+            key = self._sensor_key.lower()
+            if key == "output priority":
+                mapped = map_output_priority(devcode, option)
+            elif key == "charger source priority":
+                mapped = map_charger_priority(devcode, option)
+            if mapped:
+                transformed_options.add(str(mapped))
+
+        transformed_options.update(options)
+        return sorted(transformed_options)
 
     @property
     def available(self) -> bool:

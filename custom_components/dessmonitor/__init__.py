@@ -278,13 +278,34 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 continue
 
             existing_data = device_info["data"]
-            existing_data.extend(summary_points)
+            existing_titles = {
+                point.get("title") for point in existing_data if point.get("title")
+            }
+
+            unique_summary_points = [
+                point
+                for point in summary_points
+                if point.get("title") and point.get("title") not in existing_titles
+            ]
+
+            if not unique_summary_points:
+                _LOGGER.debug(
+                    "Skipping summary merge for %s (%s) because all titles already exist",
+                    device_info.get("device", {}).get("alias", "Unknown"),
+                    device_sn,
+                )
+                continue
+
+            existing_data.extend(unique_summary_points)
+            existing_titles.update(
+                point.get("title") for point in unique_summary_points
+            )
 
             device_alias = device_info.get("device", {}).get("alias", "Unknown")
-            summary_types = [point.get("title") for point in summary_points]
+            summary_types = [point.get("title") for point in unique_summary_points]
             _LOGGER.debug(
                 "Merged %d summary sensors (%s) for %s (%s)",
-                len(summary_points),
+                len(unique_summary_points),
                 ", ".join(summary_types),
                 device_alias,
                 device_sn,

@@ -28,7 +28,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN, SENSOR_TYPES, UNITS
 from .device_support import apply_devcode_transformations
-from .diagnostics import DIAGNOSTIC_SENSORS, DessMonitorDiagnosticSensor
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -130,23 +129,6 @@ async def async_setup_entry(
                 duplicate_sensors,
             )
 
-            # Add diagnostic sensors (disabled by default, lazy-loaded)
-            for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items():
-                entities.append(
-                    DessMonitorDiagnosticSensor(
-                        coordinator=coordinator,
-                        device_sn=device_sn,
-                        device_meta=device_meta,
-                        collector_meta=collector_meta,
-                        sensor_key=sensor_key,
-                        sensor_config=sensor_config,
-                    )
-                )
-            _LOGGER.debug(
-                "Device %s: added %d diagnostic sensors (disabled by default)",
-                device_sn,
-                len(DIAGNOSTIC_SENSORS),
-            )
     else:
         _LOGGER.warning("No device data available for sensor setup")
 
