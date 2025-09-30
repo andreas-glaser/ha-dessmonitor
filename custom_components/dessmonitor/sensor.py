@@ -28,9 +28,22 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN, SENSOR_TYPES, UNITS
 from .device_support import apply_devcode_transformations
+from .diagnostics import DIAGNOSTIC_SENSORS, DessMonitorDiagnosticSensor
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
+
+ENUM_SENSOR_TITLES = {
+    "Operating mode",
+    "Output priority",
+    "Charger Source Priority",
+}
+
+DIAGNOSTIC_SENSOR_TITLES = {
+    "Output Voltage Setting",
+    "Output priority",
+    "Charger Source Priority",
+}
 
 
 async def async_setup_entry(
@@ -116,6 +129,24 @@ async def async_setup_entry(
                 supported_sensors,
                 duplicate_sensors,
             )
+
+            # Add diagnostic sensors (disabled by default, lazy-loaded)
+            for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items():
+                entities.append(
+                    DessMonitorDiagnosticSensor(
+                        coordinator=coordinator,
+                        device_sn=device_sn,
+                        device_meta=device_meta,
+                        collector_meta=collector_meta,
+                        sensor_key=sensor_key,
+                        sensor_config=sensor_config,
+                    )
+                )
+            _LOGGER.debug(
+                "Device %s: added %d diagnostic sensors (disabled by default)",
+                device_sn,
+                len(DIAGNOSTIC_SENSORS),
+            )
     else:
         _LOGGER.warning("No device data available for sensor setup")
 
@@ -143,26 +174,17 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         self._collector_meta = collector_meta
         self._sensor_type = sensor_type
 
-        device_alias = device_meta.get("alias", "DessMonitor")
         sensor_config: dict[str, Any] = cast(
             dict[str, Any], SENSOR_TYPES.get(sensor_type, {})
         )
-        sensor_name = sensor_config.get("name", sensor_type)
 
-        self._attr_name = f"{device_alias} {sensor_name}"
+        self._initialize_identity(sensor_config)
+        self._apply_unit_metadata(sensor_config.get("unit", ""))
+        self._apply_sensor_traits(sensor_config)
 
-        sensor_key = None
-        for key, config in SENSOR_TYPES.items():
-            if key == sensor_type:
-                sensor_key = key
-                break
-
-        if sensor_key:
-            unique_suffix = sensor_key.lower().replace(" ", "_").replace("-", "_")
-        else:
-            unique_suffix = sensor_type.lower().replace(" ", "_").replace("-", "_")
-
-        self._attr_unique_id = f"{device_sn}_{unique_suffix}"
+        self._attr_device_info = create_device_info(
+            device_sn, device_meta, collector_meta
+        )
 
         _LOGGER.debug(
             "Initialized sensor: name='%s', unique_id='%s', device='%s', type='%s'",
@@ -172,88 +194,115 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             sensor_type,
         )
 
-        sensor_config_final: dict[str, Any] = cast(
-            dict[str, Any], SENSOR_TYPES[sensor_type]
-        )
-        unit = sensor_config_final.get("unit", "")
-        if unit == UNITS["POWER"]:
-            self._attr_native_unit_of_measurement = UnitOfPower.WATT
-            self._attr_device_class = SensorDeviceClass.POWER
-        elif unit == UNITS["POWER_KW"]:
-            self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
-            self._attr_device_class = SensorDeviceClass.POWER
-        elif unit == UNITS["ENERGY"]:
-            self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-            self._attr_device_class = SensorDeviceClass.ENERGY
-        elif unit == UNITS["VOLTAGE"]:
-            self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
-            self._attr_device_class = SensorDeviceClass.VOLTAGE
-            self._attr_suggested_display_precision = 1
-        elif unit == UNITS["CURRENT"]:
-            self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
-            self._attr_device_class = SensorDeviceClass.CURRENT
-            self._attr_suggested_display_precision = 1
-        elif unit == UNITS["FREQUENCY"] or unit == "HZ":
-            self._attr_native_unit_of_measurement = UnitOfFrequency.HERTZ
-            self._attr_device_class = SensorDeviceClass.FREQUENCY
-        elif unit == UNITS["TEMPERATURE"]:
-            self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-            self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        elif unit == UNITS["PERCENTAGE"]:
-            self._attr_native_unit_of_measurement = UNITS["PERCENTAGE"]
-        elif unit == UNITS["APPARENT_POWER"]:
-            # Apparent power (VA)
-            self._attr_native_unit_of_measurement = unit
-            # Prefer device class if available in this HA version
-            try:
-                self._attr_device_class = SensorDeviceClass.APPARENT_POWER
-            except AttributeError:
-                # Older HA versions may not support APPARENT_POWER
-                pass
-        else:
-            self._attr_native_unit_of_measurement = unit
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return self._attr_device_info
 
-        if sensor_config_final.get("device_class") == "enum":
+    def _initialize_identity(self, sensor_config: dict[str, Any]) -> None:
+        """Initialise name and unique ID for the entity."""
+        device_alias = self._device_meta.get("alias", "DessMonitor")
+        sensor_name = sensor_config.get("name", self._sensor_type)
+        self._attr_name = f"{device_alias} {sensor_name}"
+
+        unique_suffix = self._build_unique_suffix(self._sensor_type)
+        self._attr_unique_id = f"{self._device_sn}_{unique_suffix}"
+
+    @staticmethod
+    def _build_unique_suffix(sensor_type: str) -> str:
+        """Create a consistent suffix for unique_id generation."""
+        return sensor_type.lower().replace(" ", "_").replace("-", "_")
+
+    def _apply_unit_metadata(self, unit: str) -> None:
+        """Configure unit/device class metadata with sensible defaults."""
+        native_unit, device_class, precision = self._unit_metadata_from_unit(unit)
+        self._attr_native_unit_of_measurement = native_unit
+
+        if device_class is not None:
+            self._attr_device_class = device_class
+
+        if precision is not None:
+            self._attr_suggested_display_precision = precision
+
+    @staticmethod
+    def _unit_metadata_from_unit(
+        unit: str,
+    ) -> tuple[
+        str
+        | UnitOfPower
+        | UnitOfEnergy
+        | UnitOfElectricPotential
+        | UnitOfElectricCurrent
+        | UnitOfFrequency
+        | UnitOfTemperature,
+        SensorDeviceClass | None,
+        int | None,
+    ]:
+        """Return (native_unit, device_class, precision) for a given unit string."""
+        if unit == UNITS["POWER"]:
+            return UnitOfPower.WATT, SensorDeviceClass.POWER, None
+        if unit == UNITS["POWER_KW"]:
+            return UnitOfPower.KILO_WATT, SensorDeviceClass.POWER, None
+        if unit == UNITS["ENERGY"]:
+            return UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, None
+        if unit == UNITS["VOLTAGE"]:
+            return UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE, 1
+        if unit == UNITS["CURRENT"]:
+            return UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT, 1
+        if unit in {UNITS["FREQUENCY"], "HZ"}:
+            return UnitOfFrequency.HERTZ, SensorDeviceClass.FREQUENCY, None
+        if unit == UNITS["TEMPERATURE"]:
+            return UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, None
+        if unit == UNITS["PERCENTAGE"]:
+            return UNITS["PERCENTAGE"], None, None
+        if unit == UNITS["APPARENT_POWER"]:
+            device_class = getattr(SensorDeviceClass, "APPARENT_POWER", None)
+            return unit, device_class, None
+
+        return unit, None, None
+
+    def _apply_sensor_traits(self, sensor_config: dict[str, Any]) -> None:
+        """Apply additional metadata such as state class and icons."""
+        if sensor_config.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
             if self._sensor_type == "Operating mode":
-                # Build dynamic options list including all devcode transformations
                 from .device_support import get_all_operating_modes
 
                 self._attr_options = get_all_operating_modes()
 
-        if sensor_config_final.get("state_class"):
-            state_class = sensor_config_final["state_class"]
-            if state_class == "measurement":
-                self._attr_state_class = SensorStateClass.MEASUREMENT
-            elif state_class == "total_increasing":
-                self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        state_class = sensor_config.get("state_class")
+        if state_class == "measurement":
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif state_class == "total_increasing":
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
 
-        icon = sensor_config_final.get("icon")
+        icon = sensor_config.get("icon")
         if icon:
             self._attr_icon = str(icon)
 
-        diagnostic_sensors = [
-            "Output Voltage Setting",  # Configuration setting as sensor
-            "Output priority",  # Priority setting from API data
-            "Charger Source Priority",  # Charger priority from API data
-        ]
-
-        if self._sensor_type in diagnostic_sensors:
+        if self._sensor_type in DIAGNOSTIC_SENSOR_TITLES:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
             _LOGGER.debug(
                 "Set entity category to DIAGNOSTIC for sensor %s", self._sensor_type
             )
 
     @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return create_device_info(
-            self._device_sn, self._device_meta, self._collector_meta
-        )
-
-    @property
     def native_value(self) -> str | float | None:
         """Return the state of the sensor."""
+        device_payload = self._get_device_payload()
+        if not device_payload:
+            return None
+
+        match = self._find_matching_data_point(device_payload)
+        if not match:
+            return None
+
+        data_point, devcode = match
+        value = self._extract_transformed_value(data_point, devcode)
+        return self._coerce_native_value(value)
+
+    def _get_device_payload(self) -> dict[str, Any] | None:
+        """Return cached device payload for this sensor."""
         if not self.coordinator.data:
             _LOGGER.debug(
                 "No coordinator data available for sensor %s", self._attr_unique_id
@@ -269,56 +318,19 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             )
             return None
 
-        device_data = device_info.get("data", [])
-        device = device_info.get("device", {})
-        devcode = device.get("devcode")
+        return device_info
+
+    def _find_matching_data_point(
+        self, device_payload: dict[str, Any]
+    ) -> tuple[dict[str, Any], Any] | None:
+        """Locate the matching data point for the current sensor."""
+        device_data = device_payload.get("data", [])
+        device_meta = device_payload.get("device", {})
+        devcode = device_meta.get("devcode")
 
         for data_point in device_data:
-            # Check original title first, then apply transformations for display
             if data_point.get("title") == self._sensor_type:
-                # Apply devcode transformations for value processing
-                if devcode:
-                    data_point = apply_devcode_transformations(
-                        devcode, data_point.copy()
-                    )
-                value = data_point.get("val")
-
-                _LOGGER.debug(
-                    "Raw value for sensor %s (%s): %s (type: %s)",
-                    self._attr_unique_id,
-                    self._sensor_type,
-                    value,
-                    type(value).__name__,
-                )
-
-                if self._sensor_type in [
-                    "Operating mode",
-                    "Output priority",
-                    "Charger Source Priority",
-                ]:
-                    if value is not None and value != "":
-                        return str(value)
-                    return "Unknown"
-
-                try:
-                    if value is not None and value != "":
-                        numeric_value = float(value)
-                        _LOGGER.debug(
-                            "Converted value for sensor %s: %s -> %s",
-                            self._attr_unique_id,
-                            value,
-                            numeric_value,
-                        )
-                        return numeric_value
-                    return value
-                except (ValueError, TypeError) as e:
-                    _LOGGER.debug(
-                        "Could not convert value to float for sensor %s: %s (%s)",
-                        self._attr_unique_id,
-                        value,
-                        e,
-                    )
-                    return str(value) if value is not None else None
+                return data_point, devcode
 
         _LOGGER.debug(
             "No matching data point found for sensor %s (looking for: %s)",
@@ -326,6 +338,59 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             self._sensor_type,
         )
         return None
+
+    def _extract_transformed_value(
+        self, data_point: dict[str, Any], devcode: Any
+    ) -> Any:
+        """Apply devcode transformations and return the raw value."""
+        working_point = data_point
+        if devcode:
+            working_point = apply_devcode_transformations(devcode, data_point.copy())
+
+        value = working_point.get("val")
+        _LOGGER.debug(
+            "Raw value for sensor %s (%s): %s (type: %s)",
+            self._attr_unique_id,
+            self._sensor_type,
+            value,
+            type(value).__name__,
+        )
+        return value
+
+    def _coerce_native_value(self, value: Any) -> str | float | None:
+        """Coerce API value into Home Assistant native value format."""
+        if self._sensor_type in ENUM_SENSOR_TITLES:
+            return self._coerce_enum_value(value)
+        return self._coerce_numeric_value(value)
+
+    def _coerce_enum_value(self, value: Any) -> str:
+        """Coerce enumerated values to strings with fallbacks."""
+        if value is not None and value != "":
+            return str(value)
+        return "Unknown"
+
+    def _coerce_numeric_value(self, value: Any) -> float | str | None:
+        """Attempt to coerce sensor value into a float when possible."""
+        if value in (None, ""):
+            return value
+
+        try:
+            numeric_value = float(value)
+            _LOGGER.debug(
+                "Converted value for sensor %s: %s -> %s",
+                self._attr_unique_id,
+                value,
+                numeric_value,
+            )
+            return numeric_value
+        except (ValueError, TypeError) as err:
+            _LOGGER.debug(
+                "Could not convert value to float for sensor %s: %s (%s)",
+                self._attr_unique_id,
+                value,
+                err,
+            )
+            return str(value) if value is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

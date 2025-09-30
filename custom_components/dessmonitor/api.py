@@ -94,72 +94,71 @@ class DessMonitorAPI:
         self, action: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Make API request."""
-        if not self._session:
-            raise RuntimeError("Session not initialized")
-
-        if action != "authSource" and self._is_token_expired():
-            _LOGGER.info("Token expired for action '%s', re-authenticating...", action)
-            await self.authenticate()
+        self._ensure_session()
+        await self._ensure_token(action)
 
         salt = str(int(time.time() * 1000))
-
-        action_string = f"&action={action}"
-        if params:
-            for key, value in params.items():
-                action_string += f"&{key}={value}"
-
+        action_string = self._build_action_string(action, params)
         signature = self._generate_signature(salt, action_string)
-
-        url = f"{self.base_url}?sign={signature}&salt={salt}"
-        if self.token and action != "authSource":
-            url += f"&token={self.token}"
-        url += action_string
+        url = self._build_request_url(action, salt, signature, action_string)
 
         _LOGGER.debug(
             "Making %s request with %d parameters", action, len(params) if params else 0
         )
         _LOGGER.debug("Request URL: %s", url)
 
+        response_data = await self._fetch_json(action, url)
+        return self._validate_api_response(action, response_data)
+
+    def _ensure_session(self) -> None:
+        """Ensure that an aiohttp session is available."""
+        if not self._session:
+            raise RuntimeError("Session not initialized")
+
+    async def _ensure_token(self, action: str) -> None:
+        """Refresh authentication token when required."""
+        if action == "authSource":
+            return
+        if self._is_token_expired():
+            _LOGGER.info("Token expired for action '%s', re-authenticating...", action)
+            await self.authenticate()
+
+    def _build_action_string(self, action: str, params: dict[str, Any] | None) -> str:
+        """Construct action string used by the API."""
+        action_string = f"&action={action}"
+        if params:
+            for key, value in params.items():
+                action_string += f"&{key}={value}"
+        return action_string
+
+    def _build_request_url(
+        self, action: str, salt: str, signature: str, action_string: str
+    ) -> str:
+        """Construct the full request URL including token when available."""
+        url = f"{self.base_url}?sign={signature}&salt={salt}"
+        if self.token and action != "authSource":
+            url += f"&token={self.token}"
+        return f"{url}{action_string}"
+
+    async def _fetch_json(self, action: str, url: str) -> dict[str, Any]:
+        """Execute HTTP GET and return JSON payload."""
+        assert self._session is not None
         timeout_seconds = 30
 
         try:
             async with async_timeout.timeout(timeout_seconds):
                 async with self._session.get(url) as response:
+                    response.raise_for_status()
                     try:
-                        response.raise_for_status()
-                    except aiohttp.ClientResponseError as err:
-                        _LOGGER.error(
-                            "HTTP %s error for action '%s': %s",
-                            err.status,
-                            action,
-                            err.message,
-                        )
-                        raise
-
-                    try:
-                        data = await response.json()
-                    except aiohttp.ContentTypeError:
+                        return await response.json()
+                    except aiohttp.ContentTypeError as err:
                         text_preview = await response.text()
                         _LOGGER.error(
                             "Invalid JSON response for action '%s': %s",
                             action,
                             text_preview[:500],
                         )
-                        raise DessMonitorError("Invalid response from server")
-
-                    if data.get("err", 0) != 0:
-                        error_code = data.get("err")
-                        error_msg = data.get("desc", f"API error {error_code}")
-                        _LOGGER.error(
-                            "API returned error %s for action '%s': %s",
-                            error_code,
-                            action,
-                            error_msg,
-                        )
-                        raise DessMonitorError(error_msg)
-
-                    return data
-
+                        raise DessMonitorError("Invalid response from server") from err
         except asyncio.TimeoutError as err:
             _LOGGER.error(
                 "API request for action '%s' timed out after %ss",
@@ -174,12 +173,33 @@ class DessMonitorAPI:
             )
             raise DessMonitorError("Request cancelled") from err
         except aiohttp.ClientResponseError as err:
+            _LOGGER.error(
+                "HTTP %s error for action '%s': %s",
+                err.status,
+                action,
+                err.message,
+            )
             raise DessMonitorError(
                 f"Server returned HTTP {err.status}: {err.message or 'Unknown error'}"
             ) from err
         except aiohttp.ClientError as err:
             _LOGGER.error("HTTP request failed for action '%s': %s", action, err)
             raise DessMonitorError(f"Request failed: {err}") from err
+
+    @staticmethod
+    def _validate_api_response(action: str, data: dict[str, Any]) -> dict[str, Any]:
+        """Validate API payload and raise errors when needed."""
+        if data.get("err", 0) != 0:
+            error_code = data.get("err")
+            error_msg = data.get("desc", f"API error {error_code}")
+            _LOGGER.error(
+                "API returned error %s for action '%s': %s",
+                error_code,
+                action,
+                error_msg,
+            )
+            raise DessMonitorError(error_msg)
+        return data
 
     async def authenticate(self) -> bool:
         """Authenticate with the DessMonitor API."""
@@ -324,113 +344,123 @@ class DessMonitorAPI:
     async def get_collectors(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Get list of collectors (inverters) via API discovery."""
         _LOGGER.debug("Fetching collectors list via API discovery")
-        collectors = []
+        collectors: list[dict[str, Any]] = []
 
         try:
-            _LOGGER.debug("Querying projects to discover collectors")
-            projects_response = await self._make_request(
-                "queryPlants", {"pagesize": 50}
-            )
+            projects = await self._query_projects()
+            for project in projects:
+                pid = project.get("pid")
+                if not pid:
+                    continue
 
-            if "dat" in projects_response and "plant" in projects_response["dat"]:
-                projects = projects_response["dat"]["plant"]
-                _LOGGER.debug("Found %d projects", len(projects))
-
-                for project in projects:
-                    pid = project.get("pid")
-                    if pid:
-                        try:
-                            _LOGGER.debug("Querying collectors for project ID: %s", pid)
-
-                            page = 0
-                            pagesize = 50  # Request up to 50 collectors per page
-                            total_collectors = 0
-
-                            while True:
-                                collectors_response = await self._make_request(
-                                    "webQueryCollectorsEs",
-                                    {"pid": pid, "page": page, "pagesize": pagesize},
-                                )
-
-                                if "dat" in collectors_response:
-                                    dat = collectors_response["dat"]
-                                    project_collectors = dat.get("collector", [])
-                                    total_from_api = dat.get("total", 0)
-                                    current_page_size = len(project_collectors)
-
-                                    if project_collectors:
-                                        collectors.extend(project_collectors)
-                                        total_collectors += current_page_size
-                                        _LOGGER.debug(
-                                            "Found %d collectors in project %s (page %d), total so far: %d/%d",
-                                            current_page_size,
-                                            pid,
-                                            page,
-                                            total_collectors,
-                                            total_from_api,
-                                        )
-
-                                        if (
-                                            total_collectors >= total_from_api
-                                            or current_page_size < pagesize
-                                        ):
-                                            break
-
-                                        page += 1
-                                    else:
-                                        break
-                                else:
-                                    break
-
-                            _LOGGER.info(
-                                "Retrieved %d total collectors for project %s",
-                                total_collectors,
-                                pid,
-                            )
-
-                        except Exception as err:
-                            _LOGGER.warning(
-                                "Failed to get collectors for project %s: %s", pid, err
-                            )
+                project_collectors = await self._fetch_collectors_for_project(pid)
+                collectors.extend(project_collectors)
 
             if not collectors:
-                _LOGGER.debug(
-                    "No collectors found via projects, trying direct collector query"
-                )
-                try:
-                    direct_response = await self._make_request("queryCollectorCountEs")
-                    if "dat" in direct_response:
-                        _LOGGER.debug(
-                            "Direct collector query response: %s",
-                            (
-                                list(direct_response["dat"].keys())
-                                if isinstance(direct_response["dat"], dict)
-                                else "non-dict response"
-                            ),
-                        )
-
-                except Exception as err:
-                    _LOGGER.warning("Direct collector query failed: %s", err)
-
-        except Exception as err:
+                await self._attempt_direct_collector_query()
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error("Failed to discover collectors via API: %s", err)
             _LOGGER.debug("Collector discovery error details", exc_info=True)
 
         _LOGGER.info("Successfully discovered %d collectors via API", len(collectors))
+        projects_summary = self._build_project_summary(collectors)
+        return collectors, projects_summary
 
-        projects = []
-        seen_projects = set()
-        for collector in collectors:
-            if "pid" in collector and collector["pid"] not in seen_projects:
-                projects.append(
-                    {
-                        "pid": collector["pid"],
-                        "pname": collector.get("pname", "Unknown Project"),
-                    }
+    async def _query_projects(self) -> list[dict[str, Any]]:
+        """Retrieve project list used for collector discovery."""
+        _LOGGER.debug("Querying projects to discover collectors")
+        response = await self._make_request("queryPlants", {"pagesize": 50})
+
+        projects = response.get("dat", {}).get("plant", [])
+        if projects:
+            _LOGGER.debug("Found %d projects", len(projects))
+        else:
+            _LOGGER.debug("No projects returned from queryPlants")
+        return projects
+
+    async def _fetch_collectors_for_project(self, pid: int) -> list[dict[str, Any]]:
+        """Fetch all collectors for a given project."""
+        _LOGGER.debug("Querying collectors for project ID: %s", pid)
+        collectors: list[dict[str, Any]] = []
+        page = 0
+        pagesize = 50
+        total_from_api: int | None = None
+
+        while True:
+            response = await self._make_request(
+                "webQueryCollectorsEs", {"pid": pid, "page": page, "pagesize": pagesize}
+            )
+
+            data = response.get("dat")
+            if not data:
+                break
+
+            batch = data.get("collector", [])
+            total_from_api = total_from_api or data.get("total", 0)
+            if not batch:
+                break
+
+            collectors.extend(batch)
+
+            _LOGGER.debug(
+                "Project %s page %d returned %d collectors (total so far %d/%s)",
+                pid,
+                page,
+                len(batch),
+                len(collectors),
+                total_from_api if total_from_api is not None else "?",
+            )
+
+            if (
+                total_from_api is not None and len(collectors) >= total_from_api
+            ) or len(batch) < pagesize:
+                break
+
+            page += 1
+
+        if collectors:
+            _LOGGER.info(
+                "Retrieved %d total collectors for project %s", len(collectors), pid
+            )
+        return collectors
+
+    async def _attempt_direct_collector_query(self) -> None:
+        """Fallback query for collectors when project lookup returns nothing."""
+        _LOGGER.debug("No collectors found via projects, trying direct collector query")
+        try:
+            direct_response = await self._make_request("queryCollectorCountEs")
+            if "dat" in direct_response:
+                _LOGGER.debug(
+                    "Direct collector query response keys: %s",
+                    (
+                        list(direct_response["dat"].keys())
+                        if isinstance(direct_response["dat"], dict)
+                        else "non-dict response"
+                    ),
                 )
-                seen_projects.add(collector["pid"])
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning("Direct collector query failed: %s", err)
 
-        return collectors, projects
+    @staticmethod
+    def _build_project_summary(
+        collectors: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Build summary list of projects present in collector payload."""
+        projects: list[dict[str, Any]] = []
+        seen_projects: set[int] = set()
+        for collector in collectors:
+            pid = collector.get("pid")
+            if pid is None or pid in seen_projects:
+                continue
+
+            projects.append(
+                {
+                    "pid": pid,
+                    "pname": collector.get("pname", "Unknown Project"),
+                }
+            )
+            seen_projects.add(pid)
+        return projects
 
     async def get_collector_devices(self, pn: str) -> dict[str, Any]:
         """Get devices under a collector."""
