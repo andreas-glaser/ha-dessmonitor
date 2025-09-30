@@ -173,35 +173,59 @@ def apply_devcode_transformations(
 
     transformed_data = sensor_data.copy()
 
-    # Apply title mapping
-    if "title" in transformed_data:
-        original_title = transformed_data["title"]
-        transformed_data["title"] = map_sensor_title(devcode, original_title)
-
-    # Apply value mappings for specific sensor types
-    if "title" in transformed_data and "val" in transformed_data:
-        title = transformed_data["title"]
-        value = transformed_data["val"]
-
-        if "priority" in title.lower() and "output" in title.lower():
-            transformed_data["val"] = map_output_priority(devcode, str(value))
-        elif "priority" in title.lower() and "charg" in title.lower():
-            transformed_data["val"] = map_charger_priority(devcode, str(value))
-        elif "operating mode" in title.lower() or "mode" in title.lower():
-            transformed_data["val"] = map_operating_mode(devcode, str(value))
-
-    # Apply custom value transformations
-    value_transformations = config.get("value_transformations", {})
-    if transformed_data.get("title") in value_transformations:
-        transform_func = value_transformations[transformed_data["title"]]
-        try:
-            transformed_data["val"] = transform_func(transformed_data["val"])
-        except Exception as err:
-            _LOGGER.warning(
-                "Value transformation failed for %s: %s", transformed_data["title"], err
-            )
+    _apply_title_mapping(devcode, transformed_data)
+    _apply_value_mappings(devcode, transformed_data)
+    _apply_custom_transformations(config, transformed_data)
 
     return transformed_data
+
+
+def _apply_title_mapping(devcode: int, transformed_data: dict[str, Any]) -> None:
+    """Map sensor title to configured alias when available."""
+    if "title" not in transformed_data:
+        return
+
+    original_title = transformed_data["title"]
+    transformed_data["title"] = map_sensor_title(devcode, original_title)
+
+
+def _apply_value_mappings(devcode: int, transformed_data: dict[str, Any]) -> None:
+    """Apply built-in value mappings such as priorities and modes."""
+    title = transformed_data.get("title")
+    value = transformed_data.get("val")
+    if title is None or value is None:
+        return
+
+    normalized = title.lower()
+    if "priority" in normalized and "output" in normalized:
+        transformed_data["val"] = map_output_priority(devcode, str(value))
+    elif "priority" in normalized and "charg" in normalized:
+        transformed_data["val"] = map_charger_priority(devcode, str(value))
+    elif "operating mode" in normalized or normalized.endswith(" mode"):
+        transformed_data["val"] = map_operating_mode(devcode, str(value))
+
+
+def _apply_custom_transformations(
+    config: dict[str, Any], transformed_data: dict[str, Any]
+) -> None:
+    """Apply custom transformation callbacks defined by the devcode config."""
+    title = transformed_data.get("title")
+    if not title:
+        return
+
+    value_transformations = config.get("value_transformations", {})
+    transform_func = value_transformations.get(title)
+    if not transform_func:
+        return
+
+    try:
+        transformed_data["val"] = transform_func(transformed_data.get("val"))
+    except Exception as err:  # pylint: disable=broad-except
+        _LOGGER.warning(
+            "Value transformation failed for %s: %s",
+            title,
+            err,
+        )
 
 
 def get_device_capabilities(devcode: int) -> list[str]:

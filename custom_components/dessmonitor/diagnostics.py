@@ -17,19 +17,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
-from .const import (
-    BATTERY_TYPES,
-    CHARGER_PRIORITIES,
-    DOMAIN,
-    OUTPUT_PRIORITIES,
-    UNITS,
-)
+from .const import CHARGER_PRIORITIES, DOMAIN, OUTPUT_PRIORITIES
+from .device_support import map_charger_priority, map_output_priority
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
+# Diagnostic sensors that get their data from the regular API (queryDeviceLastData)
+# These sensors show device configuration/status that's already included in the regular data feed
 DIAGNOSTIC_SENSORS = {
-    "Output Priority": {
+    "Output priority": {
         "name": "Output Priority",
         "unit": "",
         "device_class": "enum",
@@ -37,7 +34,6 @@ DIAGNOSTIC_SENSORS = {
         "icon": "mdi:electric-switch",
         "entity_category": "diagnostic",
         "enabled_default": False,
-        "control_field_id": "bse_eybond_ctrl_49",
     },
     "Charger Source Priority": {
         "name": "Charger Source Priority",
@@ -47,137 +43,6 @@ DIAGNOSTIC_SENSORS = {
         "icon": "mdi:battery-charging",
         "entity_category": "diagnostic",
         "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_75",
-    },
-    "Battery Type": {
-        "name": "Battery Type",
-        "unit": "",
-        "device_class": "enum",
-        "options": BATTERY_TYPES,
-        "icon": "mdi:battery",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_66",
-    },
-    "Max Charging Current": {
-        "name": "Max Charging Current",
-        "unit": UNITS["CURRENT"],
-        "device_class": "current",
-        "state_class": "measurement",
-        "icon": "mdi:current-dc",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_76",
-    },
-    "Max AC Charging Current": {
-        "name": "Max AC Charging Current",
-        "unit": UNITS["CURRENT"],
-        "device_class": "current",
-        "state_class": "measurement",
-        "icon": "mdi:current-ac",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_77",
-    },
-    "High DC Protection Voltage": {
-        "name": "High DC Protection Voltage",
-        "unit": UNITS["VOLTAGE"],
-        "device_class": "voltage",
-        "state_class": "measurement",
-        "icon": "mdi:flash-triangle",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_67",
-    },
-    "Low DC Protection Voltage (Mains)": {
-        "name": "Low DC Protection Voltage (Mains)",
-        "unit": UNITS["VOLTAGE"],
-        "device_class": "voltage",
-        "state_class": "measurement",
-        "icon": "mdi:flash-triangle-outline",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_71",
-    },
-    "Low DC Protection Voltage (Off-Grid)": {
-        "name": "Low DC Protection Voltage (Off-Grid)",
-        "unit": UNITS["VOLTAGE"],
-        "device_class": "voltage",
-        "state_class": "measurement",
-        "icon": "mdi:flash-triangle-outline",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_73",
-    },
-    "Bulk Charging Voltage": {
-        "name": "Bulk Charging Voltage",
-        "unit": UNITS["VOLTAGE"],
-        "device_class": "voltage",
-        "state_class": "measurement",
-        "icon": "mdi:battery-charging-high",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_68",
-    },
-    "Floating Charging Voltage": {
-        "name": "Floating Charging Voltage",
-        "unit": UNITS["VOLTAGE"],
-        "device_class": "voltage",
-        "state_class": "measurement",
-        "icon": "mdi:battery-charging-medium",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bat_eybond_ctrl_69",
-    },
-    "Battery EQ Mode": {
-        "name": "Battery EQ Mode",
-        "unit": "",
-        "device_class": "enum",
-        "options": ["Disable", "Enable"],
-        "icon": "mdi:battery-sync",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "sys_eybond_ctrl_60",
-    },
-    "Input Voltage Range": {
-        "name": "Input Voltage Range",
-        "unit": "",
-        "device_class": "enum",
-        "options": ["Appliances", "UPS", "Generator"],
-        "icon": "mdi:sine-wave",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "bse_eybond_ctrl_50",
-    },
-    "Power Saving Mode": {
-        "name": "Power Saving Mode",
-        "unit": "",
-        "device_class": "enum",
-        "options": ["Disable", "Enable"],
-        "icon": "mdi:power-sleep",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "sys_eybond_ctrl_55",
-    },
-    "Auto Restart Overload": {
-        "name": "Auto Restart Overload",
-        "unit": "",
-        "device_class": "enum",
-        "options": ["Disable", "Enable"],
-        "icon": "mdi:restart",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "sys_eybond_ctrl_56",
-    },
-    "Overload Bypass": {
-        "name": "Overload Bypass",
-        "unit": "",
-        "device_class": "enum",
-        "options": ["Disable", "Enable"],
-        "icon": "mdi:bypass",
-        "entity_category": "diagnostic",
-        "enabled_default": False,
-        "control_field_id": "sys_eybond_ctrl_58",
     },
 }
 
@@ -193,8 +58,22 @@ async def async_setup_entry(
     for device_sn, device_info in coordinator.data.items():
         device_meta = device_info.get("device", {})
         collector_meta = device_info.get("collector", {})
+        existing_titles = {
+            str(data_point.get("title")).strip().lower()
+            for data_point in device_info.get("data", [])
+            if data_point.get("title")
+        }
 
         for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items():
+            if sensor_key.lower() in existing_titles:
+                _LOGGER.debug(
+                    "Skipping diagnostic sensor %s for device %s because primary sensor "
+                    "exists",
+                    sensor_key,
+                    device_sn,
+                )
+                continue
+
             entities.append(
                 DessMonitorDiagnosticSensor(
                     coordinator=coordinator,
@@ -234,7 +113,6 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
         self._collector_meta = collector_meta
         self._sensor_key = sensor_key
         self._sensor_config = sensor_config
-        self._control_field_id = sensor_config.get("control_field_id")
 
         device_alias = device_meta.get("alias", "Unknown Device")
 
@@ -251,7 +129,7 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
 
         if sensor_config.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
-            self._attr_options = sensor_config.get("options", [])
+            self._attr_options = self._build_enum_options(sensor_config)
         elif sensor_config.get("device_class") == "voltage":
             self._attr_device_class = SensorDeviceClass.VOLTAGE
             self._attr_native_unit_of_measurement = sensor_config.get("unit")
@@ -269,67 +147,62 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> str | float | None:
         """Return the current value of the diagnostic sensor."""
-        control_fields_data = getattr(
-            self.coordinator, "_control_fields_cache", {}
-        ).get(self._device_sn)
-
-        if control_fields_data and self._control_field_id in control_fields_data:
-            field_data = control_fields_data[self._control_field_id]
-
-            if self._sensor_config.get("device_class") == "enum":
-                current_key = field_data.get("current_value")
-                if current_key is not None:
-                    option_mapping = self._get_option_mapping()
-                    return option_mapping.get(str(current_key), f"Option {current_key}")
-                return "Unknown"
-            else:
-                return field_data.get("current_value")
-
+        # Get the already-transformed data from the coordinator
         device_data = self.coordinator.data.get(self._device_sn, {}).get("data", [])
+        device_meta = self.coordinator.data.get(self._device_sn, {}).get("device", {})
+        devcode = device_meta.get("devcode")
+
         for data_point in device_data:
             if data_point.get("title") == self._sensor_key:
+                # Apply devcode transformations if available
+                if devcode:
+                    from .device_support import apply_devcode_transformations
+
+                    data_point = apply_devcode_transformations(
+                        devcode, data_point.copy()
+                    )
+
                 value = data_point.get("val")
+
+                # Handle enum types (priorities, modes, etc.)
+                if self._sensor_config.get("device_class") == "enum":
+                    if value is not None and value != "":
+                        return str(value)
+                    return "Unknown"
+
+                # Handle numeric types (voltage, current)
                 if self._sensor_config.get("device_class") in ["voltage", "current"]:
                     try:
                         return float(value) if value is not None else None
                     except (ValueError, TypeError):
                         return None
+
                 return value
 
         return None
 
-    def _get_option_mapping(self) -> dict[str, str]:
-        """Get mapping from control field option keys to display text."""
-        if self._sensor_key == "Output Priority":
-            return {"0": "UTI", "1": "SOL", "2": "SBU", "3": "SUB"}
-        elif self._sensor_key == "Charger Source Priority":
-            return {
-                "0": "Utility First",
-                "1": "PV First",
-                "2": "PV Is At The Same Level As Utility",
-                "3": "Only PV",
-            }
-        elif self._sensor_key == "Battery Type":
-            return {
-                "0": "AGM",
-                "1": "FLD",
-                "2": "USER",
-                "3": "Li1",
-                "4": "Li2",
-                "5": "Li3",
-                "6": "Li4",
-            }
-        elif self._sensor_key in [
-            "Battery EQ Mode",
-            "Power Saving Mode",
-            "Auto Restart Overload",
-            "Overload Bypass",
-        ]:
-            return {"0": "Disable", "1": "Enable"}
-        elif self._sensor_key == "Input Voltage Range":
-            return {"0": "Appliances", "1": "UPS", "2": "Generator"}
+    def _build_enum_options(self, sensor_config: dict[str, Any]) -> list[str]:
+        """Return enum options aligned with device-specific transformations."""
+        options = [str(option) for option in sensor_config.get("options", [])]
+        device_meta = self._device_meta
+        devcode = device_meta.get("devcode") if isinstance(device_meta, dict) else None
 
-        return {}
+        if not devcode or not options:
+            return options
+
+        transformed_options: set[str] = set()
+        for option in options:
+            mapped = option
+            key = self._sensor_key.lower()
+            if key == "output priority":
+                mapped = map_output_priority(devcode, option)
+            elif key == "charger source priority":
+                mapped = map_charger_priority(devcode, option)
+            if mapped:
+                transformed_options.add(str(mapped))
+
+        transformed_options.update(options)
+        return sorted(transformed_options)
 
     @property
     def available(self) -> bool:

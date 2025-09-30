@@ -31,6 +31,21 @@ main (production/stable)
 - **`hotfix/*`**: Critical bug fixes for production (e.g., `hotfix/auth-failure`).
 - **`release/*`**: Release preparation and final testing (e.g., `release/1.1.0`).
 
+### Development Setup
+
+1. **Install development dependencies:**
+   ```bash
+   make install
+   ```
+   This creates a virtual environment and installs all required tools (Black, isort, flake8, mypy).
+
+2. **Run code quality checks:**
+   ```bash
+   make check   # Check code without modifying
+   make format  # Format code with Black and isort
+   make lint    # Run all linting checks
+   ```
+
 ### Development Process
 
 1. **For new features:**
@@ -38,7 +53,8 @@ main (production/stable)
    git checkout dev
    git pull origin dev
    git checkout -b feature/your-feature-name
-   # ... dev your feature
+   # ... develop your feature
+   make check   # Run quality checks before committing
    git push origin feature/your-feature-name
    # Create PR to dev branch
    ```
@@ -236,7 +252,14 @@ Before submitting a PR:
 
 ### Pre-Commit Checks
 
-Run basic quality checks before pushing (see `docs/COMMIT_GUIDE.md` for details):
+Run code quality checks before pushing:
+
+```bash
+make check   # Run all checks without modifying code
+make format  # Auto-format code with Black and isort
+```
+
+Or manually (see `docs/COMMIT_GUIDE.md` for details):
 
 ```bash
 black custom_components/dessmonitor
