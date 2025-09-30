@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Future development in progress
 
+## [1.4.9] - 2025-09-30
+
+### Added
+- Persistent token caching and refresh mechanism to reduce authentication overhead and improve reliability
+
+### Changed
+- Modularized API data flow and diagnostics for improved maintainability
+
+### Fixed
+- Deduplicated diagnostic priority sensors to prevent duplicate entity creation
+
 ## [1.4.8] - 2025-09-26
 
 ### Fixed
@@ -221,7 +232,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.8...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.9...HEAD
+[1.4.9]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.5...v1.4.6
