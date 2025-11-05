@@ -361,6 +361,7 @@ class DessMonitorAPI:
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error("Failed to discover collectors via API: %s", err)
             _LOGGER.debug("Collector discovery error details", exc_info=True)
+            raise
 
         _LOGGER.info("Successfully discovered %d collectors via API", len(collectors))
         projects_summary = self._build_project_summary(collectors)
