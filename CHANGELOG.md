@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Future development in progress
+### Fixed
+- Prevent entity disappearance during network errors by properly propagating exceptions instead of silently returning empty collector list
 
 ## [1.4.9] - 2025-09-30
 
