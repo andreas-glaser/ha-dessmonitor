@@ -406,6 +406,7 @@ The integration now includes an extensible device support system:
 
 ### Current Device Support
 - **DevCode 2376**: Full support with sensor mappings and value transformations
+- **DevCode 6422**: Must PH19-6048 EXP collector support including SOC, PV string, and accumulated energy sensors
 - **Generic Fallback**: Unsupported devices still work with basic functionality
 
 ### Adding New Device Support

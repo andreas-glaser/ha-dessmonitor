@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Future development in progress
+- Support for DessMonitor devcode 6422 used by Must PH19-6048 EXP collectors, including operating-mode normalization (thanks to @tosstosstoss for providing analysis data)
+- New sensor definitions (SOC, PV string voltages/currents, accumulated energy counters, radiator temperatures, charger enable state, etc.) so the additional metrics surface in Home Assistant
 
 ## [1.4.10] - 2025-11-05
 

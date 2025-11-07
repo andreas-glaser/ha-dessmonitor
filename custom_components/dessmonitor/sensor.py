@@ -36,12 +36,17 @@ ENUM_SENSOR_TITLES = {
     "Operating mode",
     "Output priority",
     "Charger Source Priority",
+    "work state",
+    "charger work enable",
 }
 
 DIAGNOSTIC_SENSOR_TITLES = {
     "Output Voltage Setting",
     "Output priority",
     "Charger Source Priority",
+    "Software version",
+    "charger work enable",
+    "rated power",
 }
 
 
@@ -247,7 +252,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         """Apply additional metadata such as state class and icons."""
         if sensor_config.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
-            if self._sensor_type == "Operating mode":
+            if self._sensor_type in {"Operating mode", "work state"}:
                 from .device_support import get_all_operating_modes
 
                 self._attr_options = get_all_operating_modes()

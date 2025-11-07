@@ -7,6 +7,7 @@ This directory contains collector-specific mappings and configurations for diffe
 ## Currently Supported Collectors
 
 - **devcode 2376**: Standard DessMonitor Data Collector
+- **devcode 6422**: Must PH19 data collector (PH19-6048 EXP and similar)
 
 ## Adding Support for a New Devcode
 
