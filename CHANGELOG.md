@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Documented the `known_inverters` metadata field across device support docs/templates so contributors can record which inverter models have been validated per devcode.
 - Device support for devcode 2361 (SRNE SR-EOV24-3.5K-5KWh) with sensor mappings and operating mode normalization (thanks to @pjJedi for the CLI analysis data).
+- Additional sensor definitions (inverter current, load apparent power, PV/inverter radiator temperatures, battery energy charge/discharge counters, accumulated mains load energy, daily/total battery amp-hours, etc.) so devcode-specific mappings can surface the extended telemetry in Home Assistant.
 
 ### Changed
 - README device-support section now explicitly lists the confirmed inverter pairing for devcodes 2376 (POW-HVM6.2K-48V-LIP) and 6422 (Must PH19-6048 EXP) and clarifies how the generic fallback behaves.
 - DessMonitor API and config flow now mask usernames, passwords, and tokens in logs and drop unused RC4 helper to avoid leaking sensitive data.
+- Sensor setup now applies devcode transformations before filtering supported types, preventing SRNE/POW-HVM data from being dropped when titles differ from the canonical names.
 
 ## [1.5.0] - 2025-11-09
 
