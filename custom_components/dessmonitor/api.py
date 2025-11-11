@@ -17,6 +17,16 @@ from .const import API_BASE_URL, UNITS, VERSION
 _LOGGER = logging.getLogger(__name__)
 
 
+def _mask_identifier(value: str | None) -> str:
+    """Return a redacted identifier for logging."""
+    if not value:
+        return "***"
+    trimmed = value.strip()
+    if len(trimmed) <= 3:
+        return "***"
+    return f"{trimmed[:3]}***"
+
+
 class DessMonitorAPI:
     """DessMonitor API client."""
 
@@ -54,17 +64,6 @@ class DessMonitorAPI:
     def _sha1(self, data: str) -> str:
         """Generate SHA-1 hash."""
         return hashlib.sha1(data.encode()).hexdigest().lower()
-
-    def _rc4_encrypt(self, key: str, data: str) -> bytes:
-        """RC4 encryption (simplified for auth)."""
-        key_bytes = key.encode()
-        data_bytes = data.encode()
-
-        result = bytearray()
-        for i, byte in enumerate(data_bytes):
-            result.append(byte ^ key_bytes[i % len(key_bytes)])
-
-        return bytes(result)
 
     def _generate_signature(self, salt: str, action_string: str) -> str:
         """Generate API signature."""
@@ -105,7 +104,6 @@ class DessMonitorAPI:
         _LOGGER.debug(
             "Making %s request with %d parameters", action, len(params) if params else 0
         )
-        _LOGGER.debug("Request URL: %s", url)
 
         response_data = await self._fetch_json(action, url)
         return self._validate_api_response(action, response_data)
@@ -203,7 +201,10 @@ class DessMonitorAPI:
 
     async def authenticate(self) -> bool:
         """Authenticate with the DessMonitor API."""
-        _LOGGER.debug("Starting authentication process for user: %s", self.username)
+        _LOGGER.debug(
+            "Starting authentication process for user: %s",
+            _mask_identifier(self.username),
+        )
         try:
             self.token = None
             self.secret = None
@@ -220,7 +221,14 @@ class DessMonitorAPI:
             }
             _LOGGER.debug(
                 "Authentication parameters: %s",
-                {k: v if k != "usr" else "***" for k, v in auth_params.items()},
+                {
+                    key: (
+                        "***"
+                        if key in {"usr", "company-key", "pwd", "password"}
+                        else value
+                    )
+                    for key, value in auth_params.items()
+                },
             )
 
             response = await self._make_request("authSource", auth_params)
@@ -263,7 +271,11 @@ class DessMonitorAPI:
             raise DessMonitorError("No authentication data received")
 
         except Exception as err:
-            _LOGGER.error("Authentication failed for user %s: %s", self.username, err)
+            _LOGGER.error(
+                "Authentication failed for user %s: %s",
+                _mask_identifier(self.username),
+                err,
+            )
             _LOGGER.debug("Authentication error details", exc_info=True)
             raise DessMonitorError(f"Authentication failed: {err}") from err
 
