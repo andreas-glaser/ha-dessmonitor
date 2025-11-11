@@ -77,7 +77,10 @@ def _match_sensor_definition(candidate: str | None) -> str | None:
             return key
 
         friendly_name = config.get("name")
-        if isinstance(friendly_name, str) and friendly_name.strip().lower() == normalized:
+        if (
+            isinstance(friendly_name, str)
+            and friendly_name.strip().lower() == normalized
+        ):
             return key
 
     return None
