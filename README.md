@@ -407,6 +407,7 @@ The integration now includes an extensible device support system:
 
 ### Current Device Support
 - **DevCode 2376**: Full support with sensor mappings and value transformations; confirmed with POW-HVM6.2K-48V-LIP (other models may report this devcode)
+- **DevCode 2361**: DessMonitor collector confirmed with SRNE SR-EOV24-3.5K-5KWh hybrid inverter, including SOC, load, and energy counters
 - **DevCode 6422**: DessMonitor collector validated with Must PH19-6048 EXP installs, exposing SOC, PV strings, and accumulated energy sensors
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
