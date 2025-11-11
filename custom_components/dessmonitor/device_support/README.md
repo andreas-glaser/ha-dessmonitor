@@ -6,8 +6,12 @@ This directory contains collector-specific mappings and configurations for diffe
 
 ## Currently Supported Collectors
 
-- **devcode 2376**: Standard DessMonitor Data Collector
+- **devcode 2376**: Standard DessMonitor Data Collector (known to pair with POW-HVM6.2K-48V-LIP)
 - **devcode 6422**: Must PH19 data collector (PH19-6048 EXP and similar)
+
+### Device Metadata
+
+Each `devcode_XXXX.py` exposes a `DEVICE_INFO` block that describes the collector. When known, populate the optional `known_inverters` list with inverter model names (e.g., `["POW-HVM6.2K-48V-LIP"]`) so contributors quickly see which hardware has been validated for that devcode.
 
 ## Adding Support for a New Devcode
 

@@ -1,0 +1,146 @@
+{
+  "timestamp": "2025-09-27 13:44:01",
+  "analysis": {
+    "devcode": 2376,
+    "device_sn": "Q0045478942690094801",
+    "collector_alias": "Inverter 1",
+    "total_sensors": 29,
+    "operating_modes": [
+      "Mains Mode"
+    ],
+    "output_priorities": [
+      "UTI"
+    ],
+    "charger_priorities": [
+      "Mains priority"
+    ],
+    "sensor_titles": [
+      "AC charging current",
+      "AC charging power",
+      "Battery Current",
+      "Battery Power",
+      "Battery Voltage",
+      "Charger Source Priority",
+      "DC Module Termperature",
+      "Grid Frequency",
+      "Grid Power",
+      "Grid Voltage",
+      "INV Module Termperature",
+      "Load Percent",
+      "Operating mode",
+      "Output Active Power",
+      "Output Apparent Power",
+      "Output Current",
+      "Output Voltage",
+      "Output Voltage Setting",
+      "Output frequency",
+      "Output priority",
+      "PV Charge Power",
+      "PV Current",
+      "PV Power",
+      "PV Voltage",
+      "PV charging current",
+      "Timestamp",
+      "devise serial number",
+      "id",
+      "inverter"
+    ],
+    "potential_typos": [
+      {
+        "original": "devise serial number",
+        "suggested": "device serial number"
+      },
+      {
+        "original": "DC Module Termperature",
+        "suggested": "DC Module Temperature"
+      },
+      {
+        "original": "INV Module Termperature",
+        "suggested": "INV Module Temperature"
+      }
+    ],
+    "unit_patterns": {},
+    "sample_data": [
+      {
+        "title": "id",
+        "value": "2bc0c3bff7c5b7a661ea4069bf714310"
+      },
+      {
+        "title": "Timestamp",
+        "value": "2025-09-27 13:43:09"
+      },
+      {
+        "title": "inverter",
+        "value": "1E00"
+      },
+      {
+        "title": "devise serial number",
+        "value": "92632409103989"
+      },
+      {
+        "title": "Operating mode",
+        "value": "Mains Mode"
+      },
+      {
+        "title": "Grid Voltage",
+        "value": "224.0"
+      },
+      {
+        "title": "Grid Frequency",
+        "value": "60.06"
+      },
+      {
+        "title": "Grid Power",
+        "value": "611"
+      },
+      {
+        "title": "AC charging power",
+        "value": "0"
+      },
+      {
+        "title": "Output Voltage",
+        "value": "225.9"
+      },
+      {
+        "title": "Output Current",
+        "value": "2.6"
+      },
+      {
+        "title": "Output frequency",
+        "value": "60.06"
+      },
+      {
+        "title": "Output Active Power",
+        "value": "531"
+      },
+      {
+        "title": "Output Apparent Power",
+        "value": "587"
+      },
+      {
+        "title": "Battery Voltage",
+        "value": "54.2"
+      },
+      {
+        "title": "Battery Current",
+        "value": "39.2"
+      },
+      {
+        "title": "Battery Power",
+        "value": "2086"
+      },
+      {
+        "title": "PV Voltage",
+        "value": "342.2"
+      },
+      {
+        "title": "PV Current",
+        "value": "5.4"
+      },
+      {
+        "title": "PV Power",
+        "value": "1852"
+      }
+    ]
+  }
+}

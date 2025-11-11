@@ -403,11 +403,12 @@ The integration now includes an extensible device support system:
 - **Automatic Detection**: Devices are automatically classified by their devcode
 - **Device-Specific Mappings**: Sensor names and values are transformed per device type
 - **Extensible Architecture**: Easy to add support for new device models
+- **Metadata Tracking**: Device configs list confirmed inverter models via `known_inverters` when available
 
 ### Current Device Support
-- **DevCode 2376**: Full support with sensor mappings and value transformations
-- **DevCode 6422**: Must PH19-6048 EXP collector support including SOC, PV string, and accumulated energy sensors
-- **Generic Fallback**: Unsupported devices still work with basic functionality
+- **DevCode 2376**: Full support with sensor mappings and value transformations; confirmed with POW-HVM6.2K-48V-LIP (other models may report this devcode)
+- **DevCode 6422**: DessMonitor collector validated with Must PH19-6048 EXP installs, exposing SOC, PV strings, and accumulated energy sensors
+- **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support
 1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`

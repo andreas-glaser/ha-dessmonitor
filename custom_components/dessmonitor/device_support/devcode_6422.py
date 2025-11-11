@@ -1,11 +1,12 @@
-"""Device support for DessMonitor devcode 6422 - Must PH19 data collectors."""
+"""DessMonitor Data Collector (devcode 6422)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "Must PH19 Data Collector (devcode 6422)",
-    "description": "DessMonitor collector used by Must PH19-6048 EXP inverters",
-    "manufacturer": "DessMonitor / MUST Power",
+    "name": "DessMonitor Data Collector (devcode 6422)",
+    "description": "DessMonitor data collector/gateway",
+    "manufacturer": "DessMonitor",
+    "known_inverters": ["Must PH19-6048 EXP"],
     "supported_features": [
         "real_time_monitoring",
         "energy_tracking",
