@@ -22,7 +22,11 @@ CHARGER_PRIORITY_MAPPING: dict[str, str] = {}
 OPERATING_MODE_MAPPING: dict[str, str] = {
     "Mains operation": "Grid Mode",
     "Battery operation": "Battery Mode",
+    # DessMonitor API sometimes reports "Inverter Operation" (issue #3) but older
+    # firmware still uses "Inverting operation", so normalize both spellings.
     "Inverting operation": "Off-grid Mode",
+    "Inverter Operation": "Off-grid Mode",
+    "Inverter operation": "Off-grid Mode",
     "PV operation": "Solar Mode",
     "Standby": "Standby",
     "Fault": "Fault",

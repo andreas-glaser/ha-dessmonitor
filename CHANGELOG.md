@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DessMonitor API and config flow now mask usernames, passwords, and tokens in logs and drop unused RC4 helper to avoid leaking sensitive data.
 - Sensor setup now applies devcode transformations before filtering supported types, preventing SRNE/POW-HVM data from being dropped when titles differ from the canonical names.
 
+### Fixed
+- devcode 2361 operating mode mapping now handles the "Inverter Operation" string reported by SRNE SR-EOV24 collectors so the mode appears in Home Assistant (#3).
+- Battery Energy Total (Charge/Discharge) sensors use the `measurement` state class to avoid Home Assistant Recorder warnings when devices report occasional counter decreases (#3).
+
 ## [1.5.0] - 2025-11-09
 
 ### Added

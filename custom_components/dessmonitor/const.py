@@ -476,14 +476,16 @@ SENSOR_TYPES = {
         "name": "Battery Energy Total (Charge)",
         "unit": UNITS["ENERGY"],
         "device_class": "energy",
-        "state_class": "total_increasing",
+        # Devices such as SRNE SR-EOV24 report occasional decreases,
+        # so treat as measurement to avoid HA Recorder warnings (issue #3).
+        "state_class": "measurement",
         "icon": "mdi:battery-plus",
     },
     "Battery Energy Total (Discharge)": {
         "name": "Battery Energy Total (Discharge)",
         "unit": UNITS["ENERGY"],
         "device_class": "energy",
-        "state_class": "total_increasing",
+        "state_class": "measurement",
         "icon": "mdi:battery-minus",
     },
     "PV Cumulative Power Generation": {
