@@ -20,6 +20,7 @@ CHARGER_PRIORITY_MAPPING: dict[str, str] = {}
 
 OPERATING_MODE_MAPPING: dict[str, str] = {
     "Grid-Tie": "Grid Mode",
+    "OffGrid": "Off-Grid Mode",
 }
 
 SENSOR_TITLE_MAPPINGS: dict[str, str] = {
