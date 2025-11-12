@@ -1,0 +1,11 @@
+services:
+  tests:
+    build:
+      context: ../..
+      dockerfile: tools/docker/Dockerfile.tests
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace
+    command: >
+      pytest --maxfail=1 --durations=10

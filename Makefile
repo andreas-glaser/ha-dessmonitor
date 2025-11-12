@@ -19,6 +19,10 @@ install:
 	@python3 -m venv .venv || true
 	@.venv/bin/pip install --upgrade pip
 	@.venv/bin/pip install black isort flake8 mypy
+	@if [ -f requirements_test.txt ]; then \
+		echo "Installing test dependencies..."; \
+		PIP_EXTRA_INDEX_URL="https://wheels.home-assistant.io/mypy-dev/" .venv/bin/pip install -r requirements_test.txt; \
+	fi
 	@echo "✅ Dependencies installed. Activate with: source .venv/bin/activate"
 
 # Format code
@@ -62,8 +66,14 @@ check:
 # Run tests
 test:
 	@echo "🧪 Running tests..."
-	@echo "Note: No test suite configured yet"
-	@echo ""
+	@.venv/bin/pytest
+	@echo "✅ Tests completed"
+
+.PHONY: test-docker
+test-docker:
+	@echo "🧪 Running tests inside Docker..."
+	@docker compose -f tools/docker/docker-compose.tests.yml build tests >/dev/null
+	@docker compose -f tools/docker/docker-compose.tests.yml run --rm tests
 
 # Clean temporary files
 clean:

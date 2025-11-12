@@ -1,0 +1,54 @@
+{
+  "collectors": [
+    {
+      "pn": "COLL-0001",
+      "alias": "Test Collector",
+      "projectname": "Test Plant",
+      "status": 1
+    }
+  ],
+  "devices": {
+    "COLL-0001": [
+      {
+        "sn": "INV-0001",
+        "alias": "Inverter 1",
+        "devcode": 2376,
+        "devaddr": 1,
+        "model": "POW-HVM6.2K-48V-LIP"
+      }
+    ]
+  },
+  "device_data": {
+    "INV-0001": [
+      {
+        "title": "Battery level SOC",
+        "val": 78,
+        "unit": "%",
+        "time": "2025-11-12T11:28:34Z"
+      },
+      {
+        "title": "Operating mode",
+        "val": "Line",
+        "time": "2025-11-12T11:28:34Z"
+      },
+      {
+        "title": "energyToday",
+        "val": 12.5,
+        "unit": "kWh",
+        "time": "2025-11-12T11:28:34Z"
+      }
+    ]
+  },
+  "summary": {
+    "INV-0001": {
+      "data": [
+        {
+          "title": "energyTotal",
+          "val": 3456.7,
+          "unit": "kWh",
+          "time": "2025-11-12T11:28:34Z"
+        }
+      ]
+    }
+  }
+}

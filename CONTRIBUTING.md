@@ -7,6 +7,7 @@ Thank you for your interest in contributing to the DessMonitor Home Assistant in
 - Commit Guide: `docs/COMMIT_GUIDE.md`
 - Release Guide: `docs/RELEASE_GUIDE.md`
 - Git/Branching & Tagging: `docs/GIT_GUIDE.md`
+- Testing Strategy & Architecture: `docs/TESTING_STRATEGY.md`
 
 ## 📋 Development Workflow
 
@@ -237,7 +238,7 @@ Before submitting a PR:
 1. **All GitHub Actions must pass:**
    - ✅ Hassfest validation
    - ✅ HACS validation  
-   - ✅ Tests (linting, formatting)
+   - ✅ Tests (linting, formatting, pytest suite)
 
 2. **Test your changes locally:**
    - Install in Home Assistant test environment
@@ -257,6 +258,7 @@ Run code quality checks before pushing:
 ```bash
 make check   # Run all checks without modifying code
 make format  # Auto-format code with Black and isort
+make test    # Run unit + integration tests (pytest)
 ```
 
 Or manually (see `docs/COMMIT_GUIDE.md` for details):
