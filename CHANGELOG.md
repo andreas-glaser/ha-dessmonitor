@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No changes yet._
+## [1.6.0] - 2025-11-17
+
+### Added
+- Documented the `known_inverters` metadata field across device support docs/templates so contributors can record which inverter models have been validated per devcode.
+- Device support for devcode 2361 (SRNE SR-EOV24-3.5K-5KWh) with sensor mappings and operating mode normalization (thanks to @pjJedi for the CLI analysis data).
+- Additional sensor definitions (inverter current, load apparent power, PV/inverter radiator temperatures, battery energy charge/discharge counters, accumulated mains load energy, daily/total battery amp-hours, etc.) so devcode-specific mappings can surface the extended telemetry in Home Assistant.
+- CLI `analyze` command now pulls control-field metadata and live parameter values so contributors can map diagnostics/configuration sensors without manually querying the API.
+
+### Changed
+- README device-support section now explicitly lists the confirmed inverter pairing for devcodes 2376 (POW-HVM6.2K-48V-LIP) and 6422 (Must PH19-6048 EXP) and clarifies how the generic fallback behaves.
+- DessMonitor API and config flow now mask usernames, passwords, and tokens in logs and drop unused RC4 helper to avoid leaking sensitive data.
+- Sensor setup now applies devcode transformations before filtering supported types, preventing SRNE/POW-HVM data from being dropped when titles differ from the canonical names.
+
+### Fixed
+- devcode 2361 operating mode mapping now handles the "Inverter Operation" string reported by SRNE SR-EOV24 collectors so the mode appears in Home Assistant (#3).
+- Battery Energy Total (Charge/Discharge) sensors use the `measurement` state class to avoid Home Assistant Recorder warnings when devices report occasional counter decreases (#3).
 
 ## [1.5.0] - 2025-11-09
 
@@ -242,13 +257,13 @@ _No changes yet._
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.10...v1.5.0
 [1.4.10]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.9...v1.4.10
 [1.4.9]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.6...v1.4.7
-[1.4.6]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.5...v1.4.6
 [1.4.6]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.3...v1.4.4

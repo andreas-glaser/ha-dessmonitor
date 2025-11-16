@@ -19,6 +19,11 @@ DEVICE_INFO = {
     "name": "Your Data Collector Model (devcode XXXX)",
     "description": "Description of your data collector/gateway device",
     "manufacturer": "DessMonitor",  # or actual manufacturer
+    "known_inverters": [
+        # Optional: list confirmed inverter models this devcode has been tested with
+        # "Example Inverter Model 1",
+        # "Example Inverter Model 2",
+    ],
     "supported_features": [
         # List features your device supports - common options:
         "real_time_monitoring",

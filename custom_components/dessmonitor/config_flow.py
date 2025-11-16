@@ -26,6 +26,15 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+
+def _mask_username(value: str) -> str:
+    """Mask usernames in logs to protect user identities."""
+    value = value.strip()
+    if len(value) <= 3:
+        return "***"
+    return f"{value[:3]}***"
+
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): vol.All(str, vol.Length(min=1, max=100)),
@@ -51,7 +60,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     _LOGGER.debug(
         "Validating input for user: %s, interval: %ds",
-        username[:3] + "***" if len(username) > 3 else "***",
+        _mask_username(username),
         update_interval,
     )
 
@@ -67,17 +76,22 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         _LOGGER.debug("Attempting authentication during config validation")
         success = await api.authenticate()
         if not success:
-            _LOGGER.error("Authentication returned False for user: %s", username)
+            _LOGGER.error(
+                "Authentication returned False for user: %s",
+                _mask_username(username),
+            )
             raise InvalidAuth("Authentication failed")
 
         _LOGGER.debug("Authentication successful, fetching collectors")
         collectors, _projects = await api.get_collectors()
         if not collectors:
-            _LOGGER.error("No collectors found for user: %s", username)
+            _LOGGER.error("No collectors found for user: %s", _mask_username(username))
             raise CannotConnect("No collectors found")
 
         _LOGGER.info(
-            "Validation successful: user=%s, collectors=%d", username, len(collectors)
+            "Validation successful: user=%s, collectors=%d",
+            _mask_username(username),
+            len(collectors),
         )
         return {
             "title": f"DessMonitor ({username})",
@@ -91,7 +105,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise CannotConnect from err
     except Exception as err:
         _LOGGER.exception(
-            "Unexpected exception during validation for user %s: %s", username, err
+            "Unexpected exception during validation for user %s: %s",
+            _mask_username(username),
+            err,
         )
         raise CannotConnect from err
 
@@ -110,7 +126,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         if user_input is not None:
             username = user_input[CONF_USERNAME]
-            _LOGGER.debug("Processing config flow for user: %s", username)
+            _LOGGER.debug(
+                "Processing config flow for user: %s", _mask_username(username)
+            )
 
             try:
                 info = await validate_input(self.hass, user_input)
@@ -123,12 +141,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 errors["base"] = "invalid_auth"
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception(
-                    "Unexpected exception in config flow for user %s: %s", username, err
+                    "Unexpected exception in config flow for user %s: %s",
+                    _mask_username(username),
+                    err,
                 )
                 errors["base"] = "unknown"
             else:
                 _LOGGER.debug(
-                    "Setting unique ID and creating config entry for: %s", username
+                    "Setting unique ID and creating config entry for: %s",
+                    _mask_username(username),
                 )
                 await self.async_set_unique_id(username)
                 self._abort_if_unique_id_configured()

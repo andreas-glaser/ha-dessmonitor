@@ -354,7 +354,7 @@ class DessMonitorCLI:
         except Exception as e:
             # If direct query fails, try with minimal params
             logger.debug(f"Direct query failed: {e}, trying alternative endpoints")
-            
+
             # Try alternative endpoint for device info
             try:
                 response = await self._make_request("queryDeviceInfo", {"sn": device_sn})
@@ -368,6 +368,86 @@ class DessMonitorCLI:
             
             # If all else fails, raise original error
             raise Exception(f"Unable to retrieve data for device {device_sn}")
+
+    async def get_device_control_fields(
+        self, pn: str, devcode: int, devaddr: int, device_sn: str
+    ) -> Dict[str, Any]:
+        """Return control/parameter metadata (queryDeviceCtrlField)."""
+        params = {
+            "i18n": "en_US",
+            "source": "1",
+            "pn": pn,
+            "devcode": devcode,
+            "devaddr": devaddr,
+            "sn": device_sn,
+        }
+
+        response = await self._make_request("queryDeviceCtrlField", params)
+        control_data = response.get("dat", {})
+        fields = control_data.get("field", [])
+
+        formatted: Dict[str, Any] = {}
+        for field in fields:
+            name = field.get("name", "")
+            if not name:
+                continue
+
+            entry: Dict[str, Any] = {
+                "id": field.get("id"),
+                "type": "value",
+            }
+
+            items = field.get("item") or []
+            if items:
+                entry["type"] = "options"
+                options = {}
+                for item in items:
+                    key = item.get("key")
+                    val = item.get("val")
+                    if key is not None:
+                        options[str(key)] = val
+                entry["options"] = options
+
+            formatted[name] = entry
+
+        logger.debug(
+            "Collected %d control fields for device %s", len(formatted), device_sn
+        )
+        return formatted
+
+    async def get_device_parameters(
+        self, pn: str, devcode: int, devaddr: int, device_sn: str
+    ) -> Dict[str, Any]:
+        """Return device parameters (queryDeviceParsEs)."""
+        params = {
+            "i18n": "en_US",
+            "source": "1",
+            "pn": pn,
+            "devcode": devcode,
+            "devaddr": devaddr,
+            "sn": device_sn,
+        }
+
+        response = await self._make_request("queryDeviceParsEs", params)
+        param_data = response.get("dat", {})
+        parameters = param_data.get("parameter", [])
+
+        formatted: Dict[str, Any] = {}
+        for param in parameters:
+            name = param.get("name")
+            if not name:
+                continue
+
+            formatted[name] = {
+                "value": param.get("val"),
+                "unit": param.get("unit"),
+                "id": param.get("par"),
+            }
+
+        logger.debug(
+            "Collected %d parameters for device %s", len(formatted), device_sn
+        )
+        return formatted
 
     async def get_sp_key_parameters(self, device_sn: str) -> Dict[str, Any]:
         """Query SP key parameters (querySPKeyParameters) for a device.
@@ -629,6 +709,57 @@ DEVCODE_CONFIG = {
                     sensor_analysis["output_priorities"][priority_val] = sensor_analysis["output_priorities"].get(priority_val, 0) + 1
                 elif "charg" in title_lower:
                     sensor_analysis["charger_priorities"][priority_val] = sensor_analysis["charger_priorities"].get(priority_val, 0) + 1
+
+        control_entries: List[Dict[str, Any]] = []
+        parameter_entries: List[Dict[str, Any]] = []
+        if device_lookup:
+            pn = device_lookup.get("pn")
+            devaddr = device_lookup.get("devaddr")
+            devcode_lookup = device_lookup.get("devcode")
+            if pn and devaddr and devcode_lookup is not None:
+                try:
+                    raw_controls = await self.get_device_control_fields(
+                        pn, devcode_lookup, devaddr, device_sn
+                    )
+                    control_entries = sorted(
+                        [
+                            {
+                                "name": name,
+                                "type": details.get("type", "value"),
+                                "id": details.get("id"),
+                                "options": details.get("options"),
+                            }
+                            for name, details in raw_controls.items()
+                        ],
+                        key=lambda item: item["name"],
+                    )
+                except Exception as err:
+                    logger.warning(
+                        "Failed to fetch control fields for %s: %s", device_sn, err
+                    )
+
+                try:
+                    raw_parameters = await self.get_device_parameters(
+                        pn, devcode_lookup, devaddr, device_sn
+                    )
+                    parameter_entries = sorted(
+                        [
+                            {
+                                "name": name,
+                                "value": details.get("value"),
+                                "unit": details.get("unit"),
+                                "id": details.get("id"),
+                            }
+                            for name, details in raw_parameters.items()
+                        ],
+                        key=lambda item: item["name"],
+                    )
+                except Exception as err:
+                    logger.warning(
+                        "Failed to fetch device parameters for %s: %s",
+                        device_sn,
+                        err,
+                    )
         
         # Convert to sorted lists and prepare mappings
         analysis_result = {
@@ -642,7 +773,11 @@ DEVCODE_CONFIG = {
             "sensor_titles": sorted(sensor_analysis["unique_sensors"]),
             "potential_typos": sensor_analysis["potential_typos"],
             "unit_patterns": {k: list(set(v))[:3] for k, v in sensor_analysis["unit_patterns"].items()},  # Show sample units
-            "sample_data": sensor_analysis["sensor_titles"][:20]  # First 20 samples for better context
+            "sample_data": sensor_analysis["sensor_titles"][:20],  # First 20 samples for better context
+            "control_field_count": len(control_entries),
+            "control_fields": control_entries,
+            "parameter_count": len(parameter_entries),
+            "parameters": parameter_entries,
         }
         
         logger.info(f"Analysis complete for devcode {devcode}")

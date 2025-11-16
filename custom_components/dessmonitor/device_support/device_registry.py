@@ -26,12 +26,16 @@ def _register_devcode(devcode: int, config: dict[str, Any]) -> None:
 def _load_device_configurations() -> None:
     """Load all device configurations from devcode files."""
     try:
+        # Import devcode 2361 configuration
+        from .devcode_2361 import DEVCODE_CONFIG as config_2361
+
+        _register_devcode(2361, config_2361)
+
         # Import devcode 2376 configuration
         from .devcode_2376 import DEVCODE_CONFIG as config_2376
 
         _register_devcode(2376, config_2376)
 
-        # Future devcode imports would go here:
         from .devcode_6422 import DEVCODE_CONFIG as config_6422
 
         _register_devcode(6422, config_6422)
