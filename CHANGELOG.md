@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2025-11-17
+
 ### Added
 - Documented the `known_inverters` metadata field across device support docs/templates so contributors can record which inverter models have been validated per devcode.
 - Device support for devcode 2361 (SRNE SR-EOV24-3.5K-5KWh) with sensor mappings and operating mode normalization (thanks to @pjJedi for the CLI analysis data).
@@ -255,13 +257,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.10...v1.5.0
 [1.4.10]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.9...v1.4.10
 [1.4.9]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.6...v1.4.7
-[1.4.6]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.5...v1.4.6
 [1.4.6]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.3...v1.4.4
