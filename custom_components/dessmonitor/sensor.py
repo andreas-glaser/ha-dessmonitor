@@ -68,11 +68,13 @@ def _match_sensor_definition(candidate: str | None) -> str | None:
     if not candidate:
         return None
 
-    if candidate in SENSOR_TYPES:
+    sensor_types = cast(dict[str, dict[str, Any]], SENSOR_TYPES)
+
+    if candidate in sensor_types:
         return candidate
 
     normalized = candidate.strip().lower()
-    for key, config in SENSOR_TYPES.items():
+    for key, config in sensor_types.items():
         if key.strip().lower() == normalized:
             return key
 
@@ -132,86 +134,95 @@ async def async_setup_entry(
 
     entities = []
 
-    if coordinator.data:
-        _LOGGER.debug("Processing sensor data for %d devices", len(coordinator.data))
+    if not coordinator.data:
+        _LOGGER.debug("No coordinator data available; skipping sensor setup")
+        return
 
-        for device_sn, device_info in coordinator.data.items():
-            device_data = device_info.get("data", [])
-            device_meta = device_info.get("device", {})
-            collector_meta = device_info.get("collector", {})
+    if not isinstance(coordinator.data, dict):
+        _LOGGER.warning(
+            "Unexpected coordinator data type %s; skipping sensor setup",
+            type(coordinator.data),
+        )
+        return
 
-            _LOGGER.debug(
-                "Processing device %s with %d data points", device_sn, len(device_data)
-            )
+    coordinator_data = cast(dict[str, dict[str, Any]], coordinator.data)
+    _LOGGER.debug("Processing sensor data for %d devices", len(coordinator_data))
 
-            seen_sensors = set()
-            supported_sensors = 0
-            duplicate_sensors = 0
+    for device_sn, raw_device_info in coordinator_data.items():
+        device_info = cast(dict[str, Any], raw_device_info)
+        device_data = device_info.get("data", [])
+        device_meta = device_info.get("device", {})
+        collector_meta = device_info.get("collector", {})
 
-            devcode = _normalize_devcode(device_meta.get("devcode"))
-            devcode_supported = is_devcode_supported(devcode) if devcode else False
+        _LOGGER.debug(
+            "Processing device %s with %d data points", device_sn, len(device_data)
+        )
 
-            for data_point in device_data:
-                original_title = data_point.get("title")
-                transformed_title = original_title
+        seen_sensors = set()
+        supported_sensors = 0
+        duplicate_sensors = 0
 
-                if devcode_supported:
-                    transformed_title = apply_devcode_transformations(
-                        devcode, data_point.copy()
-                    ).get("title", transformed_title)
+        devcode = _normalize_devcode(device_meta.get("devcode"))
+        devcode_supported = devcode is not None and is_devcode_supported(devcode)
 
-                sensor_type = _resolve_sensor_type(original_title, transformed_title)
-                if not sensor_type:
-                    _LOGGER.debug(
-                        "Unsupported sensor type(s) for device %s: original='%s', transformed='%s'",
-                        device_sn,
-                        original_title,
-                        transformed_title,
-                    )
-                    continue
+        for data_point in device_data:
+            original_title = data_point.get("title")
+            transformed_title = original_title
 
-                sensor_key = f"{device_sn}_{sensor_type}"
-                if sensor_key in seen_sensors:
-                    duplicate_sensors += 1
-                    _LOGGER.warning(
-                        "Duplicate sensor detected: %s for device %s",
-                        sensor_type,
-                        device_sn,
-                    )
-                    continue
+            if devcode_supported and devcode is not None:
+                transformed_title = apply_devcode_transformations(
+                    devcode, data_point.copy()
+                ).get("title", transformed_title)
 
-                seen_sensors.add(sensor_key)
-                source_titles = _build_source_title_set(
-                    sensor_type, original_title, transformed_title
-                )
-                entities.append(
-                    DessMonitorSensor(
-                        coordinator=coordinator,
-                        device_sn=device_sn,
-                        device_meta=device_meta,
-                        collector_meta=collector_meta,
-                        sensor_type=sensor_type,
-                        data_point=data_point,
-                        source_titles=source_titles,
-                    )
-                )
-                supported_sensors += 1
+            sensor_type = _resolve_sensor_type(original_title, transformed_title)
+            if not sensor_type:
                 _LOGGER.debug(
-                    "Created sensor: %s for device %s (aliases: %s)",
+                    "Unsupported sensor type(s) for device %s: original='%s', transformed='%s'",
+                    device_sn,
+                    original_title,
+                    transformed_title,
+                )
+                continue
+
+            sensor_key = f"{device_sn}_{sensor_type}"
+            if sensor_key in seen_sensors:
+                duplicate_sensors += 1
+                _LOGGER.warning(
+                    "Duplicate sensor detected: %s for device %s",
                     sensor_type,
                     device_sn,
-                    ", ".join(sorted(source_titles)),
                 )
+                continue
 
-            _LOGGER.info(
-                "Device %s: created %d sensors, skipped %d duplicates",
+            seen_sensors.add(sensor_key)
+            source_titles = _build_source_title_set(
+                sensor_type, original_title, transformed_title
+            )
+            entities.append(
+                DessMonitorSensor(
+                    coordinator=coordinator,
+                    device_sn=device_sn,
+                    device_meta=device_meta,
+                    collector_meta=collector_meta,
+                    sensor_type=sensor_type,
+                    data_point=data_point,
+                    source_titles=source_titles,
+                )
+            )
+            supported_sensors += 1
+            _LOGGER.debug(
+                "Created sensor: %s for device %s (aliases: %s)",
+                sensor_type,
                 device_sn,
-                supported_sensors,
-                duplicate_sensors,
+                ", ".join(sorted(source_titles)),
             )
 
-    else:
-        _LOGGER.warning("No device data available for sensor setup")
+        _LOGGER.info(
+            "Device %s: created %d sensors, skipped %d duplicates",
+            device_sn,
+            supported_sensors,
+            duplicate_sensors,
+        )
 
     _LOGGER.info("Adding %d total sensors to Home Assistant", len(entities))
     async_add_entities(entities, True)
