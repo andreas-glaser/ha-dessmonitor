@@ -59,25 +59,9 @@ async def async_setup_entry(
             )
             continue
 
-        try:
-            controls = await coordinator.api.get_device_control_fields(
-                pn, devcode, devaddr, device_sn
-            )
-        except Exception as err:
-            _LOGGER.warning(
-                "Failed to fetch control fields for device %s: %s", device_sn, err
-            )
-            continue
-
-        try:
-            current_params = await coordinator.api.get_device_parameters(
-                pn, devcode, devaddr, device_sn
-            )
-        except Exception as err:
-            _LOGGER.warning(
-                "Failed to fetch current parameters for device %s: %s", device_sn, err
-            )
-            current_params = {}
+        controls, current_params = await coordinator.async_get_controls_and_params(
+            pn, devcode, devaddr, device_sn
+        )
 
         for name, config in controls.items():
             if config.get("type") != "value":

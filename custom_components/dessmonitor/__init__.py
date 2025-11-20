@@ -166,12 +166,40 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialize."""
         self.api = api
+        self.ctrl_field_cache: dict[str, dict[str, Any]] = {}
+        self.param_cache: dict[str, dict[str, Any]] = {}
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=update_interval),
         )
+
+    async def async_get_controls_and_params(
+        self, pn: str, devcode: int, devaddr: int, sn: str
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Get control fields and parameters with caching to avoid redundant API calls."""
+        if sn not in self.ctrl_field_cache:
+            try:
+                self.ctrl_field_cache[sn] = await self.api.get_device_control_fields(
+                    pn, devcode, devaddr, sn
+                )
+            except Exception as err:
+                _LOGGER.warning(
+                    "Failed to fetch control fields for device %s: %s", sn, err
+                )
+                self.ctrl_field_cache[sn] = {}
+
+        if sn not in self.param_cache:
+            try:
+                self.param_cache[sn] = await self.api.get_device_parameters(
+                    pn, devcode, devaddr, sn
+                )
+            except Exception as err:
+                _LOGGER.warning("Failed to fetch parameters for device %s: %s", sn, err)
+                self.param_cache[sn] = {}
+
+        return self.ctrl_field_cache[sn], self.param_cache[sn]
 
     async def _async_update_data(self):
         """Update data via library."""
