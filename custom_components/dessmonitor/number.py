@@ -136,24 +136,30 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
                     self._attr_unique_id,
                 )
 
-        # Guess min/max based on unit/name if possible, otherwise use generous defaults
-        # These defaults might need tuning based on specific parameter types
-        if unit == "V":
-            self._attr_native_min_value = 0
-            self._attr_native_max_value = 500
-            self._attr_native_step = 0.1
-        elif unit == "A":
-            self._attr_native_min_value = 0
-            self._attr_native_max_value = 200
-            self._attr_native_step = 0.1
-        elif unit == "%":
-            self._attr_native_min_value = 0
-            self._attr_native_max_value = 100
-            self._attr_native_step = 1
-        else:
-            self._attr_native_min_value = 0
-            self._attr_native_max_value = 1000
-            self._attr_native_step = 1
+        self._update_from_coordinator()
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._update_from_coordinator()
+        super()._handle_coordinator_update()
+
+    def _update_from_coordinator(self) -> None:
+        """Update state from coordinator data."""
+        if not self.coordinator.data:
+            return
+
+        device_info = self.coordinator.data.get(self._device_sn)
+        if not device_info:
+            return
+
+        device_data = device_info.get("data", [])
+        for point in device_data:
+            if point.get("title") == self._param_name:
+                try:
+                    self._attr_native_value = float(point.get("val"))
+                    return
+                except (ValueError, TypeError):
+                    pass
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""

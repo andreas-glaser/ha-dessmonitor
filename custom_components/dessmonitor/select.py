@@ -131,6 +131,39 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
             # We need to map it to the display string (e.g., "Utility First")
             self._attr_current_option = self._value_to_option.get(str(initial_value))
 
+        self._update_from_coordinator()
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._update_from_coordinator()
+        super()._handle_coordinator_update()
+
+    def _update_from_coordinator(self) -> None:
+        """Update state from coordinator data."""
+        if not self.coordinator.data:
+            return
+
+        device_info = self.coordinator.data.get(self._device_sn)
+        if not device_info:
+            return
+
+        device_data = device_info.get("data", [])
+        for point in device_data:
+            # The 'title' in the data stream matches the Friendly Name (e.g., "Output priority")
+            if point.get("title") == self._param_name:
+                raw_value = point.get("val")
+                
+                # If the value from the stream matches one of our options (display text), use it directly
+                if raw_value in self._attr_options:
+                     self._attr_current_option = raw_value
+                     return
+                
+                # If it matches a key (e.g. "0"), map it
+                mapped = self._value_to_option.get(str(raw_value))
+                if mapped:
+                    self._attr_current_option = mapped
+                    return
+
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         api_value = self._option_to_value.get(option)
