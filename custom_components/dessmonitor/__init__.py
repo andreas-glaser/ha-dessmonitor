@@ -17,7 +17,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .api import DessMonitorAPI, DessMonitorError
 from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+    Platform.SELECT,
+]
 
 _LOGGER = logging.getLogger(__name__)
 
