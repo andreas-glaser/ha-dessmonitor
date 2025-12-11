@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Support for devcode 2451 (Axpert MKS IV 5600VA) with sensor mappings and priority normalization (#5, thanks to @FifoTheHein for the CLI analysis data).
 
+### Fixed
+- Treat placeholder string values (e.g., "-"/"n/a") as unavailable so HA numeric sensors don't raise errors when PV readings are missing.
+- Deduplicate summary energy sensors by mapping titles, preventing duplicate Energy Today/Total entities when summary data overlaps with device data.
+
 ## [1.6.0] - 2025-11-17
 
 ### Added
