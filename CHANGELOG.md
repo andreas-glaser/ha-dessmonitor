@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Support for devcode 2451 (Axpert MKS IV 5600VA) with sensor mappings and priority normalization (#5).
+
 ## [1.6.0] - 2025-11-17
 
 ### Added

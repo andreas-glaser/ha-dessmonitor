@@ -8,6 +8,7 @@ This directory contains collector-specific mappings and configurations for diffe
 
 - **devcode 2361**: DessMonitor collector paired with SRNE SR-EOV24-3.5K-5KWh
 - **devcode 2376**: Standard DessMonitor Data Collector (known to pair with POW-HVM6.2K-48V-LIP)
+- **devcode 2451**: DessMonitor collector paired with Axpert MKS IV 5600VA
 - **devcode 6422**: Must PH19 data collector (PH19-6048 EXP and similar)
 
 ### Device Metadata
