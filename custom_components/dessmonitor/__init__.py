@@ -16,10 +16,23 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
+from .device_support import is_devcode_supported, map_sensor_title
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _normalize_devcode(value: Any) -> int | None:
+    """Normalize raw devcode payloads to integers when possible."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -277,15 +290,36 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             if not summary_points:
                 continue
 
+            device_meta = device_info.get("device", {})
+            devcode = _normalize_devcode(device_meta.get("devcode"))
+            devcode_supported = devcode is not None and is_devcode_supported(devcode)
+
             existing_data = device_info["data"]
             existing_titles = {
                 point.get("title") for point in existing_data if point.get("title")
             }
 
+            # Also track mapped titles so "Today generation" and "energyToday"
+            # are treated as the same sensor and avoid duplicate entity warnings.
+            mapped_titles = set()
+            if devcode_supported:
+                mapped_titles = {
+                    map_sensor_title(devcode, title)
+                    for title in existing_titles
+                    if title
+                }
+            existing_titles.update({title for title in mapped_titles if title})
+
             unique_summary_points = [
                 point
                 for point in summary_points
-                if point.get("title") and point.get("title") not in existing_titles
+                if point.get("title")
+                and point.get("title") not in existing_titles
+                and (
+                    not devcode_supported
+                    or map_sensor_title(devcode, point.get("title"))
+                    not in existing_titles
+                )
             ]
 
             if not unique_summary_points:
