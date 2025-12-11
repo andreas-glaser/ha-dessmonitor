@@ -187,7 +187,7 @@ async def async_setup_entry(
             sensor_key = f"{device_sn}_{sensor_type}"
             if sensor_key in seen_sensors:
                 duplicate_sensors += 1
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "Duplicate sensor detected: %s for device %s",
                     sensor_type,
                     device_sn,
