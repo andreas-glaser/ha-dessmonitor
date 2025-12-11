@@ -451,6 +451,27 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if value in (None, ""):
             return value
 
+        if isinstance(value, str):
+            stripped_value = value.strip()
+
+            # DessMonitor sometimes returns "-" (or similar placeholders) when a value is
+            # not available. Treat these as unknown to avoid HA numeric parsing errors.
+            placeholder_values = {"-", "--", "—"}
+            if stripped_value in placeholder_values or stripped_value.lower() in {
+                "n/a",
+                "na",
+                "null",
+                "none",
+            }:
+                _LOGGER.debug(
+                    "Treating placeholder value as None for sensor %s: %s",
+                    self._attr_unique_id,
+                    value,
+                )
+                return None
+
+            value = stripped_value if stripped_value else value
+
         try:
             numeric_value = float(value)
             _LOGGER.debug(
@@ -467,7 +488,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
                 value,
                 err,
             )
-            return str(value) if value is not None else None
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
