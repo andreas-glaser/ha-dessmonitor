@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Treat placeholder string values (e.g., "-"/"n/a") as unavailable so HA numeric sensors don't raise errors when PV readings are missing.
 - Deduplicate summary energy sensors by mapping titles, preventing duplicate Energy Today/Total entities when summary data overlaps with device data.
+- Lower duplicate sensor log level to DEBUG to reduce noise when duplicate titles are safely skipped.
 
 ## [1.6.0] - 2025-11-17
 
