@@ -27,7 +27,7 @@ OPERATING_MODE_MAPPING: dict[str, str] = {
 SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "work state": "Operating mode",
     "Grid frequency": "Grid Frequency",
-    "Inverter frequency": "Output frequency",
+    "Inverter frequency": "Output Frequency",
     "Batt Current": "Battery Current",
     "batt power": "Battery Power",
 }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Support for devcode 2449 (EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V) with sensor mappings, priority normalization, and operating mode handling (#6, thanks to @TheJudge01 and @mielune for the CLI analysis data).
+- New sensor definitions: Battery Charging Current, Battery Discharge Current, State of Charge, Output Frequency, Energy Today, Energy Total.
+
+### Fixed
+- Standardized sensor title casing across all devcode files (Output Frequency, State of Charge, Energy Today/Total now have proper SENSOR_TYPES metadata).
+
 ## [1.7.0] - 2025-12-11
 
 ### Added
