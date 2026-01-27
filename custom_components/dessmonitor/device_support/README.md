@@ -6,6 +6,7 @@ This directory contains collector-specific mappings and configurations for diffe
 
 ## Currently Supported Collectors
 
+- **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
 - **devcode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
 - **devcode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V

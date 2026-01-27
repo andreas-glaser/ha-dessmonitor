@@ -406,6 +406,7 @@ The integration now includes an extensible device support system:
 - **Metadata Tracking**: Device configs list confirmed inverter models via `known_inverters` when available
 
 ### Current Device Support
+- **DevCode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **DevCode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
 - **DevCode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
 - **DevCode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
