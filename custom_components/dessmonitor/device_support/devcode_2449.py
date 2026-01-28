@@ -1,12 +1,12 @@
-"""DessMonitor Data Collector (devcode 2451)"""
+"""DessMonitor Data Collector (devcode 2449)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 2451)",
+    "name": "DessMonitor Data Collector (devcode 2449)",
     "description": "DessMonitor data collector/gateway",
     "manufacturer": "DessMonitor",
-    "known_inverters": ["Axpert MKS IV 5600VA"],
+    "known_inverters": ["EASUN 8KWA", "EASUN 11KWA", "WKS Evo MAX II 10kVA 48V"],
     "supported_features": [
         "real_time_monitoring",
         "energy_tracking",
@@ -23,19 +23,28 @@ OUTPUT_PRIORITY_MAPPING: dict[str, str] = {
 }
 
 CHARGER_PRIORITY_MAPPING: dict[str, str] = {
-    "Utility First": "Utility First",
     "Solar First": "PV First",
     "Solar + Utility": "PV Is At The Same Level As Utility",
     "Only Solar Charging Permitted": "Only PV",
 }
 
-OPERATING_MODE_MAPPING: dict[str, str] = {}
+OPERATING_MODE_MAPPING: dict[str, str] = {
+    "Mains operation": "Grid Mode",
+    "Line Mode": "Grid Mode",
+    "Battery operation": "Battery Mode",
+    "Inverting operation": "Off-grid Mode",
+    "Inverter Operation": "Off-grid Mode",
+    "Inverter operation": "Off-grid Mode",
+    "PV operation": "Solar Mode",
+    "Standby": "Standby",
+    "Inverter Fault": "Fault",
+}
 
 SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "AC Output Active Power": "Output Active Power",
-    "AC1 Output Apparent Power": "Output Apparent Power",
-    "AC1 Output Frequency": "Output Frequency",
-    "AC1 Output Voltage": "Output Voltage",
+    "AC Output Apparent Power": "Output Apparent Power",
+    "AC Output Frequency": "Output Frequency",
+    "AC Output Voltage": "Output Voltage",
     "Battery Capacity": "State of Charge",
     "Output Load Percent": "Load Percent",
     "Output Source Priority": "Output priority",

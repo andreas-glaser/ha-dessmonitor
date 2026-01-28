@@ -301,8 +301,8 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Also track mapped titles so "Today generation" and "energyToday"
             # are treated as the same sensor and avoid duplicate entity warnings.
-            mapped_titles = set()
-            if devcode_supported:
+            mapped_titles: set[str | None] = set()
+            if devcode_supported and devcode is not None:
                 mapped_titles = {
                     map_sensor_title(devcode, title)
                     for title in existing_titles
@@ -317,6 +317,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 and point.get("title") not in existing_titles
                 and (
                     not devcode_supported
+                    or devcode is None
                     or map_sensor_title(devcode, point.get("title"))
                     not in existing_titles
                 )
