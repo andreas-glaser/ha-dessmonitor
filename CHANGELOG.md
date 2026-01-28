@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-01-28
+
 ### Added
 - Support for devcode 2334 (EASUN 6.2KW Hybrid Solar Inverter) with sensor mappings and priority normalization (#8, thanks to @AndyTempleman for the CLI analysis data).
 - Support for devcode 2449 (EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V) with sensor mappings, priority normalization, and operating mode handling (#6, thanks to @TheJudge01 and @mielune for the CLI analysis data).
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Standardized sensor title casing across all devcode files (Output Frequency, State of Charge, Energy Today/Total now have proper SENSOR_TYPES metadata).
+- Resolved mypy type errors in data coordinator for devcode type narrowing.
 
 ## [1.7.0] - 2025-12-11
 
@@ -275,7 +278,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.10...v1.5.0

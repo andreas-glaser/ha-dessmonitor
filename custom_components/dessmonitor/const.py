@@ -3,7 +3,7 @@
 from typing import Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "1.7.0"
+VERSION: Final = "1.8.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
