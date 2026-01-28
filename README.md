@@ -412,6 +412,7 @@ The integration now includes an extensible device support system:
 - **DevCode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
 - **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
+- **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support
