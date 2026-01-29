@@ -57,6 +57,7 @@ SENSOR_TITLE_MAPPINGS = {
     "PV Charge Power": "Solar Charging Power",
     "AC charging power": "Grid Charging Power",
     "Battery Power": "Battery Power",
+    "Battery percentage": "State of Charge",
 }
 
 VALUE_TRANSFORMATIONS: dict = {
