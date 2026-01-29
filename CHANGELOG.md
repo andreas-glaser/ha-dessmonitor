@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Added missing "Battery percentage" → "State of Charge" sensor mapping for devcode 2376 so the SOC sensor now appears for POW-HVM6.2K-48V-LIP devices (#12, thanks to @baziliolg for reporting and providing analysis data).
+- Graceful per-device error handling: a single device returning `ERR_NO_RECORD` (API error 12) no longer blocks all other devices from loading. Failed devices are skipped with a warning log, and `UpdateFailed` is only raised when every collector fails.
 
 ## [1.8.0] - 2026-01-28
 

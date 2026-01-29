@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
@@ -193,12 +193,16 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 "Data update completed successfully: %d devices total", len(data)
             )
             return data
+        except UpdateFailed:
+            raise
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error(
                 "Error communicating with DessMonitor API during update: %s", err
             )
             _LOGGER.debug("Data update error details", exc_info=True)
-            raise
+            raise UpdateFailed(
+                f"Error communicating with DessMonitor API: {err}"
+            ) from err
 
     async def _fetch_collectors(self) -> list[dict[str, Any]]:
         """Fetch list of collectors from the API."""
@@ -212,6 +216,8 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> dict[str, Any]:
         """Collect last known data for all devices."""
         data: dict[str, Any] = {}
+        errors: list[str] = []
+
         for index, collector in enumerate(collectors, start=1):
             collector_id = collector["pn"]
             _LOGGER.debug(
@@ -221,8 +227,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 collector_id,
             )
 
-            collector_devices = await self._fetch_devices_for_collector(collector)
+            try:
+                collector_devices = await self._fetch_devices_for_collector(collector)
+            except DessMonitorError as err:
+                _LOGGER.warning("Skipping collector %s: %s", collector_id, err)
+                errors.append(f"{collector_id}: {err}")
+                continue
+
             data.update(collector_devices)
+
+        if not data and errors:
+            raise UpdateFailed(f"All collectors failed: {'; '.join(errors)}")
 
         return data
 
@@ -247,7 +262,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 device["devaddr"],
             )
 
-            last_data = await self._fetch_device_last_data(collector_id, device)
+            try:
+                last_data = await self._fetch_device_last_data(collector_id, device)
+            except DessMonitorError as err:
+                _LOGGER.warning(
+                    "Skipping device %s (collector %s): %s",
+                    device_sn,
+                    collector_id,
+                    err,
+                )
+                continue
+
             device_data[device_sn] = {
                 "collector": collector,
                 "device": device,
