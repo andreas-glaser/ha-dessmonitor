@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Support for devcode 6544 (ANENJI ANJ-HHS-11KW-48V) with sensor mappings, operating mode normalization, and split-phase output support (#11, thanks to @blihtar for the CLI analysis data).
 
+### Fixed
+- Added missing "Battery percentage" → "State of Charge" sensor mapping for devcode 2376 so the SOC sensor now appears for POW-HVM6.2K-48V-LIP devices (#12, thanks to @baziliolg for reporting and providing analysis data).
+
 ## [1.8.0] - 2026-01-28
 
 ### Added
