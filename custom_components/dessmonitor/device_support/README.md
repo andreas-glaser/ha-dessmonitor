@@ -12,6 +12,7 @@ This directory contains collector-specific mappings and configurations for diffe
 - **devcode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
+- **devcode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **devcode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
 
 ### Device Metadata

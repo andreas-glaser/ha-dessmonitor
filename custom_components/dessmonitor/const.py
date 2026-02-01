@@ -293,6 +293,13 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:thermometer",
     },
+    "PV Temperature": {
+        "name": "PV Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
     "Inverter Heat Sink Temperature": {
         "name": "Inverter Heat Sink Temperature",
         "unit": UNITS["TEMPERATURE"],

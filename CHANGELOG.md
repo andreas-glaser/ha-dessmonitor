@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for devcode 6515 (ANENJI ANJ-HHS-11KW-48V-WIFI) with sensor mappings, operating mode normalization, and PV temperature support (#13, thanks to @dekov3 for the CLI analysis data).
 - Support for devcode 6544 (ANENJI ANJ-HHS-11KW-48V) with sensor mappings, operating mode normalization, and split-phase output support (#11, thanks to @blihtar for the CLI analysis data).
 
 ### Fixed
