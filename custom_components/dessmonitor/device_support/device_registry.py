@@ -258,6 +258,19 @@ def get_device_capabilities(devcode: int) -> list[str]:
     return []
 
 
+def get_parameter_sensor_names(devcode: int) -> set[str]:
+    """Return the set of parameter names to fetch from queryDeviceParsEs."""
+    config = get_devcode_config(devcode)
+    if config:
+        return config.get("parameter_sensor_names", set())
+    return set()
+
+
+def needs_parameter_fetch(devcode: int) -> bool:
+    """Check whether a devcode requires an extra parameter fetch."""
+    return bool(get_parameter_sensor_names(devcode))
+
+
 def get_all_operating_modes() -> list[str]:
     """Get all possible operating mode values from base modes and all devcode transformations."""
     from ..const import OPERATING_MODES

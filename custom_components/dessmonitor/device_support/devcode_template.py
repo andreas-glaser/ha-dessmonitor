@@ -88,6 +88,15 @@ VALUE_TRANSFORMATIONS: dict = {
     # "temperature_sensor": lambda value: float(value) * 9/5 + 32,  # C to F
 }
 
+# Parameter Sensor Names
+# Some sensors are only available via the queryDeviceParsEs API endpoint
+# ("parameters"), not in queryDeviceLastData ("sensors").  List their raw
+# parameter *names* here so the coordinator fetches and merges them
+# automatically.  Leave empty if all sensors come from the primary endpoint.
+PARAMETER_SENSOR_NAMES: set[str] = set()
+# Example:
+# PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
+
 # Export all mappings in standardized structure
 # DO NOT MODIFY THIS PART - just update the mappings above
 DEVCODE_CONFIG = {
@@ -97,4 +106,5 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
+    "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

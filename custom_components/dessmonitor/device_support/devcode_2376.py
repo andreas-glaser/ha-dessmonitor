@@ -65,6 +65,13 @@ VALUE_TRANSFORMATIONS: dict = {
     # "sensor_name": lambda value: transform_function(value),
 }
 
+# Parameter sensor names to fetch from queryDeviceParsEs API endpoint.
+# Some sensors (e.g. Battery percentage / SOC) are only available via
+# the parameters endpoint, not in queryDeviceLastData.  List the raw
+# parameter *names* (as returned by the API) that should be promoted
+# to regular sensor data points.
+PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -72,4 +79,5 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
+    "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

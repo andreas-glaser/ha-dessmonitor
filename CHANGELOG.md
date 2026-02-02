@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for devcode 6544 (ANENJI ANJ-HHS-11KW-48V) with sensor mappings, operating mode normalization, and split-phase output support (#11, thanks to @blihtar for the CLI analysis data).
 
 ### Fixed
-- Added missing "Battery percentage" → "State of Charge" sensor mapping for devcode 2376 so the SOC sensor now appears for POW-HVM6.2K-48V-LIP devices (#12, thanks to @baziliolg for reporting and providing analysis data).
+- Fetch "Battery percentage" (SOC) from the parameters API endpoint for devcode 2376, since this sensor only exists in `queryDeviceParsEs` and not in `queryDeviceLastData`. The coordinator now fetches parameters in parallel when a devcode declares `parameter_sensor_names`, merges them with dedup into the device data, and the existing title mapping produces the State of Charge entity (#12, thanks to @baziliolg for reporting and providing analysis data).
 - Graceful per-device error handling: a single device returning `ERR_NO_RECORD` (API error 12) no longer blocks all other devices from loading. Failed devices are skipped with a warning log, and `UpdateFailed` is only raised when every collector fails.
 
 ## [1.8.0] - 2026-01-28
