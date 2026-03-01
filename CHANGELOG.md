@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-03-01
+
 ### Added
 - Support for devcode 6515 (ANENJI ANJ-HHS-11KW-48V-WIFI) with sensor mappings, operating mode normalization, and PV temperature support (#13, thanks to @dekov3 for the CLI analysis data).
 - Support for devcode 6544 (ANENJI ANJ-HHS-11KW-48V) with sensor mappings, operating mode normalization, and split-phase output support (#11, thanks to @blihtar for the CLI analysis data).
@@ -286,7 +288,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.5.0...v1.6.0
