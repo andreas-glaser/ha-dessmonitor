@@ -68,6 +68,8 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
 
 VALUE_TRANSFORMATIONS: dict = {}
 
+PARAMETER_SENSOR_NAMES: set[str] = set()
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -75,4 +77,5 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
+    "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }
