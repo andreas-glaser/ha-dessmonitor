@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
@@ -12,11 +13,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
-from .device_support import is_devcode_supported, map_sensor_title
+from .device_support import (
+    get_parameter_sensor_names,
+    is_devcode_supported,
+    map_sensor_title,
+    needs_parameter_fetch,
+)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
@@ -193,12 +199,16 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 "Data update completed successfully: %d devices total", len(data)
             )
             return data
+        except UpdateFailed:
+            raise
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error(
                 "Error communicating with DessMonitor API during update: %s", err
             )
             _LOGGER.debug("Data update error details", exc_info=True)
-            raise
+            raise UpdateFailed(
+                f"Error communicating with DessMonitor API: {err}"
+            ) from err
 
     async def _fetch_collectors(self) -> list[dict[str, Any]]:
         """Fetch list of collectors from the API."""
@@ -212,6 +222,8 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> dict[str, Any]:
         """Collect last known data for all devices."""
         data: dict[str, Any] = {}
+        errors: list[str] = []
+
         for index, collector in enumerate(collectors, start=1):
             collector_id = collector["pn"]
             _LOGGER.debug(
@@ -221,8 +233,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 collector_id,
             )
 
-            collector_devices = await self._fetch_devices_for_collector(collector)
+            try:
+                collector_devices = await self._fetch_devices_for_collector(collector)
+            except DessMonitorError as err:
+                _LOGGER.warning("Skipping collector %s: %s", collector_id, err)
+                errors.append(f"{collector_id}: {err}")
+                continue
+
             data.update(collector_devices)
+
+        if not data and errors:
+            raise UpdateFailed(f"All collectors failed: {'; '.join(errors)}")
 
         return data
 
@@ -238,6 +259,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         device_data: dict[str, Any] = {}
         for index, device in enumerate(device_list, start=1):
             device_sn = device["sn"]
+            devcode = _normalize_devcode(device.get("devcode"))
             _LOGGER.debug(
                 "Processing device %d/%d: %s (devcode=%s, devaddr=%s)",
                 index,
@@ -247,7 +269,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 device["devaddr"],
             )
 
-            last_data = await self._fetch_device_last_data(collector_id, device)
+            try:
+                last_data = await self._fetch_device_data(collector_id, device, devcode)
+            except DessMonitorError as err:
+                _LOGGER.warning(
+                    "Skipping device %s (collector %s): %s",
+                    device_sn,
+                    collector_id,
+                    err,
+                )
+                continue
+
             device_data[device_sn] = {
                 "collector": collector,
                 "device": device,
@@ -256,23 +288,129 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
 
         return device_data
 
-    async def _fetch_device_last_data(
-        self, collector_id: str, device: dict[str, Any]
+    async def _fetch_device_data(
+        self,
+        collector_id: str,
+        device: dict[str, Any],
+        devcode: int | None,
     ) -> list[dict[str, Any]]:
-        """Fetch latest datapoints for a single device."""
+        """Fetch latest datapoints for a single device.
+
+        When the devcode declares ``parameter_sensor_names``, the parameters
+        endpoint is queried in parallel and matching entries are merged into
+        the result so that sensors like *Battery percentage* (SOC) become
+        available even though they are absent from ``queryDeviceLastData``.
+        """
         device_sn = device["sn"]
-        last_data = await self.api.get_device_last_data(
-            pn=collector_id,
-            devcode=device["devcode"],
-            devaddr=device["devaddr"],
-            sn=device_sn,
-        )
+
+        if devcode is not None and needs_parameter_fetch(devcode):
+            last_data, param_points = await asyncio.gather(
+                self.api.get_device_last_data(
+                    pn=collector_id,
+                    devcode=device["devcode"],
+                    devaddr=device["devaddr"],
+                    sn=device_sn,
+                ),
+                self._fetch_device_parameter_data(collector_id, device, devcode),
+            )
+            self._merge_parameter_data(last_data, param_points, devcode, device_sn)
+        else:
+            last_data = await self.api.get_device_last_data(
+                pn=collector_id,
+                devcode=device["devcode"],
+                devaddr=device["devaddr"],
+                sn=device_sn,
+            )
+
         _LOGGER.debug(
             "Stored data for device %s with %d data points",
             device_sn,
             len(last_data),
         )
         return last_data
+
+    async def _fetch_device_parameter_data(
+        self,
+        collector_id: str,
+        device: dict[str, Any],
+        devcode: int,
+    ) -> list[dict[str, Any]]:
+        """Fetch parameter data and convert wanted entries to data-point format.
+
+        Returns an empty list on error so that a failure here never blocks
+        the primary data fetch.
+        """
+        wanted_names = get_parameter_sensor_names(devcode)
+        try:
+            params = await self.api.get_device_parameters(
+                pn=collector_id,
+                devcode=device["devcode"],
+                devaddr=device["devaddr"],
+                sn=device["sn"],
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning(
+                "Failed to fetch parameter data for device %s: %s",
+                device["sn"],
+                err,
+            )
+            return []
+
+        points: list[dict[str, Any]] = []
+        for name, info in params.items():
+            if name in wanted_names:
+                points.append(
+                    {
+                        "title": name,
+                        "val": info.get("value", ""),
+                        "unit": info.get("unit", ""),
+                    }
+                )
+        return points
+
+    def _merge_parameter_data(
+        self,
+        last_data: list[dict[str, Any]],
+        param_points: list[dict[str, Any]],
+        devcode: int,
+        device_sn: str,
+    ) -> None:
+        """Merge parameter-sourced data points into *last_data* (in place).
+
+        Duplicates are detected by checking both the raw title and its
+        devcode-mapped variant, matching the logic used in
+        ``_merge_summary_data``.
+        """
+        if not param_points:
+            return
+
+        existing_titles: set[str] = set()
+        for point in last_data:
+            title = point.get("title")
+            if title:
+                existing_titles.add(title)
+        mapped_titles: set[str] = {
+            map_sensor_title(devcode, title) for title in existing_titles if title
+        }
+        existing_titles.update(mapped_titles)
+
+        merged: list[str] = []
+        for point in param_points:
+            title = point.get("title", "")
+            mapped = map_sensor_title(devcode, title)
+            if title not in existing_titles and mapped not in existing_titles:
+                last_data.append(point)
+                existing_titles.add(title)
+                existing_titles.add(mapped)
+                merged.append(title)
+
+        if merged:
+            _LOGGER.debug(
+                "Merged %d parameter sensors (%s) for device %s",
+                len(merged),
+                ", ".join(merged),
+                device_sn,
+            )
 
     async def _merge_summary_data(
         self, data: dict[str, Any], collectors_present: bool

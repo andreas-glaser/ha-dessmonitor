@@ -52,6 +52,14 @@ def _load_device_configurations() -> None:
 
         _register_devcode(2334, config_2334)
 
+        from .devcode_6544 import DEVCODE_CONFIG as config_6544
+
+        _register_devcode(6544, config_6544)
+
+        from .devcode_6515 import DEVCODE_CONFIG as config_6515
+
+        _register_devcode(6515, config_6515)
+
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
 
@@ -248,6 +256,19 @@ def get_device_capabilities(devcode: int) -> list[str]:
     if config:
         return config["device_info"].get("supported_features", [])
     return []
+
+
+def get_parameter_sensor_names(devcode: int) -> set[str]:
+    """Return the set of parameter names to fetch from queryDeviceParsEs."""
+    config = get_devcode_config(devcode)
+    if config:
+        return config.get("parameter_sensor_names", set())
+    return set()
+
+
+def needs_parameter_fetch(devcode: int) -> bool:
+    """Check whether a devcode requires an extra parameter fetch."""
+    return bool(get_parameter_sensor_names(devcode))
 
 
 def get_all_operating_modes() -> list[str]:

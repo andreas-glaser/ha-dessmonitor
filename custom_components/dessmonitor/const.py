@@ -3,7 +3,7 @@
 from typing import Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "1.8.0"
+VERSION: Final = "1.9.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -288,6 +288,13 @@ SENSOR_TYPES = {
     },
     "PV Radiator Temperature": {
         "name": "PV Radiator Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
+    "PV Temperature": {
+        "name": "PV Temperature",
         "unit": UNITS["TEMPERATURE"],
         "device_class": "temperature",
         "state_class": "measurement",
