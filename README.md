@@ -411,6 +411,7 @@ The integration now includes an extensible device support system:
 - **DevCode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
 - **DevCode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
 - **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
+- **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
 - **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V

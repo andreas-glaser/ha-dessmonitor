@@ -233,6 +233,20 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:sine-wave",
     },
+    "Second Output Frequency": {
+        "name": "Second Output Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+    },
+    "Second Output Voltage": {
+        "name": "Second Output Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+    },
     "Grid frequency": {
         "name": "Grid Frequency",
         "unit": UNITS["FREQUENCY"],
@@ -501,6 +515,20 @@ SENSOR_TYPES = {
     },
     "Energy Total": {
         "name": "Energy Total",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:solar-power",
+    },
+    "Energy Month": {
+        "name": "Energy Month",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:solar-power",
+    },
+    "Energy Year": {
+        "name": "Energy Year",
         "unit": UNITS["ENERGY"],
         "device_class": "energy",
         "state_class": "total_increasing",
