@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Support for devcode 2452 (Axpert PI18 protocol, rebranded) with sensor mappings, output/charger priority normalization, and dual PV input / second AC output support (#17, thanks to @DastardlyBaker for the CLI analysis data).
+- Support for devcode 2428 (Hybrid inverter) with sensor title mappings for output power/voltage/frequency, battery capacity → State of Charge, PV charging current/voltage, and load percent (#20, thanks to @KIBkz for the CLI analysis data).
 - New sensor definitions: Energy Month, Energy Year, Second Output Frequency, Second Output Voltage.
 
 ## [1.9.0] - 2026-03-01
