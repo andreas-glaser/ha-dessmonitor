@@ -11,6 +11,8 @@ This directory contains collector-specific mappings and configurations for diffe
 - **devcode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
 - **devcode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
+- **devcode 2428**: Known to pair with Hybrid inverter
+- **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
 - **devcode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **devcode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V

@@ -60,6 +60,14 @@ def _load_device_configurations() -> None:
 
         _register_devcode(6515, config_6515)
 
+        from .devcode_2452 import DEVCODE_CONFIG as config_2452
+
+        _register_devcode(2452, config_2452)
+
+        from .devcode_2428 import DEVCODE_CONFIG as config_2428
+
+        _register_devcode(2428, config_2428)
+
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
 
@@ -115,6 +123,19 @@ def map_sensor_title(devcode: int, api_title: str) -> str:
         )
 
     return mapped_title
+
+
+def map_control_field(devcode: int, api_field_name: str) -> str:
+    """Map API control field name to standardized display name based on devcode."""
+    config = get_devcode_config(devcode)
+    if not config:
+        return api_field_name
+
+    # Get control mappings for this devcode
+    control_mappings = config.get("control_field_mappings", {})
+
+    # Apply mapping if exists, otherwise use original
+    return control_mappings.get(api_field_name, api_field_name)
 
 
 def map_output_priority(devcode: int, api_value: str) -> str:
