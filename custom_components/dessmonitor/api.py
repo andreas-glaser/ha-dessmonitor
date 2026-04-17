@@ -638,39 +638,28 @@ class DessMonitorAPI:
             field_name = field.get("name", "")
             field_id = field.get("id", "")
 
-            if any(
-                keyword in field_name.lower()
-                for keyword in [
-                    "battery",
-                    "charge",
-                    "voltage",
-                    "current",
-                    "priority",
-                    "protection",
-                    "bulk",
-                    "floating",
-                    "cutoff",
-                    "type",
-                    "output",
-                ]
-            ):
+            # Determine field type based on presence of options
+            if "item" in field and field["item"]:
+                options = {}
+                for item in field["item"]:
+                    key = item.get("key", "")
+                    val = item.get("val", "")
+                    options[key] = val
 
-                if "item" in field and field["item"]:
-                    options = {}
-                    for item in field["item"]:
-                        key = item.get("key", "")
-                        val = item.get("val", "")
-                        options[key] = val
+                config_settings[field_name] = {
+                    "id": field_id,
+                    "type": "options",
+                    "options": options,
+                }
+            else:
+                config_settings[field_name] = {
+                    "id": field_id,
+                    "type": "value",
+                    "unit": field.get("unit"),
+                    "hint": field.get("hint"),
+                }
 
-                    config_settings[field_name] = {
-                        "id": field_id,
-                        "type": "options",
-                        "options": options,
-                    }
-                else:
-                    config_settings[field_name] = {"id": field_id, "type": "value"}
-
-                _LOGGER.debug("Added control field: %s (%s)", field_name, field_id)
+            _LOGGER.debug("Added control field: %s (%s)", field_name, field_id)
 
         return config_settings
 
@@ -716,6 +705,54 @@ class DessMonitorAPI:
             )
 
         return param_settings
+
+    async def get_device_control_value(
+        self, pn: str, devcode: int, devaddr: int, sn: str, field_id: str
+    ) -> dict[str, Any]:
+        """Get current value of a single control field (queryDeviceCtrlValue)."""
+        response = await self._make_request(
+            "queryDeviceCtrlValue",
+            {
+                "pn": pn,
+                "devcode": devcode,
+                "devaddr": devaddr,
+                "sn": sn,
+                "id": field_id,
+                "i18n": "en_US",
+                "source": "1",
+            },
+        )
+        return response.get("dat", {})
+
+    async def set_device_control_value(
+        self,
+        pn: str,
+        devcode: int,
+        devaddr: int,
+        sn: str,
+        param_id: str,
+        value: str,
+    ) -> dict[str, Any]:
+        """Set a device control value (ctrlDevice)."""
+        _LOGGER.info(
+            "Setting param %s to %s for device %s",
+            param_id,
+            value,
+            _mask_identifier(sn),
+        )
+
+        params = {
+            "pn": pn,
+            "devcode": devcode,
+            "devaddr": devaddr,
+            "sn": sn,
+            "id": param_id,
+            "val": value,
+            "i18n": "en_US",
+            "source": "1",
+        }
+
+        return await self._make_request("ctrlDevice", params)
 
 
 class DessMonitorError(Exception):

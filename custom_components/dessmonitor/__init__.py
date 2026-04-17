@@ -24,7 +24,13 @@ from .device_support import (
     needs_parameter_fetch,
 )
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.NUMBER,
+    Platform.SELECT,
+]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -180,11 +186,127 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialize."""
         self.api = api
+        self.ctrl_field_cache: dict[str, dict[str, Any]] = {}
+        self.ctrl_value_cache: dict[str, dict[str, str]] = {}
+        self._ctrl_locks: dict[str, asyncio.Lock] = {}
+        self.param_cache: dict[str, dict[str, Any]] = {}
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=update_interval),
+        )
+
+    async def async_get_controls_with_values(
+        self, pn: str, devcode: int, devaddr: int, sn: str
+    ) -> tuple[dict[str, Any], dict[str, str]]:
+        """Get control field definitions and their current values.
+
+        Returns (controls, current_values) where current_values maps
+        field_id -> current value string.  Both are cached so repeated
+        calls (select.py + number.py) don't re-fetch.  A per-device
+        lock prevents the duplicate fetch that would otherwise occur
+        when both platforms start concurrently.
+        """
+        if sn not in self._ctrl_locks:
+            self._ctrl_locks[sn] = asyncio.Lock()
+
+        async with self._ctrl_locks[sn]:
+            if sn not in self.ctrl_field_cache:
+                try:
+                    self.ctrl_field_cache[sn] = (
+                        await self.api.get_device_control_fields(
+                            pn, devcode, devaddr, sn
+                        )
+                    )
+                except Exception as err:
+                    _LOGGER.warning(
+                        "Failed to fetch control fields for device %s: %s",
+                        sn,
+                        err,
+                    )
+                    self.ctrl_field_cache[sn] = {}
+
+            controls = self.ctrl_field_cache[sn]
+
+            if sn not in self.ctrl_value_cache:
+                field_ids = [cfg["id"] for cfg in controls.values() if cfg.get("id")]
+                self.ctrl_value_cache[sn] = await self._fetch_all_control_values(
+                    pn, devcode, devaddr, sn, field_ids
+                )
+
+        return controls, self.ctrl_value_cache[sn]
+
+    async def _fetch_all_control_values(
+        self,
+        pn: str,
+        devcode: int,
+        devaddr: int,
+        sn: str,
+        field_ids: list[str],
+    ) -> dict[str, str]:
+        """Fetch current values for all control fields in parallel."""
+        if not field_ids:
+            return {}
+
+        sem = asyncio.Semaphore(5)
+
+        async def _fetch_one(field_id: str) -> tuple[str, str | None]:
+            async with sem:
+                try:
+                    result = await self.api.get_device_control_value(
+                        pn, devcode, devaddr, sn, field_id
+                    )
+                    return field_id, result.get("val")
+                except Exception as err:
+                    _LOGGER.debug(
+                        "Failed to read control value %s for %s: %s",
+                        field_id,
+                        sn,
+                        err,
+                    )
+                    return field_id, None
+
+        _LOGGER.info("Fetching %d control values for device %s", len(field_ids), sn)
+        results = await asyncio.gather(*[_fetch_one(fid) for fid in field_ids])
+        values = {fid: val for fid, val in results if val is not None}
+        _LOGGER.info(
+            "Fetched %d/%d control values for device %s",
+            len(values),
+            len(field_ids),
+            sn,
+        )
+        return values
+
+    async def _prefetch_all_control_values(self, data: dict[str, Any]) -> None:
+        """Pre-populate control caches for all devices in parallel.
+
+        Called once during the first coordinator refresh so that platform
+        setup (select.py / number.py) finds the cache already warm and
+        returns instantly instead of fetching per-device sequentially.
+        """
+        devices_to_fetch: list[tuple[str, str, int, int]] = []
+        for device_sn, device_info in data.items():
+            device_meta = device_info.get("device", {})
+            collector_meta = device_info.get("collector", {})
+            pn = collector_meta.get("pn")
+            devcode = _normalize_devcode(device_meta.get("devcode"))
+            devaddr = device_meta.get("devaddr")
+            if pn and devcode is not None and devaddr is not None:
+                devices_to_fetch.append((device_sn, pn, devcode, devaddr))
+
+        if not devices_to_fetch:
+            return
+
+        _LOGGER.info(
+            "Pre-fetching control values for %d devices", len(devices_to_fetch)
+        )
+
+        async def _fetch_device(sn: str, pn: str, devcode: int, devaddr: int) -> None:
+            await self.async_get_controls_with_values(pn, devcode, devaddr, sn)
+
+        await asyncio.gather(
+            *[_fetch_device(sn, pn, dc, da) for sn, pn, dc, da in devices_to_fetch]
         )
 
     async def _async_update_data(self):
@@ -194,6 +316,11 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             collectors = await self._fetch_collectors()
             data = await self._gather_all_device_data(collectors)
             await self._merge_summary_data(data, bool(collectors))
+
+            # Pre-populate control value cache on first refresh so platform
+            # setup (select.py / number.py) reads from cache instantly.
+            if not self.ctrl_value_cache:
+                await self._prefetch_all_control_values(data)
 
             _LOGGER.info(
                 "Data update completed successfully: %d devices total", len(data)

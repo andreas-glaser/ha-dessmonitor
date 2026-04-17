@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for devcode 2452 (Axpert PI18 protocol, rebranded) with sensor mappings, output/charger priority normalization, and dual PV input / second AC output support (#17, thanks to @DastardlyBaker for the CLI analysis data).
 - Support for devcode 2428 (Hybrid inverter) with sensor title mappings for output power/voltage/frequency, battery capacity → State of Charge, PV charging current/voltage, and load percent (#20, thanks to @KIBkz for the CLI analysis data).
 - New sensor definitions: Energy Month, Energy Year, Second Output Frequency, Second Output Voltage.
+- CLI: analysis output now includes `analysis_version` field (v2) and HMAC-SHA256 `checksum` for integrity verification. Device serial number is excluded from the checksum so users can redact it without breaking validation.
+- CLI: new `verify` command to validate analysis JSON files against their checksum.
+- Button entities for single-action control fields (Clear Record, Reset User Settings, Forced EQ Charging, Exit Fault Mode) - dynamically detected from API fields with exactly one option.
+
+### Fixed
+- Configuration entities (select/number) now display their actual device values by reading current settings from the queryDeviceCtrlValue API at startup, instead of relying on the sensor data stream which only contains a few configuration values.
+- Number entities now parse min/max ranges and step size from the API hint field instead of using hardcoded defaults.
+- All control values are pre-fetched in parallel across all devices during the first coordinator refresh, so platform setup completes instantly from cache.
 
 ## [1.9.0] - 2026-03-01
 
