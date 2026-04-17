@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Support for devcode 2452 (Axpert PI18 protocol, rebranded) with sensor mappings, output/charger priority normalization, and dual PV input / second AC output support (#17, thanks to @DastardlyBaker for the CLI analysis data).
+- Support for devcode 2428 (Hybrid inverter) with sensor title mappings for output power/voltage/frequency, battery capacity → State of Charge, PV charging current/voltage, and load percent (#20, thanks to @KIBkz for the CLI analysis data).
+- New sensor definitions: Energy Month, Energy Year, Second Output Frequency, Second Output Voltage.
+
+## [1.9.0] - 2026-03-01
+
+### Added
+- Support for devcode 6515 (ANENJI ANJ-HHS-11KW-48V-WIFI) with sensor mappings, operating mode normalization, and PV temperature support (#13, thanks to @dekov3 for the CLI analysis data).
+- Support for devcode 6544 (ANENJI ANJ-HHS-11KW-48V) with sensor mappings, operating mode normalization, and split-phase output support (#11, thanks to @blihtar for the CLI analysis data).
+
+### Fixed
+- Fetch "Battery percentage" (SOC) from the parameters API endpoint for devcode 2376, since this sensor only exists in `queryDeviceParsEs` and not in `queryDeviceLastData`. The coordinator now fetches parameters in parallel when a devcode declares `parameter_sensor_names`, merges them with dedup into the device data, and the existing title mapping produces the State of Charge entity (#12, thanks to @baziliolg for reporting and providing analysis data).
+- Graceful per-device error handling: a single device returning `ERR_NO_RECORD` (API error 12) no longer blocks all other devices from loading. Failed devices are skipped with a warning log, and `UpdateFailed` is only raised when every collector fails.
+
+## [1.8.0] - 2026-01-28
+
+### Added
+- Support for devcode 2334 (EASUN 6.2KW Hybrid Solar Inverter) with sensor mappings and priority normalization (#8, thanks to @AndyTempleman for the CLI analysis data).
+- Support for devcode 2449 (EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V) with sensor mappings, priority normalization, and operating mode handling (#6, thanks to @TheJudge01 and @mielune for the CLI analysis data).
+- New sensor definitions: Battery Charging Current, Battery Discharge Current, State of Charge, Output Frequency, Energy Today, Energy Total.
+
+### Fixed
+- Standardized sensor title casing across all devcode files (Output Frequency, State of Charge, Energy Today/Total now have proper SENSOR_TYPES metadata).
+- Resolved mypy type errors in data coordinator for devcode type narrowing.
+
+## [1.7.0] - 2025-12-11
+
+### Added
+- Support for devcode 2451 (Axpert MKS IV 5600VA) with sensor mappings and priority normalization (#5, thanks to @FifoTheHein for the CLI analysis data).
+
+### Fixed
+- Treat placeholder string values (e.g., "-"/"n/a") as unavailable so HA numeric sensors don't raise errors when PV readings are missing.
+- Deduplicate summary energy sensors by mapping titles, preventing duplicate Energy Today/Total entities when summary data overlaps with device data.
+- Lower duplicate sensor log level to DEBUG to reduce noise when duplicate titles are safely skipped.
+
 ## [1.6.0] - 2025-11-17
 
 ### Added
@@ -257,7 +293,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.8.0...v1.9.0
+[1.8.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.10...v1.5.0
 [1.4.10]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.4.9...v1.4.10

@@ -15,22 +15,26 @@ from .device_registry import (
     apply_devcode_transformations,
     get_all_operating_modes,
     get_device_model_name,
+    get_parameter_sensor_names,
     get_supported_devcodes,
     is_devcode_supported,
     map_charger_priority,
     map_operating_mode,
     map_output_priority,
     map_sensor_title,
+    needs_parameter_fetch,
 )
 
 __all__ = [
     "apply_devcode_transformations",
     "get_all_operating_modes",
     "get_device_model_name",
+    "get_parameter_sensor_names",
     "get_supported_devcodes",
     "is_devcode_supported",
     "map_charger_priority",
     "map_operating_mode",
     "map_output_priority",
     "map_sensor_title",
+    "needs_parameter_fetch",
 ]

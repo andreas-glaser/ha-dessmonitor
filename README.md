@@ -406,9 +406,16 @@ The integration now includes an extensible device support system:
 - **Metadata Tracking**: Device configs list confirmed inverter models via `known_inverters` when available
 
 ### Current Device Support
-- **DevCode 2376**: Full support with sensor mappings and value transformations; confirmed with POW-HVM6.2K-48V-LIP (other models may report this devcode)
-- **DevCode 2361**: DessMonitor collector confirmed with SRNE SR-EOV24-3.5K-5KWh hybrid inverter, including SOC, load, and energy counters
-- **DevCode 6422**: DessMonitor collector validated with Must PH19-6048 EXP installs, exposing SOC, PV strings, and accumulated energy sensors
+- **DevCode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
+- **DevCode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
+- **DevCode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
+- **DevCode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
+- **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
+- **DevCode 2428**: Known to pair with Hybrid inverter
+- **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
+- **DevCode 6422**: Known to pair with Must PH19-6048 EXP
+- **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
+- **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support

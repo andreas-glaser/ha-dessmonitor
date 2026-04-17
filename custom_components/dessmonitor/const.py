@@ -3,7 +3,7 @@
 from typing import Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "1.6.0"
+VERSION: Final = "1.9.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -128,6 +128,20 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:battery",
     },
+    "Battery Charging Current": {
+        "name": "Battery Charging Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
+    "Battery Discharge Current": {
+        "name": "Battery Discharge Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:battery-arrow-down",
+    },
     "Batt Current": {
         "name": "Battery Current",
         "unit": UNITS["CURRENT"],
@@ -198,6 +212,13 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:sine-wave",
     },
+    "Output Frequency": {
+        "name": "Output Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+    },
     "Inverter frequency": {
         "name": "Inverter Frequency",
         "unit": UNITS["FREQUENCY"],
@@ -211,6 +232,20 @@ SENSOR_TYPES = {
         "device_class": "frequency",
         "state_class": "measurement",
         "icon": "mdi:sine-wave",
+    },
+    "Second Output Frequency": {
+        "name": "Second Output Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+    },
+    "Second Output Voltage": {
+        "name": "Second Output Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
     },
     "Grid frequency": {
         "name": "Grid Frequency",
@@ -226,6 +261,12 @@ SENSOR_TYPES = {
         "icon": "mdi:gauge",
     },
     "SOC": {
+        "name": "State of Charge",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:battery-high",
+    },
+    "State of Charge": {
         "name": "State of Charge",
         "unit": UNITS["PERCENTAGE"],
         "state_class": "measurement",
@@ -261,6 +302,13 @@ SENSOR_TYPES = {
     },
     "PV Radiator Temperature": {
         "name": "PV Radiator Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
+    "PV Temperature": {
+        "name": "PV Temperature",
         "unit": UNITS["TEMPERATURE"],
         "device_class": "temperature",
         "state_class": "measurement",
@@ -457,6 +505,34 @@ SENSOR_TYPES = {
         "device_class": "energy",
         "state_class": "total_increasing",
         "icon": "mdi:flash",
+    },
+    "Energy Today": {
+        "name": "Energy Today",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:solar-power",
+    },
+    "Energy Total": {
+        "name": "Energy Total",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:solar-power",
+    },
+    "Energy Month": {
+        "name": "Energy Month",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:solar-power",
+    },
+    "Energy Year": {
+        "name": "Energy Year",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:solar-power",
     },
     "Battery Energy Today (Charge)": {
         "name": "Battery Energy Today (Charge)",

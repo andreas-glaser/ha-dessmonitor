@@ -14,6 +14,7 @@ Updates are periodic: 5 minutes by default, or 1 minute with Detailed Data Colle
 - Multiple inverter support with automatic discovery.
 - Sensors for power, voltages, currents, frequency, temperature, load %, operating mode.
 - Energy Dashboard compatible (use `*_total_pv_power`, `*_battery_power`, `*_grid_power`).
+- Supported devcodes: 2334, 2361, 2376, 2449, 2451, 2452, 6422, 6515, 6544.
 - Diagnostic sensors available but disabled by default to avoid clutter.
 
 ## Manage & Configure
