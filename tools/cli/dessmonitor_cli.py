@@ -17,6 +17,7 @@ Usage:
 import argparse
 import asyncio
 import hashlib
+import hmac
 import json
 import logging
 import os
@@ -783,6 +784,7 @@ DEVCODE_CONFIG = {
         
         # Convert to sorted lists and prepare mappings
         analysis_result = {
+            "analysis_version": 2,
             "devcode": devcode,
             "device_sn": device_sn,
             "collector_alias": collector_alias,
@@ -799,7 +801,18 @@ DEVCODE_CONFIG = {
             "parameter_count": len(parameter_entries),
             "parameters": parameter_entries,
         }
-        
+
+        # Integrity checksum: HMAC-SHA256 over all fields except device_sn
+        # and the checksum itself, so users can obfuscate their SN without
+        # breaking verification.
+        hashable = {k: v for k, v in analysis_result.items() if k != "device_sn"}
+        digest = hmac.new(
+            b"dessmonitor-analysis-v2",
+            json.dumps(hashable, sort_keys=True, separators=(",", ":")).encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        analysis_result["checksum"] = digest
+
         logger.info(f"Analysis complete for devcode {devcode}")
         logger.info(f"Found {analysis_result['total_sensors']} unique sensor types")
         if sensor_analysis["potential_typos"]:
@@ -855,7 +868,11 @@ def setup_argparser() -> argparse.ArgumentParser:
     analyze_parser.add_argument("--output", help="Output file for analysis results")
     analyze_parser.add_argument("--raw", action="store_true", help="Print raw device data instead of analysis")
     analyze_parser.add_argument("--template", action="store_true", help="Generate devcode template Python file")
-    
+
+    # Verify command
+    verify_parser = subparsers.add_parser("verify", help="Verify integrity of an analysis JSON file")
+    verify_parser.add_argument("file", help="Path to analysis JSON file")
+
     return parser
 
 
@@ -1003,7 +1020,32 @@ async def main():
                         print(f"Analysis saved to {args.output}")
                     else:
                         print(json.dumps(output_data, indent=2))
-        
+
+            elif args.command == "verify":
+                with open(args.file, "r") as f:
+                    data = json.load(f)
+
+                analysis = data.get("analysis", data)
+                stored = analysis.get("checksum")
+                if not stored:
+                    print("No checksum found - this is a v1 analysis (pre-checksum).")
+                    sys.exit(0)
+
+                hashable = {k: v for k, v in analysis.items()
+                            if k not in ("device_sn", "checksum")}
+                expected = hmac.new(
+                    b"dessmonitor-analysis-v2",
+                    json.dumps(hashable, sort_keys=True,
+                               separators=(",", ":")).encode(),
+                    hashlib.sha256,
+                ).hexdigest()
+
+                if hmac.compare_digest(stored, expected):
+                    print("Checksum OK - analysis data is intact.")
+                else:
+                    print("Checksum MISMATCH - analysis data has been modified.")
+                    sys.exit(1)
+
         except Exception as e:
             logger.error(f"Command failed: {e}")
             sys.exit(1)
