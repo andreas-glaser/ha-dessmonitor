@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New sensor definitions: Energy Month, Energy Year, Second Output Frequency, Second Output Voltage.
 - CLI: analysis output now includes `analysis_version` field (v2) and HMAC-SHA256 `checksum` for integrity verification. Device serial number is excluded from the checksum so users can redact it without breaking validation.
 - CLI: new `verify` command to validate analysis JSON files against their checksum.
+- Button entities for single-action control fields (Clear Record, Reset User Settings, Forced EQ Charging, Exit Fault Mode) - dynamically detected from API fields with exactly one option.
 
 ### Fixed
 - Configuration entities (select/number) now display their actual device values by reading current settings from the queryDeviceCtrlValue API at startup, instead of relying on the sensor data stream which only contains a few configuration values.

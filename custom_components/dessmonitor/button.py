@@ -1,11 +1,11 @@
-"""Platform for DessMonitor select entities."""
+"""Platform for DessMonitor button entities."""
 
 from __future__ import annotations
 
 import logging
 from typing import Any, cast
 
-from homeassistant.components.select import SelectEntity
+from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -25,17 +25,12 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up DessMonitor select entities based on a config entry."""
-    _LOGGER.debug(
-        "Setting up DessMonitor select entities for config entry: %s",
-        config_entry.entry_id,
-    )
+    """Set up DessMonitor button entities based on a config entry."""
     coordinator: DessMonitorDataUpdateCoordinator = hass.data[DOMAIN][
         config_entry.entry_id
     ]
 
     if not coordinator.data:
-        _LOGGER.debug("No coordinator data available; skipping select setup")
         return
 
     coordinator_data = cast(dict[str, dict[str, Any]], coordinator.data)
@@ -52,7 +47,7 @@ async def async_setup_entry(
         if not all([pn, devcode, devaddr]):
             continue
 
-        controls, current_values = await coordinator.async_get_controls_with_values(
+        controls, _ = await coordinator.async_get_controls_with_values(
             pn, devcode, devaddr, device_sn
         )
 
@@ -60,34 +55,36 @@ async def async_setup_entry(
             if config.get("type") != "options":
                 continue
 
-            param_id = config.get("id")
             options_map = config.get("options", {})
-
-            if not param_id or len(options_map) < 2:
+            if len(options_map) != 1:
                 continue
 
+            param_id = config.get("id")
+            if not param_id:
+                continue
+
+            api_value = next(iter(options_map.keys()))
             friendly_name = map_control_field(devcode, name)
 
             entities.append(
-                DessMonitorSelect(
+                DessMonitorButton(
                     coordinator,
                     device_sn,
                     device_meta,
                     collector_meta,
                     friendly_name,
                     param_id,
-                    options_map,
-                    current_values.get(param_id),
+                    api_value,
                 )
             )
 
     if entities:
-        _LOGGER.info("Adding %d select entities", len(entities))
+        _LOGGER.info("Adding %d button entities", len(entities))
         async_add_entities(entities)
 
 
-class DessMonitorSelect(CoordinatorEntity, SelectEntity):
-    """Representation of a DessMonitor select entity."""
+class DessMonitorButton(CoordinatorEntity, ButtonEntity):
+    """Representation of a DessMonitor button entity."""
 
     def __init__(
         self,
@@ -97,24 +94,14 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         collector_meta: dict[str, Any],
         name: str,
         param_id: str,
-        options_map: dict[str, str],
-        initial_value: str | None,
+        api_value: str,
     ) -> None:
-        """Initialize the select entity."""
+        """Initialize the button entity."""
         super().__init__(coordinator)
         self._device_sn = device_sn
-        self._device_meta = device_meta
-        self._collector_meta = collector_meta
-        self._param_name = name
         self._param_id = param_id
+        self._api_value = api_value
 
-        # Store mapping of API key -> display string and reverse
-        self._value_to_option = options_map
-        self._option_to_value = {v: k for k, v in options_map.items()}
-
-        self._attr_options = list(options_map.values())
-
-        # Initialize identity
         device_alias = device_meta.get("alias", "DessMonitor")
         self._attr_name = f"{device_alias} {name}"
         unique_suffix = name.lower().replace(" ", "_").replace("-", "_")
@@ -124,43 +111,18 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         )
         self._attr_entity_category = EntityCategory.CONFIG
 
-        # Set initial state from cached control value
-        if initial_value is not None:
-            if initial_value in self._attr_options:
-                self._attr_current_option = initial_value
-            else:
-                mapped = self._value_to_option.get(str(initial_value))
-                if mapped:
-                    self._attr_current_option = mapped
-
-    async def async_select_option(self, option: str) -> None:
-        """Change the selected option."""
-        api_value = self._option_to_value.get(option)
-        if api_value is None:
-            raise ValueError(f"Invalid option: {option}")
-
-        _LOGGER.debug(
-            "Setting %s to %s (API: %s)", self._attr_unique_id, option, api_value
-        )
+    async def async_press(self) -> None:
+        """Handle the button press."""
+        _LOGGER.info("Pressing %s (param %s)", self._attr_unique_id, self._param_id)
 
         device = self.coordinator.data.get(self._device_sn, {}).get("device", {})
         collector = self.coordinator.data.get(self._device_sn, {}).get("collector", {})
 
-        try:
-            await self.coordinator.api.set_device_control_value(
-                pn=collector.get("pn"),
-                devcode=device.get("devcode"),
-                devaddr=device.get("devaddr"),
-                sn=self._device_sn,
-                param_id=self._param_id,
-                value=api_value,
-            )
-            self._attr_current_option = option
-            if self._device_sn in self.coordinator.ctrl_value_cache:
-                self.coordinator.ctrl_value_cache[self._device_sn][
-                    self._param_id
-                ] = option
-            self.async_write_ha_state()
-        except Exception as err:
-            _LOGGER.error("Failed to set option for %s: %s", self._attr_unique_id, err)
-            raise
+        await self.coordinator.api.set_device_control_value(
+            pn=collector.get("pn"),
+            devcode=device.get("devcode"),
+            devaddr=device.get("devaddr"),
+            sn=self._device_sn,
+            param_id=self._param_id,
+            value=self._api_value,
+        )
