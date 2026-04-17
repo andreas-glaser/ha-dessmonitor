@@ -415,6 +415,7 @@ The integration now includes an extensible device support system:
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
 - **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
+- **DevCode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support
