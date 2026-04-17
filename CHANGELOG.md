@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI: analysis output now includes `analysis_version` field (v2) and HMAC-SHA256 `checksum` for integrity verification. Device serial number is excluded from the checksum so users can redact it without breaking validation.
 - CLI: new `verify` command to validate analysis JSON files against their checksum.
 
+### Fixed
+- Configuration entities (select/number) now display their actual device values by reading current settings from the queryDeviceCtrlValue API at startup, instead of relying on the sensor data stream which only contains a few configuration values.
+- Number entities now parse min/max ranges and step size from the API hint field instead of using hardcoded defaults.
+- All control values are pre-fetched in parallel across all devices during the first coordinator refresh, so platform setup completes instantly from cache.
+
 ## [1.9.0] - 2026-03-01
 
 ### Added

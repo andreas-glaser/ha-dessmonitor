@@ -652,7 +652,12 @@ class DessMonitorAPI:
                     "options": options,
                 }
             else:
-                config_settings[field_name] = {"id": field_id, "type": "value"}
+                config_settings[field_name] = {
+                    "id": field_id,
+                    "type": "value",
+                    "unit": field.get("unit"),
+                    "hint": field.get("hint"),
+                }
 
             _LOGGER.debug("Added control field: %s (%s)", field_name, field_id)
 
@@ -700,6 +705,24 @@ class DessMonitorAPI:
             )
 
         return param_settings
+
+    async def get_device_control_value(
+        self, pn: str, devcode: int, devaddr: int, sn: str, field_id: str
+    ) -> dict[str, Any]:
+        """Get current value of a single control field (queryDeviceCtrlValue)."""
+        response = await self._make_request(
+            "queryDeviceCtrlValue",
+            {
+                "pn": pn,
+                "devcode": devcode,
+                "devaddr": devaddr,
+                "sn": sn,
+                "id": field_id,
+                "i18n": "en_US",
+                "source": "1",
+            },
+        )
+        return response.get("dat", {})
 
     async def set_device_control_value(
         self,

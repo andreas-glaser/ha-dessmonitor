@@ -52,7 +52,7 @@ async def async_setup_entry(
         if not all([pn, devcode, devaddr]):
             continue
 
-        controls, current_params = await coordinator.async_get_controls_and_params(
+        controls, current_values = await coordinator.async_get_controls_with_values(
             pn, devcode, devaddr, device_sn
         )
 
@@ -66,7 +66,6 @@ async def async_setup_entry(
             if not param_id or not options_map:
                 continue
 
-            # Apply control field mapping
             friendly_name = map_control_field(devcode, name)
 
             entities.append(
@@ -78,7 +77,7 @@ async def async_setup_entry(
                     friendly_name,
                     param_id,
                     options_map,
-                    current_params.get(name, {}).get("value"),
+                    current_values.get(param_id),
                 )
             )
 
@@ -109,7 +108,7 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         self._param_name = name
         self._param_id = param_id
 
-        # Store mapping of API value -> Display string and reverse
+        # Store mapping of API key -> display string and reverse
         self._value_to_option = options_map
         self._option_to_value = {v: k for k, v in options_map.items()}
 
@@ -125,44 +124,14 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         )
         self._attr_entity_category = EntityCategory.CONFIG
 
-        # Set initial state if available
+        # Set initial state from cached control value
         if initial_value is not None:
-            # initial_value from API is typically the numeric/key value (e.g., "0")
-            # We need to map it to the display string (e.g., "Utility First")
-            self._attr_current_option = self._value_to_option.get(str(initial_value))
-
-        self._update_from_coordinator()
-
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._update_from_coordinator()
-        super()._handle_coordinator_update()
-
-    def _update_from_coordinator(self) -> None:
-        """Update state from coordinator data."""
-        if not self.coordinator.data:
-            return
-
-        device_info = self.coordinator.data.get(self._device_sn)
-        if not device_info:
-            return
-
-        device_data = device_info.get("data", [])
-        for point in device_data:
-            # The 'title' in the data stream matches the Friendly Name (e.g., "Output priority")
-            if point.get("title") == self._param_name:
-                raw_value = point.get("val")
-                
-                # If the value from the stream matches one of our options (display text), use it directly
-                if raw_value in self._attr_options:
-                     self._attr_current_option = raw_value
-                     return
-                
-                # If it matches a key (e.g. "0"), map it
-                mapped = self._value_to_option.get(str(raw_value))
+            if initial_value in self._attr_options:
+                self._attr_current_option = initial_value
+            else:
+                mapped = self._value_to_option.get(str(initial_value))
                 if mapped:
                     self._attr_current_option = mapped
-                    return
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
@@ -187,6 +156,10 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
                 value=api_value,
             )
             self._attr_current_option = option
+            if self._device_sn in self.coordinator.ctrl_value_cache:
+                self.coordinator.ctrl_value_cache[self._device_sn][
+                    self._param_id
+                ] = option
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set option for %s: %s", self._attr_unique_id, err)

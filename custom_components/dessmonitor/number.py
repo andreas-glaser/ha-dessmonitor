@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, cast
 
 from homeassistant.components.number import NumberEntity
@@ -51,15 +52,12 @@ async def async_setup_entry(
 
         if not all([pn, devcode, devaddr]):
             _LOGGER.debug(
-                "Missing device identity info for %s (pn=%s, devcode=%s, devaddr=%s); skipping controls",
+                "Missing device identity info for %s; skipping controls",
                 device_sn,
-                pn,
-                devcode,
-                devaddr,
             )
             continue
 
-        controls, current_params = await coordinator.async_get_controls_and_params(
+        controls, current_values = await coordinator.async_get_controls_with_values(
             pn, devcode, devaddr, device_sn
         )
 
@@ -71,7 +69,6 @@ async def async_setup_entry(
             if not param_id:
                 continue
 
-            # Apply control field mapping
             friendly_name = map_control_field(devcode, name)
 
             entities.append(
@@ -82,8 +79,9 @@ async def async_setup_entry(
                     collector_meta,
                     friendly_name,
                     param_id,
-                    current_params.get(name, {}).get("value"),
-                    current_params.get(name, {}).get("unit"),
+                    current_values.get(param_id),
+                    config.get("unit"),
+                    config.get("hint"),
                 )
             )
 
@@ -105,6 +103,7 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         param_id: str,
         initial_value: str | float | None,
         unit: str | None,
+        hint: str | None,
     ) -> None:
         """Initialize the number entity."""
         super().__init__(coordinator)
@@ -114,6 +113,8 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         self._param_name = name
         self._param_id = param_id
         self._attr_native_unit_of_measurement = unit
+
+        self._apply_hint(hint)
 
         # Initialize identity
         device_alias = device_meta.get("alias", "DessMonitor")
@@ -125,10 +126,11 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         )
         self._attr_entity_category = EntityCategory.CONFIG
 
-        # Set initial state if available
+        # Set initial state from cached control value
         if initial_value is not None:
             try:
-                self._attr_native_value = float(initial_value)
+                numeric = "".join(c for c in str(initial_value) if c in "0123456789.-")
+                self._attr_native_value = float(numeric)
             except (ValueError, TypeError):
                 _LOGGER.warning(
                     "Could not convert initial value '%s' to float for %s",
@@ -136,30 +138,32 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
                     self._attr_unique_id,
                 )
 
-        self._update_from_coordinator()
+    @staticmethod
+    def _parse_hint_range(hint: str) -> tuple[float | None, float | None]:
+        """Parse min/max from hint string like '60.0~66V' or '0-900min'."""
+        numbers = re.findall(r"[\d.]+", hint)
+        if len(numbers) >= 2:
+            try:
+                a, b = float(numbers[0]), float(numbers[1])
+                return (min(a, b), max(a, b))
+            except ValueError:
+                pass
+        return None, None
 
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._update_from_coordinator()
-        super()._handle_coordinator_update()
-
-    def _update_from_coordinator(self) -> None:
-        """Update state from coordinator data."""
-        if not self.coordinator.data:
+    def _apply_hint(self, hint: str | None) -> None:
+        """Set min/max/step from the API hint field."""
+        if not hint:
             return
-
-        device_info = self.coordinator.data.get(self._device_sn)
-        if not device_info:
-            return
-
-        device_data = device_info.get("data", [])
-        for point in device_data:
-            if point.get("title") == self._param_name:
-                try:
-                    self._attr_native_value = float(point.get("val"))
-                    return
-                except (ValueError, TypeError):
-                    pass
+        lo, hi = self._parse_hint_range(hint)
+        if lo is not None:
+            self._attr_native_min_value = lo
+        if hi is not None:
+            self._attr_native_max_value = hi
+        unit = self._attr_native_unit_of_measurement or ""
+        if unit in ("V", "A"):
+            self._attr_native_step = 0.1
+        else:
+            self._attr_native_step = 1.0
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
@@ -178,6 +182,10 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
                 value=str(value),
             )
             self._attr_native_value = value
+            if self._device_sn in self.coordinator.ctrl_value_cache:
+                self.coordinator.ctrl_value_cache[self._device_sn][self._param_id] = (
+                    str(value)
+                )
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set value for %s: %s", self._attr_unique_id, err)
