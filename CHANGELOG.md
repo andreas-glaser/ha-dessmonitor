@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Support for devcode 2452 (Axpert PI18 protocol, rebranded) with sensor mappings, output/charger priority normalization, and dual PV input / second AC output support (#17, thanks to @DastardlyBaker for the CLI analysis data).
 - New sensor definitions: Energy Month, Energy Year, Second Output Frequency, Second Output Voltage.
+- Support for devcode 2507 (ANENJI ANJ-6200W-48PL-WIFI) with sensor title mappings for `Battery SOC` → State of Charge, energy totals, and temperature fields with API typos/double spaces. Includes operating mode normalisation (`Grid mode` → `Grid Mode`) so the enum sensor is available in Home Assistant, and charger source priority mapping for the `SOF` code.
 
 ## [1.9.0] - 2026-03-01
 
