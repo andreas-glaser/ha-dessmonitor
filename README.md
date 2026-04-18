@@ -445,6 +445,7 @@ The integration now includes an extensible device support system:
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support
+See [`docs/ADDING_DEVCODES.md`](docs/ADDING_DEVCODES.md) for the full workflow. Short version:
 1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`
 2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
 3. Test with the Docker development environment
