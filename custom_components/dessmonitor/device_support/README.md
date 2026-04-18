@@ -16,6 +16,7 @@ This directory contains collector-specific mappings and configurations for diffe
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
 - **devcode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **devcode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
+- **devcode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
 
 ### Device Metadata
 
