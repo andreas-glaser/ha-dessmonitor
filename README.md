@@ -61,6 +61,7 @@ Notes:
 - Periodic monitoring of multiple inverters/collectors (5-minute default)
 - 1-minute updates available with Detailed Data Collection Acceleration (￥144 per collector)
 - Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
+- **Device configuration control** - Change inverter settings directly from Home Assistant
 - UI-based configuration - No YAML editing required
 - Automatic device discovery for all inverters on your account
 - Configurable update intervals (1-60 minutes based on your subscription)
@@ -118,6 +119,30 @@ The integration provides several diagnostic sensors that show battery and invert
 ### Additional Measurement Sensors
 - **AC Charging Current** (A) - Current from grid charging
 - **PV Charging Current** (A) - Current from solar charging
+
+### Device Configuration Entities
+The integration exposes inverter settings as controllable Home Assistant entities. All current values are read from the device at startup.
+
+**Select entities** - Settings with predefined options:
+- **Output Priority** - Power source priority (SBU, SUB, UTI, SOL, SUF)
+- **Charger Source Priority** - Charging source preference (Utility First, PV First, etc.)
+- **Battery Type** - Battery chemistry setting (AGM, FLD, USER, Li1-Li4)
+- **Buzzer Mode** - Audible alert configuration
+- **Output Voltage / Frequency** - Output electrical configuration
+- **Boot Method, Backlight, Power Saving Mode**, and more
+
+**Number entities** - Numeric settings with min/max ranges from the device:
+- **Bulk / Floating / EQ Charging Voltage** (V) - Battery charging voltage targets
+- **Max Charging Current / Max AC Charging Current** (A)
+- **Low DC Protection Voltage** (V) - Per-mode battery protection thresholds
+- **SOC Protection Values** (%) - Battery discharge limits
+- **EQ Charging Time / Interval** (min/day)
+
+**Button entities** - One-shot device actions:
+- **Clear Record** - Clear device logs
+- **Reset User Settings** - Restore factory defaults
+- **Forced EQ Charging** - Trigger an EQ charge cycle
+- **Exit Fault Mode** - Clear fault lock state
 
 ## 🚀 Installation
 
@@ -411,6 +436,7 @@ The integration now includes an extensible device support system:
 - **DevCode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
 - **DevCode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
 - **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
+- **DevCode 2428**: Known to pair with Hybrid inverter
 - **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
 - **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
