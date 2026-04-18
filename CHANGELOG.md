@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- devcode 2452 (Axpert PI18): duplicate `Energy Today` / `Energy Total` entities caused by the summary endpoint (`webQueryDeviceEs`) returning `energyToday`/`energyTotal` alongside the lastData-sourced `Today/Total generation`; both are now mapped to the canonical names so the coordinator's summary-dedup logic skips them (#17, thanks to @DastardlyBaker for the HA screenshots and analysis data).
+- devcode 2452 (Axpert PI18): `Energy Today`, `Energy Month`, and `Energy Year` values were inflated ~1000× because `queryDeviceLastData` reports these counters in Wh while the sensor unit is fixed to kWh; values are now scaled to kWh. `Total generation` is already reported in kWh and is left unchanged (#17).
+
 ## [2.0.0] - 2026-04-18
 
 ### Added

@@ -47,9 +47,32 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "Year generation": "Energy Year",
     "Second AC output frequency": "Second Output Frequency",
     "Second AC output voltage": "Second Output Voltage",
+    # Summary endpoint (webQueryDeviceEs) returns energyToday/energyTotal
+    # alongside the lastData-sourced Today/Total generation. Map them to
+    # the same canonical names so the coordinator's summary-dedup logic
+    # recognises them as duplicates and skips them.
+    "energyToday": "Energy Today",
+    "energyTotal": "Energy Total",
 }
 
-VALUE_TRANSFORMATIONS: dict = {}
+
+def _wh_to_kwh(value):
+    """Convert raw Wh value to kWh. Returns original value on parse failure."""
+    try:
+        return float(value) / 1000
+    except (TypeError, ValueError):
+        return value
+
+
+# queryDeviceLastData reports Today/Month/Year generation in Wh while the
+# sensor unit is fixed to kWh, so scale them here. Total generation is
+# already in kWh (matches parameters API and summary endpoint) and is
+# intentionally left alone.
+VALUE_TRANSFORMATIONS: dict = {
+    "Energy Today": _wh_to_kwh,
+    "Energy Month": _wh_to_kwh,
+    "Energy Year": _wh_to_kwh,
+}
 
 PARAMETER_SENSOR_NAMES: set[str] = set()
 
