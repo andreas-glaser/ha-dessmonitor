@@ -441,9 +441,11 @@ The integration now includes an extensible device support system:
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
 - **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
+- **DevCode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support
+See [`docs/ADDING_DEVCODES.md`](docs/ADDING_DEVCODES.md) for the full workflow. Short version:
 1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`
 2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
 3. Test with the Docker development environment

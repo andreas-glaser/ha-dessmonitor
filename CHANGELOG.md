@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-04-20
+
+### Added
+- Support for devcode 2507 (ANENJI ANJ-6200W-48PL-WIFI) with sensor title mappings for Battery SOC, energy totals, and temperature titles with API typos and double spaces. Operating mode normalisation fixes the "Grid mode" value so the Operating Mode sensor is available, and output/charger priority mappings cover the short codes returned by the collector (#21, thanks to @algrishina for the CLI analysis data).
+
+### Fixed
+- devcode 2452 (Axpert PI18): duplicate `Energy Today` / `Energy Total` entities caused by the summary endpoint (`webQueryDeviceEs`) returning `energyToday`/`energyTotal` alongside the lastData-sourced `Today/Total generation`; both are now mapped to the canonical names so the coordinator's summary-dedup logic skips them (#17, thanks to @DastardlyBaker for the HA screenshots and analysis data).
+- devcode 2452 (Axpert PI18): `Energy Today`, `Energy Month`, and `Energy Year` values were inflated ~1000x because `queryDeviceLastData` reports these counters in Wh while the sensor unit is fixed to kWh; values are now scaled to kWh. `Total generation` is already reported in kWh and is left unchanged (#17).
+
+### Changed
+- Documentation: added a contributor guide in `custom_components/dessmonitor/device_support/README.md` covering the end-to-end devcode onboarding workflow (CLI analysis, mapping file layout, registry registration, and changelog conventions) so new devcode contributions can be prepared without reading the existing devcode files as examples.
+
 ## [2.0.0] - 2026-04-18
 
 ### Added
@@ -302,7 +314,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.9.0...v2.0.0
 [1.9.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.7.0...v1.8.0
