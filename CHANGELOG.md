@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Numeric voltage/current controls with missing or contradicted API range hints no longer derive a moving range from the value cached at startup. They now use a stable fallback, switch to box input, and widen for unusually large live values, preventing Home Assistant from rejecting valid changes before they reach DessMonitor. Numeric controls also refresh their state from the regular polled payload when available, so changes made in DessMonitor or the mobile app no longer require an integration reload (#30, thanks to @blihtar for tracing the stale-value behaviour and verifying the affected inverter's hardware limits).
+
 ## [2.2.0] - 2026-06-20
 
 ### Added
