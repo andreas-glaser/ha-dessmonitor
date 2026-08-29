@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0-rc.1] - 2026-08-29
+
 ### Added
-- Optional read-only local telemetry for EyeBond-compatible collectors, with cloud-only, local-only, and preferred-local hybrid modes. Hybrid mode keeps the DessMonitor API as the canonical source for identity, metadata, controls, and fallback data while overlaying faster local readings from one or more explicitly pinned private addresses.
+- Optional read-only local telemetry for EyeBond-compatible collectors, with cloud-only, local-only, and preferred-local hybrid modes. Hybrid mode keeps the DessMonitor API as the canonical source for identity, metadata, controls, and fallback data while overlaying faster local readings from one or more explicitly pinned private addresses (#27, thanks to @albertdb for proposing local and hybrid support).
 - Guided local configuration, independent cloud/local polling intervals, source diagnostics, persisted cloud snapshots, automatic local reconnect and cloud fallback, and CLI discovery/probing tools with redacted evidence output.
 
 ### Changed
@@ -337,7 +339,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0-rc.1...HEAD
+[2.3.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...v2.3.0-rc.1
 [2.2.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.9.0...v2.0.0
