@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0-rc.2] - 2026-08-30
+
+### Changed
+- Local telemetry startup logs now state the configured polling interval. A collector that does not connect within two minutes produces a clear warning covering the outbound UDP callback request, inbound TCP telemetry connection, and host or VLAN firewall rules.
+- Local setup guidance now documents both network directions, recommends source-restricted firewall access, and includes a commented UFW example. Callback retries remain independent from the configured telemetry polling interval.
+
+### Fixed
+- Release packaging now keeps the API client's internal version aligned with `VERSION` and the integration manifest, preventing release candidates from identifying themselves as the previous stable version.
+
 ## [2.3.0-rc.1] - 2026-08-29
 
 ### Added
@@ -339,7 +348,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0-rc.1...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0-rc.2...HEAD
+[2.3.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0-rc.1...v2.3.0-rc.2
 [2.3.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...v2.3.0-rc.1
 [2.2.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.0.0...v2.1.0
