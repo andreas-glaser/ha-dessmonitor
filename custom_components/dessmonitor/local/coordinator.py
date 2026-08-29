@@ -88,6 +88,15 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         # Port zero is supported by the test/probe boundary; advertise the
         # actual ephemeral listener rather than the pre-bind placeholder.
         self._announcer.server_port = self._server.listening_port
+        _LOGGER.info(
+            "Local telemetry route configured for %s with a %d-second polling "
+            "interval; requesting callbacks on UDP port %d and accepting the "
+            "collector on TCP port %d",
+            self._entry_data[CONF_LOCAL_COLLECTOR_IP],
+            self._poll_interval,
+            self._announcer.collector_udp_port,
+            self._server.listening_port,
+        )
         await self._announcer.start()
         self.async_set_updated_data({})
 

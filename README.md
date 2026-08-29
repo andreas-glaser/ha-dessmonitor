@@ -77,7 +77,11 @@ Local mode supports strict PI17/PI18 and standard SMG/Modbus telemetry without
 adding local write controls. Existing cloud users can enable preferred-local
 telemetry without changing entity IDs or losing recorder history. See the
 [local and hybrid setup guide](docs/LOCAL_MODE.md) for networking, security,
-supported hardware, and the sanitized compatibility probe.
+supported hardware, firewall directions, and the sanitized compatibility
+probe. Local mode requires outbound UDP `58899` from Home Assistant to each
+collector and inbound TCP `8899` from each collector to Home Assistant. Allow
+only the reserved private collector addresses and never forward these ports
+from the internet.
 
 ## 🖼️ Screenshots
 

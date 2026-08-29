@@ -9,7 +9,8 @@ without offering it as the normal stable update.
 - Start `release/X.Y.Z` from the tested `origin/dev` commit.
 - Keep `main` on the latest stable release until the final version is ready.
 - Never move or reuse an RC tag. Publish `rc.2` if another candidate is needed.
-- Set `VERSION` and `custom_components/dessmonitor/manifest.json` to the same
+- Set `VERSION`, `custom_components/dessmonitor/manifest.json`, and the
+  `VERSION` constant in `custom_components/dessmonitor/const.py` to the same
   version without the leading `v`.
 - Add an exact `## [X.Y.Z-rc.N]` entry to `CHANGELOG.md`.
 
@@ -25,14 +26,15 @@ Replace the example version in these commands:
 git fetch origin
 git switch -c release/2.3.0 origin/dev
 
-# Update VERSION, manifest.json, and CHANGELOG.md to 2.3.0-rc.1.
+# Update VERSION, manifest.json, const.py, and CHANGELOG.md to 2.3.0-rc.1.
 
 make format
 .venv/bin/pytest -q
 make check
 git diff --check
 
-git add VERSION CHANGELOG.md custom_components/dessmonitor/manifest.json
+git add VERSION CHANGELOG.md custom_components/dessmonitor/manifest.json \
+  custom_components/dessmonitor/const.py
 git commit -m "chore: prepare v2.3.0-rc.1"
 git push -u origin release/2.3.0
 ```
