@@ -9,9 +9,41 @@ CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
 CONF_COMPANY_KEY: Final = "company_key"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
+CONF_CONNECTION_TYPE: Final = "connection_type"
+CONF_LOCAL_LISTEN_IP: Final = "local_listen_ip"
+CONF_LOCAL_COLLECTOR_IP: Final = "local_collector_ip"
+CONF_LOCAL_COLLECTOR_IPS: Final = "local_collector_ips"
+CONF_LOCAL_TCP_PORT: Final = "local_tcp_port"
+CONF_LOCAL_UDP_PORT: Final = "local_udp_port"
+CONF_LOCAL_DEVICE_CODE: Final = "local_device_code"
+CONF_LOCAL_POLL_INTERVAL: Final = "local_poll_interval"
+CONF_LOCAL_EXPECTED_PN: Final = "local_expected_product_number"
+CONF_LOCAL_REDIRECT_CONFIRMED: Final = "local_redirect_confirmed"
+CONF_LOCAL_MODE: Final = "local_mode"
+
+CONNECTION_TYPE_CLOUD: Final = "cloud"
+CONNECTION_TYPE_LOCAL: Final = "local"
+CONNECTION_TYPE_HYBRID: Final = "hybrid"
+LOCAL_MODE_DISABLED: Final = "disabled"
+LOCAL_MODE_PREFER_LOCAL: Final = "prefer_local"
+LOCAL_MODE_OPTIONS: Final = {
+    LOCAL_MODE_DISABLED: "Cloud only",
+    LOCAL_MODE_PREFER_LOCAL: "Prefer local, fall back to cloud",
+}
 
 DEFAULT_COMPANY_KEY: Final = "bnrl_frRFjEz8Mkn"
 DEFAULT_UPDATE_INTERVAL: Final = 300
+DEFAULT_LOCAL_TCP_PORT: Final = 8899
+DEFAULT_LOCAL_UDP_PORT: Final = 58899
+DEFAULT_LOCAL_DEVICE_CODE: Final = 0
+DEFAULT_LOCAL_POLL_INTERVAL: Final = 5
+LOCAL_POLL_INTERVAL_OPTIONS: Final = {
+    2: "2 seconds (fast)",
+    5: "5 seconds (recommended)",
+    10: "10 seconds",
+    30: "30 seconds",
+    60: "1 minute",
+}
 MIN_UPDATE_INTERVAL: Final = 60
 MAX_UPDATE_INTERVAL: Final = 3600
 
@@ -64,6 +96,7 @@ OPERATING_MODES = [
     "Off-Grid Mode",
     "Grid Mode",
     "Hybrid Mode",
+    "Power Saving",
     "Unknown",
 ]
 
@@ -72,6 +105,13 @@ OPERATING_MODES = [
 
 
 SENSOR_TYPES = {
+    "Data Source": {
+        "name": "Data Source",
+        "unit": "",
+        "device_class": "enum",
+        "options": ["Cloud", "Cached Cloud", "Local"],
+        "icon": "mdi:source-branch",
+    },
     "Output Active Power": {
         "name": "Output Power",
         "unit": UNITS["POWER"],

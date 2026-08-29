@@ -7,8 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.components.number import NumberMode
 
-from custom_components.dessmonitor.const import DOMAIN
-from custom_components.dessmonitor.number import DessMonitorNumber, async_setup_entry
+from custom_components.dessmonitor.number import (
+    DessMonitorNumber,
+    _async_build_number_entities,
+)
 
 
 def _make_coordinator(value: str = "9") -> MagicMock:
@@ -83,23 +85,16 @@ async def test_setup_adds_only_valid_value_controls() -> None:
             {"current_id": "9"},
         )
     )
-    hass = MagicMock()
-    hass.data = {DOMAIN: {"entry-1": coordinator}}
-    config_entry = MagicMock(entry_id="entry-1")
-    async_add_entities = MagicMock()
-
     with patch(
         "custom_components.dessmonitor.number.map_control_field",
         return_value="Mapped current name",
     ) as map_control:
-        await async_setup_entry(hass, config_entry, async_add_entities)
+        entities = await _async_build_number_entities(coordinator, set())
 
     coordinator.async_get_controls_with_values.assert_awaited_once_with(
         "PN-0", 0, 0, "SN-0"
     )
     map_control.assert_called_once_with(0, "Raw current name")
-    async_add_entities.assert_called_once()
-    entities = async_add_entities.call_args.args[0]
     assert len(entities) == 1
     entity = entities[0]
     assert isinstance(entity, DessMonitorNumber)
@@ -112,13 +107,10 @@ async def test_setup_without_coordinator_data_adds_nothing() -> None:
     """An empty first refresh does not create number entities."""
     coordinator = _make_coordinator()
     coordinator.data = {}
-    hass = MagicMock()
-    hass.data = {DOMAIN: {"entry-1": coordinator}}
-    async_add_entities = MagicMock()
 
-    await async_setup_entry(hass, MagicMock(entry_id="entry-1"), async_add_entities)
+    entities = await _async_build_number_entities(coordinator, set())
 
-    async_add_entities.assert_not_called()
+    assert entities == []
 
 
 async def test_setup_without_value_controls_adds_nothing() -> None:
@@ -130,13 +122,9 @@ async def test_setup_without_value_controls_adds_nothing() -> None:
             {"mode": "0"},
         )
     )
-    hass = MagicMock()
-    hass.data = {DOMAIN: {"entry-1": coordinator}}
-    async_add_entities = MagicMock()
+    entities = await _async_build_number_entities(coordinator, set())
 
-    await async_setup_entry(hass, MagicMock(entry_id="entry-1"), async_add_entities)
-
-    async_add_entities.assert_not_called()
+    assert entities == []
 
 
 def test_missing_hint_uses_stable_box_range() -> None:

@@ -5,7 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -29,14 +32,34 @@ async def async_setup_entry(
         config_entry.entry_id
     ]
 
-    entities = []
+    known_entities: set[str] = set()
 
-    if coordinator.data:
-        for device_sn, device_info in coordinator.data.items():
-            device_data = device_info.get("data", [])
-            device_meta = device_info.get("device", {})
-            collector_meta = device_info.get("collector", {})
+    def _add_new_entities() -> None:
+        entities = _build_binary_sensor_entities(coordinator, known_entities)
+        if entities:
+            # Coordinator data is already current; avoid an extra API refresh.
+            async_add_entities(entities)
 
+    _add_new_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
+
+
+def _build_binary_sensor_entities(
+    coordinator: DessMonitorDataUpdateCoordinator, known_entities: set[str]
+) -> list[BinarySensorEntity]:
+    """Build connectivity and binary sensors for newly discovered devices."""
+    entities: list[BinarySensorEntity] = []
+    if not isinstance(coordinator.data, dict):
+        return entities
+
+    for device_sn, device_info in coordinator.data.items():
+        device_data = device_info.get("data", [])
+        device_meta = device_info.get("device", {})
+        collector_meta = device_info.get("collector", {})
+
+        status_key = f"{device_sn}_status"
+        if status_key not in known_entities:
+            known_entities.add(status_key)
             entities.append(
                 DessMonitorStatusSensor(
                     coordinator=coordinator,
@@ -46,20 +69,21 @@ async def async_setup_entry(
                 )
             )
 
-            for data_point in device_data:
-                sensor_type = data_point.get("title")
-                if sensor_type in BINARY_SENSOR_TYPES:
-                    entities.append(
-                        DessMonitorBinarySensor(
-                            coordinator=coordinator,
-                            device_sn=device_sn,
-                            device_meta=device_meta,
-                            collector_meta=collector_meta,
-                            sensor_type=sensor_type,
-                        )
+        for data_point in device_data:
+            sensor_type = data_point.get("title")
+            entity_key = f"{device_sn}_{sensor_type}_binary"
+            if sensor_type in BINARY_SENSOR_TYPES and entity_key not in known_entities:
+                known_entities.add(entity_key)
+                entities.append(
+                    DessMonitorBinarySensor(
+                        coordinator=coordinator,
+                        device_sn=device_sn,
+                        device_meta=device_meta,
+                        collector_meta=collector_meta,
+                        sensor_type=sensor_type,
                     )
-
-    async_add_entities(entities, True)
+                )
+    return entities
 
 
 class DessMonitorBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -139,7 +163,7 @@ class DessMonitorStatusSensor(CoordinatorEntity, BinarySensorEntity):
         self._collector_meta = collector_meta
         self._attr_name = f"{device_meta.get('alias', 'DessMonitor')} Status"
         self._attr_unique_id = f"{device_sn}_status"
-        self._attr_device_class = "connectivity"
+        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
         self._attr_icon = "mdi:connection"
 
     @property

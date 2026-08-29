@@ -27,12 +27,19 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN, SENSOR_TYPES, UNITS
-from .device_support import apply_devcode_transformations, is_devcode_supported
+from .device_support import (
+    apply_devcode_transformations,
+    get_all_charger_priorities,
+    get_all_operating_modes,
+    get_all_output_priorities,
+    is_devcode_supported,
+)
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
 ENUM_SENSOR_TITLES = {
+    "Data Source",
     "Operating mode",
     "Output priority",
     "Charger Source Priority",
@@ -132,21 +139,32 @@ async def async_setup_entry(
         config_entry.entry_id
     ]
 
-    entities = []
+    known_sensors: set[str] = set()
 
+    def _add_new_entities() -> None:
+        entities = _build_sensor_entities(coordinator, known_sensors)
+        if entities:
+            _LOGGER.info("Adding %d DessMonitor sensor entities", len(entities))
+            # Coordinator data is already current. update_before_add would make
+            # every dynamic batch request another full cloud refresh.
+            async_add_entities(entities)
+
+    _add_new_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
+
+
+def _build_sensor_entities(
+    coordinator: DessMonitorDataUpdateCoordinator, known_sensors: set[str]
+) -> list[DessMonitorSensor]:
+    """Build newly discovered sensor entities from coordinator data."""
     if not coordinator.data:
-        _LOGGER.debug("No coordinator data available; skipping sensor setup")
-        return
-
+        return []
     if not isinstance(coordinator.data, dict):
-        _LOGGER.warning(
-            "Unexpected coordinator data type %s; skipping sensor setup",
-            type(coordinator.data),
-        )
-        return
+        _LOGGER.warning("Unexpected coordinator data type %s", type(coordinator.data))
+        return []
 
+    entities: list[DessMonitorSensor] = []
     coordinator_data = cast(dict[str, dict[str, Any]], coordinator.data)
-    _LOGGER.debug("Processing sensor data for %d devices", len(coordinator_data))
 
     for device_sn, raw_device_info in coordinator_data.items():
         device_info = cast(dict[str, Any], raw_device_info)
@@ -154,11 +172,6 @@ async def async_setup_entry(
         device_meta = device_info.get("device", {})
         collector_meta = device_info.get("collector", {})
 
-        _LOGGER.debug(
-            "Processing device %s with %d data points", device_sn, len(device_data)
-        )
-
-        seen_sensors = set()
         supported_sensors = 0
         duplicate_sensors = 0
 
@@ -176,25 +189,14 @@ async def async_setup_entry(
 
             sensor_type = _resolve_sensor_type(original_title, transformed_title)
             if not sensor_type:
-                _LOGGER.debug(
-                    "Unsupported sensor type(s) for device %s: original='%s', transformed='%s'",
-                    device_sn,
-                    original_title,
-                    transformed_title,
-                )
                 continue
 
             sensor_key = f"{device_sn}_{sensor_type}"
-            if sensor_key in seen_sensors:
+            if sensor_key in known_sensors:
                 duplicate_sensors += 1
-                _LOGGER.debug(
-                    "Duplicate sensor detected: %s for device %s",
-                    sensor_type,
-                    device_sn,
-                )
                 continue
 
-            seen_sensors.add(sensor_key)
+            known_sensors.add(sensor_key)
             source_titles = _build_source_title_set(
                 sensor_type, original_title, transformed_title
             )
@@ -217,15 +219,15 @@ async def async_setup_entry(
                 ", ".join(sorted(source_titles)),
             )
 
-        _LOGGER.info(
-            "Device %s: created %d sensors, skipped %d duplicates",
-            device_sn,
-            supported_sensors,
-            duplicate_sensors,
-        )
+        if supported_sensors:
+            _LOGGER.debug(
+                "Device %s: created %d sensors, skipped %d duplicates",
+                device_sn,
+                supported_sensors,
+                duplicate_sensors,
+            )
 
-    _LOGGER.info("Adding %d total sensors to Home Assistant", len(entities))
-    async_add_entities(entities, True)
+    return entities
 
 
 class DessMonitorSensor(CoordinatorEntity, SensorEntity):
@@ -256,7 +258,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         self._initialize_identity(sensor_config)
         self._apply_unit_metadata(sensor_config.get("unit", ""))
-        self._apply_sensor_traits(sensor_config)
+        self._apply_sensor_traits(sensor_config, data_point)
 
         self._attr_device_info = create_device_info(
             device_sn, device_meta, collector_meta
@@ -273,7 +275,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        return self._attr_device_info
+        return cast(DeviceInfo, self._attr_device_info)
 
     def _initialize_identity(self, sensor_config: dict[str, Any]) -> None:
         """Initialise name and unique ID for the entity."""
@@ -337,14 +339,15 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         return unit, None, None
 
-    def _apply_sensor_traits(self, sensor_config: dict[str, Any]) -> None:
+    def _apply_sensor_traits(
+        self, sensor_config: dict[str, Any], initial_data_point: dict[str, Any]
+    ) -> None:
         """Apply additional metadata such as state class and icons."""
         if sensor_config.get("device_class") == "enum":
             self._attr_device_class = SensorDeviceClass.ENUM
-            if self._sensor_type in {"Operating mode", "work state"}:
-                from .device_support import get_all_operating_modes
-
-                self._attr_options = get_all_operating_modes()
+            self._attr_options = self._build_enum_options(
+                sensor_config, initial_data_point
+            )
 
         state_class = sensor_config.get("state_class")
         if state_class == "measurement":
@@ -361,6 +364,34 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             _LOGGER.debug(
                 "Set entity category to DIAGNOSTIC for sensor %s", self._sensor_type
             )
+
+    def _build_enum_options(
+        self, sensor_config: dict[str, Any], initial_data_point: dict[str, Any]
+    ) -> list[str]:
+        """Build a complete, forward-compatible enum contract."""
+        if self._sensor_type in {"Operating mode", "work state"}:
+            options = get_all_operating_modes()
+        elif self._sensor_type == "Output priority":
+            options = get_all_output_priorities()
+        elif self._sensor_type == "Charger Source Priority":
+            options = get_all_charger_priorities()
+        else:
+            options = [str(item) for item in sensor_config.get("options", [])]
+
+        if "Unknown" not in options:
+            options.append("Unknown")
+
+        devcode = _normalize_devcode(self._device_meta.get("devcode"))
+        transformed_point = initial_data_point
+        if devcode is not None and is_devcode_supported(devcode):
+            transformed_point = apply_devcode_transformations(
+                devcode, initial_data_point.copy()
+            )
+        initial_value = transformed_point.get("val")
+        if initial_value not in (None, "") and str(initial_value) not in options:
+            # Firmware occasionally supplies localized or undocumented labels.
+            options.append(str(initial_value))
+        return options
 
     @property
     def native_value(self) -> str | float | None:
@@ -424,15 +455,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if devcode:
             working_point = apply_devcode_transformations(devcode, data_point.copy())
 
-        value = working_point.get("val")
-        _LOGGER.debug(
-            "Raw value for sensor %s (%s): %s (type: %s)",
-            self._attr_unique_id,
-            self._sensor_type,
-            value,
-            type(value).__name__,
-        )
-        return value
+        return working_point.get("val")
 
     def _coerce_native_value(self, value: Any) -> str | float | None:
         """Coerce API value into Home Assistant native value format."""
@@ -473,14 +496,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             value = stripped_value if stripped_value else value
 
         try:
-            numeric_value = float(value)
-            _LOGGER.debug(
-                "Converted value for sensor %s: %s -> %s",
-                self._attr_unique_id,
-                value,
-                numeric_value,
-            )
-            return numeric_value
+            return float(value)
         except (ValueError, TypeError) as err:
             _LOGGER.debug(
                 "Could not convert value to float for sensor %s: %s (%s)",

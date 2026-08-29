@@ -5,13 +5,17 @@ Updates are periodic: 5 minutes by default, or 1 minute with Detailed Data Colle
 
 ## Quick Setup
 1. In Home Assistant: Settings > Devices & Services > Add Integration > "DessMonitor".
-2. Enter credentials: Username, Password, Company Key (default is usually correct).
-3. Choose Update Interval:
+2. Choose the primary **DessMonitor cloud API**, the guided **API + preferred
+   local telemetry** path, or read-only **Local network only**.
+3. For either API path, enter Username, Password, and Company Key (the default
+   is usually correct).
+4. Choose Update Interval:
    - 5 minutes: Standard rate (recommended)
    - 1 minute: Requires "Detailed Data Collection Acceleration" from DessMonitor
 
 ## Key Features
 - Multiple inverter support with automatic discovery.
+- Optional read-only local telemetry and preferred-local cloud fallback.
 - Sensors for power, voltages, currents, frequency, temperature, load %, operating mode.
 - Energy Dashboard compatible (use `*_total_pv_power`, `*_battery_power`, `*_grid_power`).
 - Device configuration via select, number, and button entities (output priority, charger source, battery settings, buzzer mode, and more).
@@ -34,14 +38,14 @@ All current values are read from the device at startup. Changes take effect imme
 
 ## Requirements
 - Home Assistant 2024.1.0 or newer.
-- DessMonitor account with at least one online device.
-- Internet access to `api.dessmonitor.com`.
+- A DessMonitor account and internet access for cloud or hybrid mode.
+- A fixed private Home Assistant LAN IP and collector IP for local telemetry.
 
 ## Troubleshooting
 - Integration not found after install: Restart Home Assistant; ensure files are in `config/custom_components/dessmonitor/`.
 - No devices or data: Confirm devices are online in DessMonitor; check HA logs (Settings > System > Logs).
 - Sensors not updating: Verify network access and account update interval; review logs for API errors.
-- Configuration entities showing blank: Integration reads all control values at startup; if the API is slow, some values may time out. Restart HA to retry.
+- Configuration entities showing blank: Integration reads controls through the API and retries discovery after the next successful API refresh.
 - Enable debug logging (configuration.yaml):
   ```yaml
   logger:

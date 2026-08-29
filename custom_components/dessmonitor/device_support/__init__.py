@@ -13,7 +13,9 @@ from __future__ import annotations
 
 from .device_registry import (
     apply_devcode_transformations,
+    get_all_charger_priorities,
     get_all_operating_modes,
+    get_all_output_priorities,
     get_device_model_name,
     get_parameter_sensor_names,
     get_supported_devcodes,
@@ -27,7 +29,9 @@ from .device_registry import (
 
 __all__ = [
     "apply_devcode_transformations",
+    "get_all_charger_priorities",
     "get_all_operating_modes",
+    "get_all_output_priorities",
     "get_device_model_name",
     "get_parameter_sensor_names",
     "get_supported_devcodes",

@@ -25,7 +25,7 @@ cd tools/cli
 pip install -r requirements.txt
 
 # Authenticate with DessMonitor API
-python3 dessmonitor_cli.py auth --username YOUR_USERNAME --password YOUR_PASSWORD --company-key YOUR_COMPANY_KEY
+python3 dessmonitor_cli.py auth --username YOUR_USERNAME --company-key YOUR_COMPANY_KEY
 ```
 
 ## Commands
@@ -34,13 +34,15 @@ python3 dessmonitor_cli.py auth --username YOUR_USERNAME --password YOUR_PASSWOR
 Store your DessMonitor API credentials for subsequent commands.
 
 ```bash
-python3 dessmonitor_cli.py auth --username USER --password PASS --company-key KEY
+python3 dessmonitor_cli.py auth --username USER --company-key KEY
 ```
 
 **Example:**
 ```bash
-python3 dessmonitor_cli.py auth --username your_email@example.com --password your_password --company-key your_company_key
+python3 dessmonitor_cli.py auth --username your_email@example.com --company-key your_company_key
 ```
+
+Omitting `--password` prompts without placing the password in shell history.
 
 ### `collectors` - List Data Collectors
 Discover all available collectors (inverters/data loggers) in your account.
@@ -136,11 +138,62 @@ python3 dessmonitor_cli.py analyze --device-sn DEVICE_SN [--output OUTPUT_FILE]
 python3 dessmonitor_cli.py analyze --device-sn Q0045xxxxxxxxxYYYYYYY --output analysis.json
 ```
 
+When a sanitized local probe is available, the CLI can resolve the matching
+API device and combine both evidence sources without manually exposing a
+device serial:
+
+```bash
+python3 dessmonitor_cli.py analyze \
+  --local-report local-probe.json \
+  --output combined-analysis.json
+```
+
+This requires a unique collector product-number hash and inverter address
+match. It refuses ambiguous matches instead of guessing. The combined output
+hashes the resolved device identity and is written with mode `0600`.
+
 **Use Case:**
 - **Primary Tool** for creating device support configurations
 - Generate comprehensive sensor inventories
 - Extract operating modes and priority values
 - Save structured analysis for documentation
+
+### `local-scan` - Bounded Collector Discovery
+
+Find callback-capable EyeBond collectors on one private `/24` or smaller. This
+command does not use cloud credentials.
+
+```bash
+python3 dessmonitor_cli.py local-scan \
+  --listen-ip 192.168.1.10 \
+  --confirm-callback
+```
+
+The scan sends only a small callback request on UDP port `58899`. It refuses
+public networks and networks larger than `/24`. A callback request may briefly
+interrupt a collector's cloud session.
+
+### `local-probe` - Read-Only Compatibility Report
+
+Probe one known collector and validate its local inverter protocol:
+
+```bash
+python3 dessmonitor_cli.py local-probe \
+  --listen-ip 192.168.1.10 \
+  --collector-ip 192.168.1.50 \
+  --confirm-callback \
+  --output local-probe.json
+```
+
+The probe accepts only the exact configured collector peer, validates every
+transport and inverter response, and sends read queries only. Reports are
+written with mode `0600`; product numbers, IPs, and serial numbers are hashed
+unless `--include-identifiers` is deliberately supplied.
+
+Most collectors allow one callback connection at a time. If a running Home
+Assistant instance already owns it, briefly disable or stop that test instance
+for the probe and start it again afterward. The integration reconnects
+automatically.
 
 ## Workflow for Contributors
 
@@ -160,6 +213,9 @@ python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE_SN --output device_an
 
 # Get real-time data to understand sensor behavior
 python3 dessmonitor_cli.py data --device-sn YOUR_DEVICE_SN
+
+# Or correlate sanitized local and API evidence automatically
+python3 dessmonitor_cli.py analyze --local-report local-probe.json --output combined-analysis.json
 ```
 
 ### 3. Create Device Support

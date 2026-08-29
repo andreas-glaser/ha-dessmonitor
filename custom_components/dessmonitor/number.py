@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
 from .device_support.device_registry import map_control_field
+from .entity_loader import async_setup_dynamic_entities
 from .number_range import compute_range_and_step, is_hint_range_usable
 from .utils import create_device_info
 
@@ -40,13 +41,36 @@ async def async_setup_entry(
     coordinator: DessMonitorDataUpdateCoordinator = hass.data[DOMAIN][
         config_entry.entry_id
     ]
+    known_entities: set[str] = set()
+
+    async def _build() -> list[NumberEntity]:
+        return await _async_build_number_entities(coordinator, known_entities)
+
+    await async_setup_dynamic_entities(
+        hass,
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _build,
+        task_name="dessmonitor_number_discovery",
+        # The API exposes control values one field at a time. Discover them in
+        # the background so dozens of reads cannot delay integration startup.
+        defer_initial=True,
+    )
+
+
+async def _async_build_number_entities(
+    coordinator: DessMonitorDataUpdateCoordinator,
+    known_entities: set[str],
+) -> list[NumberEntity]:
+    """Build cloud-backed numeric controls not already registered."""
 
     if not coordinator.data:
         _LOGGER.debug("No coordinator data available; skipping number setup")
-        return
+        return []
 
     coordinator_data = cast(dict[str, dict[str, Any]], coordinator.data)
-    entities = []
+    entities: list[NumberEntity] = []
 
     for device_sn, raw_device_info in coordinator_data.items():
         device_info = cast(dict[str, Any], raw_device_info)
@@ -76,6 +100,9 @@ async def async_setup_entry(
                 continue
 
             friendly_name = map_control_field(devcode, name)
+            entity_key = f"{device_sn}:{param_id}"
+            if entity_key in known_entities:
+                continue
 
             entities.append(
                 DessMonitorNumber(
@@ -91,10 +118,11 @@ async def async_setup_entry(
                     config.get("hint"),
                 )
             )
+            known_entities.add(entity_key)
 
     if entities:
         _LOGGER.info("Adding %d number entities", len(entities))
-        async_add_entities(entities)
+    return entities
 
 
 class DessMonitorNumber(CoordinatorEntity, NumberEntity):
