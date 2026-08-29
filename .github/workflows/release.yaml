@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - name: "Extract version"
         id: version
@@ -35,13 +36,28 @@ jobs:
           # Remove 'v' prefix if present
           VERSION=${VERSION#v}
           
-          # Validate SemVer format
-          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: Version must follow SemVer format (x.y.z)"
+          # Accept stable SemVer or this repository's release-candidate format.
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$ ]]; then
+            echo "Error: Version must use x.y.z or x.y.z-rc.N"
+            exit 1
+          fi
+
+          if [[ "$VERSION" == *-rc.* ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+
+          # Workflow dispatch operates on the default branch and may commit
+          # version files there. RCs must instead be tagged from a reviewed
+          # release branch so main remains on the latest stable version.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "$PRERELEASE" == "true" ]]; then
+            echo "Error: Release candidates must be published by pushing their tag"
             exit 1
           fi
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
           echo "Releasing version: $VERSION"
 
   release:
@@ -52,7 +68,7 @@ jobs:
       contents: write
     steps:
       - name: "Checkout the repository"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v6"
         with:
           fetch-depth: 0
 
@@ -147,7 +163,7 @@ jobs:
           cat release-notes.md
 
       - name: "Upload release assets"
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: "v${{ needs.validate-version.outputs.version }}"
           name: "Release v${{ needs.validate-version.outputs.version }}"
@@ -156,7 +172,7 @@ jobs:
             custom_components/dessmonitor/ha-dessmonitor-${{ needs.validate-version.outputs.version }}.zip
             custom_components/dessmonitor/ha-dessmonitor.zip
           draft: false
-          prerelease: false
+          prerelease: ${{ needs.validate-version.outputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
