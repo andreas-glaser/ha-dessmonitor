@@ -40,6 +40,10 @@ All current values are read from the device at startup. Changes take effect imme
 - Home Assistant 2024.1.0 or newer.
 - A DessMonitor account and internet access for cloud or hybrid mode.
 - A fixed private Home Assistant LAN IP and collector IP for local telemetry.
+- For local telemetry, outbound UDP `58899` from Home Assistant to the
+  collector and inbound TCP `8899` from that collector to Home Assistant.
+  Restrict firewall rules to reserved private collector addresses and do not
+  expose either port to the internet.
 
 ## Troubleshooting
 - Integration not found after install: Restart Home Assistant; ensure files are in `config/custom_components/dessmonitor/`.

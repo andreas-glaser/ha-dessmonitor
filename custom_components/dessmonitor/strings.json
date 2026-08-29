@@ -64,7 +64,7 @@
           "local_udp_port": "Target port for the redirect command; the default is 58899.",
           "local_device_code": "Auto-detect uses read-only protocol probes. Enter the cloud devcode to make startup faster.",
           "local_poll_interval": "Primary status requests are serialized to protect the RS485 bus.",
-          "local_redirect_confirmed": "Home Assistant sends a targeted callback request only to this private address. Depending on firmware, it may briefly interrupt the collector's cloud session."
+          "local_redirect_confirmed": "Home Assistant sends UDP to this collector on port 58899. The collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session."
         }
       },
       "local_advanced": {
@@ -88,7 +88,7 @@
           "local_udp_port": "Target port for the redirect command; the default is 58899.",
           "local_device_code": "Enter the cloud devcode only when automatic read-only probing does not find the inverter.",
           "local_poll_interval": "Primary status requests are serialized to protect the RS485 bus.",
-          "local_redirect_confirmed": "Home Assistant sends a targeted callback request only to this private address. Depending on firmware, it may briefly interrupt the collector's cloud session."
+          "local_redirect_confirmed": "Home Assistant sends UDP to the configured collector port. The collector must be allowed to connect back to the configured Home Assistant TCP port. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session."
         }
       },
       "reconfigure": {
@@ -148,7 +148,7 @@
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
           "local_collector_ips": "Enter one or more fixed private addresses separated by commas, spaces, or new lines. Each connection is pinned to its exact address.",
           "local_poll_interval": "How often to read local inverter telemetry. Five seconds is recommended and is independent of the cloud API interval.",
-          "local_redirect_confirmed": "Requests target only the listed private addresses. Depending on firmware, a callback may briefly interrupt a collector's cloud session; API fallback remains enabled."
+          "local_redirect_confirmed": "Home Assistant sends UDP to the listed collectors on port 58899. Each collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private addresses, and do not expose either port to the internet. API fallback remains enabled."
         }
       },
       "local": {

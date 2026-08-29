@@ -24,18 +24,20 @@ class CollectorAnnouncer:
         collector_udp_port: int,
         *,
         interval: float = 5.0,
+        warning_after: float = 120.0,
     ) -> None:
         self.server_ip = normalize_local_ipv4(server_ip)
         if not 0 <= server_port <= 65535:
             raise ValueError("callback TCP port is outside the valid range")
         if not 1 <= collector_udp_port <= 65535:
             raise ValueError("collector UDP port is outside the valid range")
-        if interval <= 0:
-            raise ValueError("callback interval must be positive")
+        if interval <= 0 or warning_after <= 0:
+            raise ValueError("callback timing must be positive")
         self.server_port = server_port
         self.collector_ip = normalize_local_ipv4(collector_ip)
         self.collector_udp_port = collector_udp_port
         self.interval = interval
+        self.warning_after = warning_after
         self._task: asyncio.Task[None] | None = None
 
     @property
@@ -66,6 +68,9 @@ class CollectorAnnouncer:
 
     async def _run(self) -> None:
         """Send a targeted datagram immediately and at the configured interval."""
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        warning_logged = False
         while True:
             try:
                 await self._send_once()
@@ -73,6 +78,19 @@ class CollectorAnnouncer:
                 raise
             except OSError as err:
                 _LOGGER.debug("Unable to request local collector callback: %s", err)
+            if not warning_logged and loop.time() - started >= self.warning_after:
+                _LOGGER.warning(
+                    "No callback from local collector %s after %.0f seconds. "
+                    "Check outbound UDP port %d to the collector and inbound TCP "
+                    "access from the collector to %s:%d, including host and VLAN "
+                    "firewalls. Do not expose these ports to the internet.",
+                    self.collector_ip,
+                    self.warning_after,
+                    self.collector_udp_port,
+                    self.server_ip,
+                    self.server_port,
+                )
+                warning_logged = True
             await asyncio.sleep(self.interval)
 
     async def _send_once(self) -> None:

@@ -93,6 +93,14 @@ jobs:
           # Update manifest.json
           yq eval -i -P ".version=\"$VERSION\"" \
             ${{ github.workspace }}/custom_components/dessmonitor/manifest.json
+
+          # Keep the API client version aligned with the packaged release.
+          sed -i -E \
+            "s/^VERSION: Final = \"[^\"]+\"$/VERSION: Final = \"$VERSION\"/" \
+            ${{ github.workspace }}/custom_components/dessmonitor/const.py
+
+          grep -Fqx "VERSION: Final = \"$VERSION\"" \
+            ${{ github.workspace }}/custom_components/dessmonitor/const.py
           
           echo "Updated version to: $VERSION"
 
@@ -185,7 +193,8 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          git add VERSION custom_components/dessmonitor/manifest.json
+          git add VERSION custom_components/dessmonitor/manifest.json \
+            custom_components/dessmonitor/const.py
           git commit -m "Bump version to $VERSION"
           git push origin main
           

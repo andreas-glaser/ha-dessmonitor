@@ -32,6 +32,27 @@ routed by their exact configured source address.
 4. If Wi-Fi client isolation or a VLAN is enabled, add only the required route
    and firewall rules. Do not expose either port to the internet.
 
+The two connections travel in opposite directions:
+
+| Purpose | Source | Destination | Protocol |
+| --- | --- | --- | --- |
+| Callback request | Home Assistant | Collector | UDP `58899` |
+| Local telemetry session | Collector | Home Assistant | TCP `8899` |
+
+TCP `8899` must be allowed through the Home Assistant host firewall as well as
+any firewall between VLANs. No internet port forwarding is needed. Restrict
+the rule to each reserved collector address. For example, a UFW host can use
+one commented rule per collector:
+
+```bash
+sudo ufw allow in on <LAN_INTERFACE> proto tcp \
+  from <COLLECTOR_IP> to <HOME_ASSISTANT_IP> port 8899 \
+  comment 'DessMonitor local collector'
+```
+
+Replace all three placeholders before running the command. Repeat it for each
+collector, then confirm the restricted rules with `sudo ufw status numbered`.
+
 The setup sends a targeted `set>server=<HA IP>:8899;` callback request to the
 configured private address. Firmware behavior differs, so this may briefly
 interrupt a vendor-cloud session. The hybrid mode continues polling the API
@@ -114,8 +135,9 @@ then start it again; the configured integration reconnects automatically.
 - **Listener cannot start:** reserve TCP port `8899`, check that the configured
   Home Assistant address exists on the host, then use **Reconfigure** if the
   address changed.
-- **Collector never connects:** verify the exact collector IP, UDP port
-  `58899`, TCP port `8899`, and inter-VLAN firewall direction.
+- **Collector never connects:** verify the exact collector IP and both traffic
+  directions above. Check the Home Assistant host firewall too. A warning is
+  logged after two minutes without a callback.
 - **Connected but no inverter is found:** create a sanitized local probe report
   and include the inverter model and collector firmware in a GitHub issue.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
@@ -129,5 +151,6 @@ logger:
     custom_components.dessmonitor: debug
 ```
 
-Debug messages avoid authentication tokens and full protocol payloads. Still
-review logs and reports before sharing them.
+Debug messages avoid authentication tokens and full protocol payloads, but may
+include collector product numbers, device serials, private IP addresses, and
+live readings. Review logs and reports before sharing them.

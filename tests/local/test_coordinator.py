@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
@@ -170,9 +170,7 @@ class SimulatedSmgCollector:
             assert header.device_code == 1
             assert header.device_address == 0xFF
             assert len(payload) == 8
-            assert int.from_bytes(payload[-2:], "little") == crc16_modbus(
-                payload[:-2]
-            )
+            assert int.from_bytes(payload[-2:], "little") == crc16_modbus(payload[:-2])
             slave = payload[0]
             function = payload[1]
             register = int.from_bytes(payload[2:4], "big")
@@ -359,3 +357,47 @@ async def test_failed_poll_cycles_force_targeted_reconnect(
 
     assert poll_once.await_count == 3
     assert coordinator.last_update_success is False
+
+
+async def test_poll_loop_uses_configured_telemetry_interval(
+    hass: HomeAssistant,
+) -> None:
+    """Callback retries never replace the saved telemetry poll interval."""
+    coordinator = DessMonitorLocalCoordinator(
+        hass,
+        {
+            CONF_LOCAL_LISTEN_IP: "127.0.0.1",
+            CONF_LOCAL_COLLECTOR_IP: "127.0.0.2",
+            CONF_LOCAL_TCP_PORT: 0,
+            CONF_LOCAL_UDP_PORT: 9,
+            CONF_LOCAL_POLL_INTERVAL: 30,
+        },
+    )
+    loop = MagicMock()
+    loop.time.side_effect = [0.0, 1.0, 30.0, 31.0]
+
+    with (
+        patch.object(
+            type(coordinator._server),
+            "connected",
+            new_callable=PropertyMock,
+            side_effect=[True, True, False],
+        ),
+        patch.object(
+            coordinator, "_poll_once", new=AsyncMock(return_value=True)
+        ) as poll_once,
+        patch(
+            "custom_components.dessmonitor.local.coordinator.asyncio.get_running_loop",
+            return_value=loop,
+        ),
+        patch(
+            "custom_components.dessmonitor.local.coordinator.asyncio.sleep",
+            new=AsyncMock(),
+        ) as sleep,
+    ):
+        await coordinator._poll_loop()
+
+    assert coordinator._poll_interval == 30
+    assert coordinator._announcer.interval == 5.0
+    assert poll_once.await_count == 2
+    assert sleep.await_args_list == [call(29.0), call(29.0)]
