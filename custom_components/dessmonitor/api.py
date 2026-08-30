@@ -7,6 +7,7 @@ import hashlib
 import logging
 import time
 from typing import Any
+from urllib.parse import quote_plus
 
 import aiohttp
 import async_timeout
@@ -47,7 +48,7 @@ class DessMonitorAPI:
     ) -> None:
         """Initialize the API client."""
         self.username = username
-        self.password = password
+        self.password = password.strip() if password else password
         self.company_key = company_key
 
         # Resolve the per-account-mode API profile. Host, auth action, source
@@ -140,11 +141,20 @@ class DessMonitorAPI:
             await self.authenticate()
 
     def _build_action_string(self, action: str, params: dict[str, Any] | None) -> str:
-        """Construct action string used by the API."""
+        """Construct action string used by the API.
+
+        Values are percent-encoded with quote_plus so that the string used to
+        compute the signature is byte-for-byte what the HTTP client transmits.
+        aiohttp/yarl turn a space into "+" and preserve "+"/%XX, so signing the
+        raw value while sending the encoded one makes the server recompute a
+        different signature and reject it as ERR_PASSWORD_VERIF_FAIL. This bites
+        any account whose username or parameters contain a space or reserved
+        character.
+        """
         action_string = f"&action={action}"
         if params:
             for key, value in params.items():
-                action_string += f"&{key}={value}"
+                action_string += f"&{key}={quote_plus(str(value))}"
         return action_string
 
     def _build_request_url(
@@ -215,8 +225,9 @@ class DessMonitorAPI:
     async def authenticate(self) -> bool:
         """Authenticate with the DessMonitor API."""
         _LOGGER.debug(
-            "Starting authentication process for user: %s",
+            "Starting authentication process for user: %s (account_mode=%s)",
             _mask_identifier(self.username),
+            self.account_mode,
         )
         try:
             self.token = None
