@@ -57,6 +57,49 @@ UPDATE_INTERVAL_OPTIONS: Final = {
 
 API_BASE_URL: Final = "https://api.dessmonitor.com/public/"
 
+
+# --- Account mode -----------------------------------------------------------
+# Eybond's backend serves two different kinds of account, and they are NOT
+# interchangeable: the request host, the auth action and the app identity all
+# differ. Picking the wrong one returns ERR_NOT_FOUND_USR as if the account did
+# not exist.
+#
+#   * "distributor" - installer / distributor accounts, authenticated with
+#     action=authSource against api.dessmonitor.com. This is the original
+#     behaviour and stays the default.
+#   * "end_user" - accounts created in the SmartClient / SmartESS mobile apps,
+#     authenticated with action=auth against ios.shinemonitor.com, using the
+#     mobile app identity. Confirmed by capturing the SmartClient app's own
+#     traffic (action=auth, _app_id_=com.eybond.SmartClient, source=0).
+CONF_ACCOUNT_MODE: Final = "account_mode"
+ACCOUNT_MODE_DISTRIBUTOR: Final = "distributor"
+ACCOUNT_MODE_END_USER: Final = "end_user"
+DEFAULT_ACCOUNT_MODE: Final = ACCOUNT_MODE_DISTRIBUTOR
+
+ACCOUNT_MODE_OPTIONS: Final = {
+    ACCOUNT_MODE_DISTRIBUTOR: "Distributor / installer account",
+    ACCOUNT_MODE_END_USER: "End-user account (SmartClient / SmartESS app)",
+}
+
+# Per-mode API profile. Every request (auth and queries) uses these values, so
+# that host, source and identity stay consistent within a session.
+ACCOUNT_PROFILES: Final = {
+    ACCOUNT_MODE_DISTRIBUTOR: {
+        "base_url": "https://api.dessmonitor.com/public/",
+        "auth_action": "authSource",
+        "source": "1",
+        "app_client": "web",
+        "app_id": "ha-dessmonitor",
+    },
+    ACCOUNT_MODE_END_USER: {
+        "base_url": "https://ios.shinemonitor.com/public/",
+        "auth_action": "auth",
+        "source": "0",
+        "app_client": "ios",
+        "app_id": "com.eybond.SmartClient",
+    },
+}
+
 UNITS: Final = {
     "POWER": "W",
     "POWER_KW": "kW",

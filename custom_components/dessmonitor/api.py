@@ -12,7 +12,13 @@ import aiohttp
 import async_timeout
 from homeassistant.helpers.storage import Store
 
-from .const import API_BASE_URL, UNITS, VERSION
+from .const import (
+    ACCOUNT_PROFILES,
+    API_BASE_URL,
+    DEFAULT_ACCOUNT_MODE,
+    UNITS,
+    VERSION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,12 +43,24 @@ class DessMonitorAPI:
         company_key: str = "bnrl_frRFjEz8Mkn",
         session: aiohttp.ClientSession | None = None,
         store: Store | None = None,
+        account_mode: str = DEFAULT_ACCOUNT_MODE,
     ) -> None:
         """Initialize the API client."""
         self.username = username
         self.password = password
         self.company_key = company_key
-        self.base_url = API_BASE_URL
+
+        # Resolve the per-account-mode API profile. Host, auth action, source
+        # and app identity all come from here so a session stays consistent.
+        profile = ACCOUNT_PROFILES.get(
+            account_mode, ACCOUNT_PROFILES[DEFAULT_ACCOUNT_MODE]
+        )
+        self.account_mode = account_mode
+        self.base_url = profile["base_url"]
+        self._auth_action = profile["auth_action"]
+        self._source = profile["source"]
+        self._app_client = profile["app_client"]
+        self._app_id = profile["app_id"]
 
         self._session = session
         self._close_session = False
@@ -115,7 +133,7 @@ class DessMonitorAPI:
 
     async def _ensure_token(self, action: str) -> None:
         """Refresh authentication token when required."""
-        if action == "authSource":
+        if action == self._auth_action:
             return
         if self._is_token_expired():
             _LOGGER.info("Token expired for action '%s', re-authenticating...", action)
@@ -134,7 +152,7 @@ class DessMonitorAPI:
     ) -> str:
         """Construct the full request URL including token when available."""
         url = f"{self.base_url}?sign={signature}&salt={salt}"
-        if self.token and action != "authSource":
+        if self.token and action != self._auth_action:
             url += f"&token={self.token}"
         return f"{url}{action_string}"
 
@@ -209,9 +227,9 @@ class DessMonitorAPI:
             auth_params = {
                 "usr": self.username,
                 "company-key": self.company_key,
-                "source": "1",
-                "_app_client_": "web",
-                "_app_id_": "ha-dessmonitor",
+                "source": self._source,
+                "_app_client_": self._app_client,
+                "_app_id_": self._app_id,
                 "_app_version_": VERSION,
             }
             _LOGGER.debug(
@@ -226,7 +244,7 @@ class DessMonitorAPI:
                 },
             )
 
-            response = await self._make_request("authSource", auth_params)
+            response = await self._make_request(self._auth_action, auth_params)
 
             if "dat" in response:
                 data = response["dat"]
@@ -614,7 +632,7 @@ class DessMonitorAPI:
             "queryDeviceCtrlField",
             {
                 "i18n": "en_US",
-                "source": "1",
+                "source": self._source,
                 "pn": pn,
                 "devcode": devcode,
                 "devaddr": devaddr,
@@ -668,7 +686,7 @@ class DessMonitorAPI:
             "queryDeviceParsEs",
             {
                 "i18n": "en_US",
-                "source": "1",
+                "source": self._source,
                 "pn": pn,
                 "devcode": devcode,
                 "devaddr": devaddr,
@@ -714,7 +732,7 @@ class DessMonitorAPI:
                 "sn": sn,
                 "id": field_id,
                 "i18n": "en_US",
-                "source": "1",
+                "source": self._source,
             },
         )
         return response.get("dat", {})
@@ -744,7 +762,7 @@ class DessMonitorAPI:
             "id": param_id,
             "val": value,
             "i18n": "en_US",
-            "source": "1",
+            "source": self._source,
         }
 
         return await self._make_request("ctrlDevice", params)

@@ -34,13 +34,15 @@
           "username": "Username",
           "password": "Password",
           "company_key": "Company Key (leave default unless specified by your installer)",
-          "update_interval": "Update interval (seconds)"
+          "update_interval": "Update interval (seconds)",
+          "account_mode": "Account type"
         },
         "data_description": {
           "username": "Your DessMonitor account username",
           "password": "Your DessMonitor account password",
           "company_key": "Your company/vendor key (default: {default_company_key})",
-          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes)."
+          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes).",
+          "account_mode": "Distributor/installer accounts use authSource against api.dessmonitor.com (default). Choose End-user if you sign in with the SmartClient or SmartESS mobile app; those accounts authenticate against ios.shinemonitor.com and otherwise fail with 'user not found'."
         }
       },
       "local": {

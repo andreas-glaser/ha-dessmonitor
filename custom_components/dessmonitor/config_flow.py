@@ -21,6 +21,8 @@ from homeassistant.helpers.selector import (
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import (
+    ACCOUNT_MODE_OPTIONS,
+    CONF_ACCOUNT_MODE,
     CONF_COMPANY_KEY,
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
@@ -39,6 +41,7 @@ from .const import (
     CONNECTION_TYPE_CLOUD,
     CONNECTION_TYPE_HYBRID,
     CONNECTION_TYPE_LOCAL,
+    DEFAULT_ACCOUNT_MODE,
     DEFAULT_COMPANY_KEY,
     DEFAULT_LOCAL_DEVICE_CODE,
     DEFAULT_LOCAL_POLL_INTERVAL,
@@ -88,6 +91,9 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_COMPANY_KEY, default=DEFAULT_COMPANY_KEY): vol.All(
             str, vol.Length(min=1, max=100)
         ),
+        vol.Optional(
+            CONF_ACCOUNT_MODE, default=DEFAULT_ACCOUNT_MODE
+        ): vol.In(ACCOUNT_MODE_OPTIONS),
         vol.Optional(
             CONF_UPDATE_INTERVAL, default=str(DEFAULT_UPDATE_INTERVAL)
         ): _list_choice(UPDATE_INTERVAL_OPTIONS),
@@ -350,11 +356,14 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     )
 
     session = async_get_clientsession(hass)
+    account_mode = data.get(CONF_ACCOUNT_MODE, DEFAULT_ACCOUNT_MODE)
+
     api = DessMonitorAPI(
         username=username,
         password=data[CONF_PASSWORD],
         company_key=company_key,
         session=session,
+        account_mode=account_mode,
     )
 
     try:
