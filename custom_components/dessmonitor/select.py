@@ -15,6 +15,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
 from .device_support.device_registry import map_control_field
+from .entity_loader import async_setup_dynamic_entities
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,13 +34,36 @@ async def async_setup_entry(
     coordinator: DessMonitorDataUpdateCoordinator = hass.data[DOMAIN][
         config_entry.entry_id
     ]
+    known_entities: set[str] = set()
+
+    async def _build() -> list[SelectEntity]:
+        return await _async_build_select_entities(coordinator, known_entities)
+
+    await async_setup_dynamic_entities(
+        hass,
+        config_entry,
+        coordinator,
+        async_add_entities,
+        _build,
+        task_name="dessmonitor_select_discovery",
+        # The API exposes control values one field at a time. Discover them in
+        # the background so dozens of reads cannot delay integration startup.
+        defer_initial=True,
+    )
+
+
+async def _async_build_select_entities(
+    coordinator: DessMonitorDataUpdateCoordinator,
+    known_entities: set[str],
+) -> list[SelectEntity]:
+    """Build cloud-backed selects not already registered by this platform."""
 
     if not coordinator.data:
         _LOGGER.debug("No coordinator data available; skipping select setup")
-        return
+        return []
 
     coordinator_data = cast(dict[str, dict[str, Any]], coordinator.data)
-    entities = []
+    entities: list[SelectEntity] = []
 
     for device_sn, raw_device_info in coordinator_data.items():
         device_info = cast(dict[str, Any], raw_device_info)
@@ -49,7 +73,7 @@ async def async_setup_entry(
         devcode = device_meta.get("devcode")
         devaddr = device_meta.get("devaddr")
 
-        if not all([pn, devcode, devaddr]):
+        if not pn or devcode is None or devaddr is None:
             continue
 
         controls, current_values = await coordinator.async_get_controls_with_values(
@@ -67,6 +91,9 @@ async def async_setup_entry(
                 continue
 
             friendly_name = map_control_field(devcode, name)
+            entity_key = f"{device_sn}:{param_id}"
+            if entity_key in known_entities:
+                continue
 
             entities.append(
                 DessMonitorSelect(
@@ -80,10 +107,11 @@ async def async_setup_entry(
                     current_values.get(param_id),
                 )
             )
+            known_entities.add(entity_key)
 
     if entities:
         _LOGGER.info("Adding %d select entities", len(entities))
-        async_add_entities(entities)
+    return entities
 
 
 class DessMonitorSelect(CoordinatorEntity, SelectEntity):
@@ -135,6 +163,7 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
+        coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
         api_value = self._option_to_value.get(option)
         if api_value is None:
             raise ValueError(f"Invalid option: {option}")
@@ -143,11 +172,11 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
             "Setting %s to %s (API: %s)", self._attr_unique_id, option, api_value
         )
 
-        device = self.coordinator.data.get(self._device_sn, {}).get("device", {})
-        collector = self.coordinator.data.get(self._device_sn, {}).get("collector", {})
+        device = coordinator.data.get(self._device_sn, {}).get("device", {})
+        collector = coordinator.data.get(self._device_sn, {}).get("collector", {})
 
         try:
-            await self.coordinator.api.set_device_control_value(
+            await coordinator.api.set_device_control_value(
                 pn=collector.get("pn"),
                 devcode=device.get("devcode"),
                 devaddr=device.get("devaddr"),
@@ -156,10 +185,8 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
                 value=api_value,
             )
             self._attr_current_option = option
-            if self._device_sn in self.coordinator.ctrl_value_cache:
-                self.coordinator.ctrl_value_cache[self._device_sn][
-                    self._param_id
-                ] = option
+            if self._device_sn in coordinator.ctrl_value_cache:
+                coordinator.ctrl_value_cache[self._device_sn][self._param_id] = option
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set option for %s: %s", self._attr_unique_id, err)

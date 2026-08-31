@@ -129,6 +129,11 @@ What happens next:
 - GitHub Action “Release” triggers on tag `v*.*.*`.
 - CI validates CHANGELOG entry, updates VERSION/manifest.json (for manual dispatch case), builds ZIPs, and publishes the GitHub Release with assets.
 
+For a prerelease that testers must opt into, follow
+[Release Candidates](RELEASE_CANDIDATES.md). RCs use `vX.Y.Z-rc.N`, are tagged
+from a tested release branch, and are published as GitHub prereleases without
+moving `main` away from the latest stable version.
+
 Manual release (workflow dispatch):
 ```bash
 # Actions → Release → Run workflow → version: v1.2.3
@@ -160,4 +165,3 @@ git rebase --abort
 # Resolve conflicts then continue
 git add -A && git rebase --continue
 ```
-

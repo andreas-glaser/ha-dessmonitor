@@ -12,26 +12,38 @@ import re
 # never negative (voltages, currents).
 _VOLT_AMP = ("V", "A")
 
-# When the API hint is missing or inconsistent with the live value, synthesize a
-# slider range around the known-good live value. The range is deliberately
-# generous: the DessMonitor/SmartESS API rejects genuinely out-of-range writes,
-# so a too-narrow range (which blocks valid setpoints) is worse than a wide one.
-_RANGE_HEADROOM = 0.5
-_MIN_RANGE_SPAN = {"V": 5.0, "A": 5.0}
-# Fallback max for a V/A control that has neither a usable hint nor a live value.
-_UNIT_FALLBACK_MAX = {"V": 100.0, "A": 100.0}
+# Fallback max for a V/A control without a trustworthy API hint. One current
+# value cannot reveal the hardware's configurable range, so the fallback must
+# not move with the setting cached at startup (issue #30).
+_UNIT_FALLBACK_MAX = {"V": 100.0, "A": 200.0}
+
+# Match a complete hint rather than pulling arbitrary digit fragments from a
+# malformed string. DessMonitor uses tilde and several dash variants depending
+# on device firmware and localization.
+_HINT_RANGE_RE = re.compile(
+    r"^\s*(-?\d+(?:\.\d+)?)\s*[~\-–—]\s*" r"(-?\d+(?:\.\d+)?)\s*[A-Za-z%°]*\s*$"
+)
 
 
 def parse_hint_range(hint: str) -> tuple[float | None, float | None]:
     """Parse min/max from a hint string like '60.0~66V' or '0-900min'."""
-    numbers = re.findall(r"[\d.]+", hint)
-    if len(numbers) >= 2:
-        try:
-            a, b = float(numbers[0]), float(numbers[1])
-            return (min(a, b), max(a, b))
-        except ValueError:
-            pass
-    return None, None
+    match = _HINT_RANGE_RE.match(hint)
+    if not match:
+        return None, None
+
+    try:
+        a, b = float(match.group(1)), float(match.group(2))
+    except ValueError:
+        return None, None
+    return min(a, b), max(a, b)
+
+
+def is_hint_range_usable(hint: str | None, value: float | None) -> bool:
+    """Return whether an API hint is complete and consistent with live state."""
+    if not hint:
+        return False
+    lo, hi = parse_hint_range(hint)
+    return lo is not None and hi is not None and (value is None or lo <= value <= hi)
 
 
 def compute_range_and_step(
@@ -48,11 +60,11 @@ def compute_range_and_step(
     observed returning hints that are wrong or missing for charging-voltage and
     current controls (e.g. a ``25-30V`` hint on a 48V system whose live setting
     is ``57.6V`` (issue #22), or no hint at all so HA defaults to ``0-100``
-    (issue #23)). In those cases the slider is unusable and writes of otherwise
-    valid values are rejected as "out of range". We therefore synthesize a
-    generous range around the live value; the API still rejects genuinely
-    invalid writes, so erring wide is safe while erring narrow blocks valid
-    setpoints.
+    (issue #23)). In those cases a range derived from the current setting is
+    also unsafe: the setting is a point, not evidence of the hardware limits.
+    Voltage/current controls therefore use a stable fallback which is widened
+    for unusually large live values. The API remains the final validator for
+    device-specific limits.
 
     A returned ``min`` or ``max`` of ``None`` means "leave HA's default".
     """
@@ -63,19 +75,19 @@ def compute_range_and_step(
 
     # 1. A complete hint that brackets the live value (or when there is no value
     #    to contradict it) is trusted as-is.
-    if lo is not None and hi is not None and (value is None or lo <= value <= hi):
+    if is_hint_range_usable(hint, value):
         return lo, hi, step
 
     # 2. The hint is missing or doesn't cover the live value.
+    if unit in _VOLT_AMP:
+        fallback_hi = _UNIT_FALLBACK_MAX[unit]
+        if value is not None:
+            fallback_hi = max(fallback_hi, value + max(abs(value) * 0.5, 5.0))
+        if hi is not None:
+            fallback_hi = max(fallback_hi, hi)
+        return 0.0, round(fallback_hi, 1), step
+
     if value is not None:
-        if unit in _VOLT_AMP:
-            # Anchor a generous range on the known-good live value.
-            span = max(abs(value) * _RANGE_HEADROOM, _MIN_RANGE_SPAN[unit])
-            cand_lo = max(0.0, value - span)
-            cand_hi = value + span
-            new_lo = cand_lo if lo is None else min(lo, cand_lo)
-            new_hi = cand_hi if hi is None else max(hi, cand_hi)
-            return round(new_lo, 1), round(new_hi, 1), step
         # For other units we can't guess a sensible magnitude, so only widen an
         # existing hint outward to include the value rather than invent a range.
         if lo is not None and value < lo:
@@ -84,12 +96,5 @@ def compute_range_and_step(
             hi = value
         return lo, hi, step
 
-    # 3. No live value to anchor on. Give V/A a usable default range; for other
-    #    units leave HA's defaults alone.
-    if unit in _VOLT_AMP:
-        return (
-            lo if lo is not None else 0.0,
-            hi if hi is not None else _UNIT_FALLBACK_MAX[unit],
-            step,
-        )
+    # 3. No live value to anchor on. For other units leave HA's defaults alone.
     return lo, hi, step

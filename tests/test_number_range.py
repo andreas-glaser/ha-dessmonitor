@@ -16,6 +16,7 @@ import pytest
 
 from custom_components.dessmonitor.number_range import (
     compute_range_and_step,
+    is_hint_range_usable,
     parse_hint_range,
 )
 
@@ -31,6 +32,7 @@ class TestParseHintRange:
             ("0-900min", (0.0, 900.0)),
             ("66~60V", (60.0, 66.0)),  # reversed bounds are normalised
             ("0.5~1.5", (0.5, 1.5)),
+            (" -10 — 10A ", (-10.0, 10.0)),
         ],
     )
     def test_valid_ranges(self, hint: str, expected: tuple[float, float]) -> None:
@@ -44,6 +46,8 @@ class TestParseHintRange:
             "abc",
             "no numbers here",
             "1.2.3~4.5",  # two tokens, but the first is not a valid float
+            "prefix 1~2V",  # arbitrary digit fragments are not a valid hint
+            "1~2V suffix",
         ],
     )
     def test_unparseable_returns_none(self, hint: str) -> None:
@@ -82,21 +86,26 @@ class TestTrustsGoodHint:
     def test_value_on_boundary_is_inside(self, value: float) -> None:
         assert compute_range_and_step("V", "48.0~56.0V", value) == (48.0, 56.0, 0.1)
 
+    def test_hint_usability(self) -> None:
+        assert is_hint_range_usable("48.0~56.0V", 54.0)
+        assert not is_hint_range_usable("48.0~56.0V", 57.6)
+        assert not is_hint_range_usable(None, 54.0)
+
 
 class TestWrongHint:
-    """Issue #22: a hint that excludes the live value is widened to include it."""
+    """Issue #22: an inconsistent hint is replaced by a safe fallback."""
 
     def test_hint_below_value_is_widened(self) -> None:
         # 48V system reads 57.6V but the API claims a 25-30V range.
         lo, hi, step = compute_range_and_step("V", "25~30V", 57.6)
         assert lo <= 57.6 <= hi
-        assert (lo, hi, step) == pytest.approx((25.0, 86.4, 0.1))
+        assert (lo, hi, step) == pytest.approx((0.0, 100.0, 0.1))
 
     def test_hint_above_value_is_widened(self) -> None:
         # A 12V system reads 13.8V but the API claims a 60-66V range.
         lo, hi, step = compute_range_and_step("V", "60~66V", 13.8)
         assert lo <= 13.8 <= hi
-        assert (lo, hi, step) == pytest.approx((6.9, 66.0, 0.1))
+        assert (lo, hi, step) == pytest.approx((0.0, 100.0, 0.1))
 
     def test_widened_range_admits_the_live_value(self) -> None:
         # The whole point: the device's own setting must be settable again.
@@ -107,15 +116,20 @@ class TestWrongHint:
 class TestMissingHint:
     """Issue #23: no hint, so a usable range is synthesized."""
 
-    def test_voltage_anchored_on_value(self) -> None:
-        assert compute_range_and_step("V", None, 54.0) == pytest.approx(
-            (27.0, 81.0, 0.1)
-        )
+    def test_voltage_uses_stable_fallback(self) -> None:
+        assert compute_range_and_step("V", None, 54.0) == (0.0, 100.0, 0.1)
 
-    def test_current_anchored_on_value(self) -> None:
-        assert compute_range_and_step("A", None, 40.0) == pytest.approx(
-            (20.0, 60.0, 0.1)
-        )
+    def test_current_uses_stable_fallback(self) -> None:
+        assert compute_range_and_step("A", None, 40.0) == (0.0, 200.0, 0.1)
+
+    def test_current_range_is_not_derived_from_startup_value(self) -> None:
+        """Issue #30: a cached 9 A must not produce a moving 4-14 A range."""
+        lo, hi, step = compute_range_and_step("A", None, 9.0)
+        assert (lo, hi, step) == (0.0, 200.0, 0.1)
+        assert lo <= 5.0 <= 80.0 <= hi
+
+    def test_large_live_value_widens_stable_fallback(self) -> None:
+        assert compute_range_and_step("A", None, 200.0) == (0.0, 300.0, 0.1)
 
     def test_lower_bound_floored_at_zero(self) -> None:
         lo, _, _ = compute_range_and_step("V", None, 5.0)
@@ -123,7 +137,8 @@ class TestMissingHint:
 
     @pytest.mark.parametrize("unit", ["V", "A"])
     def test_no_hint_no_value_uses_unit_default(self, unit: str) -> None:
-        assert compute_range_and_step(unit, None, None) == (0.0, 100.0, 0.1)
+        expected_max = 100.0 if unit == "V" else 200.0
+        assert compute_range_and_step(unit, None, None) == (0.0, expected_max, 0.1)
 
     def test_tiny_value_keeps_a_usable_span(self) -> None:
         # A minimum span prevents a degenerate zero-width slider.

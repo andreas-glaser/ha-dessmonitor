@@ -16,11 +16,13 @@ Usage:
 
 import argparse
 import asyncio
+import getpass
 import hashlib
 import hmac
 import json
 import logging
 import os
+import stat
 import sys
 import time
 from pathlib import Path
@@ -34,6 +36,34 @@ if "--debug" in sys.argv:
     sys.argv.remove("--debug")  # Remove it so argparse doesn't complain
 logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def _write_private_file(path_value: str | Path, content: str) -> Path:
+    """Write a regular mode-0600 file without following a symlink."""
+    source_path = Path(path_value).expanduser()
+    if source_path.is_symlink():
+        raise ValueError("output path must not be a symbolic link")
+    path = source_path.resolve()
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError("output path must be a regular file")
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8", closefd=False) as output:
+            output.write(content)
+            output.flush()
+            os.fsync(output.fileno())
+    finally:
+        os.close(descriptor)
+    return path
+
+
+def _write_private_json(path_value: str | Path, data: Any) -> Path:
+    """Serialize one private JSON report deterministically."""
+    return _write_private_file(path_value, json.dumps(data, indent=2) + "\n")
 
 
 class DessMonitorCLI:
@@ -51,7 +81,10 @@ class DessMonitorCLI:
         self.config_file = Path(__file__).parent / ".dessmonitor_cli_config.json"
     
     async def __aenter__(self):
-        self.session = aiohttp.ClientSession()
+        # Use aiohttp's thread-based resolver so the contributor CLI does not
+        # depend on the locally installed pycares/aiodns ABI combination.
+        connector = aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())
+        self.session = aiohttp.ClientSession(connector=connector)
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -110,20 +143,40 @@ class DessMonitorCLI:
         for key, value in params.items():
             url += f"&{key}={value}"
         
-        logger.debug(f"API Request: {action} -> {url}")
+        logger.debug(
+            "API request action=%s parameter_keys=%s",
+            action,
+            sorted(params),
+        )
         
-        async with self.session.get(url) as response:
-            if response.status != 200:
-                raise Exception(f"HTTP {response.status}: {await response.text()}")
-            
-            data = await response.json()
-            logger.debug(f"API Response: {data}")
-            
-            if data.get("err") != 0:
-                error_msg = data.get("desc", "Unknown API error")
-                raise Exception(f"API Error: {error_msg} (code: {data.get('err')})")
-            
-            return data
+        try:
+            async with self.session.get(url) as response:
+                if response.status != 200:
+                    raise RuntimeError(
+                        f"API HTTP {response.status} for action {action}"
+                    )
+
+                data = await response.json()
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            # aiohttp exception strings may contain the complete signed URL,
+            # including the bearer token. Never propagate or log that text.
+            raise RuntimeError(
+                f"API transport failed for action {action} "
+                f"({type(err).__name__})"
+            ) from None
+
+        logger.debug(
+            "API response action=%s status=%s top_level_keys=%s",
+            action,
+            data.get("err"),
+            sorted(data),
+        )
+
+        if data.get("err") != 0:
+            error_code = data.get("err")
+            raise RuntimeError(f"API rejected action {action} (code: {error_code})")
+
+        return data
     
     async def authenticate(self, username: str, password: str, company_key: str) -> bool:
         """Authenticate with DessMonitor API."""
@@ -143,7 +196,11 @@ class DessMonitorCLI:
         
         try:
             response = await self._make_request("authSource", auth_params)
-            logger.debug(f"Authentication response: {response}")
+            logger.debug(
+                "Authentication response status=%s keys=%s",
+                response.get("err"),
+                sorted(response),
+            )
             
             if response.get("err") == 0 and "dat" in response:
                 data = response["dat"]
@@ -170,8 +227,7 @@ class DessMonitorCLI:
                     "token_expires": self.token_expires
                 }
                 
-                with open(self.config_file, "w") as f:
-                    json.dump(config, f, indent=2)
+                self._write_private_config(config)
                 
                 logger.info("Authentication successful! Credentials saved.")
                 logger.debug(f"Token expires in {expire_duration} seconds")
@@ -190,7 +246,10 @@ class DessMonitorCLI:
         """Authenticate using saved credentials."""
         if not self.config_file.exists():
             raise Exception("No saved credentials found. Run 'auth' command first.")
-        
+
+        if self.config_file.is_symlink():
+            raise Exception("Refusing to read credentials through a symbolic link.")
+        os.chmod(self.config_file, 0o600)
         with open(self.config_file, "r") as f:
             config = json.load(f)
         
@@ -216,6 +275,10 @@ class DessMonitorCLI:
             self.password, 
             self.company_key
         )
+
+    def _write_private_config(self, config: Dict[str, Any]) -> None:
+        """Write credentials mode 0600 without following symbolic links."""
+        _write_private_json(self.config_file, config)
     
     async def get_collectors(self) -> List[Dict[str, Any]]:
         """Get all collectors/data collectors."""
@@ -224,7 +287,7 @@ class DessMonitorCLI:
         # Get projects first
         projects_response = await self._make_request("queryPlants", {"pagesize": "50"})
         
-        logger.debug(f"Projects response: {projects_response}")
+        logger.debug("Projects response received")
         projects_data = projects_response.get("dat", {})
         for project in projects_data.get("plant", []):
             pid = project.get("pid")
@@ -270,13 +333,13 @@ class DessMonitorCLI:
         try:
             logger.info("Querying collectors directly...")
             direct_response = await self._make_request("queryCollectorCountEs")
-            logger.debug(f"Direct collector response: {direct_response}")
+            logger.debug("Direct collector response received")
             
             # This endpoint might return collector count, not actual collectors
             # Let's also try the queryCollectorList endpoint
             try:
                 list_response = await self._make_request("queryCollectorList")
-                logger.debug(f"Collector list response: {list_response}")
+                logger.debug("Collector list response received")
                 
                 if "dat" in list_response:
                     for collector in list_response.get("dat", []):
@@ -322,7 +385,10 @@ class DessMonitorCLI:
                             "collector_alias": collector.get("alias")
                         }
             except Exception as e:
-                logger.debug(f"Error checking collector {pn} for device {device_sn}: {e}")
+                logger.debug(
+                    "Unable to inspect one collector while locating the selected device: %s",
+                    type(e).__name__,
+                )
                 continue
         
         return None
@@ -343,7 +409,7 @@ class DessMonitorCLI:
             }
         else:
             # Try direct query with just serial number
-            logger.debug(f"Device {device_sn} not found in collectors, trying direct query")
+            logger.debug("Selected device not found in collectors; trying direct query")
             params = {
                 "sn": device_sn,
                 "i18n": "en"
@@ -368,7 +434,7 @@ class DessMonitorCLI:
                 pass
             
             # If all else fails, raise original error
-            raise Exception(f"Unable to retrieve data for device {device_sn}")
+            raise Exception("Unable to retrieve data for the selected device")
 
     async def get_device_control_fields(
         self, pn: str, devcode: int, devaddr: int, device_sn: str
@@ -415,7 +481,7 @@ class DessMonitorCLI:
             formatted[name] = entry
 
         logger.debug(
-            "Collected %d control fields for device %s", len(formatted), device_sn
+            "Collected %d control fields for the selected device", len(formatted)
         )
         return formatted
 
@@ -449,7 +515,7 @@ class DessMonitorCLI:
             }
 
         logger.debug(
-            "Collected %d parameters for device %s", len(formatted), device_sn
+            "Collected %d parameters for the selected device", len(formatted)
         )
         return formatted
 
@@ -512,15 +578,20 @@ class DessMonitorCLI:
 
     def generate_devcode_template(self, analysis: Dict[str, Any]) -> str:
         """Generate a devcode template file based on analysis results."""
-        devcode = analysis.get("devcode", "XXXX")
-        collector_alias = analysis.get("collector_alias", "Unknown Collector")
+        try:
+            devcode = int(analysis["devcode"])
+        except (KeyError, TypeError, ValueError) as err:
+            raise ValueError("analysis does not contain a numeric devcode") from err
+        collector_alias = str(
+            analysis.get("collector_alias", "DessMonitor collector")
+        )
+        device_name = f"{collector_alias} (devcode {devcode})"
+        local_model = str(analysis.get("local_evidence", {}).get("model", "")).strip()
+        known_inverters = [local_model] if local_model else []
         
         template = f'''"""Device support for DessMonitor devcode {devcode}.
 
-AUTO-GENERATED TEMPLATE - Please review and update all mappings!
-Generated from device: {analysis.get("device_sn", "Unknown")}
-Collector: {collector_alias}
-Date: {time.strftime("%Y-%m-%d %H:%M:%S")}
+Review every suggested mapping against the attached support evidence.
 
 This file contains all collector-specific mappings and configurations for devcode {devcode}.
 The devcode represents the data collector/gateway device, not the inverter itself.
@@ -536,9 +607,10 @@ from __future__ import annotations
 # Device Information
 # TODO: Update with accurate information about your data collector model
 DEVICE_INFO = {{
-    "name": "{collector_alias} (devcode {devcode})",
+    "name": {device_name!r},
     "description": "TODO: Add description of your data collector/gateway device",
     "manufacturer": "DessMonitor",  # TODO: Update if different
+    "known_inverters": {known_inverters!r},
     "supported_features": [
         # TODO: Review and update based on your device capabilities
         "real_time_monitoring",
@@ -557,7 +629,8 @@ OUTPUT_PRIORITY_MAPPING = {{'''
         if analysis.get("output_priorities"):
             template += "\n    # Found values in your device data:\n"
             for priority in analysis["output_priorities"]:
-                template += f'    "{priority}": "TODO: Add description for {priority}",\n'
+                description = f"TODO: Add description for {priority}"
+                template += f"    {str(priority)!r}: {description!r},\n"
         else:
             template += '\n    # No output priority values found in device data\n'
             template += '    # Example: "SBU": "Solar → Battery → Utility",\n'
@@ -572,7 +645,8 @@ CHARGER_PRIORITY_MAPPING = {'''
         if analysis.get("charger_priorities"):
             template += "\n    # Found values in your device data:\n"
             for priority in analysis["charger_priorities"]:
-                template += f'    "{priority}": "TODO: Add description for {priority}",\n'
+                description = f"TODO: Add description for {priority}"
+                template += f"    {str(priority)!r}: {description!r},\n"
         else:
             template += '\n    # No charger priority values found in device data\n'
             template += '    # Example: "PV First": "Solar charging priority",\n'
@@ -587,7 +661,8 @@ OPERATING_MODE_MAPPING = {'''
         if analysis.get("operating_modes"):
             template += "\n    # Found values in your device data:\n"
             for mode in analysis["operating_modes"]:
-                template += f'    "{mode}": "TODO: Add description for {mode}",\n'
+                description = f"TODO: Add description for {mode}"
+                template += f"    {str(mode)!r}: {description!r},\n"
         else:
             template += '\n    # No operating mode values found in device data\n'
             template += '    # Example: "Line": "Grid mode",\n'
@@ -607,7 +682,13 @@ SENSOR_TITLE_MAPPINGS = {'''
                 if original not in seen_originals:
                     seen_originals.add(original)
                     suggested = typo_info["suggested"]
-                    template += f'    "{original}": "{suggested}",\n'
+                    template += f"    {str(original)!r}: {str(suggested)!r},\n"
+
+        suggested_mappings = analysis.get("suggested_sensor_title_mappings", {})
+        if suggested_mappings:
+            template += "\n    # High-confidence cloud/local title matches:\n"
+            for original, suggested in sorted(suggested_mappings.items()):
+                template += f"    {str(original)!r}: {str(suggested)!r},\n"
         
         template += '''
     # TODO: Add any other sensor name improvements
@@ -636,7 +717,7 @@ DEVCODE_CONFIG = {
     
     async def analyze_device_for_devcode(self, device_sn: str) -> Dict[str, Any]:
         """Analyze device data to help create devcode configuration."""
-        logger.info(f"Analyzing device {device_sn} for devcode mapping...")
+        logger.info("Analyzing selected device for devcode mapping...")
         
         # First try to find device info to get devcode
         device_lookup = await self._find_device_info(device_sn)
@@ -691,7 +772,13 @@ DEVCODE_CONFIG = {
             value = point.get("val", "")
             
             sensor_analysis["unique_sensors"].add(title)
-            sensor_analysis["sensor_titles"].append({"title": title, "value": value})
+            sensor_analysis["sensor_titles"].append(
+                {
+                    "title": title,
+                    "value": value,
+                    "unit": point.get("unit", ""),
+                }
+            )
             
             # Check for typos - only replace exact typo matches
             title_lower = title.lower()
@@ -760,9 +847,7 @@ DEVCODE_CONFIG = {
                         key=lambda item: item["name"],
                     )
                 except Exception as err:
-                    logger.warning(
-                        "Failed to fetch control fields for %s: %s", device_sn, err
-                    )
+                    logger.warning("Failed to fetch control fields: %s", err)
 
                 try:
                     raw_parameters = await self.get_device_parameters(
@@ -781,17 +866,22 @@ DEVCODE_CONFIG = {
                         key=lambda item: item["name"],
                     )
                 except Exception as err:
-                    logger.warning(
-                        "Failed to fetch device parameters for %s: %s",
-                        device_sn,
-                        err,
-                    )
+                    logger.warning("Failed to fetch device parameters: %s", err)
         
         # Convert to sorted lists and prepare mappings
         analysis_result = {
             "analysis_version": 3,
             "devcode": devcode,
             "device_sn": device_sn,
+            "device_identity": "sha256:"
+            + hashlib.sha256(device_sn.encode("utf-8")).hexdigest()[:12],
+            "collector_identity": (
+                "sha256:"
+                + hashlib.sha256(str(device_lookup.get("pn", "")).encode("utf-8")).hexdigest()[:12]
+                if device_lookup and device_lookup.get("pn")
+                else ""
+            ),
+            "device_address": device_lookup.get("devaddr") if device_lookup else None,
             "collector_alias": collector_alias,
             "total_sensors": len(sensor_analysis["unique_sensors"]),
             "operating_modes": sorted(sensor_analysis["operating_modes"].keys()),
@@ -838,7 +928,10 @@ def setup_argparser() -> argparse.ArgumentParser:
     # Auth command
     auth_parser = subparsers.add_parser("auth", help="Authenticate with DessMonitor API")
     auth_parser.add_argument("--username", required=True, help="DessMonitor username")
-    auth_parser.add_argument("--password", required=True, help="DessMonitor password")
+    auth_parser.add_argument(
+        "--password",
+        help="DessMonitor password (omit to enter it without shell-history exposure)",
+    )
     auth_parser.add_argument("--company-key", required=True, help="Company key")
     
     # Collectors command
@@ -869,16 +962,139 @@ def setup_argparser() -> argparse.ArgumentParser:
     
     # Analyze command
     analyze_parser = subparsers.add_parser("analyze", help="Analyze device for devcode mapping")
-    analyze_parser.add_argument("--device-sn", required=True, help="Device serial number")
+    analyze_parser.add_argument(
+        "--device-sn",
+        help="Device serial number (optional when --local-report can identify it)",
+    )
     analyze_parser.add_argument("--output", help="Output file for analysis results")
     analyze_parser.add_argument("--raw", action="store_true", help="Print raw device data instead of analysis")
     analyze_parser.add_argument("--template", action="store_true", help="Generate devcode template Python file")
+    analyze_parser.add_argument(
+        "--local-report",
+        help="Merge a sanitized local-probe JSON report into the devcode evidence",
+    )
+    analyze_parser.add_argument(
+        "--local-inverter-address",
+        type=int,
+        default=1,
+        help="Inverter address to select from the local report (default: 1)",
+    )
 
     # Verify command
     verify_parser = subparsers.add_parser("verify", help="Verify integrity of an analysis JSON file")
     verify_parser.add_argument("file", help="Path to analysis JSON file")
 
+    # Local, read-only collector probe. This command does not use cloud credentials.
+    local_parser = subparsers.add_parser(
+        "local-probe",
+        help="Probe one EyeBond collector locally using read-only inverter requests",
+    )
+    local_parser.add_argument(
+        "--listen-ip", required=True, help="LAN IPv4 address of this host"
+    )
+    local_parser.add_argument(
+        "--collector-ip", required=True, help="LAN IPv4 address of the collector"
+    )
+    local_parser.add_argument("--tcp-port", type=int, default=8899)
+    local_parser.add_argument("--udp-port", type=int, default=58899)
+    local_parser.add_argument(
+        "--device-code",
+        type=int,
+        default=0,
+        help="Optional cloud-family or tunnel-code hint (0 auto-detects)",
+    )
+    local_parser.add_argument("--max-address", type=int, default=16)
+    local_parser.add_argument("--timeout", type=float, default=90.0)
+    local_parser.add_argument(
+        "--probe-timeout",
+        type=float,
+        default=120.0,
+        help="Overall read-only inverter detection deadline in seconds",
+    )
+    local_parser.add_argument("--expected-product-number", default="")
+    local_parser.add_argument("--output", help="Private JSON report path (mode 0600)")
+    local_parser.add_argument(
+        "--include-identifiers",
+        action="store_true",
+        help="Include collector IP/product number and inverter serial in the report",
+    )
+    local_parser.add_argument(
+        "--confirm-callback",
+        action="store_true",
+        help="Confirm a temporary UDP callback request may interrupt a cloud session",
+    )
+
+    scan_parser = subparsers.add_parser(
+        "local-scan",
+        help="Find EyeBond collectors with one bounded LAN callback scan",
+    )
+    scan_parser.add_argument(
+        "--listen-ip", required=True, help="LAN IPv4 address of this host"
+    )
+    scan_parser.add_argument(
+        "--network", help="Optional IPv4 network, limited to /24 or smaller"
+    )
+    scan_parser.add_argument("--tcp-port", type=int, default=8899)
+    scan_parser.add_argument("--udp-port", type=int, default=58899)
+    scan_parser.add_argument("--timeout", type=float, default=1.5)
+    scan_parser.add_argument(
+        "--confirm-callback",
+        action="store_true",
+        help="Confirm callback discovery may briefly interrupt collector cloud sessions",
+    )
+
     return parser
+
+
+def _attach_local_evidence(
+    analysis: Dict[str, Any], local_report_path: str | None, inverter_address: int
+) -> Dict[str, Any]:
+    """Merge optional read-only local evidence using the standalone helper."""
+    if not local_report_path:
+        return analysis
+    from evidence import combine_evidence, load_local_report
+
+    return combine_evidence(
+        analysis,
+        load_local_report(local_report_path),
+        inverter_address=inverter_address,
+    )
+
+
+async def _resolve_analysis_device_sn(
+    cli: DessMonitorCLI,
+    device_sn: str | None,
+    local_report_path: str | None,
+    inverter_address: int,
+) -> str:
+    """Resolve a cloud device explicitly or from redacted local route evidence."""
+    if device_sn:
+        return device_sn
+    if not local_report_path:
+        raise ValueError("analyze requires --device-sn or --local-report")
+
+    from evidence import load_local_report
+
+    report = load_local_report(local_report_path)
+    expected_collector = str(report.get("collector", {}).get("product_number", ""))
+    matches: list[str] = []
+    for collector in await cli.get_collectors():
+        product_number = str(collector.get("pn", ""))
+        product_hash = hashlib.sha256(product_number.encode("utf-8")).hexdigest()[:12]
+        if expected_collector not in (product_number, f"sha256:{product_hash}"):
+            continue
+        devices = (await cli.get_devices(product_number)).get("dev", [])
+        matches.extend(
+            str(device["sn"])
+            for device in devices
+            if device.get("sn") and device.get("devaddr") == inverter_address
+        )
+    if len(matches) != 1:
+        raise ValueError(
+            "local report did not resolve to exactly one cloud device; "
+            "provide --device-sn explicitly"
+        )
+    return matches[0]
 
 
 async def main():
@@ -889,11 +1105,27 @@ async def main():
     if not args.command:
         parser.print_help()
         return
-    
+
+    if args.command in ("local-probe", "local-scan"):
+        from local_probe import run_local_probe, run_local_scan
+
+        try:
+            report = (
+                await run_local_probe(args)
+                if args.command == "local-probe"
+                else await run_local_scan(args)
+            )
+        except Exception as e:
+            logger.error(f"Command failed: {e}")
+            sys.exit(1)
+        print(json.dumps(report, indent=2))
+        return
+
     async with DessMonitorCLI() as cli:
         try:
             if args.command == "auth":
-                success = await cli.authenticate(args.username, args.password, args.company_key)
+                password = args.password or getpass.getpass("DessMonitor password: ")
+                success = await cli.authenticate(args.username, password, args.company_key)
                 if not success:
                     sys.exit(1)
             
@@ -973,18 +1205,28 @@ async def main():
                     print(f"\n❌ Failed to set param: {resp.get('desc')}")
             
             elif args.command == "analyze":
+                resolved_device_sn = await _resolve_analysis_device_sn(
+                    cli,
+                    args.device_sn,
+                    args.local_report,
+                    args.local_inverter_address,
+                )
                 if args.raw:
                     # For raw mode, just get and print the device data
-                    data = await cli.get_device_data(args.device_sn, 1)
+                    data = await cli.get_device_data(resolved_device_sn, 1)
                     if args.output:
-                        with open(args.output, "w") as f:
-                            json.dump(data, f, indent=2)
+                        _write_private_json(args.output, data)
                         print(f"Raw data saved to {args.output}")
                     else:
                         print(json.dumps(data, indent=2))
                 elif args.template:
                     # Generate Python devcode template file
-                    analysis = await cli.analyze_device_for_devcode(args.device_sn)
+                    analysis = await cli.analyze_device_for_devcode(
+                        resolved_device_sn
+                    )
+                    analysis = _attach_local_evidence(
+                        analysis, args.local_report, args.local_inverter_address
+                    )
                     template_content = cli.generate_devcode_template(analysis)
                     
                     devcode = analysis.get("devcode", "XXXX")
@@ -993,13 +1235,18 @@ async def main():
                     else:
                         output_file = f"devcode_{devcode}.py"
                     
-                    with open(output_file, "w") as f:
-                        f.write(template_content)
+                    _write_private_file(output_file, template_content)
                     
                     print(f"\n✅ Generated devcode template: {output_file}")
                     print(f"   Devcode: {devcode}")
-                    print(f"   Device: {analysis.get('device_sn')}")
                     print(f"   Sensors: {analysis.get('total_sensors')}")
+                    if analysis.get("local_evidence"):
+                        local_evidence = analysis["local_evidence"]
+                        print(
+                            "   Local: "
+                            f"{local_evidence.get('profile')} / "
+                            f"{local_evidence.get('model')}"
+                        )
                     
                     if analysis.get("potential_typos"):
                         print(f"\n⚠️  Found {len(analysis['potential_typos'])} potential typos:")
@@ -1012,7 +1259,12 @@ async def main():
                     print(f"3. Copy to custom_components/dessmonitor/device_support/")
                     print(f"4. Submit a PR to ha-dessmonitor repository")
                 else:
-                    analysis = await cli.analyze_device_for_devcode(args.device_sn)
+                    analysis = await cli.analyze_device_for_devcode(
+                        resolved_device_sn
+                    )
+                    analysis = _attach_local_evidence(
+                        analysis, args.local_report, args.local_inverter_address
+                    )
                     
                     output_data = {
                         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -1020,8 +1272,7 @@ async def main():
                     }
                     
                     if args.output:
-                        with open(args.output, "w") as f:
-                            json.dump(output_data, f, indent=2)
+                        _write_private_json(args.output, output_data)
                         print(f"Analysis saved to {args.output}")
                     else:
                         print(json.dumps(output_data, indent=2))

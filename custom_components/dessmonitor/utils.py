@@ -26,7 +26,8 @@ def create_device_info(
     """
     collector_pn = collector_meta.get("pn", "Unknown")
     device_alias = device_meta.get("alias")
-    firmware = collector_meta.get("fireware", "Unknown")
+    firmware = device_meta.get("firmware") or collector_meta.get("fireware", "Unknown")
+    is_local = device_meta.get("connection_type") == "local"
 
     if not device_alias:
         device_name = f"Inverter {collector_pn}"
@@ -36,8 +37,8 @@ def create_device_info(
     return DeviceInfo(
         identifiers={(DOMAIN, device_sn)},
         name=device_name,
-        manufacturer="DessMonitor",
-        model="Energy Storage Inverter",
+        manufacturer="Local inverter" if is_local else "DessMonitor",
+        model=device_meta.get("model", "Energy Storage Inverter"),
         sw_version=firmware,
         serial_number=device_sn,
     )

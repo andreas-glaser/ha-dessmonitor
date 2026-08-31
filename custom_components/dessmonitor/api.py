@@ -149,13 +149,8 @@ class DessMonitorAPI:
                     response.raise_for_status()
                     try:
                         return await response.json()
-                    except aiohttp.ContentTypeError as err:
-                        text_preview = await response.text()
-                        _LOGGER.error(
-                            "Invalid JSON response for action '%s': %s",
-                            action,
-                            text_preview[:500],
-                        )
+                    except (aiohttp.ContentTypeError, ValueError) as err:
+                        _LOGGER.error("Invalid JSON response for action '%s'", action)
                         raise DessMonitorError("Invalid response from server") from err
         except asyncio.TimeoutError as err:
             _LOGGER.error(
@@ -172,17 +167,17 @@ class DessMonitorAPI:
             raise DessMonitorError("Request cancelled") from err
         except aiohttp.ClientResponseError as err:
             _LOGGER.error(
-                "HTTP %s error for action '%s': %s",
+                "HTTP %s error for action '%s'",
                 err.status,
                 action,
-                err.message,
             )
-            raise DessMonitorError(
-                f"Server returned HTTP {err.status}: {err.message or 'Unknown error'}"
-            ) from err
+            raise DessMonitorError(f"Server returned HTTP {err.status}") from err
         except aiohttp.ClientError as err:
-            _LOGGER.error("HTTP request failed for action '%s': %s", action, err)
-            raise DessMonitorError(f"Request failed: {err}") from err
+            error_type = type(err).__name__
+            _LOGGER.error(
+                "HTTP request failed for action '%s' (%s)", action, error_type
+            )
+            raise DessMonitorError(f"Request failed ({error_type})") from err
 
     @staticmethod
     def _validate_api_response(action: str, data: dict[str, Any]) -> dict[str, Any]:

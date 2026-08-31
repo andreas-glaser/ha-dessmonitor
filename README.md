@@ -54,11 +54,15 @@ Notes:
 2. **Restart** Home Assistant
 3. **Add Integration**: Go to Settings → Devices & Services → Add Integration → "DessMonitor"
 
-**Already have an account?** Enter your DessMonitor credentials and you're monitoring your solar system in minutes!
+**Already have an account?** Start with the DessMonitor API, then optionally
+add preferred local telemetry in the same guided setup. Local-only setup can
+skip account credentials entirely.
 
 ## 🌟 Features
 
 - Periodic monitoring of multiple inverters/collectors (5-minute default)
+- Optional read-only local telemetry with 2-60 second polling
+- Preferred-local hybrid mode with automatic cloud and cached-cloud fallback
 - 1-minute updates available with Detailed Data Collection Acceleration (￥144 per collector)
 - Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
 - **Device configuration control** - Change inverter settings directly from Home Assistant
@@ -68,6 +72,16 @@ Notes:
 - Secure token-based authentication with automatic renewal
 - Energy Dashboard integration for production/consumption tracking
 - Smart device naming with collector part numbers for easy identification
+
+Local mode supports strict PI17/PI18 and standard SMG/Modbus telemetry without
+adding local write controls. Existing cloud users can enable preferred-local
+telemetry without changing entity IDs or losing recorder history. See the
+[local and hybrid setup guide](docs/LOCAL_MODE.md) for networking, security,
+supported hardware, firewall directions, and the sanitized compatibility
+probe. Local mode requires outbound UDP `58899` from Home Assistant to each
+collector and inbound TCP `8899` from each collector to Home Assistant. Allow
+only the reserved private collector addresses and never forward these ports
+from the internet.
 
 ## 🖼️ Screenshots
 
@@ -172,7 +186,9 @@ The integration exposes inverter settings as controllable Home Assistant entitie
 
 1. Navigate to **Settings** > **Devices & Services**
 2. Click **Add Integration** and search for "DessMonitor"
-3. Enter your credentials:
+3. Choose **DessMonitor cloud API**, **API + preferred local telemetry**, or
+   read-only **Local network only**.
+4. For either API path, enter your credentials:
    - **Username**: Your DessMonitor account username
    - **Password**: Your DessMonitor account password
    - **Company Key**: Leave default unless specified by installer
@@ -333,8 +349,9 @@ logger:
 ## 📋 Requirements
 
 - **Home Assistant** 2024.1.0 or newer
-- **DessMonitor account** with active inverter(s)
-- **Internet connection** to api.dessmonitor.com
+- **DessMonitor account** with active inverter(s), except for local-only mode
+- **Internet connection** to api.dessmonitor.com for API and hybrid modes
+- **Fixed private LAN addresses** for Home Assistant and each local collector
 - **Python aiohttp** 3.8.0+ (installed automatically)
 
 ## 🔒 Security & Privacy
@@ -343,7 +360,8 @@ logger:
 - **Local credential storage** - passwords never leave your Home Assistant
 - **7-day token lifecycle** with automatic renewal
 - **Rate limiting respect** to avoid API overuse
-- **No data collection** - integration only communicates with DessMonitor API
+- **No project-operated data collection** - traffic goes only to the
+  DessMonitor API and, when configured, the exact private collector addresses
 
 ## 🛠️ Development Tools
 
@@ -363,7 +381,7 @@ For integration contributors and developers, we provide a comprehensive CLI tool
 ```bash
 cd tools/cli
 pip install -r requirements.txt
-python3 dessmonitor_cli.py auth --username USER --password PASS --company-key KEY
+python3 dessmonitor_cli.py auth --username USER --company-key KEY
 python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE_SN --output analysis.json
 ```
 

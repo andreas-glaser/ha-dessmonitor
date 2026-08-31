@@ -118,14 +118,6 @@ def map_sensor_title(devcode: int, api_title: str) -> str:
     # Apply mapping if exists, otherwise use original
     mapped_title = title_mappings.get(api_title, api_title)
 
-    if mapped_title != api_title:
-        _LOGGER.debug(
-            "Mapped sensor title for devcode %s: %s → %s",
-            devcode,
-            api_title,
-            mapped_title,
-        )
-
     return mapped_title
 
 
@@ -175,34 +167,15 @@ def map_operating_mode(devcode: int, api_value: str) -> str:
     normalized_value = api_value.strip()
 
     if normalized_value in mode_mappings:
-        mapped = mode_mappings[normalized_value]
-        _LOGGER.debug(
-            "Operating mode map (devcode %s): '%s' -> '%s'",
-            devcode,
-            api_value,
-            mapped,
-        )
-        return mapped
+        return mode_mappings[normalized_value]
 
     for candidate, mapped_value in mode_mappings.items():
         if (
             isinstance(candidate, str)
             and candidate.lower().strip() == normalized_value.lower()
         ):
-            _LOGGER.debug(
-                "Operating mode map (devcode %s - case-insensitive): '%s' -> '%s'",
-                devcode,
-                api_value,
-                mapped_value,
-            )
             return mapped_value
 
-    _LOGGER.debug(
-        "Operating mode map (devcode %s): '%s' -> '%s' (no mapping)",
-        devcode,
-        api_value,
-        normalized_value,
-    )
     return normalized_value
 
 
@@ -311,6 +284,31 @@ def get_all_operating_modes() -> list[str]:
         all_modes.update(operating_mode_mapping.values())
 
     return sorted(all_modes)
+
+
+def _get_all_priority_values(base_values: list[str], mapping_name: str) -> list[str]:
+    """Return every known raw and mapped value for a priority sensor."""
+    values = set(base_values)
+    values.add("Unknown")
+    for config in _DEVICE_REGISTRY.values():
+        priority_mapping = config.get(mapping_name, {})
+        values.update(str(value) for value in priority_mapping.keys())
+        values.update(str(value) for value in priority_mapping.values())
+    return sorted(values)
+
+
+def get_all_output_priorities() -> list[str]:
+    """Return every output-priority value known across supported devices."""
+    from ..const import OUTPUT_PRIORITIES
+
+    return _get_all_priority_values(OUTPUT_PRIORITIES, "output_priority_mapping")
+
+
+def get_all_charger_priorities() -> list[str]:
+    """Return every charger-priority value known across supported devices."""
+    from ..const import CHARGER_PRIORITIES
+
+    return _get_all_priority_values(CHARGER_PRIORITIES, "charger_priority_mapping")
 
 
 def get_registry_info() -> dict[str, Any]:

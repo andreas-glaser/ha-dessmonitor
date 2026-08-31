@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from typing import Any
 
@@ -16,7 +17,19 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import DessMonitorAPI, DessMonitorError
-from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, UNITS
+from .const import (
+    CONF_CONNECTION_TYPE,
+    CONF_LOCAL_MODE,
+    CONF_UPDATE_INTERVAL,
+    CONNECTION_TYPE_CLOUD,
+    CONNECTION_TYPE_LOCAL,
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
+    LOCAL_MODE_DISABLED,
+    LOCAL_MODE_PREFER_LOCAL,
+    UNITS,
+)
+from .data_sources import snapshot_with_data_source
 from .device_support import (
     get_parameter_sensor_names,
     is_devcode_supported,
@@ -31,6 +44,7 @@ PLATFORMS: list[Platform] = [
     Platform.NUMBER,
     Platform.SELECT,
 ]
+LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,8 +67,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Setting up DessMonitor integration for entry: %s", entry.entry_id)
 
+    connection_type = entry.data.get(CONF_CONNECTION_TYPE, CONNECTION_TYPE_CLOUD)
+    if connection_type == CONNECTION_TYPE_LOCAL:
+        return await _async_setup_local_entry(hass, entry)
+
     api = _create_api_client(hass, entry)
-    await _authenticate_api_client(api)
+    local_mode = entry.options.get(CONF_LOCAL_MODE, LOCAL_MODE_DISABLED)
+    if local_mode != LOCAL_MODE_PREFER_LOCAL:
+        await _authenticate_api_client(api)
 
     coordinator = await _create_coordinator(hass, entry, api)
     hass.data[DOMAIN][entry.entry_id] = coordinator
@@ -68,13 +88,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def _async_setup_local_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up a non-blocking, read-only local collector entry."""
+    from .local.coordinator import DessMonitorLocalCoordinator
+
+    coordinator = DessMonitorLocalCoordinator(hass, {**entry.data, **entry.options})
+    try:
+        await coordinator.async_setup()
+    except OSError as err:
+        _LOGGER.warning("Unable to start local collector services: %s", err)
+        raise ConfigEntryNotReady from err
+
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    await hass.config_entries.async_forward_entry_setups(entry, LOCAL_PLATFORMS)
+    _LOGGER.info("DessMonitor local mode is ready and waiting for its collector")
+    return True
+
+
 def _create_api_client(hass: HomeAssistant, entry: ConfigEntry) -> DessMonitorAPI:
     """Create API client with storage-backed token handling."""
     username = entry.data["username"]
     company_key = entry.data.get("company_key", "bnrl_frRFjEz8Mkn")
     _LOGGER.debug("Initializing API client for user: %s", username)
 
-    store = Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_auth")
+    store: Store[dict[str, Any]] = Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_auth")
 
     return DessMonitorAPI(
         username=username,
@@ -131,18 +169,46 @@ async def _create_coordinator(
     )
     _LOGGER.debug("Using update interval: %d seconds", update_interval)
 
-    coordinator = DessMonitorDataUpdateCoordinator(hass, api, update_interval)
+    local_mode = entry.options.get(CONF_LOCAL_MODE, LOCAL_MODE_DISABLED)
+    setup_local: Callable[[], Awaitable[None]] | None = None
+    if local_mode == LOCAL_MODE_PREFER_LOCAL:
+        from .local.hybrid import DessMonitorHybridCoordinator
+
+        hybrid_coordinator = DessMonitorHybridCoordinator(
+            hass,
+            api,
+            update_interval,
+            {**entry.data, **entry.options},
+            entry.entry_id,
+            config_entry=entry,
+        )
+        coordinator: DessMonitorDataUpdateCoordinator = hybrid_coordinator
+        setup_local = hybrid_coordinator.async_setup_local
+    else:
+        coordinator = DessMonitorDataUpdateCoordinator(
+            hass,
+            api,
+            update_interval,
+            entry_id=entry.entry_id,
+            config_entry=entry,
+        )
     _LOGGER.debug("Created data update coordinator, performing first refresh")
 
     try:
+        if setup_local is not None:
+            await setup_local()
+        else:
+            await coordinator.async_setup_cloud_cache()
         await coordinator.async_config_entry_first_refresh()
         _LOGGER.debug("First data refresh completed successfully")
     except DessMonitorError as err:
+        await coordinator.async_shutdown()
         _LOGGER.warning(
             "DessMonitor data refresh failed during setup (will retry): %s", err
         )
         raise ConfigEntryNotReady from err
     except Exception as err:  # pylint: disable=broad-except
+        await coordinator.async_shutdown()
         _LOGGER.error("Failed to perform initial data refresh: %s", err)
         _LOGGER.debug("Initial refresh error details", exc_info=True)
         raise ConfigEntryNotReady from err
@@ -154,12 +220,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.debug("Unloading DessMonitor integration entry: %s", entry.entry_id)
 
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    connection_type = entry.data.get(CONF_CONNECTION_TYPE, CONNECTION_TYPE_CLOUD)
+    platforms = (
+        LOCAL_PLATFORMS if connection_type == CONNECTION_TYPE_LOCAL else PLATFORMS
+    )
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unload_ok:
         coordinator = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         _LOGGER.debug("Coordinator removed and platforms unloaded successfully")
 
-        if (
+        if coordinator is not None and hasattr(coordinator, "async_shutdown"):
+            try:
+                await coordinator.async_shutdown()
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Error stopping local collector services: %s", err)
+        elif (
             coordinator is not None
             and hasattr(coordinator, "api")
             and hasattr(coordinator.api, "close")
@@ -178,15 +253,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry when options change."""
     _LOGGER.info("Reloading DessMonitor integration due to configuration changes")
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the DessMonitor API."""
 
     def __init__(
-        self, hass: HomeAssistant, api: DessMonitorAPI, update_interval: int
+        self,
+        hass: HomeAssistant,
+        api: DessMonitorAPI,
+        update_interval: int,
+        *,
+        entry_id: str | None = None,
+        allow_cached_fallback: bool = True,
+        config_entry: ConfigEntry | None = None,
     ) -> None:
         """Initialize."""
         self.api = api
@@ -194,12 +275,60 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.ctrl_value_cache: dict[str, dict[str, str]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
+        self.cloud_revision = 0
+        self._allow_cached_fallback = allow_cached_fallback
+        self._cached_cloud_data: dict[str, Any] = {}
+        self._cloud_snapshot_store: Store[dict[str, Any]] | None = (
+            Store(hass, 1, f"{DOMAIN}_{entry_id}_cloud_snapshot") if entry_id else None
+        )
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name=DOMAIN,
             update_interval=timedelta(seconds=update_interval),
+            always_update=False,
         )
+
+    async def async_shutdown(self) -> None:
+        """Close the cloud client owned by this coordinator."""
+        await super().async_shutdown()
+        await self.api.close()
+
+    async def async_setup_cloud_cache(self) -> None:
+        """Load the last successful API snapshot before the first refresh."""
+        if self._cloud_snapshot_store is None:
+            return
+        try:
+            stored = await self._cloud_snapshot_store.async_load()
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning("Unable to load cached DessMonitor snapshot: %s", err)
+            return
+        if not isinstance(stored, dict):
+            return
+        data = stored.get("data")
+        if isinstance(data, dict):
+            self._cached_cloud_data = data
+
+    async def _async_store_cloud_snapshot(self, data: dict[str, Any]) -> None:
+        """Persist a successful API refresh without making telemetry fail."""
+        self._cached_cloud_data = data
+        if self._cloud_snapshot_store is None:
+            return
+        try:
+            await self._cloud_snapshot_store.async_save({"data": data})
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning("Unable to save cached DessMonitor snapshot: %s", err)
+
+    def _cached_cloud_fallback(self, err: Exception) -> dict[str, Any] | None:
+        """Return an explicitly stale snapshot when API-only continuity is enabled."""
+        if not self._allow_cached_fallback or not self._cached_cloud_data:
+            return None
+        _LOGGER.warning(
+            "DessMonitor API refresh failed; retaining the cached cloud snapshot: %s",
+            err,
+        )
+        return snapshot_with_data_source(self._cached_cloud_data, "Cached Cloud")
 
     async def async_get_controls_with_values(
         self, pn: str, devcode: int, devaddr: int, sn: str
@@ -218,10 +347,8 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         async with self._ctrl_locks[sn]:
             if sn not in self.ctrl_field_cache:
                 try:
-                    self.ctrl_field_cache[sn] = (
-                        await self.api.get_device_control_fields(
-                            pn, devcode, devaddr, sn
-                        )
+                    controls = await self.api.get_device_control_fields(
+                        pn, devcode, devaddr, sn
                     )
                 except Exception as err:
                     _LOGGER.warning(
@@ -229,7 +356,8 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                         sn,
                         err,
                     )
-                    self.ctrl_field_cache[sn] = {}
+                    return {}, {}
+                self.ctrl_field_cache[sn] = controls
 
             controls = self.ctrl_field_cache[sn]
 
@@ -282,37 +410,6 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         )
         return values
 
-    async def _prefetch_all_control_values(self, data: dict[str, Any]) -> None:
-        """Pre-populate control caches for all devices in parallel.
-
-        Called once during the first coordinator refresh so that platform
-        setup (select.py / number.py) finds the cache already warm and
-        returns instantly instead of fetching per-device sequentially.
-        """
-        devices_to_fetch: list[tuple[str, str, int, int]] = []
-        for device_sn, device_info in data.items():
-            device_meta = device_info.get("device", {})
-            collector_meta = device_info.get("collector", {})
-            pn = collector_meta.get("pn")
-            devcode = _normalize_devcode(device_meta.get("devcode"))
-            devaddr = device_meta.get("devaddr")
-            if pn and devcode is not None and devaddr is not None:
-                devices_to_fetch.append((device_sn, pn, devcode, devaddr))
-
-        if not devices_to_fetch:
-            return
-
-        _LOGGER.info(
-            "Pre-fetching control values for %d devices", len(devices_to_fetch)
-        )
-
-        async def _fetch_device(sn: str, pn: str, devcode: int, devaddr: int) -> None:
-            await self.async_get_controls_with_values(pn, devcode, devaddr, sn)
-
-        await asyncio.gather(
-            *[_fetch_device(sn, pn, dc, da) for sn, pn, dc, da in devices_to_fetch]
-        )
-
     async def _async_update_data(self):
         """Update data via library."""
         _LOGGER.debug("Starting data update cycle")
@@ -321,25 +418,27 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             data = await self._gather_all_device_data(collectors)
             await self._merge_summary_data(data, bool(collectors))
 
-            # Pre-populate control value cache on first refresh so platform
-            # setup (select.py / number.py) reads from cache instantly.
-            if not self.ctrl_value_cache:
-                await self._prefetch_all_control_values(data)
-
             _LOGGER.info(
                 "Data update completed successfully: %d devices total", len(data)
             )
-            return data
-        except UpdateFailed:
+            await self._async_store_cloud_snapshot(data)
+            self.cloud_revision += 1
+            return snapshot_with_data_source(data, "Cloud")
+        except UpdateFailed as err:
+            if cached := self._cached_cloud_fallback(err):
+                return cached
             raise
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error(
                 "Error communicating with DessMonitor API during update: %s", err
             )
             _LOGGER.debug("Data update error details", exc_info=True)
-            raise UpdateFailed(
+            update_error = UpdateFailed(
                 f"Error communicating with DessMonitor API: {err}"
-            ) from err
+            )
+            if cached := self._cached_cloud_fallback(update_error):
+                return cached
+            raise update_error from err
 
     async def _fetch_collectors(self) -> list[dict[str, Any]]:
         """Fetch list of collectors from the API."""

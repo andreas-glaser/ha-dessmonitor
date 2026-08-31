@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-08-31
+
+### Added
+- Optional read-only local telemetry for EyeBond-compatible collectors, with cloud-only, local-only, and preferred-local hybrid modes. Hybrid mode keeps the DessMonitor API as the canonical source for identity, metadata, controls, and fallback data while overlaying faster local readings from one or more explicitly pinned private addresses (#27, thanks to @albertdb for proposing local and hybrid support).
+- Guided local configuration, independent cloud/local polling intervals, source diagnostics, persisted cloud snapshots, automatic local reconnect and cloud fallback, and CLI discovery/probing tools with redacted evidence output.
+
+### Changed
+- Entity discovery and control loading now recover after delayed cloud availability without duplicating entities. Existing cloud entries, entity identities, recorder history, and cloud-backed controls remain compatible when local telemetry is enabled or disabled.
+- Local telemetry startup logs now state the configured polling interval. A collector that does not connect within two minutes produces a clear warning covering the outbound UDP callback request, inbound TCP telemetry connection, and host or VLAN firewall rules.
+- Local setup guidance now documents both network directions, recommends source-restricted firewall access, and includes a commented UFW example. Callback retries remain independent from the configured telemetry polling interval.
+
+### Fixed
+- Numeric voltage/current controls with missing or contradicted API range hints no longer derive a moving range from the value cached at startup. They now use a stable fallback, switch to box input, and widen for unusually large live values, preventing Home Assistant from rejecting valid changes before they reach DessMonitor. Numeric controls also refresh their state from the regular polled payload when available, so changes made in DessMonitor or the mobile app no longer require an integration reload (#30, thanks to @blihtar for tracing the stale-value behaviour and verifying the affected inverter's hardware limits).
+- Fast local updates no longer postpone the independent cloud refresh timer. Hybrid mode retains per-device cached cloud data through vendor timeouts while healthy local collectors continue updating, and stale local tunnels are recycled into targeted reconnect attempts.
+- Release packaging now keeps the API client's internal version aligned with `VERSION` and the integration manifest, preventing packaged releases from identifying themselves as the previous stable version.
+
 ## [2.2.0] - 2026-06-20
 
 ### Added
@@ -326,7 +342,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v1.9.0...v2.0.0
