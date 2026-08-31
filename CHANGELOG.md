@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- GitHub Actions workflows now use the Node.js 24-compatible `actions/checkout@v7` and `actions/setup-python@v7` releases, removing Node.js 20 deprecation warnings from CI.
+
 ## [2.3.0] - 2026-08-31
 
 ### Added
