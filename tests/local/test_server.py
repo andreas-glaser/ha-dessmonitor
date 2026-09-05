@@ -7,6 +7,8 @@ import socket
 
 import pytest
 
+from custom_components.dessmonitor.local.diagnostics import ProbeDiagnostics
+from custom_components.dessmonitor.local.discovery import query_p17
 from custom_components.dessmonitor.local.protocol import (
     FC_FORWARD_TO_DEVICE,
     FC_HEARTBEAT,
@@ -104,7 +106,10 @@ async def test_server_round_trip_and_identity() -> None:
         await server.stop()
 
 
-async def test_server_rejects_response_metadata_mismatch() -> None:
+@pytest.mark.parametrize(("response_code", "response_address"), [(258, 1), (2452, 2)])
+async def test_server_rejects_response_metadata_mismatch(
+    response_code, response_address
+) -> None:
     """A transaction ID alone cannot redirect a response to the wrong request."""
     ready = asyncio.Event()
 
@@ -117,22 +122,38 @@ async def test_server_rejects_response_metadata_mismatch() -> None:
     try:
         await _identify(reader, writer)
         await asyncio.wait_for(ready.wait(), 1)
-        request_task = asyncio.create_task(
-            server.send_command(b"query", device_code=2452, device_address=1)
-        )
+
+        async def send(payload, device_code, address):
+            return await server.send_command(
+                payload, device_code=device_code, device_address=address
+            )
+
+        diagnostics = ProbeDiagnostics()
+        with diagnostics.capture():
+            request_task = asyncio.create_task(query_p17(send, 2452, 1, "PI"))
         header, _payload = await _read_frame(reader)
         writer.write(
             encode_header(
                 header.transaction_id,
-                2452,
+                response_code,
                 HEADER_SIZE,
-                2,
+                response_address,
                 FC_FORWARD_TO_DEVICE,
             )
         )
         await writer.drain()
         with pytest.raises(ProtocolError, match="metadata"):
             await request_task
+        attempt = diagnostics.as_dict()["attempts"][0]
+        assert attempt["outcome"] == "metadata_mismatch"
+        assert attempt["response_bytes"] == 0
+        assert attempt["details"] == {
+            "expected_device_code": 2452,
+            "received_device_code": response_code,
+            "expected_device_address": 1,
+            "received_device_address": response_address,
+            "response_bytes": 0,
+        }
     finally:
         writer.close()
         await writer.wait_closed()
@@ -211,12 +232,8 @@ async def test_servers_share_listener_and_keep_exact_peer_ownership() -> None:
     async def second_on_ready(_identity: CollectorIdentity) -> None:
         second_ready.set()
 
-    first = CollectorServer(
-        "127.0.0.1", port, "127.0.0.1", on_ready=first_on_ready
-    )
-    second = CollectorServer(
-        "127.0.0.1", port, "127.0.0.2", on_ready=second_on_ready
-    )
+    first = CollectorServer("127.0.0.1", port, "127.0.0.1", on_ready=first_on_ready)
+    second = CollectorServer("127.0.0.1", port, "127.0.0.2", on_ready=second_on_ready)
     await first.start()
     await second.start()
     first_reader, first_writer = await asyncio.open_connection(

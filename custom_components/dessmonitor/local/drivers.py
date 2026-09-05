@@ -7,10 +7,12 @@ families can therefore be added without duplicating network or HA logic.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from .diagnostics import ProbeDiagnostics, failure_reason
 from .discovery import DiscoveryError, discover_p17, query_p17
 from .profile import CommandNotSupported
 from .protocol import ProtocolError
@@ -26,6 +28,7 @@ from .smg import (
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
 
 P17_PROTOCOL = "p17"
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -221,9 +224,11 @@ async def discover_supported_devices(
     configured_device_code: int = 0,
     reported_device_code: int = 0,
     max_address: int = 16,
+    diagnostics: ProbeDiagnostics | None = None,
 ) -> tuple[ReadOnlyLocalDriver, tuple[LocalDevice, ...]]:
     """Try a bounded driver order and return the first verified protocol."""
     drivers = list(DRIVERS)
+    diagnostics = diagnostics if diagnostics is not None else ProbeDiagnostics()
     if (
         configured_device_code in (1, SMG_CLOUD_DEVICE_CODE)
         or reported_device_code in SMG_REPORTED_COLLECTOR_CODES
@@ -231,20 +236,33 @@ async def discover_supported_devices(
         drivers.reverse()
 
     failures: list[str] = []
+    _LOGGER.debug(
+        "Local discovery [%s]: configured code=%d, reported code=%d, driver order=%s",
+        diagnostics.probe_id,
+        configured_device_code,
+        reported_device_code,
+        [driver.key for driver in drivers],
+    )
     for driver in drivers:
         try:
-            devices = await driver.discover(
-                send,
-                collector_product_number=collector_product_number,
-                configured_device_code=configured_device_code,
-                reported_device_code=reported_device_code,
-                max_address=max_address,
-            )
+            with diagnostics.capture():
+                devices = await driver.discover(
+                    send,
+                    collector_product_number=collector_product_number,
+                    configured_device_code=configured_device_code,
+                    reported_device_code=reported_device_code,
+                    max_address=max_address,
+                )
         except (TimeoutError, ProtocolError, DiscoveryError) as err:
-            failures.append(f"{driver.key}: {err}")
+            failures.append(f"{driver.key}: {failure_reason(err)}")
             continue
         if devices:
             return driver, devices
     raise DiscoveryError(
-        "no supported read-only local protocol responded (" + "; ".join(failures) + ")"
+        "no supported read-only local protocol was identified ("
+        + "; ".join(failures)
+        + "); query outcomes: "
+        + diagnostics.summary()
+        + f". Enable debug logging for per-query diagnostics (probe {diagnostics.probe_id})",
+        reason="discovery_failed",
     )

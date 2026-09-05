@@ -26,6 +26,17 @@ _CRC_STUFF_BYTES = frozenset((0x28, 0x0A, 0x0D))
 class ProtocolError(ValueError):
     """Raised when a collector or inverter frame is malformed."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str = "invalid_response",
+        details: dict[str, int] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.reason = reason
+        self.details = details or {}
+
 
 @dataclass(frozen=True, slots=True)
 class EyeBondHeader:
@@ -254,7 +265,9 @@ def _parse_caret_response(frame: bytes) -> P17Response:
     if len(frame) == 5 and frame[1:2] in {b"0", b"1"}:
         content = frame[:2]
         if frame[2:4] != _encode_crc(content):
-            raise ProtocolError("inverter response CRC does not match")
+            raise ProtocolError(
+                "inverter response CRC does not match", reason="crc_mismatch"
+            )
         return P17Response("A" if frame[1:2] == b"1" else "N", "")
 
     if len(frame) < 8 or frame[1:2] not in {b"D", b"A", b"N"}:
@@ -273,7 +286,9 @@ def _parse_caret_response(frame: bytes) -> P17Response:
         )
     content = frame[:-3]
     if frame[-3:-1] != _encode_crc(content):
-        raise ProtocolError("inverter response CRC does not match")
+        raise ProtocolError(
+            "inverter response CRC does not match", reason="crc_mismatch"
+        )
     try:
         decoded = frame[5:-3].decode("ascii")
     except UnicodeDecodeError as err:
@@ -287,7 +302,9 @@ def _parse_q_response(frame: bytes) -> P17Response:
         raise ProtocolError("Q response is too short")
     content = frame[:-3]
     if frame[-3:-1] != _encode_crc(content):
-        raise ProtocolError("inverter response CRC does not match")
+        raise ProtocolError(
+            "inverter response CRC does not match", reason="crc_mismatch"
+        )
     try:
         decoded = frame[1:-3].decode("ascii")
     except UnicodeDecodeError as err:

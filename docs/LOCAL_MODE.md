@@ -122,6 +122,23 @@ python3 tools/cli/dessmonitor_cli.py analyze \
 Reports redact collector product numbers, IP addresses, and inverter serials
 by default and are written with mode `0600`. Do not use
 `--include-identifiers` for a report that will be shared publicly.
+With `--output`, the probe also writes a report if the listener cannot start,
+the collector callback times out, discovery fails, or polling fails. The command
+still exits with an error. Share that file even when no inverter was found;
+failed reports are for troubleshooting and cannot be merged with `analyze`.
+
+Reports include `status`, the last `stage`, and bounded `diagnostics`: protocol,
+command, device code, collector/inverter address, response byte count, elapsed
+milliseconds, and outcome. A missing byte count means no payload was returned
+to the query; zero means an empty payload was received. Header mismatches also
+include the expected and received numeric routing fields. Raw payloads and
+exception text are not included in these diagnostic records. At most 128 query
+records are retained, with additional attempts counted in `dropped_attempts`.
+A random `probe_id` correlates a report and its log lines without identifying
+the collector, including when several collectors are discovered concurrently.
+An overall discovery deadline appears as a report-level `timeout`; the in-flight
+query appears as `cancelled` because the deadline interrupts it.
+
 The combined analysis matches a unique hashed collector product number and
 inverter address, refuses ambiguous matches, and also writes mode `0600`.
 Most collectors keep one callback connection. If Home Assistant already owns
@@ -140,6 +157,10 @@ then start it again; the configured integration reconnects automatically.
   logged after two minutes without a callback.
 - **Connected but no inverter is found:** create a sanitized local probe report
   and include the inverter model and collector firmware in a GitHub issue.
+  The final error includes query outcome counts. Enable debug logging for
+  `Local discovery` and `Local probe query` records showing each attempted route
+  and failure classification. A rejected reply is different from a timeout;
+  changing the device code without this evidence may not help.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
 
@@ -154,3 +175,22 @@ logger:
 Debug messages avoid authentication tokens and full protocol payloads, but may
 include collector product numbers, device serials, private IP addresses, and
 live readings. Review logs and reports before sharing them.
+
+## Testing discovery diagnostics from dev
+
+If a maintainer asks you to test the development branch:
+
+1. Download the [dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip).
+2. Copy its `custom_components/dessmonitor/` directory over the same directory
+   in your Home Assistant configuration, then restart Home Assistant.
+3. Temporarily disable other local integrations or probes using this collector.
+   Enable debug logging for DessMonitor and reload the integration once.
+4. Capture the log sequence from collector connection through the first discovery
+   failure, including `Local discovery` and `Local probe query` lines. Include
+   the configured device code, Data Source state, and the commit/version tested.
+5. If using the contributor CLI, run the `local-probe` command above from the
+   same downloaded checkout and attach `local-probe.json`, including on failure.
+   Stop the HA local connection first so only the probe uses the collector.
+
+These diagnostics do not change protocol selection, timeouts, CRC validation,
+or sensor decoding. They help identify which compatibility change is needed.

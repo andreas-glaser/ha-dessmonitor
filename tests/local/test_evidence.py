@@ -46,6 +46,16 @@ def _local_report(serial: str) -> dict:
     }
 
 
+def test_failed_probe_cannot_be_used_as_verified_inverter_evidence(tmp_path) -> None:
+    """Even partial polling data from a failed report is troubleshooting evidence only."""
+    report = _local_report("SYNTHETIC")
+    report["status"] = "failed"
+    path = tmp_path / "failed.json"
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="failed probe"):
+        _load_evidence_module().load_local_report(str(path))
+
+
 def test_combined_evidence_matches_identity_and_titles() -> None:
     """Known vendor synonyms produce reviewable, high-confidence suggestions."""
     evidence = _load_evidence_module()
@@ -63,9 +73,7 @@ def test_combined_evidence_matches_identity_and_titles() -> None:
             {"title": "Battery percentage", "value": 75, "unit": "%"},
         ],
     }
-    combined = evidence.combine_evidence(
-        cloud, _local_report(f"sha256:{serial_hash}")
-    )
+    combined = evidence.combine_evidence(cloud, _local_report(f"sha256:{serial_hash}"))
 
     assert combined["analysis_version"] == 4
     assert combined["device_sn"] == f"sha256:{serial_hash}"

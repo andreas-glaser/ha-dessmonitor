@@ -16,7 +16,7 @@ class ModbusError(ProtocolError):
     """Raised when a Modbus response is malformed or reports an exception."""
 
 
-def crc16_modbus(data: bytes) -> int:
+def crc16_modbus(data: bytes | bytearray) -> int:
     """Return the standard Modbus CRC-16 value."""
     crc = 0xFFFF
     for byte in data:
@@ -63,7 +63,7 @@ def parse_read_holding_response(
     received_crc = int.from_bytes(frame[-2:], "little")
     expected_crc = crc16_modbus(frame[:-2])
     if received_crc != expected_crc:
-        raise ModbusError("Modbus response CRC does not match")
+        raise ModbusError("Modbus response CRC does not match", reason="crc_mismatch")
     if frame[0] != slave_address:
         raise ModbusError(
             f"unexpected Modbus slave address {frame[0]} (expected {slave_address})"
@@ -73,7 +73,11 @@ def parse_read_holding_response(
     if function_code == 0x83:
         if len(frame) != 5:
             raise ModbusError("malformed Modbus exception response")
-        raise ModbusError(f"Modbus exception code {frame[2]}")
+        raise ModbusError(
+            f"Modbus exception code {frame[2]}",
+            reason="modbus_exception",
+            details={"exception_code": frame[2]},
+        )
     if function_code != 0x03:
         raise ModbusError(f"unexpected Modbus function code {function_code}")
 

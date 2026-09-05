@@ -29,6 +29,10 @@ def load_local_report(path_value: str) -> dict[str, Any]:
         raise ValueError("local report must contain a JSON object")
     if report.get("report_version") != 1 or report.get("safety") != "read_only":
         raise ValueError("local report is not a supported read-only probe report")
+    if report.get("status", "success") != "success":
+        raise ValueError(
+            "local report records a failed probe; use it for troubleshooting"
+        )
     if not isinstance(report.get("inverters"), list) or not report["inverters"]:
         raise ValueError("local report contains no inverter evidence")
     return report
@@ -80,9 +84,11 @@ def combine_evidence(
         "identity_basis": (
             "inverter_serial"
             if inverter_identity_match == "matched"
-            else "collector_product_number_and_address"
-            if route_identity_match
-            else "unverified"
+            else (
+                "collector_product_number_and_address"
+                if route_identity_match
+                else "unverified"
+            )
         ),
     }
     correlations = correlate_sensor_titles(
@@ -96,8 +102,7 @@ def combine_evidence(
     analysis["suggested_sensor_title_mappings"] = {
         item["cloud_title"]: item["local_title"]
         for item in correlations
-        if item["cloud_title"] != item["local_title"]
-        and item["confidence"] == "high"
+        if item["cloud_title"] != item["local_title"] and item["confidence"] == "high"
     }
     analysis["checksum"] = analysis_checksum(analysis)
     return analysis

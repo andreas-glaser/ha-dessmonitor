@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - GitHub Actions workflows now use the Node.js 24-compatible `actions/checkout@v7` and `actions/setup-python@v7` releases, removing Node.js 20 deprecation warnings from CI.
+- Local discovery now distinguishes timeouts, empty responses, unsupported commands, CRC failures, and transport-header mismatches. Debug logs include bounded per-query routing and timing evidence without response payloads. CLI probes save private diagnostic reports on runtime failure as well as success (#32).
 
 ## [2.3.0] - 2026-08-31
 

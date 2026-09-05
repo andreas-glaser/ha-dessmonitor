@@ -435,7 +435,17 @@ class CollectorServer:
             or header.device_address != pending.device_address
         ):
             pending.future.set_exception(
-                ProtocolError("collector response metadata does not match its request")
+                ProtocolError(
+                    "collector response metadata does not match its request",
+                    reason="metadata_mismatch",
+                    details={
+                        "expected_device_code": pending.device_code,
+                        "received_device_code": header.device_code,
+                        "expected_device_address": pending.device_address,
+                        "received_device_address": header.device_address,
+                        "response_bytes": len(payload),
+                    },
+                )
             )
             return
         pending.future.set_result(payload)

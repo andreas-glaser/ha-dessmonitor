@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
+from .diagnostics import record_query
 from .profile import CommandNotSupported, parse_command_response
 from .protocol import ProtocolError, build_p17_poll
 
@@ -57,10 +58,16 @@ async def query_p17(
     send: SendCommand, device_code: int, device_address: int, command: str
 ) -> dict[str, Any]:
     """Send and parse one read-only P17 query."""
-    raw = await send(build_p17_poll(command), device_code, device_address)
-    if not raw:
-        raise ProtocolError("collector returned an empty inverter response")
-    return parse_command_response(command, raw)
+    with record_query(
+        "p17", command, device_code, device_address, device_address
+    ) as attempt:
+        raw = await send(build_p17_poll(command), device_code, device_address)
+        attempt.response_bytes = len(raw)
+        if not raw:
+            raise ProtocolError(
+                "collector returned an empty inverter response", reason="empty_response"
+            )
+        return parse_command_response(command, raw)
 
 
 async def discover_p17(
@@ -88,7 +95,7 @@ async def discover_p17(
             break
     if selected_code is None:
         raise DiscoveryError(
-            "no P17-compatible inverter responded; configure its device code manually"
+            "no P17-compatible inverter was identified; inspect local probe diagnostics"
         )
 
     discovered: list[DiscoveredInverter] = []

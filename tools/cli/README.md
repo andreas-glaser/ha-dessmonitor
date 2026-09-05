@@ -175,6 +175,14 @@ interrupt a collector's cloud session.
 
 ### `local-probe` - Read-Only Compatibility Report
 
+With `--output`, runtime failures also write a private JSON report before the
+command exits with an error. Attach this file even if no inverter was found.
+It includes the failed stage and bounded per-query outcomes, routes, response
+sizes, and timing, without raw response payloads or exception strings. Failed
+reports are troubleshooting evidence and are rejected by `analyze --local-report`.
+See [local diagnostics and testing dev](../../docs/LOCAL_MODE.md) for the
+Home Assistant logging procedure and report details.
+
 Probe one known collector and validate its local inverter protocol:
 
 ```bash
