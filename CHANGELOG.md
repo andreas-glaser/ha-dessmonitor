@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Local PI18 telemetry now selects its field layout and raw CRC encoding from the inverter's protocol ID. Corrected battery charging current, PV2 power, PV2 voltage, and firmware version decoding; PI18 no longer polls P17-only `GMN` or `GS2` commands. Existing P17 decoding and entity identifiers are preserved. These corrections address bugs found during #32's investigation; the reported connection failure still needs device evidence.
+- Local ASCII parsing rejects unsupported protocol IDs and malformed length fields, and handles oversized numeric responses as recoverable protocol errors.
+
 ### Changed
 - GitHub Actions workflows now use the Node.js 24-compatible `actions/checkout@v7` and `actions/setup-python@v7` releases, removing Node.js 20 deprecation warnings from CI.
 - Local discovery now distinguishes timeouts, empty responses, unsupported commands, CRC failures, and transport-header mismatches. Debug logs include bounded per-query routing and timing evidence without response payloads. CLI probes save private diagnostic reports on runtime failure as well as success (#32).

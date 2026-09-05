@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .diagnostics import record_query
-from .profile import CommandNotSupported, parse_command_response
+from .profile import parse_command_response
 from .protocol import ProtocolError, build_p17_poll
 
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
@@ -55,19 +55,28 @@ def device_code_candidates(configured: int, reported: int) -> tuple[int, ...]:
 
 
 async def query_p17(
-    send: SendCommand, device_code: int, device_address: int, command: str
+    send: SendCommand,
+    device_code: int,
+    device_address: int,
+    command: str,
+    *,
+    protocol_id: str = "17",
 ) -> dict[str, Any]:
     """Send and parse one read-only P17 query."""
     with record_query(
         "p17", command, device_code, device_address, device_address
     ) as attempt:
-        raw = await send(build_p17_poll(command), device_code, device_address)
+        raw = await send(
+            build_p17_poll(command, escape_crc=protocol_id != "18"),
+            device_code,
+            device_address,
+        )
         attempt.response_bytes = len(raw)
         if not raw:
             raise ProtocolError(
                 "collector returned an empty inverter response", reason="empty_response"
             )
-        return parse_command_response(command, raw)
+        return parse_command_response(command, raw, protocol_id=protocol_id)
 
 
 async def discover_p17(
@@ -87,12 +96,11 @@ async def discover_p17(
         configured_device_code, reported_device_code
     ):
         try:
-            protocol = await query_p17(send, device_code, 1, "PI")
-        except (TimeoutError, ProtocolError, CommandNotSupported):
+            await query_p17(send, device_code, 1, "PI")
+        except (TimeoutError, ProtocolError):
             continue
-        if protocol.get("PI"):
-            selected_code = device_code
-            break
+        selected_code = device_code
+        break
     if selected_code is None:
         raise DiscoveryError(
             "no P17-compatible inverter was identified; inspect local probe diagnostics"
@@ -102,15 +110,22 @@ async def discover_p17(
     seen_serials: set[str] = set()
     for address in range(1, max_address + 1):
         try:
-            await query_p17(send, selected_code, address, "PI")
-        except (TimeoutError, ProtocolError, CommandNotSupported):
+            protocol = await query_p17(send, selected_code, address, "PI")
+        except (TimeoutError, ProtocolError):
             break
 
-        metadata: dict[str, Any] = {}
+        protocol_id = protocol["PI"]
+        metadata: dict[str, Any] = dict(protocol)
         for command in STARTUP_COMMANDS:
+            if protocol_id == "18" and command == "GMN":
+                continue
             try:
-                metadata.update(await query_p17(send, selected_code, address, command))
-            except (TimeoutError, ProtocolError, CommandNotSupported):
+                metadata.update(
+                    await query_p17(
+                        send, selected_code, address, command, protocol_id=protocol_id
+                    )
+                )
+            except (TimeoutError, ProtocolError):
                 continue
 
         serial = str(metadata.get("ID", "")).strip()

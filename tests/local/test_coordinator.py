@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from binascii import crc_hqx
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
 import pytest
@@ -35,10 +36,11 @@ pytestmark = pytest.mark.usefixtures("socket_enabled")
 
 
 class SimulatedCollector:
-    """Minimal EyeBond collector that exposes one P17 inverter."""
+    """Minimal EyeBond collector that exposes one P17 or PI18 inverter."""
 
-    def __init__(self, port: int) -> None:
+    def __init__(self, port: int, protocol_id: str = "17") -> None:
         self.port = port
+        self.protocol_id = protocol_id
         self.commands: list[str] = []
         self.writer: asyncio.StreamWriter | None = None
         self.task: asyncio.Task[None] | None = None
@@ -98,8 +100,7 @@ class SimulatedCollector:
                 )
             await writer.drain()
 
-    @staticmethod
-    def _response(address: int, command: str) -> bytes:
+    def _response(self, address: int, command: str) -> bytes:
         if address > 1:
             return build_p17_response("N")
         responses = {
@@ -113,6 +114,19 @@ class SimulatedCollector:
             "GS2": "0,0,0",
             "ET": "12345",
         }
+        if self.protocol_id == "18":
+            assert command not in {"GMN", "GS2"}
+            responses.update(
+                {
+                    "PI": "18",
+                    "ID": "080123450000000000000000",
+                    "VFW": "12345,67890,00000",
+                    "GS": "2300,500,2295,499,1200,987,42,544,543,542,3,12,88,31,32,33,650,450,3210,3100,0,2,2,1,1,2,1,0",
+                }
+            )
+            data = responses[command]
+            content = f"^D{len(data) + 3:03d}{data}".encode("ascii")
+            return content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
         return build_p17_response("D", responses[command])
 
 
@@ -239,8 +253,13 @@ async def _wait_until(predicate, timeout: float = 3.0) -> None:
             await asyncio.sleep(0.01)
 
 
+@pytest.mark.parametrize(
+    ("protocol_id", "serial"), [("17", "ABCD1234"), ("18", "01234500")]
+)
 async def test_local_coordinator_discovers_polls_and_recovers(
     hass: HomeAssistant,
+    protocol_id: str,
+    serial: str,
 ) -> None:
     """One code path handles startup, fast data, outage, and reconnection."""
     coordinator = DessMonitorLocalCoordinator(
@@ -255,20 +274,23 @@ async def test_local_coordinator_discovers_polls_and_recovers(
         },
     )
     await coordinator.async_setup()
-    first = SimulatedCollector(coordinator._server.listening_port)
-    second = SimulatedCollector(coordinator._server.listening_port)
+    first = SimulatedCollector(coordinator._server.listening_port, protocol_id)
+    second = SimulatedCollector(coordinator._server.listening_port, protocol_id)
     try:
         await first.start()
         await _wait_until(lambda: bool(coordinator.data))
 
         assert coordinator.device_code == 2452
-        assert set(coordinator.data) == {"ABCD1234"}
+        assert set(coordinator.data) == {serial}
         values = {
-            point["title"]: point["val"]
-            for point in coordinator.data["ABCD1234"]["data"]
+            point["title"]: point["val"] for point in coordinator.data[serial]["data"]
         }
         assert values["Grid Voltage"] == 230.0
         assert values["Output Active Power"] == 987
+        assert values["Battery Charging Current"] == 12
+        if protocol_id == "18":
+            assert values["PV2 Charger Power"] == 450
+            assert values["PV2 Voltage"] == 310.0
         assert values["Data Source"] == "Local"
         assert all(command.isupper() for command in first.commands)
 
@@ -279,7 +301,8 @@ async def test_local_coordinator_discovers_polls_and_recovers(
         await _wait_until(
             lambda: coordinator.last_update_success and "GS" in second.commands
         )
-        assert coordinator.data["ABCD1234"]["data"]
+        assert set(coordinator.data) == {serial}
+        assert coordinator.data[serial]["data"]
     finally:
         await first.stop()
         await second.stop()

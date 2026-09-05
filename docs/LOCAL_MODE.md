@@ -91,9 +91,17 @@ port, product-number identity pin, or device-code hint.
 
 ## Supported read-only drivers
 
-- PI17/PI18 ASCII telemetry, with strict length, escaping, and CRC validation.
+- PI17/PI18 ASCII telemetry, with strict length and CRC validation. The inverter's
+  `PI` response selects P17's escaped CRC encoding or PI18's raw CRC encoding;
+  tunnel and cloud device codes do not select the field layout.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
+
+PI18 uses its 28-field `GS` response for battery charging current and both PV
+inputs, including PV2 voltage. It does not poll P17-only `GMN` or `GS2` commands.
+Firmware metadata preserves all three CPU versions. Existing sensor identifiers
+are retained; installing a decoder correction does not require deleting entities
+or recorder history. Earlier incorrect readings are not rewritten.
 
 Device detection is bounded and uses read queries only. Unsupported firmware
 fails closed instead of guessing register layouts. Local write frame builders
@@ -138,6 +146,8 @@ A random `probe_id` correlates a report and its log lines without identifying
 the collector, including when several collectors are discovered concurrently.
 An overall discovery deadline appears as a report-level `timeout`; the in-flight
 query appears as `cancelled` because the deadline interrupts it.
+An `unsupported_protocol` outcome means the inverter returned a protocol ID for
+which this driver has no verified field layout.
 
 The combined analysis matches a unique hashed collector product number and
 inverter address, refuses ambiguous matches, and also writes mode `0600`.

@@ -1,7 +1,7 @@
-"""P17 inverter profile and normalized DessMonitor sensor mapping.
+"""P17 and PI18 profiles with normalized DessMonitor sensor mapping.
 
 This profile deliberately exposes only fields whose position and scale are
-known for the P17/0x0994 family. Unknown fields remain unavailable instead of
+known for each protocol ID. Unknown fields remain unavailable instead of
 being published with a plausible but potentially wrong label.
 """
 
@@ -46,10 +46,28 @@ GS2_FIELDS = (
     Field("PV2 Charger Power", 2, "W"),
 )
 
-SENSOR_UNITS = {field.title: field.unit for field in (*GS_FIELDS, *GS2_FIELDS)} | {
-    "Operating mode": "",
-    "Energy Total": "kWh",
-}
+PI18_GS_FIELDS = (
+    Field("Grid Voltage", 0, "V", 0.1),
+    Field("Grid Frequency", 1, "Hz", 0.1),
+    Field("Output Voltage", 2, "V", 0.1),
+    Field("Output Frequency", 3, "Hz", 0.1),
+    Field("Output Apparent Power", 4, "VA"),
+    Field("Output Active Power", 5, "W"),
+    Field("Load Percent", 6, "%"),
+    Field("Battery Voltage", 7, "V", 0.1),
+    Field("Battery Discharge Current", 10, "A"),
+    Field("Battery Charging Current", 11, "A"),
+    Field("State of Charge", 12, "%"),
+    Field("Inverter Heat Sink Temperature", 13, "°C"),
+    Field("PV1 Charger Power", 16, "W"),
+    Field("PV2 Charger Power", 17, "W"),
+    Field("PV1 Voltage", 18, "V", 0.1),
+    Field("PV2 Voltage", 19, "V", 0.1),
+)
+
+SENSOR_UNITS = {
+    field.title: field.unit for field in (*GS_FIELDS, *GS2_FIELDS, *PI18_GS_FIELDS)
+} | {"Operating mode": "", "Energy Total": "kWh"}
 
 MODE_MAP = {
     "00": "Power On",
@@ -69,25 +87,42 @@ MODE_MAP = {
 }
 
 
-def parse_command_response(command: str, frame: bytes) -> dict[str, Any]:
+def parse_command_response(
+    command: str, frame: bytes, *, protocol_id: str = "17"
+) -> dict[str, Any]:
     """Validate an inverter frame and parse one supported command."""
-    response = parse_p17_response(frame)
+    if protocol_id not in {"17", "18"}:
+        raise ProtocolError(
+            "unsupported inverter protocol", reason="unsupported_protocol"
+        )
+    response = parse_p17_response(frame, escape_crc=protocol_id != "18")
     if response.response_type == "N":
         raise CommandNotSupported(command)
     if response.response_type != "D":
         raise ProtocolError(f"{command} returned an unexpected acknowledgement")
 
     if command == "GS":
+        if protocol_id == "18":
+            return _parse_fields(response, PI18_GS_FIELDS, minimum_fields=28)
         return _parse_fields(response, GS_FIELDS, minimum_fields=20)
-    if command == "GS2":
+    if command == "GS2" and protocol_id == "17":
         return _parse_fields(response, GS2_FIELDS, minimum_fields=3)
     if command == "MOD":
         mode = response.data.strip()
         return {"Operating mode": MODE_MAP.get(mode, "Unknown")}
     if command == "ET":
         return {"Energy Total": _parse_number(response.data, 1.0)}
-    if command in {"PI", "ID", "GMN", "VFW"}:
-        return {command: _decode_string(response.data, command)}
+    if command == "PI":
+        identified = response.data.strip()
+        if identified not in {"17", "18"}:
+            raise ProtocolError(
+                "unsupported inverter protocol", reason="unsupported_protocol"
+            )
+        return {"PI": identified}
+    if command in {"ID", "VFW"} or (command == "GMN" and protocol_id == "17"):
+        return {
+            command: _decode_string(response.data, command, protocol_id=protocol_id)
+        }
     if command == "PIRI":
         return _parse_rating_info(response)
     raise CommandNotSupported(command)
@@ -119,16 +154,20 @@ def _parse_number(value: str, scale: float) -> int | float:
         parsed = int(value.strip(), 10)
     except ValueError as err:
         raise ProtocolError(f"expected an integer value, received {value!r}") from err
-    scaled = parsed * scale
+    try:
+        scaled = parsed * scale
+    except OverflowError as err:
+        raise ProtocolError("numeric value is outside the supported range") from err
     if scale == 1.0:
         return parsed
     return round(scaled, 3)
 
 
-def _decode_string(value: str, command: str) -> str:
-    """Decode P17's optional two-digit string-length prefix."""
+def _decode_string(value: str, command: str, *, protocol_id: str) -> str:
+    """Decode identity padding while preserving PI18's three CPU versions."""
     raw = value.strip()
-    if command in {"ID", "GMN", "VFW"} and len(raw) >= 3:
+    length_prefixed = command == "ID" or protocol_id == "17"
+    if length_prefixed and len(raw) >= 3:
         try:
             length = int(raw[:2])
         except ValueError:

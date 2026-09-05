@@ -36,3 +36,10 @@ configuration from that GPL-licensed project is included here.
 [EyeBond Local](https://github.com/groove-max/ha-eybond-local) was reviewed as
 an architectural and interoperability reference. No MPL-licensed source or
 catalog files from that project are included here.
+
+The PI18 field layout and firmware format use protocol facts from
+[`PI18_InfiniSolar-V-protocol-20170926`](https://github.com/user-attachments/files/26123288/PI18_InfiniSolar-V-protocol-20170926.pdf),
+shared in issue #17. Raw XMODEM CRC interoperability was cross-checked against
+[Dess Monitor Local's PI18 codec](https://github.com/Antoxa1081/home-assistant-dess-monitor-local/blob/main/custom_components/dess_monitor_local/api/decoders/pi18.py).
+No source code from that codec is included here; regression frames use synthetic
+data and Python's independent standard-library CRC implementation.

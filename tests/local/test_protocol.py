@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from binascii import crc_hqx
 from datetime import datetime, timezone
 
 import pytest
@@ -101,3 +102,46 @@ def test_p17_response_rejects_trailing_data() -> None:
     frame = build_p17_response("D", "17")
     with pytest.raises(ProtocolError):
         parse_p17_response(frame[:-1] + b"x\r")
+
+
+@pytest.mark.parametrize(
+    ("content", "crc", "escaped_crc"),
+    [
+        (b"^D01100000083", b"\x65\x0a", b"\x65\x0b"),
+        (b"^D01100000158", b"\x95\x0d", b"\x95\x0e"),
+        (b"^D02012345,67890,00000", b"\x3e\x28", b"\x3e\x29"),
+    ],
+)
+def test_crc_encoding_is_specific_to_identified_protocol(
+    content, crc, escaped_crc
+) -> None:
+    """Independent vectors cover every byte P17 escapes but PI18 preserves."""
+    assert (
+        parse_p17_response(content + crc + b"\r", escape_crc=False).data
+        == content[5:].decode()
+    )
+    assert (
+        parse_p17_response(content + escaped_crc + b"\r").data == content[5:].decode()
+    )
+    with pytest.raises(ProtocolError, match="CRC does not match"):
+        parse_p17_response(content + escaped_crc + b"\r", escape_crc=False)
+    with pytest.raises(ProtocolError, match="CRC does not match"):
+        parse_p17_response(content + crc + b"\r")
+
+
+@pytest.mark.parametrize("index", [-2, 2, 5])
+def test_pi18_rejects_corrupted_frames(index) -> None:
+    """Raw CRC support must retain validation of length, content and checksum."""
+    frame = bytearray(b"^D01100000083\x65\x0a\r")
+    frame[index] ^= 1
+    with pytest.raises(ProtocolError):
+        parse_p17_response(bytes(frame), escape_crc=False)
+
+
+@pytest.mark.parametrize("length", [b"+05", b" 05", b"0_5"])
+def test_pi18_rejects_non_decimal_length_fields(length) -> None:
+    """A correct CRC does not make signs, spaces or separators valid wire lengths."""
+    content = b"^D" + length + b"18"
+    frame = content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
+    with pytest.raises(ProtocolError, match="invalid P17 length field"):
+        parse_p17_response(frame, escape_crc=False)

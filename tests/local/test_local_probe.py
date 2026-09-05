@@ -6,6 +6,7 @@ import asyncio
 import importlib.util
 import json
 import stat
+from binascii import crc_hqx
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
@@ -103,15 +104,18 @@ async def test_probe_writes_success_and_failure_reports(
                     else:
                         values = {
                             "PI": "18",
-                            "GS": "2300,500,2300,500,1000,900,20,540,0,10,0,0,80,30,0,0,500,0,3000,0",
+                            "GS": "2300,500,2300,500,1000,900,20,540,540,540,0,10,80,30,0,0,500,450,3000,3100,0,2,2,1,1,2,1,0",
                             "MOD": "03",
                             "ET": "00000100",
                         }
-                        reply = (
-                            protocol.build_p17_response("D", values[command])
-                            if command in values
-                            else protocol.build_p17_response("N")
-                        )
+                        if command in values:
+                            data = values[command]
+                            content = f"^D{len(data) + 3:03d}{data}".encode("ascii")
+                            reply = (
+                                content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
+                            )
+                        else:
+                            reply = b"^0\x8b\xa6\r"
                 writer.write(
                     protocol.encode_header(
                         header.transaction_id,

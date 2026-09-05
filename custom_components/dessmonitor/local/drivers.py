@@ -133,8 +133,9 @@ class P17Driver:
     ) -> dict[str, Any]:
         values: dict[str, Any] = {}
         successful_primary = False
+        protocol_id = str(device.metadata.get("PI", "17"))
         commands = ["GS", "MOD"]
-        if cycle and cycle % 6 == 0:
+        if protocol_id == "17" and cycle and cycle % 6 == 0:
             commands.append("GS2")
         if cycle and cycle % 12 == 0:
             commands.append("ET")
@@ -148,6 +149,7 @@ class P17Driver:
                     device.transport_device_code,
                     device.collector_address,
                     command,
+                    protocol_id=protocol_id,
                 )
             except CommandNotSupported:
                 device.disabled_queries.add(command)
