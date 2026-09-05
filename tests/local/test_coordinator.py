@@ -19,6 +19,8 @@ from custom_components.dessmonitor.const import (
     CONF_LOCAL_UDP_PORT,
 )
 from custom_components.dessmonitor.local.coordinator import DessMonitorLocalCoordinator
+from custom_components.dessmonitor.local.drivers import LocalDevice, P17Driver
+from custom_components.dessmonitor.local.hybrid import merge_cloud_and_local
 from custom_components.dessmonitor.local.modbus import (
     build_read_holding_response,
     crc16_modbus,
@@ -31,6 +33,7 @@ from custom_components.dessmonitor.local.protocol import (
     decode_header,
     encode_header,
 )
+from custom_components.dessmonitor.local.server import CollectorIdentity
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
@@ -345,6 +348,75 @@ async def test_local_coordinator_auto_detects_read_only_smg(
     finally:
         await collector.stop()
         await coordinator.async_shutdown()
+
+
+async def test_partial_inverter_outage_does_not_publish_stale_local_values(
+    hass,
+) -> None:
+    """A healthy neighbour must not keep stale readings above fresh cloud data."""
+    coordinator = DessMonitorLocalCoordinator(
+        hass,
+        {
+            CONF_LOCAL_LISTEN_IP: "127.0.0.1",
+            CONF_LOCAL_COLLECTOR_IP: "127.0.0.1",
+        },
+    )
+    coordinator._identity = CollectorIdentity("TEST-COLLECTOR", "127.0.0.1", 2452)
+    coordinator._device_code = 2452
+    coordinator._driver = P17Driver()
+    coordinator._devices = {
+        serial: LocalDevice(
+            driver_key="p17",
+            transport_device_code=2452,
+            collector_address=address,
+            device_address=address,
+            entity_device_code=2452,
+            serial=serial,
+            model="TEST",
+            firmware="",
+            metadata={"PI": "17"},
+        )
+        for address, serial in [(1, "FIRST"), (2, "SECOND")]
+    }
+    failed_addresses = set()
+
+    async def send(payload, *, device_code, device_address):
+        assert payload.startswith(b"^P")
+        if device_address in failed_addresses:
+            raise TimeoutError
+        command = payload[5:-3].decode("ascii")
+        raw = "2300,500,2295,499,1200,987,42,544,0,12,3,0,88,31,0,0,650,0,3210,0"
+        return build_p17_response("D", raw if command == "GS" else "03")
+
+    cloud = {
+        serial: {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"sn": serial, "devcode": 2452, "devaddr": address},
+            "data": [{"title": "Grid Voltage", "val": 220, "unit": "V"}],
+        }
+        for address, serial in [(1, "FIRST"), (2, "SECOND")]
+    }
+    with patch.object(coordinator._server, "send_command", side_effect=send):
+        assert await coordinator._poll_once(cycle=1)
+        assert set(coordinator._coordinator_data()) == {"FIRST", "SECOND"}
+        failed_addresses.add(2)
+        assert await coordinator._poll_once(cycle=2)
+        partial = coordinator._coordinator_data()
+        assert set(partial) == {"FIRST"}
+        assert set(coordinator._devices) == {"FIRST", "SECOND"}
+        merged = merge_cloud_and_local(cloud, partial, local_available=True)
+        first = {point["title"]: point["val"] for point in merged["FIRST"]["data"]}
+        second = {point["title"]: point["val"] for point in merged["SECOND"]["data"]}
+        assert first["Data Source"] == "Local"
+        assert first["Grid Voltage"] == 230
+        assert second["Data Source"] == "Cloud"
+        assert second["Grid Voltage"] == 220
+
+        failed_addresses.clear()
+        assert await coordinator._poll_once(cycle=3)
+        recovered = coordinator._coordinator_data()
+        assert set(recovered) == {"FIRST", "SECOND"}
+        assert recovered["SECOND"]["device"]["sn"] == "SECOND"
 
 
 async def test_failed_poll_cycles_force_targeted_reconnect(

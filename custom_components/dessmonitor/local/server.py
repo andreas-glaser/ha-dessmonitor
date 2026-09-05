@@ -10,6 +10,7 @@ import time
 import weakref
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
+from uuid import uuid4
 
 from .network import normalize_local_ipv4
 from .protocol import (
@@ -166,7 +167,7 @@ class CollectorConnection:
     reader: asyncio.StreamReader
     writer: asyncio.StreamWriter
     peer_ip: str
-    generation: int
+    connection_id: str = field(default_factory=lambda: uuid4().hex[:12])
     product_number: str = ""
     last_heartbeat: float = field(default_factory=time.monotonic)
     ready_notified: bool = False
@@ -208,7 +209,6 @@ class CollectorServer:
         self._connection_tasks: set[asyncio.Task[None]] = set()
         self._callback_tasks: set[asyncio.Task[None]] = set()
         self._send_lock = asyncio.Lock()
-        self._generation = 0
         self._transaction_id = 0
         self._stopping = False
 
@@ -272,20 +272,29 @@ class CollectorServer:
                 raise ConnectionError("collector is not connected and identified")
 
             transaction_id = self._next_transaction_id()
-            loop = asyncio.get_running_loop()
-            future: asyncio.Future[bytes] = loop.create_future()
-            connection.pending[transaction_id] = PendingRequest(
-                future, device_code, device_address
-            )
             frame = build_forward_request(
                 transaction_id,
                 payload,
                 device_code,
                 device_address,
             )
+            loop = asyncio.get_running_loop()
+            future: asyncio.Future[bytes] = loop.create_future()
+            connection.pending[transaction_id] = PendingRequest(
+                future, device_code, device_address
+            )
 
             try:
                 async with asyncio.timeout(self.request_timeout):
+                    _LOGGER.debug(
+                        "Local forward request [%s]: transaction_id=%d, device_code=%d, "
+                        "device_address=%d, request_bytes=%d",
+                        connection.connection_id,
+                        transaction_id,
+                        device_code,
+                        device_address,
+                        len(payload),
+                    )
                     connection.writer.write(frame)
                     await connection.writer.drain()
                     return await future
@@ -332,12 +341,10 @@ class CollectorServer:
             await self._close_writer(writer)
             return
 
-        self._generation += 1
         connection = CollectorConnection(
             reader=reader,
             writer=writer,
             peer_ip=normalized_peer,
-            generation=self._generation,
         )
         self._connection = connection
         _LOGGER.info("Configured local collector connected")
@@ -427,13 +434,30 @@ class CollectorServer:
     ) -> None:
         """Resolve only a response that matches the pending request metadata."""
         pending = connection.pending.get(header.transaction_id)
+        active_transaction = next(iter(connection.pending), 0)
         if pending is None or pending.future.done():
-            _LOGGER.debug("Ignoring unsolicited or late local collector response")
-            return
-        if (
+            outcome = "unmatched_transaction"
+        elif (
             header.device_code != pending.device_code
             or header.device_address != pending.device_address
         ):
+            outcome = "metadata_mismatch"
+        else:
+            outcome = "matched"
+        _LOGGER.debug(
+            "Local forward response [%s]: transaction_id=%d, device_code=%d, "
+            "device_address=%d, response_bytes=%d, pending_transaction_id=%d, outcome=%s",
+            connection.connection_id,
+            header.transaction_id,
+            header.device_code,
+            header.device_address,
+            len(payload),
+            active_transaction,
+            outcome,
+        )
+        if pending is None or pending.future.done():
+            return
+        if outcome == "metadata_mismatch":
             pending.future.set_exception(
                 ProtocolError(
                     "collector response metadata does not match its request",

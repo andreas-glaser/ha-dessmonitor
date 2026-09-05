@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Explicit local tunnel code `2452` now tries P17/PI18 before SMG even when the collector reports code `258` or `1`. Automatic discovery and ambiguous code hints keep their existing order, and both drivers remain available as fallbacks (#32).
+- A failed inverter on an otherwise healthy local collector no longer has its old readings republished with a fresh timestamp. Hybrid mode falls back to cloud data for that inverter and resumes local data under the same identity when it recovers.
+- Invalid outbound local frames are rejected before allocating a pending request, avoiding orphaned futures and unhandled exceptions on disconnect.
 - Local PI18 telemetry now selects its field layout and raw CRC encoding from the inverter's protocol ID. Corrected battery charging current, PV2 power, PV2 voltage, and firmware version decoding; PI18 no longer polls P17-only `GMN` or `GS2` commands. Existing P17 decoding and entity identifiers are preserved. These corrections address bugs found during #32's investigation; the reported connection failure still needs device evidence.
 - Local ASCII parsing rejects unsupported protocol IDs and malformed length fields, and handles oversized numeric responses as recoverable protocol errors.
 
 ### Changed
+- Local transport debug logs now correlate requests and replies with a random connection ID, transaction IDs, numeric routing fields, byte counts, and match outcomes. Late or unsolicited replies remain rejected; payloads and device identifiers are excluded from these records (#32).
 - GitHub Actions workflows now use the Node.js 24-compatible `actions/checkout@v7` and `actions/setup-python@v7` releases, removing Node.js 20 deprecation warnings from CI.
 - Local discovery now distinguishes timeouts, empty responses, unsupported commands, CRC failures, and transport-header mismatches. Debug logs include bounded per-query routing and timing evidence without response payloads. CLI probes save private diagnostic reports on runtime failure as well as success (#32).
 

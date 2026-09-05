@@ -99,6 +99,45 @@ async def test_discovery_failure_summary_preserves_query_outcomes() -> None:
     assert "PRIVATE-PN" not in json.dumps(diagnostics.as_dict())
 
 
+@pytest.mark.parametrize(
+    ("configured", "reported", "first_protocol"),
+    [
+        (2452, 258, "p17"),
+        (2452, 1, "p17"),
+        (0, 258, "smg_modbus"),
+        (2376, 2452, "smg_modbus"),
+        (1, 2452, "smg_modbus"),
+        (0, 2452, "p17"),
+        (258, 258, "smg_modbus"),
+        (1234, 258, "smg_modbus"),
+        (258, 2452, "p17"),
+    ],
+)
+async def test_explicit_device_hint_precedes_collector_hint(
+    configured, reported, first_protocol
+) -> None:
+    """Known P17 hints win; automatic and ambiguous hints retain their ordering."""
+
+    async def send(*_args):
+        return b""
+
+    diagnostics = ProbeDiagnostics()
+    with pytest.raises(ProtocolError, match="no supported read-only"):
+        await discover_supported_devices(
+            send,
+            collector_product_number="TEST",
+            configured_device_code=configured,
+            reported_device_code=reported,
+            max_address=1,
+            diagnostics=diagnostics,
+        )
+    assert diagnostics.attempts[0].protocol == first_protocol
+    assert {attempt.protocol for attempt in diagnostics.attempts} == {
+        "p17",
+        "smg_modbus",
+    }
+
+
 async def test_modbus_retry_attempts_keep_the_register_route() -> None:
     """A timeout followed by success is visible without changing retry behavior."""
     calls = 0

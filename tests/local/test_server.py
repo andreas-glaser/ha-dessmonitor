@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import socket
 
 import pytest
@@ -100,6 +101,111 @@ async def test_server_round_trip_and_identity() -> None:
 
         assert await request_task == response
         assert identities == [CollectorIdentity("PN123456789012", "127.0.0.1", 2452)]
+    finally:
+        writer.close()
+        await writer.wait_closed()
+        await server.stop()
+
+
+@pytest.mark.parametrize(
+    ("payload", "device_code", "address"),
+    [(b"READ", 65536, 1), (b"READ", 2452, 256), (b"x" * 4096, 2452, 1)],
+    ids=["invalid_code", "invalid_address", "oversized_payload"],
+)
+async def test_invalid_outbound_frame_does_not_leak_pending_request(
+    payload, device_code, address
+) -> None:
+    """Validation failure must not retain a future that no reply can complete."""
+    ready = asyncio.Event()
+
+    async def on_ready(_identity):
+        ready.set()
+
+    server = CollectorServer("127.0.0.1", 0, "127.0.0.1", on_ready=on_ready)
+    await server.start()
+    reader, writer = await asyncio.open_connection("127.0.0.1", server.listening_port)
+    try:
+        await _identify(reader, writer)
+        await asyncio.wait_for(ready.wait(), 1)
+        with pytest.raises(ProtocolError):
+            await server.send_command(
+                payload, device_code=device_code, device_address=address
+            )
+        assert server._connection is not None
+        assert not server._connection.pending
+    finally:
+        writer.close()
+        await writer.wait_closed()
+        await server.stop()
+
+
+async def test_late_and_unknown_transactions_are_observable_but_never_reused(
+    caplog,
+) -> None:
+    """Late replies cannot satisfy a newer query, and safe headers explain rejection."""
+    ready = asyncio.Event()
+
+    async def on_ready(_identity):
+        ready.set()
+
+    server = CollectorServer(
+        "127.0.0.1", 0, "127.0.0.1", on_ready=on_ready, request_timeout=0.05
+    )
+    await server.start()
+    reader, writer = await asyncio.open_connection("127.0.0.1", server.listening_port)
+    try:
+        await _identify(reader, writer)
+        await asyncio.wait_for(ready.wait(), 1)
+        caplog.clear()
+        caplog.set_level(
+            logging.DEBUG, logger="custom_components.dessmonitor.local.server"
+        )
+        first = asyncio.create_task(
+            server.send_command(b"PRIVATE-REQUEST", device_code=2452, device_address=1)
+        )
+        old_header, _ = await _read_frame(reader)
+        with pytest.raises(TimeoutError):
+            await first
+
+        second = asyncio.create_task(
+            server.send_command(b"PRIVATE-REQUEST", device_code=2452, device_address=1)
+        )
+        new_header, _ = await _read_frame(reader)
+        for transaction_id, response in (
+            (old_header.transaction_id, b"PRIVATE-LATE"),
+            (65535, b"PRIVATE-UNSOLICITED"),
+            (new_header.transaction_id, b"PRIVATE-CURRENT"),
+        ):
+            writer.write(
+                encode_header(
+                    transaction_id,
+                    2452,
+                    HEADER_SIZE + len(response),
+                    1,
+                    FC_FORWARD_TO_DEVICE,
+                )
+                + response
+            )
+        await writer.drain()
+        assert await second == b"PRIVATE-CURRENT"
+        requests = [
+            r for r in caplog.records if r.msg.startswith("Local forward request")
+        ]
+        replies = [
+            r for r in caplog.records if r.msg.startswith("Local forward response")
+        ]
+        assert len(requests) == 2
+        assert len(replies) == 3
+        assert len({r.args[0] for r in requests + replies}) == 1
+        assert f"transaction_id={old_header.transaction_id}" in replies[0].getMessage()
+        assert (
+            f"pending_transaction_id={new_header.transaction_id}"
+            in replies[0].getMessage()
+        )
+        assert "outcome=unmatched_transaction" in replies[0].getMessage()
+        assert "outcome=unmatched_transaction" in replies[1].getMessage()
+        assert "outcome=matched" in replies[2].getMessage()
+        assert "PRIVATE" not in caplog.text
     finally:
         writer.close()
         await writer.wait_closed()

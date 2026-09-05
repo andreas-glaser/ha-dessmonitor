@@ -15,7 +15,7 @@ from typing import Any, Protocol
 from .diagnostics import ProbeDiagnostics, failure_reason
 from .discovery import DiscoveryError, discover_p17, query_p17
 from .profile import CommandNotSupported
-from .protocol import ProtocolError
+from .protocol import P17_DEFAULT_DEVCODE, ProtocolError
 from .smg import (
     SMG_CLOUD_DEVICE_CODE,
     SMG_PROTOCOL,
@@ -231,9 +231,9 @@ async def discover_supported_devices(
     """Try a bounded driver order and return the first verified protocol."""
     drivers = list(DRIVERS)
     diagnostics = diagnostics if diagnostics is not None else ProbeDiagnostics()
-    if (
-        configured_device_code in (1, SMG_CLOUD_DEVICE_CODE)
-        or reported_device_code in SMG_REPORTED_COLLECTOR_CODES
+    if configured_device_code in (1, SMG_CLOUD_DEVICE_CODE) or (
+        configured_device_code != P17_DEFAULT_DEVCODE
+        and reported_device_code in SMG_REPORTED_COLLECTOR_CODES
     ):
         drivers.reverse()
 

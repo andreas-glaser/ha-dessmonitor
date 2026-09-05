@@ -85,6 +85,11 @@ overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
 returns the same entities to API telemetry.
 
+If one inverter's status poll fails while another on the same collector succeeds,
+only the responding inverter contributes to the new local snapshot. Hybrid uses
+cloud data for the failed inverter until it responds again. Its device and sensor
+identities are retained; a healthy neighbour cannot refresh its stale readings.
+
 For a cloud-free installation, add another DessMonitor integration and choose
 **Local network**. Use the advanced path only for a documented non-standard
 port, product-number identity pin, or device-code hint.
@@ -106,6 +111,12 @@ or recorder history. Earlier incorrect readings are not rewritten.
 Device detection is bounded and uses read queries only. Unsupported firmware
 fails closed instead of guessing register layouts. Local write frame builders
 and local control entities are intentionally absent.
+
+An explicitly configured tunnel code `2452` tries the P17/PI18 driver first,
+including when the collector reports `258` or `1`. Code `258` is shared by
+different inverter families; it does not establish the inverter's protocol.
+Automatic discovery and ambiguous hints retain their existing order. Both
+drivers remain fallbacks, and a validated response still determines the decoder.
 
 ## Contributor probe
 
@@ -169,7 +180,15 @@ then start it again; the configured integration reconnects automatically.
   and include the inverter model and collector firmware in a GitHub issue.
   The final error includes query outcome counts. Enable debug logging for
   `Local discovery` and `Local probe query` records showing each attempted route
-  and failure classification. A rejected reply is different from a timeout;
+  and failure classification. Also include `Local forward request` and
+  `Local forward response` records: they show transaction IDs, routing fields,
+  byte counts, and whether the reply matched an active request. Each TCP session
+  has a random connection ID, so timestamps and transaction IDs can distinguish
+  delayed replies from unrelated traffic across reconnects. `pending_transaction_id=0`
+  means no request is active. These records contain no payload or device identifiers.
+  `outcome=matched` confirms the transport header only; the driver still validates
+  the payload's CRC and field layout.
+  An unmatched reply remains rejected. A rejected reply is different from a timeout;
   changing the device code without this evidence may not help.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
@@ -196,11 +215,12 @@ If a maintainer asks you to test the development branch:
 3. Temporarily disable other local integrations or probes using this collector.
    Enable debug logging for DessMonitor and reload the integration once.
 4. Capture the log sequence from collector connection through the first discovery
-   failure, including `Local discovery` and `Local probe query` lines. Include
+   failure, including `Local discovery`, `Local probe query`, `Local forward request`,
+   and `Local forward response` lines. Include
    the configured device code, Data Source state, and the commit/version tested.
 5. If using the contributor CLI, run the `local-probe` command above from the
    same downloaded checkout and attach `local-probe.json`, including on failure.
    Stop the HA local connection first so only the probe uses the collector.
 
-These diagnostics do not change protocol selection, timeouts, CRC validation,
-or sensor decoding. They help identify which compatibility change is needed.
+Enabling debug logging does not alter timeouts or response validation. Report
+the commit tested, since the development branch can also contain behavior fixes.
