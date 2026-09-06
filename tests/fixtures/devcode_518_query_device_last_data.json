@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "Sanitized queryDeviceLastData response from a live devcode 518 grid-tie",
+    "PV inverter (BRAZIL-H grid profile), captured for PR #31. Account, plant,",
+    "collector and serial identifiers are placeholders; the field titles and",
+    "units are verbatim, because they are the whole point of the fixture."
+  ],
+  "err": 0,
+  "desc": "ERR_NONE",
+  "dat": {
+    "pn": "REDACTED-PN",
+    "devcode": 518,
+    "devaddr": 1,
+    "sn": "REDACTED-SN",
+    "gts": "2026-08-30 13:40:12",
+    "title": [
+      {"title": "active power", "unit": "W", "val": "1834"},
+      {"title": "DC output power", "unit": "W", "val": "1902"},
+      {"title": "total energy", "unit": "kWh", "val": "10468.9"},
+      {"title": "today energy", "unit": "kWh", "val": "12.7"},
+      {"title": "current year generating capacity", "unit": "kWh", "val": "4021.5"},
+      {"title": "grid frequency", "unit": "Hz", "val": "59.98"},
+      {"title": "inverter temperature", "unit": "°C", "val": "41.3"},
+      {"title": "DC voltage 1", "unit": "V", "val": "312.4"},
+      {"title": "DC current 1", "unit": "A", "val": "3.11"},
+      {"title": "DC voltage 2", "unit": "V", "val": "308.7"},
+      {"title": "DC current 2", "unit": "A", "val": "3.04"},
+      {"title": "apparent power value", "unit": "VA", "val": "1871"},
+      {"title": "grid voltage", "unit": "V", "val": "223.6"}
+    ]
+  }
+}
