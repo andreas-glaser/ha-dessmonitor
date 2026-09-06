@@ -18,18 +18,17 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import (
-    CONF_ACCOUNT_MODE,
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_MODE,
     CONF_UPDATE_INTERVAL,
     CONNECTION_TYPE_CLOUD,
     CONNECTION_TYPE_LOCAL,
-    DEFAULT_ACCOUNT_MODE,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     LOCAL_MODE_DISABLED,
     LOCAL_MODE_PREFER_LOCAL,
     UNITS,
+    resolve_api_profile,
 )
 from .data_sources import snapshot_with_data_source
 from .device_support import (
@@ -114,7 +113,7 @@ def _create_api_client(hass: HomeAssistant, entry: ConfigEntry) -> DessMonitorAP
     company_key = entry.data.get("company_key", "bnrl_frRFjEz8Mkn")
     _LOGGER.debug("Initializing API client for user: %s", username)
 
-    account_mode = entry.data.get(CONF_ACCOUNT_MODE, DEFAULT_ACCOUNT_MODE)
+    api_profile = resolve_api_profile(entry.data)
 
     store: Store[dict[str, Any]] = Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_auth")
 
@@ -123,7 +122,7 @@ def _create_api_client(hass: HomeAssistant, entry: ConfigEntry) -> DessMonitorAP
         password=entry.data["password"],
         company_key=company_key,
         store=store,
-        account_mode=account_mode,
+        api_profile=api_profile,
     )
 
 

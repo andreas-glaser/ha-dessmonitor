@@ -1,7 +1,8 @@
 """Solar grid-tie inverter (devcode 518).
 
-Single-/three-phase string inverter reported by SmartClient/SmartESS accounts
-(e.g. Q0025-series data loggers). queryDeviceLastData returns lower-cased,
+Single-/three-phase string inverter reported on the ShineMonitor solar
+platform (e.g. Q0025-series data loggers). Verified with a SmartClient for
+Solar account; not verified on SmartESS. queryDeviceLastData returns lower-cased,
 spelled-out field titles ("active power", "total energy", "today energy") that
 do not match the integration's canonical sensor names, so without this mapping
 the energy and power sensors stay at 0 even though the data is present.

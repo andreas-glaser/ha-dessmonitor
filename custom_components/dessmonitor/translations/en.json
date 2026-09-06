@@ -34,13 +34,15 @@
           "username": "Username",
           "password": "Password",
           "company_key": "Company Key (leave default unless specified by your installer)",
-          "update_interval": "Update interval (seconds)"
+          "update_interval": "Update interval (seconds)",
+          "api_profile": "Platform"
         },
         "data_description": {
           "username": "Your DessMonitor account username",
           "password": "Your DessMonitor account password",
           "company_key": "Your company/vendor key (default: {default_company_key})",
-          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes)."
+          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes).",
+          "api_profile": "Which Eybond platform hosts the account. DessMonitor / SmartESS is energy storage (source=1, api.dessmonitor.com) and is the default. ShineMonitor / SmartClient for Solar is photovoltaic (source=0, ios.shinemonitor.com). Choosing the wrong one fails with 'user not found'."
         }
       },
       "local": {

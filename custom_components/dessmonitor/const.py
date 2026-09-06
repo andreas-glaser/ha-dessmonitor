@@ -58,47 +58,76 @@ UPDATE_INTERVAL_OPTIONS: Final = {
 API_BASE_URL: Final = "https://api.dessmonitor.com/public/"
 
 
-# --- Account mode -----------------------------------------------------------
-# Eybond's backend serves two different kinds of account, and they are NOT
-# interchangeable: the request host, the auth action and the app identity all
-# differ. Picking the wrong one returns ERR_NOT_FOUND_USR as if the account did
-# not exist.
+# --- API profile -------------------------------------------------------------
+# Eybond's backend serves two application profiles, and they are NOT
+# interchangeable: the request host, the auth action and `source` all differ.
+# Picking the wrong one returns ERR_NOT_FOUND_USR as if the account did not
+# exist.
 #
-#   * "distributor" - installer / distributor accounts, authenticated with
-#     action=authSource against api.dessmonitor.com. This is the original
-#     behaviour and stays the default.
-#   * "end_user" - accounts created in the SmartClient / SmartESS mobile apps,
-#     authenticated with action=auth against ios.shinemonitor.com, using the
-#     mobile app identity. Confirmed by capturing the SmartClient app's own
-#     traffic (action=auth, _app_id_=com.eybond.SmartClient, source=0).
-CONF_ACCOUNT_MODE: Final = "account_mode"
-ACCOUNT_MODE_DISTRIBUTOR: Final = "distributor"
-ACCOUNT_MODE_END_USER: Final = "end_user"
-DEFAULT_ACCOUNT_MODE: Final = ACCOUNT_MODE_DISTRIBUTOR
+# The axis is the platform, not the kind of account. The ShineMonitor
+# documentation defines source=0 as photovoltaic and source=1 as energy storage:
+#
+#   * "dessmonitor_ess" - energy storage, action=authSource against
+#     api.dessmonitor.com. Original behaviour, and the default.
+#   * "shinemonitor_solar" - photovoltaic, action=auth against
+#     ios.shinemonitor.com. Verified against a live grid-tie PV account
+#     (devcode 518).
+CONF_API_PROFILE: Final = "api_profile"
+API_PROFILE_DESSMONITOR_ESS: Final = "dessmonitor_ess"
+API_PROFILE_SHINEMONITOR_SOLAR: Final = "shinemonitor_solar"
+DEFAULT_API_PROFILE: Final = API_PROFILE_DESSMONITOR_ESS
 
-ACCOUNT_MODE_OPTIONS: Final = {
-    ACCOUNT_MODE_DISTRIBUTOR: "Distributor / installer account",
-    ACCOUNT_MODE_END_USER: "End-user account (SmartClient / SmartESS app)",
+# Key used by an earlier revision of this branch, never released. Only branch
+# testers have entries carrying it; mapping it keeps them working instead of
+# silently falling back to the default profile. Safe to drop before merge.
+LEGACY_CONF_ACCOUNT_MODE: Final = "account_mode"
+LEGACY_ACCOUNT_MODE_MAP: Final = {
+    "distributor": API_PROFILE_DESSMONITOR_ESS,
+    "end_user": API_PROFILE_SHINEMONITOR_SOLAR,
 }
 
-# Per-mode API profile. Every request (auth and queries) uses these values, so
-# that host, source and identity stay consistent within a session.
-ACCOUNT_PROFILES: Final = {
-    ACCOUNT_MODE_DISTRIBUTOR: {
+API_PROFILE_OPTIONS: Final = {
+    API_PROFILE_DESSMONITOR_ESS: "DessMonitor / SmartESS (energy storage)",
+    API_PROFILE_SHINEMONITOR_SOLAR: (
+        "ShineMonitor / SmartClient for Solar (photovoltaic)"
+    ),
+}
+
+# Per-profile request context. Host, auth action and `source` stay consistent
+# across every request in a session.
+#
+# The integration identifies itself as itself in both profiles. An earlier
+# revision of this branch sent `_app_id_=com.eybond.SmartClient` on the solar
+# profile, copied from a capture of the mobile app. Testing against a live
+# account shows the server does not require it: `action=auth&source=0` succeeds
+# with `_app_id_=ha-dessmonitor`, and also with no app context at all. So there
+# is no reason to impersonate someone else's application.
+API_PROFILES: Final = {
+    API_PROFILE_DESSMONITOR_ESS: {
         "base_url": "https://api.dessmonitor.com/public/",
         "auth_action": "authSource",
         "source": "1",
         "app_client": "web",
         "app_id": "ha-dessmonitor",
     },
-    ACCOUNT_MODE_END_USER: {
+    API_PROFILE_SHINEMONITOR_SOLAR: {
         "base_url": "https://ios.shinemonitor.com/public/",
         "auth_action": "auth",
         "source": "0",
-        "app_client": "ios",
-        "app_id": "com.eybond.SmartClient",
+        "app_client": "web",
+        "app_id": "ha-dessmonitor",
     },
 }
+
+
+def resolve_api_profile(data: dict) -> str:
+    """Return the API profile for a config entry, accepting the legacy key."""
+    profile = data.get(CONF_API_PROFILE)
+    if profile in API_PROFILES:
+        return profile
+    legacy = data.get(LEGACY_CONF_ACCOUNT_MODE)
+    return LEGACY_ACCOUNT_MODE_MAP.get(legacy, DEFAULT_API_PROFILE)
+
 
 UNITS: Final = {
     "POWER": "W",
