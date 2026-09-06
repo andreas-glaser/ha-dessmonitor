@@ -21,6 +21,8 @@ from homeassistant.helpers.selector import (
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import (
+    API_PROFILE_OPTIONS,
+    CONF_API_PROFILE,
     CONF_COMPANY_KEY,
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
@@ -39,6 +41,7 @@ from .const import (
     CONNECTION_TYPE_CLOUD,
     CONNECTION_TYPE_HYBRID,
     CONNECTION_TYPE_LOCAL,
+    DEFAULT_API_PROFILE,
     DEFAULT_COMPANY_KEY,
     DEFAULT_LOCAL_DEVICE_CODE,
     DEFAULT_LOCAL_POLL_INTERVAL,
@@ -51,6 +54,7 @@ from .const import (
     LOCAL_MODE_PREFER_LOCAL,
     LOCAL_POLL_INTERVAL_OPTIONS,
     UPDATE_INTERVAL_OPTIONS,
+    resolve_api_profile,
 )
 from .local.network import normalize_local_ipv4
 
@@ -81,12 +85,28 @@ def _list_choice(choices: dict[int, str]) -> vol.All:
     )
 
 
+def _cloud_unique_id(username: str, data: dict[str, Any]) -> str:
+    """Unique ID for a cloud account, namespaced by API profile.
+
+    The same username can exist on both platforms as different accounts, so the
+    profile has to be part of the identity. The default profile keeps the bare
+    username so that entries created before this existed are not orphaned.
+    """
+    profile = resolve_api_profile(data)
+    if profile == DEFAULT_API_PROFILE:
+        return username
+    return f"{profile}:{username}"
+
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): vol.All(str, vol.Length(min=1, max=100)),
         vol.Required(CONF_PASSWORD): vol.All(str, vol.Length(min=1, max=100)),
         vol.Optional(CONF_COMPANY_KEY, default=DEFAULT_COMPANY_KEY): vol.All(
             str, vol.Length(min=1, max=100)
+        ),
+        vol.Optional(CONF_API_PROFILE, default=DEFAULT_API_PROFILE): _list_choice(
+            API_PROFILE_OPTIONS
         ),
         vol.Optional(
             CONF_UPDATE_INTERVAL, default=str(DEFAULT_UPDATE_INTERVAL)
@@ -350,11 +370,14 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     )
 
     session = async_get_clientsession(hass)
+    api_profile = resolve_api_profile(data)
+
     api = DessMonitorAPI(
         username=username,
         password=data[CONF_PASSWORD],
         company_key=company_key,
         session=session,
+        api_profile=api_profile,
     )
 
     try:
@@ -442,7 +465,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 )
                 errors["base"] = "unknown"
             else:
-                await self.async_set_unique_id(username)
+                await self.async_set_unique_id(_cloud_unique_id(username, user_input))
                 self._abort_if_unique_id_configured()
                 self._pending_hybrid_cloud_data = {
                     **user_input,
@@ -532,7 +555,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     "Setting unique ID and creating config entry for: %s",
                     _mask_username(username),
                 )
-                await self.async_set_unique_id(username)
+                await self.async_set_unique_id(_cloud_unique_id(username, user_input))
                 self._abort_if_unique_id_configured()
 
                 _LOGGER.info(

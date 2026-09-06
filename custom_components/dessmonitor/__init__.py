@@ -28,6 +28,7 @@ from .const import (
     LOCAL_MODE_DISABLED,
     LOCAL_MODE_PREFER_LOCAL,
     UNITS,
+    resolve_api_profile,
 )
 from .data_sources import snapshot_with_data_source
 from .device_support import (
@@ -112,6 +113,8 @@ def _create_api_client(hass: HomeAssistant, entry: ConfigEntry) -> DessMonitorAP
     company_key = entry.data.get("company_key", "bnrl_frRFjEz8Mkn")
     _LOGGER.debug("Initializing API client for user: %s", username)
 
+    api_profile = resolve_api_profile(entry.data)
+
     store: Store[dict[str, Any]] = Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_auth")
 
     return DessMonitorAPI(
@@ -119,6 +122,7 @@ def _create_api_client(hass: HomeAssistant, entry: ConfigEntry) -> DessMonitorAP
         password=entry.data["password"],
         company_key=company_key,
         store=store,
+        api_profile=api_profile,
     )
 
 

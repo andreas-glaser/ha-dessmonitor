@@ -572,3 +572,87 @@ async def test_hybrid_validation_preserves_entered_collector_list(
     )
     assert defaults[CONF_LOCAL_POLL_INTERVAL] == "10"
     assert defaults[CONF_LOCAL_REDIRECT_CONFIRMED] is False
+
+
+@pytest.mark.usefixtures("mock_validate_input", "mock_setup_entry")
+async def test_cloud_flow_stores_the_selected_api_profile(
+    hass: HomeAssistant,
+) -> None:
+    """Choosing the solar platform must survive into the entry data."""
+    from custom_components.dessmonitor.const import (
+        API_PROFILE_SHINEMONITOR_SOLAR,
+        CONF_API_PROFILE,
+    )
+
+    result = await _start_cloud_flow(hass)
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {**BASE_INPUT, CONF_API_PROFILE: API_PROFILE_SHINEMONITOR_SOLAR},
+    )
+    await hass.async_block_till_done()
+
+    assert result2["type"] is FlowResultType.CREATE_ENTRY
+    assert result2["data"][CONF_API_PROFILE] == API_PROFILE_SHINEMONITOR_SOLAR
+
+
+@pytest.mark.usefixtures("mock_validate_input", "mock_setup_entry")
+async def test_cloud_flow_defaults_to_the_pre_existing_platform(
+    hass: HomeAssistant,
+) -> None:
+    """Not choosing anything must reproduce the behaviour before the selector."""
+    from custom_components.dessmonitor.const import (
+        CONF_API_PROFILE,
+        DEFAULT_API_PROFILE,
+        resolve_api_profile,
+    )
+
+    result = await _start_cloud_flow(hass)
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"], BASE_INPUT
+    )
+    await hass.async_block_till_done()
+
+    assert result2["data"][CONF_API_PROFILE] == DEFAULT_API_PROFILE
+    assert resolve_api_profile(result2["data"]) == DEFAULT_API_PROFILE
+
+
+@pytest.mark.usefixtures("mock_validate_input", "mock_setup_entry")
+async def test_same_username_can_exist_on_both_platforms(
+    hass: HomeAssistant,
+) -> None:
+    """The unique ID carries the profile, so the second entry is not a dupe."""
+    from custom_components.dessmonitor.const import (
+        API_PROFILE_SHINEMONITOR_SOLAR,
+        CONF_API_PROFILE,
+    )
+
+    first = await _start_cloud_flow(hass)
+    created = await hass.config_entries.flow.async_configure(
+        first["flow_id"], BASE_INPUT
+    )
+    await hass.async_block_till_done()
+    assert created["type"] is FlowResultType.CREATE_ENTRY
+
+    second = await _start_cloud_flow(hass)
+    other = await hass.config_entries.flow.async_configure(
+        second["flow_id"],
+        {**BASE_INPUT, CONF_API_PROFILE: API_PROFILE_SHINEMONITOR_SOLAR},
+    )
+    await hass.async_block_till_done()
+
+    assert other["type"] is FlowResultType.CREATE_ENTRY
+    entries = hass.config_entries.async_entries(DOMAIN)
+    assert len({entry.unique_id for entry in entries}) == 2
+
+
+@pytest.mark.usefixtures("mock_validate_input", "mock_setup_entry")
+async def test_default_profile_keeps_the_bare_username_as_unique_id(
+    hass: HomeAssistant,
+) -> None:
+    """Entries created before the selector must not be orphaned by it."""
+    result = await _start_cloud_flow(hass)
+    await hass.config_entries.flow.async_configure(result["flow_id"], BASE_INPUT)
+    await hass.async_block_till_done()
+
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert entry.unique_id == BASE_INPUT[CONF_USERNAME]
