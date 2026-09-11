@@ -457,6 +457,7 @@ The integration now includes an extensible device support system:
 - **DevCode 2428**: Known to pair with Hybrid inverter
 - **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
+- **DevCode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter
 - **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
 - **DevCode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI

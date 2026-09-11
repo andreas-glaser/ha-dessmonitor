@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
+
 ### Fixed
 - Explicit local tunnel code `2452` now tries P17/PI18 before SMG even when the collector reports code `258` or `1`. Automatic discovery and ambiguous code hints keep their existing order, and both drivers remain available as fallbacks (#32).
 - A failed inverter on an otherwise healthy local collector no longer has its old readings republished with a fresh timestamp. Hybrid mode falls back to cloud data for that inverter and resumes local data under the same identity when it recovers.
