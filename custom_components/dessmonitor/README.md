@@ -1,14 +1,15 @@
 # DessMonitor Home Assistant Integration
 
-A custom integration to monitor and control your DessMonitor solar inverter system in Home Assistant.
-Updates are periodic: 5 minutes by default, or 1 minute with Detailed Data Collection Acceleration (￥144 per collector).
+A custom integration for DessMonitor / SmartESS and SmartClient for Solar / ShineMonitor accounts in Home Assistant.
+Cloud updates default to 5 minutes. Faster DessMonitor updates require its collection-acceleration service.
 
 ## Quick Setup
 1. In Home Assistant: Settings > Devices & Services > Add Integration > "DessMonitor".
 2. Choose the primary **DessMonitor cloud API**, the guided **API + preferred
    local telemetry** path, or read-only **Local network only**.
-3. For either API path, enter Username, Password, and Company Key (the default
-   is usually correct).
+3. For either API path, choose **Account platform**. Keep **DessMonitor / SmartESS
+   (default)** for existing accounts, or select **SmartClient for Solar / ShineMonitor**.
+   Enter Username and Password; keep the Company Key default unless your installer supplied another.
 4. Choose Update Interval:
    - 5 minutes: Standard rate (recommended)
    - 1 minute: Requires "Detailed Data Collection Acceleration" from DessMonitor
@@ -19,7 +20,7 @@ Updates are periodic: 5 minutes by default, or 1 minute with Detailed Data Colle
 - Sensors for power, voltages, currents, frequency, temperature, load %, operating mode.
 - Energy Dashboard compatible (use `*_total_pv_power`, `*_battery_power`, `*_grid_power`).
 - Device configuration via select, number, and button entities (output priority, charger source, battery settings, buzzer mode, and more).
-- Supported devcodes: 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2507, 6422, 6514, 6515, 6544.
+- Supported devcodes: 518, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2507, 6422, 6514, 6515, 6544.
 - Diagnostic sensors available but disabled by default to avoid clutter.
 
 ## Device Configuration
@@ -38,7 +39,7 @@ All current values are read from the device at startup. Changes take effect imme
 
 ## Requirements
 - Home Assistant 2024.1.0 or newer.
-- A DessMonitor account and internet access for cloud or hybrid mode.
+- An account on one of the two supported platforms and internet access for cloud or hybrid mode.
 - A fixed private Home Assistant LAN IP and collector IP for local telemetry.
 - For local telemetry, outbound UDP `58899` from Home Assistant to the
   collector and inbound TCP `8899` from that collector to Home Assistant.
@@ -47,7 +48,7 @@ All current values are read from the device at startup. Changes take effect imme
 
 ## Troubleshooting
 - Integration not found after install: Restart Home Assistant; ensure files are in `config/custom_components/dessmonitor/`.
-- No devices or data: Confirm devices are online in DessMonitor; check HA logs (Settings > System > Logs).
+- No devices or data: Confirm devices are online in the selected platform; check HA logs (Settings > System > Logs).
 - Sensors not updating: Verify network access and account update interval; review logs for API errors.
 - Configuration entities showing blank: Integration reads controls through the API and retries discovery after the next successful API refresh.
 - Enable debug logging (configuration.yaml):
@@ -58,7 +59,9 @@ All current values are read from the device at startup. Changes take effect imme
   ```
 
 ## Notes
-- Credentials remain in Home Assistant; tokens auto-renew (7-day lifetime).
+- Existing entries keep their profile, entity identities, and history without migration.
+- Tokens renew using the expiry returned by the selected backend and are never reused across profiles.
+- Devcode 518 cloud telemetry is supported; its local protocol and write controls have not been verified.
 - Respect DessMonitor API limits; avoid excessively frequent polling.
 - Control values are cached at startup and updated optimistically after writes. Restart HA to re-read values from the device.
 

@@ -61,8 +61,12 @@ and falls back automatically when local telemetry is unavailable.
 ## Recommended setup
 
 For a new installation, select **DessMonitor API + preferred local telemetry**.
-Enter the normal API credentials first, then paste the local collector
-addresses in the short second step. To use only the API, select
+Choose the account platform and enter the normal API credentials first, then
+paste the local collector addresses in the short second step. **DessMonitor /
+SmartESS (default)** remains selected for existing accounts. Choose **SmartClient
+for Solar / ShineMonitor** for that service. Cloud profile selection does not
+add a local driver: devcode 518 cloud telemetry is supported, but its local
+protocol has not been verified. To use only the API, select
 **DessMonitor cloud API**. To skip the API and credentials entirely, select
 **Local network only**.
 

@@ -18,13 +18,15 @@
           "username": "Username",
           "password": "Password",
           "company_key": "Company Key (leave default unless specified by your installer)",
-          "update_interval": "Cloud fallback update interval (seconds)"
+          "update_interval": "Cloud fallback update interval (seconds)",
+          "api_profile": "Account platform"
         },
         "data_description": {
           "username": "Your DessMonitor account username",
           "password": "Your DessMonitor account password",
           "company_key": "Your company/vendor key (default: {default_company_key})",
-          "update_interval": "How often to refresh cloud fallback data. Local telemetry uses its own faster interval."
+          "update_interval": "How often to refresh cloud fallback data. Local telemetry uses its own faster interval.",
+          "api_profile": "Choose the service you normally sign in to. Keep the default for DessMonitor or SmartESS accounts. Choose SmartClient for Solar / ShineMonitor if that is the app you use."
         }
       },
       "cloud": {
@@ -34,13 +36,15 @@
           "username": "Username",
           "password": "Password",
           "company_key": "Company Key (leave default unless specified by your installer)",
-          "update_interval": "Update interval (seconds)"
+          "update_interval": "Update interval (seconds)",
+          "api_profile": "Account platform"
         },
         "data_description": {
           "username": "Your DessMonitor account username",
           "password": "Your DessMonitor account password",
           "company_key": "Your company/vendor key (default: {default_company_key})",
-          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes)."
+          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes).",
+          "api_profile": "Choose the service you normally sign in to. Keep the default for DessMonitor or SmartESS accounts. Choose SmartClient for Solar / ShineMonitor if that is the app you use."
         }
       },
       "local": {

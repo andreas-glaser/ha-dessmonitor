@@ -11,8 +11,8 @@ This guide walks a contributor through adding support for a new DessMonitor data
 
 ## Prerequisites
 
-- The reporter's DessMonitor credentials (`username`, `password`, `company_key`) OR a `analysis.json` file they produced with the CLI tool.
-- Python 3.7+ with `pip install -r tools/cli/requirements.txt`.
+- An `analysis.json` file produced by the reporter with the CLI. The reporter enters their own credentials locally; do not request their password or credential file.
+- Python 3.11+ with `pip install -r tools/cli/requirements.txt`.
 - A local checkout of the `dev` branch.
 
 ## Workflow Overview
@@ -36,13 +36,17 @@ Ask the reporter to run:
 cd tools/cli
 pip install -r requirements.txt
 python3 dessmonitor_cli.py auth \
-    --username USER --password PASS --company-key KEY
+    --username USER --company-key KEY
 
 python3 dessmonitor_cli.py collectors
 python3 dessmonitor_cli.py devices --pn COLLECTOR_PN
 python3 dessmonitor_cli.py analyze \
     --device-sn DEVICE_SN --output analysis_XXXX.json
 ```
+
+For SmartClient for Solar / ShineMonitor, add `--api-profile shinemonitor_solar`
+to `auth`. Omit it for DessMonitor / SmartESS, the default. The CLI prompts for
+the password and remembers the chosen profile for subsequent commands.
 
 The `analyze` command writes a structured JSON file containing sensor titles, observed operating mode / priority values, unit patterns, a sample of live data, device control fields, and an HMAC checksum. The reporter should attach that file to the GitHub issue or PR.
 
@@ -60,7 +64,7 @@ The device SN is excluded from the checksum so reporters can redact it without b
 
 ## 3. Read the analysis
 
-Open the analysis and note these fields under the `analysis` key:
+Open the analysis and note these top-level fields:
 
 | Field | What to do with it |
 |-------|--------------------|
@@ -74,6 +78,9 @@ Open the analysis and note these fields under the `analysis` key:
 | `unit_patterns` | Shows which titles returned non-numeric strings (icon-state sensors, etc.) |
 | `control_fields` | List of controllable fields. Each entry has `name`, `type` (`options` or `value`), and `id`. Options-type entries include the priority/config code enum, e.g. `{"1":"SUB","2":"SBU","3":"SUF","4":"ZEC"}`. Value-type entries include `hint` (API min/max range like `"48.0~56.0V"` or `"0-900min"`) and `unit`, which the integration parses into number-entity ranges. |
 | `parameter_count` / `parameters` | Sensors only returned by `queryDeviceParsEs`, not by `queryDeviceLastData` |
+
+The top-level `api_profile` identifies the cloud backend used for the report;
+older reports may omit it.
 
 Also ask the reporter for the inverter model and manufacturer so you can populate `known_inverters`.
 

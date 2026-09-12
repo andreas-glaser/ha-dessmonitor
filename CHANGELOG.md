@@ -8,9 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
+- Devcode `518` grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
 ### Fixed
+- API and CLI signatures now preserve URL-encoded values through HTTP serialization, including usernames with spaces or reserved characters. Saved tokens remain associated with their account platform.
+- Authentication debug tracebacks no longer expose signed request URLs from aiohttp transport errors. CLI authentication clears old tokens before signing a new login. Both clients reject incomplete authentication responses, and Home Assistant cancellation propagates correctly.
 - Explicit local tunnel code `2452` now tries P17/PI18 before SMG even when the collector reports code `258` or `1`. Automatic discovery and ambiguous code hints keep their existing order, and both drivers remain available as fallbacks (#32).
 - A failed inverter on an otherwise healthy local collector no longer has its old readings republished with a fresh timestamp. Hybrid mode falls back to cloud data for that inverter and resumes local data under the same identity when it recovers.
 - Invalid outbound local frames are rejected before allocating a pending request, avoiding orphaned futures and unhandled exceptions on disconnect.
