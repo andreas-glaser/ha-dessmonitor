@@ -16,6 +16,9 @@ _LOGGER = logging.getLogger(__name__)
 # This is populated by importing devcode modules below
 _DEVICE_REGISTRY: dict[int, dict[str, Any]] = {}
 
+# Transformations run for every sensor read; report missing support once per run.
+_WARNED_UNSUPPORTED_DEVCODES: set[int] = set()
+
 
 def _register_devcode(devcode: int, config: dict[str, Any]) -> None:
     """Register a devcode configuration."""
@@ -187,12 +190,20 @@ def apply_devcode_transformations(
     devcode: int, sensor_data: dict[str, Any]
 ) -> dict[str, Any]:
     """Apply all devcode-specific transformations to sensor data."""
-    if not is_devcode_supported(devcode):
-        _LOGGER.warning("Unsupported devcode %s - no transformations applied", devcode)
-        return sensor_data
-
     config = get_devcode_config(devcode)
     if not config:
+        if devcode not in _WARNED_UNSUPPORTED_DEVCODES:
+            _LOGGER.warning(
+                "Unsupported devcode %s - no device-specific mappings available. "
+                "Using raw sensor titles and values; sensor support may be limited. "
+                "To request or add support, share a CLI analysis JSON and your "
+                "inverter model as described at "
+                "https://github.com/andreas-glaser/ha-dessmonitor/blob/dev/"
+                "docs/ADDING_DEVCODES.md#request-support "
+                "(logged once per devcode until Home Assistant restarts)",
+                devcode,
+            )
+            _WARNED_UNSUPPORTED_DEVCODES.add(devcode)
         return sensor_data
 
     transformed_data = sensor_data.copy()

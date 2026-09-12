@@ -1,18 +1,44 @@
 # Adding a New Devcode
 
-This guide walks a contributor through adding support for a new DessMonitor data collector (devcode). Follow it end to end when a user reports that their inverter shows up as "Unsupported Device (devcode NNNN)" in Home Assistant, or when they submit a CLI analysis for an unknown devcode.
+This guide explains how to request or add support for a new DessMonitor devcode.
+
+## Request support
+
+If Home Assistant logs `Unsupported devcode NNNN`, the integration has no
+device-specific mappings for that code. It continues using raw sensor titles and
+values, but some sensors may be missing or need name, unit, or operating-mode
+mappings. The warning is logged once per devcode until Home Assistant restarts.
+
+You do not need to write Python code to request support:
+
+1. [Search existing issues](https://github.com/andreas-glaser/ha-dessmonitor/issues)
+   for the devcode shown in your warning.
+2. [Generate an analysis JSON](#1-produce-the-analysis-contributor-side) on a
+   computer with Python installed, following the commands below.
+3. Attach the JSON to the matching issue, or
+   [open a support request](https://github.com/andreas-glaser/ha-dessmonitor/issues/new).
+   Include your devcode, inverter brand and model, integration version, and any
+   missing or incorrect readings compared with DessMonitor.
+
+Share only the analysis JSON, never your password or the CLI credentials file
+(`.dessmonitor_cli_config.json`). You can redact the `device_sn` field before
+sharing. Review the file for other identifying information; if you redact more,
+mention that in the issue so the maintainer can account for checksum changes.
+
+The analysis lets a maintainer check the mappings and prepare a dev build for you
+to test. To contribute the mappings yourself, continue with the workflow below.
 
 ## Background
 
 - The **devcode** identifies the *data collector / gateway* (the WiFi/4G dongle that talks to the DessMonitor cloud), not the inverter itself. The same inverter family can ship with different collectors, and the same collector can be rebranded across several inverter brands.
 - Each supported devcode has a file `custom_components/dessmonitor/device_support/devcode_XXXX.py` that tells the integration how to translate that collector's API output into canonical sensor names, operating modes, and priority labels.
-- The registry in `device_support/device_registry.py` imports every devcode module and is consulted by the sensor platform via `apply_devcode_transformations()` in the coordinator.
+- The registry in `device_support/device_registry.py` imports the supported devcode modules. Sensors call `apply_devcode_transformations()` when reading values.
 - Unknown devcodes still work through a generic fallback (raw titles and values, no enum mapping), so the goal of adding a devcode is to clean up names, normalise enum values, and expose sensors that the API hides behind verbose or typo-laden titles.
 
 ## Prerequisites
 
-- The reporter's DessMonitor credentials (`username`, `password`, `company_key`) OR a `analysis.json` file they produced with the CLI tool.
-- Python 3.7+ with `pip install -r tools/cli/requirements.txt`.
+- An `analysis.json` file the reporter produced with the CLI tool using their own DessMonitor account. Contributors do not need the reporter's credentials.
+- Python with the CLI dependencies installed as shown below.
 - A local checkout of the `dev` branch.
 
 ## Workflow Overview
@@ -30,19 +56,25 @@ This guide walks a contributor through adding support for a new DessMonitor data
 
 ## 1. Produce the analysis (contributor side)
 
-Ask the reporter to run:
+Download the [dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
+extract it, and open a terminal in the extracted repository folder. Run:
 
 ```bash
 cd tools/cli
 pip install -r requirements.txt
 python3 dessmonitor_cli.py auth \
-    --username USER --password PASS --company-key KEY
+    --username YOUR_USERNAME --company-key YOUR_COMPANY_KEY
 
 python3 dessmonitor_cli.py collectors
 python3 dessmonitor_cli.py devices --pn COLLECTOR_PN
 python3 dessmonitor_cli.py analyze \
     --device-sn DEVICE_SN --output analysis_XXXX.json
 ```
+
+Use the same username and company key as your Home Assistant integration. The
+`auth` command prompts for your password. Replace `COLLECTOR_PN` with the PN from
+`collectors`, then use the serial number for the matching devcode from `devices`
+as `DEVICE_SN`. Replace `XXXX` in the output filename with your devcode.
 
 The `analyze` command writes a structured JSON file containing sensor titles, observed operating mode / priority values, unit patterns, a sample of live data, device control fields, and an HMAC checksum. The reporter should attach that file to the GitHub issue or PR.
 

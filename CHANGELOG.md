@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
 ### Fixed
+- Unsupported devcode warnings now appear once per devcode until Home Assistant restarts, preventing repeated sensor reads from flooding the logs (#36, thanks to @ufika for reporting).
 - Explicit local tunnel code `2452` now tries P17/PI18 before SMG even when the collector reports code `258` or `1`. Automatic discovery and ambiguous code hints keep their existing order, and both drivers remain available as fallbacks (#32).
 - A failed inverter on an otherwise healthy local collector no longer has its old readings republished with a fresh timestamp. Hybrid mode falls back to cloud data for that inverter and resumes local data under the same identity when it recovers.
 - Invalid outbound local frames are rejected before allocating a pending request, avoiding orphaned futures and unhandled exceptions on disconnect.
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local ASCII parsing rejects unsupported protocol IDs and malformed length fields, and handles oversized numeric responses as recoverable protocol errors.
 
 ### Changed
+- Unsupported devcode warnings now explain the raw-data fallback and link to instructions for requesting or adding support with a CLI analysis JSON and inverter model. The support guide includes reporting steps and uses a password prompt instead of asking reporters to share credentials.
 - Local transport debug logs now correlate requests and replies with a random connection ID, transaction IDs, numeric routing fields, byte counts, and match outcomes. Late or unsolicited replies remain rejected; payloads and device identifiers are excluded from these records (#32).
 - GitHub Actions workflows now use the Node.js 24-compatible `actions/checkout@v7` and `actions/setup-python@v7` releases, removing Node.js 20 deprecation warnings from CI.
 - Local discovery now distinguishes timeouts, empty responses, unsupported commands, CRC failures, and transport-header mismatches. Debug logs include bounded per-query routing and timing evidence without response payloads. CLI probes save private diagnostic reports on runtime failure as well as success (#32).

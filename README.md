@@ -464,6 +464,10 @@ The integration now includes an extensible device support system:
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support
+Seeing an `Unsupported devcode` warning? Follow the
+[request-support instructions](docs/ADDING_DEVCODES.md#request-support) to share an
+analysis JSON and your inverter model. No coding is required.
+
 See [`docs/ADDING_DEVCODES.md`](docs/ADDING_DEVCODES.md) for the full workflow. Short version:
 1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`
 2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
