@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0-rc.1] - 2026-09-12
+
+First release candidate for 2.4.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
 ### Added
 - Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
 - Devcode `518` grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
@@ -363,7 +367,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.1...HEAD
+[2.4.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0-rc.1
 [2.3.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.0.0...v2.1.0
