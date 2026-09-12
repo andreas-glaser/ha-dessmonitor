@@ -1,6 +1,6 @@
 # DessMonitor CLI Tool
 
-A Python CLI tool for DessMonitor API development and device analysis. This tool helps contributors query DessMonitor API endpoints to create device support configurations for the Home Assistant integration.
+A Python CLI tool for DessMonitor / SmartESS and SmartClient for Solar / ShineMonitor API development and device analysis. This tool helps contributors query DessMonitor API endpoints to create device support configurations for the Home Assistant integration.
 
 ## Purpose
 
@@ -13,7 +13,7 @@ This tool is designed for:
 ## Installation
 
 ### Prerequisites
-- Python 3.7+
+- Python 3.11+
 - `aiohttp` library
 
 ### Setup
@@ -31,7 +31,7 @@ python3 dessmonitor_cli.py auth --username YOUR_USERNAME --company-key YOUR_COMP
 ## Commands
 
 ### `auth` - Authentication
-Store your DessMonitor API credentials for subsequent commands.
+Choose the platform and store credentials for subsequent commands. DessMonitor / SmartESS remains the default; existing credential files continue to use it.
 
 ```bash
 python3 dessmonitor_cli.py auth --username USER --company-key KEY
@@ -41,6 +41,19 @@ python3 dessmonitor_cli.py auth --username USER --company-key KEY
 ```bash
 python3 dessmonitor_cli.py auth --username your_email@example.com --company-key your_company_key
 ```
+
+For SmartClient for Solar / ShineMonitor:
+
+```bash
+python3 dessmonitor_cli.py auth --username USER --api-profile shinemonitor_solar
+```
+
+`--api-profile dessmonitor_ess` explicitly selects the existing DessMonitor / SmartESS
+service. `--company-key` is optional and uses the same default as Home Assistant.
+The CLI remembers the profile for `collectors`, `devices`, `data`, `analyze`, and
+control commands. Run `auth` again to change accounts or platforms; this replaces
+the single saved CLI account and obtains a new token. Tokens are never reused
+across profiles.
 
 Omitting `--password` prompts without placing the password in shell history.
 
@@ -243,13 +256,14 @@ Credentials are stored in `.dessmonitor_cli_config.json` (ignored by git):
   "company_key": "your_company_key",
   "token": "...",
   "secret": "...",
-  "token_expires": 1234567890
+  "token_expires": 1234567890,
+  "api_profile": "dessmonitor_ess"
 }
 ```
 
 ### Token Management
 - Tokens automatically refresh when expired
-- 7-day token lifetime
+- Token lifetime follows the expiry returned by the selected backend
 - Re-authentication happens transparently
 
 ## Error Handling
@@ -258,10 +272,7 @@ Credentials are stored in `.dessmonitor_cli_config.json` (ignored by git):
 - **"No saved credentials"**: Run `auth` command first
 - **"Device not found"**: Check device serial number and collector association
 - **"API Error: ERR_FORMAT_ERROR"**: Invalid collector PN or API parameters
-- **Authentication failures**: Check username, password, and company key
+- **Authentication failures**: Check the selected platform, username, password, and company key
 
 ### Debug Mode
-Enable debug logging by modifying the script:
-```python
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-```
+Use `--debug` with a command, for example `python3 dessmonitor_cli.py --debug collectors`. Transport errors omit signed URLs and tokens.

@@ -6,6 +6,8 @@ This directory contains collector-specific mappings and configurations for diffe
 
 ## Currently Supported Collectors
 
+- **devcode 518**: Solar grid-tie telemetry through Q0025-series collectors on SmartClient for Solar / ShineMonitor; local protocol and writes are not verified.
+
 - **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
 - **devcode 2376**: Known to pair with POW-HVM6.2K-48V-LIP

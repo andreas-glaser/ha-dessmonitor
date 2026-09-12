@@ -38,7 +38,7 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 ## Prerequisites
 
 - An `analysis.json` file the reporter produced with the CLI tool using their own DessMonitor account. Contributors do not need the reporter's credentials.
-- Python with the CLI dependencies installed as shown below.
+- Python 3.11+ with the CLI dependencies installed as shown below.
 - A local checkout of the `dev` branch.
 
 ## Workflow Overview
@@ -76,6 +76,10 @@ Use the same username and company key as your Home Assistant integration. The
 `collectors`, then use the serial number for the matching devcode from `devices`
 as `DEVICE_SN`. Replace `XXXX` in the output filename with your devcode.
 
+For SmartClient for Solar / ShineMonitor, add `--api-profile shinemonitor_solar`
+to `auth`. Omit it for DessMonitor / SmartESS, the default. The CLI prompts for
+the password and remembers the chosen profile for subsequent commands.
+
 The `analyze` command writes a structured JSON file containing sensor titles, observed operating mode / priority values, unit patterns, a sample of live data, device control fields, and an HMAC checksum. The reporter should attach that file to the GitHub issue or PR.
 
 ## 2. Verify the analysis file
@@ -92,7 +96,7 @@ The device SN is excluded from the checksum so reporters can redact it without b
 
 ## 3. Read the analysis
 
-Open the analysis and note these fields under the `analysis` key:
+Open the analysis and note these top-level fields:
 
 | Field | What to do with it |
 |-------|--------------------|
@@ -106,6 +110,9 @@ Open the analysis and note these fields under the `analysis` key:
 | `unit_patterns` | Shows which titles returned non-numeric strings (icon-state sensors, etc.) |
 | `control_fields` | List of controllable fields. Each entry has `name`, `type` (`options` or `value`), and `id`. Options-type entries include the priority/config code enum, e.g. `{"1":"SUB","2":"SBU","3":"SUF","4":"ZEC"}`. Value-type entries include `hint` (API min/max range like `"48.0~56.0V"` or `"0-900min"`) and `unit`, which the integration parses into number-entity ranges. |
 | `parameter_count` / `parameters` | Sensors only returned by `queryDeviceParsEs`, not by `queryDeviceLastData` |
+
+The top-level `api_profile` identifies the cloud backend used for the report;
+older reports may omit it.
 
 Also ask the reporter for the inverter model and manufacturer so you can populate `known_inverters`.
 

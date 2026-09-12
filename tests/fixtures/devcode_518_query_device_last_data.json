@@ -1,0 +1,75 @@
+{
+  "_comment": [
+    "Devcode 518 field titles and units supplied by the contributor, with synthetic readings.",
+    "The response envelope follows the documented queryDeviceLastData list format."
+  ],
+  "err": 0,
+  "desc": "ERR_NONE",
+  "dat": [
+    {
+      "title": "active power",
+      "unit": "W",
+      "val": "1834"
+    },
+    {
+      "title": "DC output power",
+      "unit": "W",
+      "val": "1902"
+    },
+    {
+      "title": "total energy",
+      "unit": "kWh",
+      "val": "10468.9"
+    },
+    {
+      "title": "today energy",
+      "unit": "kWh",
+      "val": "12.7"
+    },
+    {
+      "title": "current year generating capacity",
+      "unit": "kWh",
+      "val": "4021.5"
+    },
+    {
+      "title": "grid frequency",
+      "unit": "Hz",
+      "val": "59.98"
+    },
+    {
+      "title": "inverter temperature",
+      "unit": "°C",
+      "val": "41.3"
+    },
+    {
+      "title": "DC voltage 1",
+      "unit": "V",
+      "val": "312.4"
+    },
+    {
+      "title": "DC current 1",
+      "unit": "A",
+      "val": "3.11"
+    },
+    {
+      "title": "DC voltage 2",
+      "unit": "V",
+      "val": "308.7"
+    },
+    {
+      "title": "DC current 2",
+      "unit": "A",
+      "val": "3.04"
+    },
+    {
+      "title": "apparent power value",
+      "unit": "VA",
+      "val": "1871"
+    },
+    {
+      "title": "grid voltage",
+      "unit": "V",
+      "val": "223.6"
+    }
+  ]
+}

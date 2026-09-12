@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
+import asyncio
+import json
+from collections.abc import AsyncIterator, Callable, Generator
+from typing import Any
 from unittest.mock import MagicMock, patch
 
+import aiohttp
 import pytest
+from aiohttp.client_proto import ResponseHandler
 
 
 @pytest.fixture(autouse=True)
@@ -59,3 +64,58 @@ def mock_setup_entry() -> Generator[None, None, None]:
         return_value=True,
     ):
         yield
+
+
+class MemoryTransport(asyncio.Transport):
+    """Replace only the socket while retaining aiohttp request serialization."""
+
+    def __init__(self, protocol: ResponseHandler, connector: MemoryConnector) -> None:
+        super().__init__()
+        self.protocol = protocol
+        self.connector = connector
+        self.closed = False
+
+    def is_closing(self) -> bool:
+        return self.closed
+
+    def close(self) -> None:
+        self.closed = True
+
+    def abort(self) -> None:
+        self.close()
+
+    def write(self, data: bytes) -> None:
+        self.connector.requests.append(data)
+        payload = self.connector.payload
+        encoded = json.dumps(payload(data) if callable(payload) else payload).encode()
+        self.protocol.data_received(
+            b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+            + f"Content-Length: {len(encoded)}\r\n\r\n".encode()
+            + encoded
+        )
+
+
+class MemoryConnector(aiohttp.BaseConnector):
+    """Serve per-test API responses without opening a network connection."""
+
+    def __init__(self) -> None:
+        super().__init__(force_close=True)
+        self.requests: list[bytes] = []
+        self.payload: dict[str, Any] | Callable[[bytes], dict[str, Any]] = {
+            "err": 0,
+            "dat": {"token": "test-token", "secret": "test-secret", "expire": 3600},
+        }
+
+    async def _create_connection(self, req, traces, timeout) -> ResponseHandler:
+        protocol = ResponseHandler(asyncio.get_running_loop())
+        protocol.connection_made(MemoryTransport(protocol, self))
+        return protocol
+
+
+@pytest.fixture
+async def cloud_transport() -> (
+    AsyncIterator[tuple[aiohttp.ClientSession, MemoryConnector]]
+):
+    connector = MemoryConnector()
+    async with aiohttp.ClientSession(connector=connector) as session:
+        yield session, connector
