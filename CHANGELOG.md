@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Devcode `6416` (PowMr POW-HVM6.2M-48V-N) support for State of Charge, grid readings, both PV inputs and total PV power, load percentage, operating mode, and priority mappings (#36, thanks to @ufika for the CLI analysis data).
 - Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
-- Devcode `518` grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
+- Devcode `518` (BYD BYD-S-1P5K-2M) grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
 ### Fixed

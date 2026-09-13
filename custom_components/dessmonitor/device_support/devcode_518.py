@@ -16,7 +16,7 @@ DEVICE_INFO = {
     "name": "Solar Grid-Tie Inverter (devcode 518)",
     "description": "String PV grid-tie inverter",
     "manufacturer": "Eybond",
-    "known_inverters": [],
+    "known_inverters": ["BYD BYD-S-1P5K-2M"],
     "supported_features": [
         "real_time_monitoring",
         "energy_tracking",
