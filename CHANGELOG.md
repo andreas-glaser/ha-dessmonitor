@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
 ### Fixed
+- Apparent-power readings reported in kVA are now converted to VA, correcting the 1000x understatement on devcode `518` while preserving existing entity IDs and readings already in VA (#37, thanks to @trentas for the hardware report).
 - Unsupported devcode warnings now appear once per devcode until Home Assistant restarts, preventing repeated sensor reads from flooding the logs (#36, thanks to @ufika for reporting).
 - API and CLI signatures now preserve URL-encoded values through HTTP serialization, including usernames with spaces or reserved characters. Saved tokens remain associated with their account platform.
 - Authentication debug tracebacks no longer expose signed request URLs from aiohttp transport errors. CLI authentication clears old tokens before signing a new login. Both clients reject incomplete authentication responses, and Home Assistant cancellation propagates correctly.

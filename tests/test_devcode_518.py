@@ -100,6 +100,10 @@ async def test_fixture_through_api_and_sensor_platform(cloud_transport):
     assert entities["REDACTED-SN_pv_power"].native_value == 1902
     assert entities["REDACTED-SN_energy_total"].native_value == 10468.9
     assert entities["REDACTED-SN_grid_voltage"].native_value == 223.6
+    apparent_power = entities["REDACTED-SN_output_apparent_power"]
+    assert apparent_power.native_value == 1871
+    assert apparent_power.native_unit_of_measurement == "VA"
+    assert apparent_power.device_class == "apparent_power"
     assert len(entities) == 13
 
 
