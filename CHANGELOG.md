@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0-rc.2] - 2026-09-13
+
+Second release candidate for 2.4.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.4.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+### Added
+- Devcode `6416` support for PowMr POW-HVM6.2M-48V-N: State of Charge, grid readings, both PV inputs and total PV power, load percentage, operating mode, and output/charging priorities. SOC uses the existing telemetry without an extra API request (#36, thanks to @ufika for the verified analysis data).
+
+### Fixed
+- Apparent-power readings reported in kVA are now converted to VA. For example, `0.360 kVA` correctly displays as `360 VA`, fixing the 1000x understatement on devcode `518`. Entity IDs and readings already in VA are preserved, including when updates switch between VA and kVA (#37, thanks to @trentas for the hardware report).
+
+### Changed
+- Added the verified BYD BYD-S-1P5K-2M model to devcode `518` metadata and the supported-device lists, with a link to its official INMETRO registration.
+
+### Upgrade and testing notes
+- If you created a template that multiplies the affected apparent-power sensor by 1000, remove that workaround after updating. Previously recorded incorrect readings are not rewritten.
+- PowMr testers: confirm the unsupported-devcode warning is gone and compare SOC, PV1/PV2, grid readings, load percentage, and operating mode with DessMonitor.
+- Devcode `518` testers: compare apparent power with SmartClient after accounting for the unit difference. Restart Home Assistant after installing the candidate.
+
 ## [2.4.0-rc.1] - 2026-09-12
 
 First release candidate for 2.4.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
@@ -367,7 +385,8 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.1...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...HEAD
+[2.4.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.1...v2.4.0-rc.2
 [2.4.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0-rc.1
 [2.3.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.1.0...v2.2.0

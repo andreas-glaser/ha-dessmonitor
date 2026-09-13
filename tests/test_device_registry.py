@@ -24,12 +24,12 @@ def test_unsupported_devcode_warning_explains_limitations_and_support(
     point = {"title": "Battery Voltage", "val": "53.2", "unit": "V"}
 
     with caplog.at_level(logging.WARNING):
-        result = apply_devcode_transformations(6416, point)
+        result = apply_devcode_transformations(9998, point)
 
     assert result == {"title": "Battery Voltage", "val": "53.2", "unit": "V"}
     assert len(caplog.records) == 1
     message = caplog.records[0].getMessage()
-    assert "Unsupported devcode 6416" in message
+    assert "Unsupported devcode 9998" in message
     assert "device-specific mappings" in message
     assert "raw sensor titles and values" in message
     assert "limited" in message
@@ -44,13 +44,13 @@ def test_unsupported_warning_is_once_per_devcode(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.WARNING):
-        for devcode in (6416, 9999, 6416, 9999):
+        for devcode in (9998, 9999, 9998, 9999):
             for title in ("Battery Voltage", "Output Voltage"):
                 point = {"title": title, "val": "53.2"}
                 assert apply_devcode_transformations(devcode, point) == point
 
     assert len(caplog.records) == 2
-    assert "Unsupported devcode 6416" in caplog.records[0].getMessage()
+    assert "Unsupported devcode 9998" in caplog.records[0].getMessage()
     assert "Unsupported devcode 9999" in caplog.records[1].getMessage()
 
 

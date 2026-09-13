@@ -456,7 +456,7 @@ The integration now includes an extensible device support system:
 - **Metadata Tracking**: Device configs list confirmed inverter models via `known_inverters` when available
 
 ### Current Device Support
-- **DevCode 518**: Solar grid-tie telemetry reported through Q0025-series collectors on SmartClient for Solar / ShineMonitor
+- **DevCode 518**: Known to pair with [BYD BYD-S-1P5K-2M](https://registro.inmetro.gov.br/consulta/detalhe.aspx?NumeroRegistro=007268%2F2022&pag=1) (5 kW, 220 V) through Q0025-series collectors on SmartClient for Solar / ShineMonitor
 - **DevCode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **DevCode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
 - **DevCode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
@@ -464,6 +464,7 @@ The integration now includes an extensible device support system:
 - **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **DevCode 2428**: Known to pair with Hybrid inverter
 - **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
+- **DevCode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
 - **DevCode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter
 - **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI

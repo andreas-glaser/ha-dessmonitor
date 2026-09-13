@@ -63,8 +63,8 @@
     },
     {
       "title": "apparent power value",
-      "unit": "VA",
-      "val": "1871"
+      "unit": "kVA",
+      "val": "1.871"
     },
     {
       "title": "grid voltage",

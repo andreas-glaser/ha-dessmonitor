@@ -406,7 +406,15 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         data_point, devcode = match
         value = self._extract_transformed_value(data_point, devcode)
-        return self._coerce_native_value(value)
+        value = self._coerce_native_value(value)
+        # Keep the entity in VA even when cloud and local readings use different units.
+        if (
+            self.native_unit_of_measurement == UNITS["APPARENT_POWER"]
+            and data_point.get("unit") == "kVA"
+            and isinstance(value, float)
+        ):
+            return value * 1000
+        return value
 
     def _get_device_payload(self) -> dict[str, Any] | None:
         """Return cached device payload for this sensor."""

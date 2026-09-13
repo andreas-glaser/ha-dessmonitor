@@ -6,7 +6,7 @@ This directory contains collector-specific mappings and configurations for diffe
 
 ## Currently Supported Collectors
 
-- **devcode 518**: Solar grid-tie telemetry through Q0025-series collectors on SmartClient for Solar / ShineMonitor; local protocol and writes are not verified.
+- **devcode 518**: Known to pair with BYD BYD-S-1P5K-2M through Q0025-series collectors on SmartClient for Solar / ShineMonitor; local protocol and writes are not verified.
 
 - **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
@@ -15,6 +15,7 @@ This directory contains collector-specific mappings and configurations for diffe
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **devcode 2428**: Known to pair with Hybrid inverter
 - **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
+- **devcode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
 - **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter
 - **devcode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI

@@ -2,7 +2,7 @@
 
 This module handles registration and lookup of all supported data collector types.
 The devcode refers to the data collector/gateway device, not the inverter itself.
-It automatically imports all devcode_*.py files and provides a unified interface.
+It explicitly imports supported devcode modules and provides a unified interface.
 """
 
 from __future__ import annotations
@@ -38,6 +38,10 @@ def _load_device_configurations() -> None:
         from .devcode_2376 import DEVCODE_CONFIG as config_2376
 
         _register_devcode(2376, config_2376)
+
+        from .devcode_6416 import DEVCODE_CONFIG as config_6416
+
+        _register_devcode(6416, config_6416)
 
         from .devcode_6422 import DEVCODE_CONFIG as config_6422
 
