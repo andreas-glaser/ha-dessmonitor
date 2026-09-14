@@ -152,10 +152,19 @@ python3 dessmonitor_cli.py analyze --redacted --device-sn Q0045xxxxxxxxxYYYYYYY 
 ```
 
 Use `--redacted` for reports shared on GitHub or with an AI assistant. It blanks
-`device_sn` and `collector_alias` in JSON and template input while preserving the
-checksum and device data. Review the remaining content before sharing; the flag
-redacts these two fields, not arbitrary API values. It cannot be combined with
-`--raw`.
+`device_sn` and `collector_alias`, plus known identifying values in telemetry
+samples, parameters, and unit-pattern samples. This includes the API's misspelled
+`devise serial number`, record IDs, serial/collector identifiers, aliases,
+network addresses, and credential labels. Sensor titles, parameter/control IDs,
+control options and ranges, ordinary readings, and hashed correlation identifiers
+remain available. The CLI computes the checksum after redaction for JSON and
+template input; combined cloud/local reports use the same sanitization.
+
+Regenerate reports made with older CLI versions before sharing: their samples
+may still contain serial numbers even when the two top-level fields are blank.
+Review unexpected vendor fields and free text before sharing; redaction recognizes
+known labels rather than arbitrary personal information. The flag cannot be
+combined with `--raw`.
 
 When a sanitized local probe is available, the CLI can resolve the matching
 API device and combine both evidence sources without manually exposing a
@@ -211,7 +220,7 @@ With `--output`, runtime failures also write a private JSON report before the
 command exits with an error. Attach this file even if no inverter was found.
 It includes the failed stage and bounded per-query outcomes, routes, response
 sizes, and timing, without raw response payloads or exception strings. Failed
-reports are troubleshooting evidence and are rejected by `analyze --local-report`.
+reports are troubleshooting evidence and are rejected by `analyze --redacted --local-report`.
 See [local diagnostics and testing dev](../../docs/LOCAL_MODE.md) for the
 Home Assistant logging procedure and report details.
 

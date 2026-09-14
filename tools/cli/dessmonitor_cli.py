@@ -1072,7 +1072,7 @@ def setup_argparser() -> argparse.ArgumentParser:
     analyze_parser.add_argument(
         "--redacted",
         action="store_true",
-        help="Blank device_sn and collector_alias in analysis output (recommended for sharing)",
+        help="Redact known device identifiers and personal fields from analysis (recommended for sharing)",
     )
     analyze_parser.add_argument(
         "--raw", action="store_true", help="Print raw device data instead of analysis"
@@ -1360,8 +1360,9 @@ async def main():
                         analysis, args.local_report, args.local_inverter_address
                     )
                     if args.redacted:
-                        analysis["device_sn"] = ""
-                        analysis["collector_alias"] = ""
+                        from evidence import redact_analysis
+
+                        analysis = redact_analysis(analysis)
 
                     if args.template:
                         template_content = cli.generate_devcode_template(analysis)

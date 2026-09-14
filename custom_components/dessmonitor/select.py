@@ -7,14 +7,14 @@ from typing import Any, cast
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
-from .device_support.device_registry import map_control_field
+from .device_support.device_registry import filter_control_options, map_control_field
 from .entity_loader import async_setup_dynamic_entities
 from .utils import create_device_info
 
@@ -136,11 +136,9 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         self._param_name = name
         self._param_id = param_id
 
-        # Store mapping of API key -> display string and reverse
-        self._value_to_option = options_map
-        self._option_to_value = {v: k for k, v in options_map.items()}
-
-        self._attr_options = list(options_map.values())
+        self._all_options = dict(options_map)
+        self._current_value = initial_value
+        self._options_error: str | None = None
 
         # Initialize identity
         device_alias = device_meta.get("alias", "DessMonitor")
@@ -152,18 +150,55 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         )
         self._attr_entity_category = EntityCategory.CONFIG
 
-        # Set initial state from cached control value
-        if initial_value is not None:
-            if initial_value in self._attr_options:
-                self._attr_current_option = initial_value
-            else:
-                mapped = self._value_to_option.get(str(initial_value))
-                if mapped:
-                    self._attr_current_option = mapped
+        self._refresh_options()
+
+    @property
+    def available(self) -> bool:
+        """Keep a control unavailable until its options can be safely determined."""
+        return super().available and bool(self._attr_options)
+
+    def _refresh_options(self) -> None:
+        coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
+        device_info = coordinator.data.get(self._device_sn, {})
+        devcode = self._device_meta["devcode"]
+        try:
+            options = filter_control_options(
+                devcode, self._param_id, self._all_options, device_info.get("data", [])
+            )
+        except ValueError as err:
+            reason = str(err)
+            if reason != self._options_error:
+                _LOGGER.warning(
+                    "Control %s for devcode %s is unavailable: %s",
+                    self._param_id,
+                    devcode,
+                    reason,
+                )
+            self._options_error = reason
+            options = {}
+        else:
+            self._options_error = None
+        self._option_to_value = {label: key for key, label in options.items()}
+        self._attr_options = list(options.values())
+        self._attr_current_option = None
+        if self._current_value is not None:
+            self._attr_current_option = (
+                self._current_value
+                if self._current_value in self._attr_options
+                else options.get(str(self._current_value))
+            )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Reevaluate options when rated metadata arrives or changes."""
+        self._refresh_options()
+        super()._handle_coordinator_update()
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
+        # A service call may arrive before the latest coordinator notification.
+        self._refresh_options()
         api_value = self._option_to_value.get(option)
         if api_value is None:
             raise ValueError(f"Invalid option: {option}")
@@ -184,6 +219,7 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
                 param_id=self._param_id,
                 value=api_value,
             )
+            self._current_value = option
             self._attr_current_option = option
             if self._device_sn in coordinator.ctrl_value_cache:
                 coordinator.ctrl_value_cache[self._device_sn][self._param_id] = option

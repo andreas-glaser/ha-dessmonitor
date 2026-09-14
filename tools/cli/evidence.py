@@ -95,8 +95,6 @@ def combine_evidence(
         analysis.get("sample_data", []), inverter.get("sensors", {})
     )
     analysis["analysis_version"] = 4
-    analysis["device_sn"] = analysis.get("device_identity", "redacted")
-    analysis["collector_alias"] = "redacted"
     analysis["local_evidence"] = local_evidence
     analysis["sensor_correlations"] = correlations
     analysis["suggested_sensor_title_mappings"] = {
@@ -104,8 +102,65 @@ def combine_evidence(
         for item in correlations
         if item["cloud_title"] != item["local_title"] and item["confidence"] == "high"
     }
-    analysis["checksum"] = analysis_checksum(analysis)
+    analysis = redact_analysis(analysis)
+    analysis["device_sn"] = analysis.get("device_identity", "redacted")
+    analysis["collector_alias"] = "redacted"
     return analysis
+
+
+def redact_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
+    """Copy an analysis, blank known identifiers, and checksum the sanitized data."""
+    redacted = copy.deepcopy(analysis)
+    redacted["device_sn"] = ""
+    redacted["collector_alias"] = ""
+    for section, label in (("sample_data", "title"), ("parameters", "name")):
+        for point in redacted.get(section, []):
+            if _is_identifier_name(point.get(label, "")):
+                point["value"] = ""
+    for title in redacted.get("unit_patterns", {}):
+        if _is_identifier_name(title):
+            redacted["unit_patterns"][title] = []
+    # Nested values remain covered by the checksum; redact before signing.
+    redacted["checksum"] = analysis_checksum(redacted)
+    return redacted
+
+
+def _is_identifier_name(name: str) -> bool:
+    """Recognize vendor identity labels, including 'devise serial number'."""
+    normalized = re.sub(r"[^a-z0-9]", "", name.casefold())
+    return normalized in {
+        "id",
+        "recordid",
+        "deviceid",
+        "collectorid",
+        "inverterid",
+        "plantid",
+        "stationid",
+        "sn",
+        "devicesn",
+        "collectorsn",
+        "invertersn",
+        "pn",
+        "collectorpn",
+        "mac",
+        "ip",
+        "username",
+        "email",
+    } or normalized.endswith(
+        (
+            "serialnumber",
+            "serialno",
+            "serial",
+            "alias",
+            "productnumber",
+            "macaddress",
+            "ipaddress",
+            "ssid",
+            "password",
+            "token",
+            "secret",
+        )
+    )
 
 
 def correlate_sensor_titles(

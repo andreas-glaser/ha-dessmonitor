@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import hmac
 import importlib.util
@@ -11,6 +12,7 @@ import sys
 import time
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import parse_qs
 
@@ -129,13 +131,28 @@ async def test_analyze_redacted_output(
 
     module = _load_cli_module()
     cli = module.DessMonitorCLI()
-    analysis = {
+    analysis: dict[str, Any] = {
         "analysis_version": 3,
         "devcode": 2477,
         "device_sn": "PRIVATE-SERIAL",
         "collector_alias": "Private installation name",
-        "total_sensors": 1,
-        "sample_data": [{"title": "Battery Voltage", "value": "53.2", "unit": "V"}],
+        "total_sensors": 3,
+        "sample_data": [
+            {"title": "Battery Voltage", "value": "53.2", "unit": "V"},
+            {"title": "devise serial number", "value": "PRIVATE-SERIAL", "unit": ""},
+            {"title": "id", "value": "PRIVATE-RECORD", "unit": ""},
+        ],
+        "parameters": [
+            {
+                "name": "Device Serial Number",
+                "value": "PRIVATE-SERIAL",
+                "id": "serial_param",
+            }
+        ],
+        "unit_patterns": {
+            "devise serial number": ["PRIVATE-SERIAL"],
+            "Battery Voltage": ["53.2V"],
+        },
     }
     analysis["checksum"] = analysis_checksum(analysis)
     cli.analyze_device_for_devcode = AsyncMock(return_value=analysis)
@@ -169,9 +186,15 @@ async def test_analyze_redacted_output(
     captured = capsys.readouterr()
     output = captured.out if output_kind == "stdout" else output_path.read_text()
 
+    expected_data = copy.deepcopy(analysis)
     if redacted or with_local_report:
         assert "PRIVATE-SERIAL" not in output + captured.out + captured.err
         assert "Private installation name" not in output + captured.out + captured.err
+        assert "PRIVATE-RECORD" not in output + captured.out + captured.err
+        expected_data["sample_data"][1]["value"] = ""
+        expected_data["sample_data"][2]["value"] = ""
+        expected_data["parameters"][0]["value"] = ""
+        expected_data["unit_patterns"]["devise serial number"] = []
     if output_kind == "template":
         assert "devcode 2477" in output
         assert ("DessMonitor collector (devcode 2477)" in output) is redacted
@@ -184,7 +207,9 @@ async def test_analyze_redacted_output(
     elif not with_local_report:
         assert report["device_sn"] == "PRIVATE-SERIAL"
         assert report["collector_alias"] == "Private installation name"
-    assert report["sample_data"] == analysis["sample_data"]
+    assert report["sample_data"] == expected_data["sample_data"]
+    assert report["parameters"] == expected_data["parameters"]
+    assert report["unit_patterns"] == expected_data["unit_patterns"]
     assert report["checksum"] == analysis_checksum(report)
     if with_local_report:
         assert report["local_evidence"]["identity_match"] == "matched"

@@ -22,8 +22,11 @@ You do not need to write Python code to request support:
 
 Share only the analysis JSON, never your password or the CLI credentials file
 (`.dessmonitor_cli_config.json`). Use `--redacted`, as shown in every analysis example,
-to blank `device_sn` and `collector_alias` automatically before sharing the report
-on GitHub or with an AI assistant. The checksum remains valid.
+to blank `device_sn`, `collector_alias`, and known identifying values in telemetry,
+parameters, and unit-pattern samples before sharing on GitHub or with an AI
+assistant. This includes `devise serial number` and record IDs. The CLI computes
+a valid checksum after redaction. Regenerate older reports whose nested sample
+values were not redacted.
 Review the file for other identifying information; if you redact more,
 mention that in the issue so the maintainer can account for checksum changes.
 
@@ -95,9 +98,12 @@ python3 tools/cli/dessmonitor_cli.py verify /path/to/analysis_XXXX.json
 Expected output: `Checksum OK - analysis data is intact.` (A v1 analysis without a checksum is acceptable but older; prefer v3, which includes `hint` and `unit` on value-type control fields. v2 is also valid but lacks those.)
 
 New exports exclude `device_sn` and `collector_alias` from the checksum so reporters
-can redact or remove either field without breaking validation. `--redacted` blanks
-both fields in the output; device data and hashed correlation identifiers remain
-available for analysis. Older exports still verify with the original alias present;
+can redact or remove either field without breaking validation. `--redacted` also
+blanks known identifying sample/parameter values and clears their unit-pattern
+samples before computing the checksum. Ordinary readings, control metadata, and
+hashed correlation identifiers remain available for analysis. Nested values
+remain covered by the checksum, so manually editing them changes it.
+Older exports still verify with the original alias present;
 if it was already redacted, regenerate the
 report with the updated CLI. Updating the verifier cannot recover an alias that was
 included in an older checksum.
@@ -109,7 +115,7 @@ Open the analysis and note these top-level fields:
 | Field | What to do with it |
 |-------|--------------------|
 | `devcode` | The number you will use for the filename (`devcode_XXXX.py`) and registry entry |
-| `collector_alias` | Hint about the inverter brand |
+| `collector_alias` | Blank in redacted reports; ask the reporter for the inverter brand/model separately |
 | `operating_modes` | All mode strings the collector has emitted; map any that do not match the canonical `OPERATING_MODES` list |
 | `output_priorities` | Values seen from "Current output priority" / "Output priority" sensors |
 | `charger_priorities` | Values seen from "Current charging priority" / "Charger Source Priority" sensors |
@@ -250,7 +256,7 @@ PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
 The coordinator will fetch `queryDeviceParsEs` in parallel and merge the parameters into the device data (deduplicated). Leave empty otherwise.
 
-### 4.7 Footer (do not modify)
+### 4.7 Configuration
 
 ```python
 DEVCODE_CONFIG = {
@@ -263,6 +269,16 @@ DEVCODE_CONFIG = {
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }
 ```
+
+For hardware variants that share API option lists, an optional
+`control_options_filter` callback can be added to `DEVCODE_CONFIG`. Follow
+[`devcode_2477.py`](../custom_components/dessmonitor/device_support/devcode_2477.py):
+the callback accepts a parameter ID, the API option mapping, and device data. It
+returns a subset of the original options without changing their keys, or raises
+`ValueError` when the metadata cannot establish valid options. The select entity
+logs the reason, becomes unavailable, and retries on coordinator updates and before
+writes. Use reported ratings; a live voltage or current setting does not establish
+hardware limits.
 
 ## 5. Register the devcode
 

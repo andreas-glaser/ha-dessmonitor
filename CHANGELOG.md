@@ -8,13 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- CLI `analyze --redacted` blanks `device_sn` and `collector_alias` in JSON output and template input, including combined cloud/local reports. All documented analysis examples recommend the flag for sharing; combining it with `--raw` is rejected.
+- Devcode `2477` cloud telemetry and priority mappings, with battery-voltage dropdowns filtered to the reported 24 V or 48 V rating. Options refresh when rated metadata changes; invalid or unknown ratings make the affected controls unavailable and block writes until valid data arrives. Inverter brand/model and hardware write verification remain unconfirmed (#40, thanks to @albertdb for the analysis data).
+- CLI `analyze --redacted` blanks `device_sn`, `collector_alias`, and known identifying values in telemetry, parameters, and unit-pattern samples before computing the checksum for JSON output and template input. Combined cloud/local reports share this sanitization. All documented analysis examples recommend the flag for sharing; combining it with `--raw` is rejected.
 - Devcode `6416` (PowMr POW-HVM6.2M-48V-N) support for State of Charge, grid readings, both PV inputs and total PV power, load percentage, operating mode, and priority mappings (#36, thanks to @ufika for the CLI analysis data).
 - Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
 - Devcode `518` (BYD BYD-S-1P5K-2M) grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
 ### Fixed
+- Devcode `2376` now maps the observed charging-priority value `PV is at the same level as mains` to `Solar and grid equal`. Removed ineffective title mappings while preserving existing sensor identities, readings, and parameter-based State of Charge.
+- Redacted CLI reports no longer retain nested `devise serial number` or record-ID values. Older reports should be regenerated before sharing; control metadata and ordinary readings remain covered by the checksum.
 - Apparent-power readings reported in kVA are now converted to VA, correcting the 1000x understatement on devcode `518` while preserving existing entity IDs and readings already in VA (#37, thanks to @trentas for the hardware report).
 - Unsupported devcode warnings now appear once per devcode until Home Assistant restarts, preventing repeated sensor reads from flooding the logs (#36, thanks to @ufika for reporting).
 - API and CLI signatures now preserve URL-encoded values through HTTP serialization, including usernames with spaces or reserved characters. Saved tokens remain associated with their account platform.

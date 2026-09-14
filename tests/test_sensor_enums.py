@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,7 +19,7 @@ def _enum_sensor(title: str, value: str) -> DessMonitorSensor:
     """Create an enum sensor with the minimum coordinator surface."""
     serial = "TEST-SERIAL"
     data_point = {"title": title, "val": value}
-    payload = {
+    payload: dict[str, Any] = {
         "device": {"alias": "Test inverter", "devcode": 2376},
         "collector": {"pn": "TEST-COLLECTOR"},
         "data": [data_point],
@@ -36,21 +37,37 @@ def _enum_sensor(title: str, value: str) -> DessMonitorSensor:
 
 
 @pytest.mark.parametrize(
-    ("title", "live_value"),
+    ("title", "live_value", "expected"),
     [
-        ("Output priority", "Utility First"),
-        ("Charger Source Priority", "PV is at the same level as mains"),
+        ("Output priority", "Utility First", "Utility First"),
+        (
+            "Charger Source Priority",
+            "PV is at the same level as mains",
+            "Solar and grid equal",
+        ),
+        (
+            "Charger Source Priority",
+            "PV Is At The Same Level As Utility",
+            "Solar and grid equal",
+        ),
+        (
+            "Charger Source Priority",
+            "Undocumented firmware priority",
+            "Undocumented firmware priority",
+        ),
     ],
 )
 def test_enum_contract_accepts_live_cloud_values(
-    title: str, live_value: str
+    title: str, live_value: str, expected: str
 ) -> None:
     """Known and firmware-specific live states must satisfy HA's enum contract."""
     entity = _enum_sensor(title, live_value)
 
-    assert entity.native_value == live_value
-    assert live_value in entity.options
-    assert "Unknown" in entity.options
+    assert entity.native_value == expected
+    options = entity.options
+    assert options is not None
+    assert expected in options
+    assert "Unknown" in options
 
 
 async def test_replaced_one_option_select_is_disabled_not_deleted(

@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import logging
+from unittest.mock import MagicMock
 
 import pytest
 
+from custom_components.dessmonitor.const import DOMAIN
 from custom_components.dessmonitor.device_support import (
     apply_devcode_transformations,
     device_registry,
 )
+from custom_components.dessmonitor.sensor import async_setup_entry
 
 
 @pytest.fixture(autouse=True)
@@ -65,3 +68,34 @@ def test_supported_devcode_still_transforms_without_warning(
     assert result == {"title": "State of Charge", "val": "85", "unit": "%"}
     assert point == {"title": "Battery percentage", "val": "85", "unit": "%"}
     assert not caplog.records
+
+
+async def test_2376_title_cleanup_preserves_sensor_identities_and_values() -> None:
+    """Current telemetry and legacy energy aliases keep their published entities."""
+    readings = [
+        ("INV Module Termperature", "41", "inv_module_termperature"),
+        ("DC Module Termperature", "42", "dc_module_termperature"),
+        ("Output frequency", "60.15", "output_frequency"),
+        ("energyToday", "12.5", "energytoday"),
+        ("energyTotal", "1234.5", "energytotal"),
+        ("outpower", "441", "pv_power"),
+        ("PV Charge Power", "440", "pv_charge_power"),
+        ("AC charging power", "0", "ac_charging_power"),
+        ("Battery Power", "12", "battery_power"),
+        ("Battery percentage", "100", "state_of_charge"),
+    ]
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-INVERTER": {
+            "device": {"devcode": 2376},
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "data": [{"title": title, "val": value} for title, value, _ in readings],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+    assert {
+        entity.unique_id: entity.native_value for entity in added.call_args.args[0]
+    } == {f"TEST-INVERTER_{suffix}": float(value) for _, value, suffix in readings}
