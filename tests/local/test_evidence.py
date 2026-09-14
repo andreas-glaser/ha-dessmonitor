@@ -84,7 +84,29 @@ def test_combined_evidence_matches_identity_and_titles() -> None:
         "Battery percentage": "State of Charge",
         "Grid voltage": "Grid Voltage",
     }
-    assert "device_sn" not in combined["checksum"]
+    checksum = combined["checksum"]
+    combined.pop("device_sn")
+    combined.pop("collector_alias")
+    assert evidence.analysis_checksum(combined) == checksum
+
+
+@pytest.mark.parametrize("field", ["device_sn", "collector_alias"])
+@pytest.mark.parametrize("redaction", ["", "redacted", None])
+def test_analysis_checksum_allows_identifier_redaction(field, redaction) -> None:
+    """Personal identifiers can be blanked, replaced, or removed before sharing."""
+    evidence = _load_evidence_module()
+    analysis = {
+        "devcode": 2477,
+        "device_sn": "PRIVATE-SERIAL",
+        "collector_alias": "Private installation name",
+    }
+    checksum = evidence.analysis_checksum(analysis)
+    analysis["checksum"] = checksum
+    if redaction is None:
+        analysis.pop(field)
+    else:
+        analysis[field] = redaction
+    assert evidence.analysis_checksum(analysis) == checksum
 
 
 def test_ambiguous_title_is_not_guessed() -> None:

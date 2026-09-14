@@ -21,8 +21,10 @@ You do not need to write Python code to request support:
    missing or incorrect readings compared with DessMonitor.
 
 Share only the analysis JSON, never your password or the CLI credentials file
-(`.dessmonitor_cli_config.json`). You can redact the `device_sn` field before
-sharing. Review the file for other identifying information; if you redact more,
+(`.dessmonitor_cli_config.json`). Use `--redacted`, as shown in every analysis example,
+to blank `device_sn` and `collector_alias` automatically before sharing the report
+on GitHub or with an AI assistant. The checksum remains valid.
+Review the file for other identifying information; if you redact more,
 mention that in the issue so the maintainer can account for checksum changes.
 
 The analysis lets a maintainer check the mappings and prepare a dev build for you
@@ -67,7 +69,7 @@ python3 dessmonitor_cli.py auth \
 
 python3 dessmonitor_cli.py collectors
 python3 dessmonitor_cli.py devices --pn COLLECTOR_PN
-python3 dessmonitor_cli.py analyze \
+python3 dessmonitor_cli.py analyze --redacted \
     --device-sn DEVICE_SN --output analysis_XXXX.json
 ```
 
@@ -92,7 +94,13 @@ python3 tools/cli/dessmonitor_cli.py verify /path/to/analysis_XXXX.json
 
 Expected output: `Checksum OK - analysis data is intact.` (A v1 analysis without a checksum is acceptable but older; prefer v3, which includes `hint` and `unit` on value-type control fields. v2 is also valid but lacks those.)
 
-The device SN is excluded from the checksum so reporters can redact it without breaking validation.
+New exports exclude `device_sn` and `collector_alias` from the checksum so reporters
+can redact or remove either field without breaking validation. `--redacted` blanks
+both fields in the output; device data and hashed correlation identifiers remain
+available for analysis. Older exports still verify with the original alias present;
+if it was already redacted, regenerate the
+report with the updated CLI. Updating the verifier cannot recover an alias that was
+included in an older checksum.
 
 ## 3. Read the analysis
 

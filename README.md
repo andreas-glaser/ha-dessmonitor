@@ -389,7 +389,7 @@ For integration contributors and developers, we provide a comprehensive CLI tool
 cd tools/cli
 pip install -r requirements.txt
 python3 dessmonitor_cli.py auth --username USER --company-key KEY
-python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE_SN --output analysis.json
+python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE_SN --output analysis.json
 ```
 
 **Use Cases**:
@@ -478,7 +478,7 @@ Seeing an `Unsupported devcode` warning? Follow the
 analysis JSON and your inverter model. No coding is required.
 
 See [`docs/ADDING_DEVCODES.md`](docs/ADDING_DEVCODES.md) for the full workflow. Short version:
-1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`
+1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE`
 2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
 3. Test with the Docker development environment
 4. Submit a pull request with your analysis JSON

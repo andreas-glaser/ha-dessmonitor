@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- CLI `analyze --redacted` blanks `device_sn` and `collector_alias` in JSON output and template input, including combined cloud/local reports. All documented analysis examples recommend the flag for sharing; combining it with `--raw` is rejected.
 - Devcode `6416` (PowMr POW-HVM6.2M-48V-N) support for State of Charge, grid readings, both PV inputs and total PV power, load percentage, operating mode, and priority mappings (#36, thanks to @ufika for the CLI analysis data).
 - Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
 - Devcode `518` (BYD BYD-S-1P5K-2M) grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
@@ -25,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local ASCII parsing rejects unsupported protocol IDs and malformed length fields, and handles oversized numeric responses as recoverable protocol errors.
 
 ### Changed
+- CLI analysis checksums now exclude `collector_alias` as well as `device_sn`, allowing contributors to redact or remove both fields from new exports. Cloud exports, combined reports, and verification share the same checksum implementation. Unchanged older reports still verify; older reports with a redacted alias must be regenerated.
 - Unsupported devcode warnings now explain the raw-data fallback and link to instructions for requesting or adding support with a CLI analysis JSON and inverter model. The support guide includes reporting steps and uses a password prompt instead of asking reporters to share credentials.
 - Local transport debug logs now correlate requests and replies with a random connection ID, transaction IDs, numeric routing fields, byte counts, and match outcomes. Late or unsolicited replies remain rejected; payloads and device identifiers are excluded from these records (#32).
 - GitHub Actions workflows now use the Node.js 24-compatible `actions/checkout@v7` and `actions/setup-python@v7` releases, removing Node.js 20 deprecation warnings from CI.

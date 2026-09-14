@@ -137,7 +137,7 @@ python3 tools/cli/dessmonitor_cli.py local-probe \
   --confirm-callback \
   --output local-probe.json
 
-python3 tools/cli/dessmonitor_cli.py analyze \
+python3 tools/cli/dessmonitor_cli.py analyze --redacted \
   --local-report local-probe.json \
   --output combined-analysis.json
 ```

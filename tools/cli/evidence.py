@@ -135,13 +135,17 @@ def correlate_sensor_titles(
     return sorted(matches, key=lambda item: item["cloud_title"].lower())
 
 
-def analysis_checksum(analysis: dict[str, Any]) -> str:
-    """Return the existing deterministic analysis integrity checksum."""
-    hashable = {
-        key: value
-        for key, value in analysis.items()
-        if key not in ("device_sn", "checksum")
-    }
+def analysis_checksum(
+    analysis: dict[str, Any], *, include_collector_alias: bool = False
+) -> str:
+    """Hash report data while allowing personal identifiers to be redacted.
+
+    Including the alias is only for verifying reports from older CLI versions.
+    """
+    excluded = {"device_sn", "checksum"}
+    if not include_collector_alias:
+        excluded.add("collector_alias")
+    hashable = {key: value for key, value in analysis.items() if key not in excluded}
     return hmac.new(
         b"dessmonitor-analysis-v2",
         json.dumps(hashable, sort_keys=True, separators=(",", ":")).encode("utf-8"),
