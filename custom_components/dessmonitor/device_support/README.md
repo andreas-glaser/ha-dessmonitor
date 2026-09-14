@@ -15,6 +15,7 @@ This directory contains collector-specific mappings and configurations for diffe
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **devcode 2428**: Known to pair with Hybrid inverter
 - **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
+- **devcode 2477**: Contributor-reported 48 V / 5 kW unit; inverter brand/model not yet confirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating.
 - **devcode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
 - **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter

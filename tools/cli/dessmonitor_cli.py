@@ -11,7 +11,7 @@ Usage:
     python dessmonitor_cli.py collectors
     python dessmonitor_cli.py devices --pn COLLECTOR_PN
     python dessmonitor_cli.py data --device-sn DEVICE_SN --days 1
-    python dessmonitor_cli.py analyze --device-sn DEVICE_SN
+    python dessmonitor_cli.py analyze --redacted --device-sn DEVICE_SN
 """
 
 import argparse
@@ -641,7 +641,9 @@ class DessMonitorCLI:
             devcode = int(analysis["devcode"])
         except (KeyError, TypeError, ValueError) as err:
             raise ValueError("analysis does not contain a numeric devcode") from err
-        collector_alias = str(analysis.get("collector_alias", "DessMonitor collector"))
+        collector_alias = str(
+            analysis.get("collector_alias") or "DessMonitor collector"
+        )
         device_name = f"{collector_alias} (devcode {devcode})"
         local_model = str(analysis.get("local_evidence", {}).get("model", "")).strip()
         known_inverters = [local_model] if local_model else []
@@ -967,16 +969,9 @@ DEVCODE_CONFIG = {
             "parameters": parameter_entries,
         }
 
-        # Integrity checksum: HMAC-SHA256 over all fields except device_sn
-        # and the checksum itself, so users can obfuscate their SN without
-        # breaking verification.
-        hashable = {k: v for k, v in analysis_result.items() if k != "device_sn"}
-        digest = hmac.new(
-            b"dessmonitor-analysis-v2",
-            json.dumps(hashable, sort_keys=True, separators=(",", ":")).encode(),
-            hashlib.sha256,
-        ).hexdigest()
-        analysis_result["checksum"] = digest
+        from evidence import analysis_checksum
+
+        analysis_result["checksum"] = analysis_checksum(analysis_result)
 
         logger.info(f"Analysis complete for devcode {devcode}")
         logger.info(f"Found {analysis_result['total_sensors']} unique sensor types")
@@ -1074,6 +1069,11 @@ def setup_argparser() -> argparse.ArgumentParser:
         help="Device serial number (optional when --local-report can identify it)",
     )
     analyze_parser.add_argument("--output", help="Output file for analysis results")
+    analyze_parser.add_argument(
+        "--redacted",
+        action="store_true",
+        help="Redact known device identifiers and personal fields from analysis (recommended for sharing)",
+    )
     analyze_parser.add_argument(
         "--raw", action="store_true", help="Print raw device data instead of analysis"
     )
@@ -1215,6 +1215,9 @@ async def main():
     parser = setup_argparser()
     args = parser.parse_args()
 
+    if args.command == "analyze" and args.redacted and args.raw:
+        parser.error("--redacted cannot be combined with --raw")
+
     if not args.command:
         parser.print_help()
         return
@@ -1351,63 +1354,67 @@ async def main():
                         print(f"Raw data saved to {args.output}")
                     else:
                         print(json.dumps(data, indent=2))
-                elif args.template:
-                    # Generate Python devcode template file
-                    analysis = await cli.analyze_device_for_devcode(resolved_device_sn)
-                    analysis = _attach_local_evidence(
-                        analysis, args.local_report, args.local_inverter_address
-                    )
-                    template_content = cli.generate_devcode_template(analysis)
-
-                    devcode = analysis.get("devcode", "XXXX")
-                    if args.output:
-                        output_file = args.output
-                    else:
-                        output_file = f"devcode_{devcode}.py"
-
-                    _write_private_file(output_file, template_content)
-
-                    print(f"\n✅ Generated devcode template: {output_file}")
-                    print(f"   Devcode: {devcode}")
-                    print(f"   Sensors: {analysis.get('total_sensors')}")
-                    if analysis.get("local_evidence"):
-                        local_evidence = analysis["local_evidence"]
-                        print(
-                            "   Local: "
-                            f"{local_evidence.get('profile')} / "
-                            f"{local_evidence.get('model')}"
-                        )
-
-                    if analysis.get("potential_typos"):
-                        print(
-                            f"\n⚠️  Found {len(analysis['potential_typos'])} potential typos:"
-                        )
-                        for typo in analysis["potential_typos"][:3]:  # Show first 3
-                            print(f"   - {typo['original']} → {typo['suggested']}")
-
-                    print("\nNext steps:")
-                    print(f"1. Review and update TODO items in {output_file}")
-                    print("2. Test with your collector")
-                    print("3. Copy to custom_components/dessmonitor/device_support/")
-                    print("4. Submit a PR to ha-dessmonitor repository")
                 else:
                     analysis = await cli.analyze_device_for_devcode(resolved_device_sn)
                     analysis = _attach_local_evidence(
                         analysis, args.local_report, args.local_inverter_address
                     )
+                    if args.redacted:
+                        from evidence import redact_analysis
 
-                    output_data = {
-                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "analysis": analysis,
-                    }
+                        analysis = redact_analysis(analysis)
 
-                    if args.output:
-                        _write_private_json(args.output, output_data)
-                        print(f"Analysis saved to {args.output}")
+                    if args.template:
+                        template_content = cli.generate_devcode_template(analysis)
+
+                        devcode = analysis.get("devcode", "XXXX")
+                        if args.output:
+                            output_file = args.output
+                        else:
+                            output_file = f"devcode_{devcode}.py"
+
+                        _write_private_file(output_file, template_content)
+
+                        print(f"\n✅ Generated devcode template: {output_file}")
+                        print(f"   Devcode: {devcode}")
+                        print(f"   Sensors: {analysis.get('total_sensors')}")
+                        if analysis.get("local_evidence"):
+                            local_evidence = analysis["local_evidence"]
+                            print(
+                                "   Local: "
+                                f"{local_evidence.get('profile')} / "
+                                f"{local_evidence.get('model')}"
+                            )
+
+                        if analysis.get("potential_typos"):
+                            print(
+                                f"\n⚠️  Found {len(analysis['potential_typos'])} potential typos:"
+                            )
+                            for typo in analysis["potential_typos"][:3]:  # Show first 3
+                                print(f"   - {typo['original']} → {typo['suggested']}")
+
+                        print("\nNext steps:")
+                        print(f"1. Review and update TODO items in {output_file}")
+                        print("2. Test with your collector")
+                        print(
+                            "3. Copy to custom_components/dessmonitor/device_support/"
+                        )
+                        print("4. Submit a PR to ha-dessmonitor repository")
                     else:
-                        print(json.dumps(output_data, indent=2))
+                        output_data = {
+                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            "analysis": analysis,
+                        }
+
+                        if args.output:
+                            _write_private_json(args.output, output_data)
+                            print(f"Analysis saved to {args.output}")
+                        else:
+                            print(json.dumps(output_data, indent=2))
 
             elif args.command == "verify":
+                from evidence import analysis_checksum
+
                 with open(args.file, "r") as f:
                     data = json.load(f)
 
@@ -1417,20 +1424,13 @@ async def main():
                     print("No checksum found - this is a v1 analysis (pre-checksum).")
                     sys.exit(0)
 
-                hashable = {
-                    k: v
-                    for k, v in analysis.items()
-                    if k not in ("device_sn", "checksum")
-                }
-                expected = hmac.new(
-                    b"dessmonitor-analysis-v2",
-                    json.dumps(
-                        hashable, sort_keys=True, separators=(",", ":")
-                    ).encode(),
-                    hashlib.sha256,
-                ).hexdigest()
-
-                if hmac.compare_digest(stored, expected):
+                # Older reports included the alias, so retain their validation
+                # without requiring contributors to regenerate intact exports.
+                if hmac.compare_digest(
+                    stored, analysis_checksum(analysis)
+                ) or hmac.compare_digest(
+                    stored, analysis_checksum(analysis, include_collector_alias=True)
+                ):
                     print("Checksum OK - analysis data is intact.")
                 else:
                     print("Checksum MISMATCH - analysis data has been modified.")

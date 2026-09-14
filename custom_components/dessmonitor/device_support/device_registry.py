@@ -79,6 +79,10 @@ def _load_device_configurations() -> None:
 
         _register_devcode(2428, config_2428)
 
+        from .devcode_2477 import DEVCODE_CONFIG as config_2477
+
+        _register_devcode(2477, config_2477)
+
         from .devcode_2507 import DEVCODE_CONFIG as config_2507
 
         _register_devcode(2507, config_2507)
@@ -147,6 +151,20 @@ def map_control_field(devcode: int, api_field_name: str) -> str:
 
     # Apply mapping if exists, otherwise use original
     return control_mappings.get(api_field_name, api_field_name)
+
+
+def filter_control_options(
+    devcode: int,
+    param_id: str,
+    options: dict[str, str],
+    data: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Apply a device-specific option filter when its hardware requires one."""
+    config = get_devcode_config(devcode)
+    option_filter = config.get("control_options_filter") if config else None
+    if option_filter is None:
+        return options
+    return option_filter(param_id, options, data)
 
 
 def map_output_priority(devcode: int, api_value: str) -> str:

@@ -27,6 +27,7 @@ CHARGER_PRIORITY_MAPPING = {
     "Utility First": "Grid charging priority",
     "PV First": "Solar charging priority",
     "PV Is At The Same Level As Utility": "Solar and grid equal",
+    "PV is at the same level as mains": "Solar and grid equal",
     "Only PV": "Solar only charging",
     "Only PV charging is allowed": "Solar only charging",
 }
@@ -49,27 +50,13 @@ SENSOR_TITLE_MAPPINGS = {
     "INV Module Termperature": "Inverter Temperature",
     "DC Module Termperature": "DC Module Temperature",
     "Output frequency": "Output Frequency",
-    # Standardize energy sensor names
-    "energyToday": "Daily Energy",
-    "energyTotal": "Total Energy",
     "outpower": "PV Power",
-    # Add more mappings as needed for this devcode
-    "PV Charge Power": "Solar Charging Power",
-    "AC charging power": "Grid Charging Power",
-    "Battery Power": "Battery Power",
     "Battery percentage": "State of Charge",
 }
 
-VALUE_TRANSFORMATIONS: dict = {
-    # Example: Convert specific units or formats
-    # "sensor_name": lambda value: transform_function(value),
-}
+VALUE_TRANSFORMATIONS: dict = {}
 
-# Parameter sensor names to fetch from queryDeviceParsEs API endpoint.
-# Some sensors (e.g. Battery percentage / SOC) are only available via
-# the parameters endpoint, not in queryDeviceLastData.  List the raw
-# parameter *names* (as returned by the API) that should be promoted
-# to regular sensor data points.
+# SOC is only returned by queryDeviceParsEs, not queryDeviceLastData.
 PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
 DEVCODE_CONFIG = {

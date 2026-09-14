@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "2.4.0-rc.2"
+VERSION: Final = "2.4.0-rc.3"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib.util
 import json
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 import pytest
 
@@ -84,7 +86,107 @@ def test_combined_evidence_matches_identity_and_titles() -> None:
         "Battery percentage": "State of Charge",
         "Grid voltage": "Grid Voltage",
     }
-    assert "device_sn" not in combined["checksum"]
+    checksum = combined["checksum"]
+    combined.pop("device_sn")
+    combined.pop("collector_alias")
+    assert evidence.analysis_checksum(combined) == checksum
+
+
+@pytest.mark.parametrize("field", ["device_sn", "collector_alias"])
+@pytest.mark.parametrize("redaction", ["", "redacted", None])
+def test_analysis_checksum_allows_identifier_redaction(field, redaction) -> None:
+    """Personal identifiers can be blanked, replaced, or removed before sharing."""
+    evidence = _load_evidence_module()
+    analysis = {
+        "devcode": 2477,
+        "device_sn": "PRIVATE-SERIAL",
+        "collector_alias": "Private installation name",
+    }
+    checksum = evidence.analysis_checksum(analysis)
+    analysis["checksum"] = checksum
+    if redaction is None:
+        analysis.pop(field)
+    else:
+        analysis[field] = redaction
+    assert evidence.analysis_checksum(analysis) == checksum
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "devise serial number",
+        "DEVINE SERIAL NUMBER",
+        "Device Serial Number",
+        "Serial No.",
+        "S/N",
+        "device_sn",
+        "inverterSN",
+        "collector_pn",
+        "Collector Product Number",
+        "Collector Alias",
+        "id",
+        "Record ID",
+        "Device ID",
+        "MAC Address",
+        "IP address",
+        "WiFi SSID",
+        "WiFi Password",
+        "Username",
+        "Email",
+        "Access Token",
+    ],
+)
+@pytest.mark.parametrize("value", ["PRIVATE-VALUE", 123456])
+def test_redaction_covers_samples_parameters_and_unit_patterns(name, value) -> None:
+    """Blank private values wherever analyzed, retaining labels and API control IDs."""
+    evidence = _load_evidence_module()
+    analysis: dict[str, Any] = {
+        "devcode": 2376,
+        "device_sn": "PRIVATE-SERIAL",
+        "collector_alias": "Private installation",
+        "device_identity": "sha256:device",
+        "collector_identity": "sha256:collector",
+        "device_address": 1,
+        "sensor_titles": [name, "Battery Voltage"],
+        "sample_data": [
+            {"title": name, "value": value, "unit": ""},
+            {"title": "Battery Voltage", "value": "54.0", "unit": "V"},
+        ],
+        "parameters": [
+            {"name": name, "value": value, "unit": "", "id": "serial_parameter"},
+            {
+                "name": "Battery percentage",
+                "value": "75",
+                "unit": "%",
+                "id": "soc_parameter",
+            },
+        ],
+        "unit_patterns": {name: [str(value)], "PV Power": ["123W"]},
+        "control_fields": [
+            {
+                "name": "Bulk Charging Voltage",
+                "id": "bulk_voltage",
+                "hint": "54.0~54.0V",
+            }
+        ],
+    }
+    analysis["checksum"] = evidence.analysis_checksum(analysis)
+    original = copy.deepcopy(analysis)
+    expected = copy.deepcopy(analysis)
+    expected["device_sn"] = expected["collector_alias"] = ""
+    expected["sample_data"][0]["value"] = ""
+    expected["parameters"][0]["value"] = ""
+    expected["unit_patterns"][name] = []
+    expected["checksum"] = evidence.analysis_checksum(expected)
+
+    redacted = evidence.redact_analysis(analysis)
+
+    assert redacted == expected
+    assert analysis == original
+    assert evidence.redact_analysis(redacted) == redacted
+    assert redacted["checksum"] != original["checksum"]
+    redacted["control_fields"][0]["hint"] = "48.0~61.0V"
+    assert evidence.analysis_checksum(redacted) != redacted["checksum"]
 
 
 def test_ambiguous_title_is_not_guessed() -> None:

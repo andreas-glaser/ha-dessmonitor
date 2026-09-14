@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0-rc.3] - 2026-09-14
+
+Third release candidate for 2.4.0, including all changes from [RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.4.0-rc.2). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.3/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+### Added
+- Devcode `2477` cloud telemetry and priority mappings. Battery-voltage dropdowns select the API options for the reported 24 V or 48 V rating, covering bulk, float, equalization, battery/utility return, and low cut-off voltage. Missing, unsupported, or conflicting ratings make these controls unavailable and block writes until valid data arrives (#40, thanks to @albertdb for the analysis data).
+
+### Fixed
+- Devcode `2376` now maps `PV is at the same level as mains` to `Solar and grid equal`. Removed ineffective title mappings while preserving sensor identities, readings, and parameter-based State of Charge.
+
+### Changed
+- CLI `analyze --redacted` blanks `device_sn`, `collector_alias`, and known identifying values in telemetry samples, parameters, and unit-pattern samples, including the vendor's `devise serial number` and record IDs. Combined cloud/local reports use the same sanitization. All documented analysis examples recommend the flag for sharing; `--redacted` cannot be combined with `--raw`.
+- Analysis checksums exclude both top-level identifiers and are computed after nested redaction. Control metadata and ordinary readings remain covered. Unchanged legacy reports still verify; legacy reports whose alias was already redacted must be regenerated.
+
+### Upgrade and testing notes
+- Restart Home Assistant after installing the candidate.
+- Devcode `2477` testers: compare sensor readings, priorities, and the six voltage dropdowns with DessMonitor. The contributor's unit reports 48 V / 5 kW; inverter brand/model and hardware write verification remain unconfirmed. If a voltage control is unavailable, the related log message explains which metadata or options could not be validated.
+- Devcode `2376` automations matching the raw charging-priority state `PV is at the same level as mains` should use `Solar and grid equal` after updating.
+- Regenerate older analysis reports with the updated CLI and `--redacted` before sharing; blank top-level identifiers do not remove serial numbers from older nested samples. Review unexpected vendor fields and free text before uploading.
+- Local compatibility for the setup in [#39](https://github.com/andreas-glaser/ha-dessmonitor/issues/39) remains under investigation.
+
 ## [2.4.0-rc.2] - 2026-09-13
 
 Second release candidate for 2.4.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.4.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
@@ -385,7 +406,8 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.3...HEAD
+[2.4.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...v2.4.0-rc.3
 [2.4.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.1...v2.4.0-rc.2
 [2.4.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0-rc.1
 [2.3.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.2.0...v2.3.0

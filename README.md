@@ -389,7 +389,7 @@ For integration contributors and developers, we provide a comprehensive CLI tool
 cd tools/cli
 pip install -r requirements.txt
 python3 dessmonitor_cli.py auth --username USER --company-key KEY
-python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE_SN --output analysis.json
+python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE_SN --output analysis.json
 ```
 
 **Use Cases**:
@@ -464,6 +464,7 @@ The integration now includes an extensible device support system:
 - **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **DevCode 2428**: Known to pair with Hybrid inverter
 - **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
+- **DevCode 2477**: Contributor-reported 48 V / 5 kW unit, with telemetry mappings and battery-voltage dropdowns selected from 24 V / 48 V rated metadata; inverter brand/model not yet confirmed
 - **DevCode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
 - **DevCode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter
@@ -478,7 +479,7 @@ Seeing an `Unsupported devcode` warning? Follow the
 analysis JSON and your inverter model. No coding is required.
 
 See [`docs/ADDING_DEVCODES.md`](docs/ADDING_DEVCODES.md) for the full workflow. Short version:
-1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`
+1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE`
 2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
 3. Test with the Docker development environment
 4. Submit a pull request with your analysis JSON

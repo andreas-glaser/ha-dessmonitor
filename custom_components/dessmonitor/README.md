@@ -20,12 +20,20 @@ Cloud updates default to 5 minutes. Faster DessMonitor updates require its colle
 - Sensors for power, voltages, currents, frequency, temperature, load %, operating mode.
 - Energy Dashboard compatible (use `*_total_pv_power`, `*_battery_power`, `*_grid_power`).
 - Device configuration via select, number, and button entities (output priority, charger source, battery settings, buzzer mode, and more).
-- Supported devcodes: 518, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2507, 6422, 6514, 6515, 6544.
+- Supported devcodes: 518, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2477, 2507, 6416, 6422, 6514, 6515, 6544.
 - Diagnostic sensors available but disabled by default to avoid clutter.
 
 ## Device Configuration
 
 The integration exposes inverter settings as Home Assistant entities, allowing you to read and change device configuration directly from your dashboard or automations.
+
+For devcode 2477, the bulk, float, equalization, battery/utility return, and low
+cut-off voltage dropdowns show only the API options for the reported 24 V or 48 V
+rating. Detection uses `Rated Battery Voltage` or `Battery Piece`, never live
+battery voltage. These six controls become unavailable if the rating is missing,
+unsupported, or contradictory, or the API options cannot be validated. A log message
+explains the reason; the controls recover automatically when valid data arrives.
+Other controls retain their API options and ranges.
 
 - **Select entities**: Settings with predefined options (output priority, charger source priority, battery type, buzzer mode, etc.)
 - **Number entities**: Numeric settings with min/max ranges from the device (charging voltages, max currents, SOC protection values, EQ timers, etc.)
