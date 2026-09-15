@@ -2,7 +2,7 @@
 
 This module handles registration and lookup of all supported data collector types.
 The devcode refers to the data collector/gateway device, not the inverter itself.
-It automatically imports all devcode_*.py files and provides a unified interface.
+It explicitly imports supported devcode modules and provides a unified interface.
 """
 
 from __future__ import annotations
@@ -15,6 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 # Registry of all supported devcodes
 # This is populated by importing devcode modules below
 _DEVICE_REGISTRY: dict[int, dict[str, Any]] = {}
+
+# Transformations run for every sensor read; report missing support once per run.
+_WARNED_UNSUPPORTED_DEVCODES: set[int] = set()
 
 
 def _register_devcode(devcode: int, config: dict[str, Any]) -> None:
@@ -36,6 +39,10 @@ def _load_device_configurations() -> None:
 
         _register_devcode(2376, config_2376)
 
+        from .devcode_6416 import DEVCODE_CONFIG as config_6416
+
+        _register_devcode(6416, config_6416)
+
         from .devcode_6422 import DEVCODE_CONFIG as config_6422
 
         _register_devcode(6422, config_6422)
@@ -56,6 +63,10 @@ def _load_device_configurations() -> None:
 
         _register_devcode(6544, config_6544)
 
+        from .devcode_6514 import DEVCODE_CONFIG as config_6514
+
+        _register_devcode(6514, config_6514)
+
         from .devcode_6515 import DEVCODE_CONFIG as config_6515
 
         _register_devcode(6515, config_6515)
@@ -68,9 +79,17 @@ def _load_device_configurations() -> None:
 
         _register_devcode(2428, config_2428)
 
+        from .devcode_2477 import DEVCODE_CONFIG as config_2477
+
+        _register_devcode(2477, config_2477)
+
         from .devcode_2507 import DEVCODE_CONFIG as config_2507
 
         _register_devcode(2507, config_2507)
+
+        from .devcode_518 import DEVCODE_CONFIG as config_518
+
+        _register_devcode(518, config_518)
 
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
@@ -134,6 +153,20 @@ def map_control_field(devcode: int, api_field_name: str) -> str:
     return control_mappings.get(api_field_name, api_field_name)
 
 
+def filter_control_options(
+    devcode: int,
+    param_id: str,
+    options: dict[str, str],
+    data: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Apply a device-specific option filter when its hardware requires one."""
+    config = get_devcode_config(devcode)
+    option_filter = config.get("control_options_filter") if config else None
+    if option_filter is None:
+        return options
+    return option_filter(param_id, options, data)
+
+
 def map_output_priority(devcode: int, api_value: str) -> str:
     """Map output priority value to human-readable format based on devcode."""
     config = get_devcode_config(devcode)
@@ -183,12 +216,20 @@ def apply_devcode_transformations(
     devcode: int, sensor_data: dict[str, Any]
 ) -> dict[str, Any]:
     """Apply all devcode-specific transformations to sensor data."""
-    if not is_devcode_supported(devcode):
-        _LOGGER.warning("Unsupported devcode %s - no transformations applied", devcode)
-        return sensor_data
-
     config = get_devcode_config(devcode)
     if not config:
+        if devcode not in _WARNED_UNSUPPORTED_DEVCODES:
+            _LOGGER.warning(
+                "Unsupported devcode %s - no device-specific mappings available. "
+                "Using raw sensor titles and values; sensor support may be limited. "
+                "To request or add support, share a CLI analysis JSON and your "
+                "inverter model as described at "
+                "https://github.com/andreas-glaser/ha-dessmonitor/blob/dev/"
+                "docs/ADDING_DEVCODES.md#request-support "
+                "(logged once per devcode until Home Assistant restarts)",
+                devcode,
+            )
+            _WARNED_UNSUPPORTED_DEVCODES.add(devcode)
         return sensor_data
 
     transformed_data = sensor_data.copy()

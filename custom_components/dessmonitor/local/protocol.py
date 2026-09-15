@@ -1,4 +1,4 @@
-"""Strict EyeBond transport and P17 framing helpers.
+"""Strict EyeBond transport and P17/PI18 framing helpers.
 
 The collector transport is an eight-byte, big-endian header followed by a
 bounded payload. P17 payloads carry their own length and CRC. Parsing is kept
@@ -25,6 +25,17 @@ _CRC_STUFF_BYTES = frozenset((0x28, 0x0A, 0x0D))
 
 class ProtocolError(ValueError):
     """Raised when a collector or inverter frame is malformed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str = "invalid_response",
+        details: dict[str, int] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.reason = reason
+        self.details = details or {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,10 +207,12 @@ def build_forward_request(
     )
 
 
-def _encode_crc(content: bytes) -> bytes:
-    """Return the protocol-stuffed CRC bytes for content."""
+def _encode_crc(content: bytes, *, escape_crc: bool = True) -> bytes:
+    """Return escaped P17 or raw PI18 CRC bytes for content."""
     crc = crc16_xmodem(content)
     encoded = ((crc >> 8) & 0xFF, crc & 0xFF)
+    if not escape_crc:
+        return bytes(encoded)
     return bytes(byte + 1 if byte in _CRC_STUFF_BYTES else byte for byte in encoded)
 
 
@@ -216,11 +229,11 @@ def _ascii_command(command: str) -> bytes:
     return encoded
 
 
-def build_p17_poll(command: str) -> bytes:
-    """Build a P17 read-only poll command."""
+def build_p17_poll(command: str, *, escape_crc: bool = True) -> bytes:
+    """Build a read-only poll with the identified protocol's CRC encoding."""
     encoded = _ascii_command(command)
     content = b"^P" + f"{3 + len(encoded):03d}".encode("ascii") + encoded
-    return content + _encode_crc(content) + b"\r"
+    return content + _encode_crc(content, escape_crc=escape_crc) + b"\r"
 
 
 def build_p17_response(response_type: str, data: str = "") -> bytes:
@@ -237,32 +250,33 @@ def build_p17_response(response_type: str, data: str = "") -> bytes:
     return content + _encode_crc(content) + b"\r"
 
 
-def parse_p17_response(frame: bytes) -> P17Response:
-    """Parse a P17 or Q-style response with exact length and CRC validation."""
+def parse_p17_response(frame: bytes, *, escape_crc: bool = True) -> P17Response:
+    """Validate P17/Q-style or PI18 framing using the selected CRC encoding."""
     if len(frame) < 5 or frame[-1:] != b"\r":
         raise ProtocolError("inverter response is truncated or lacks its terminator")
 
     if frame.startswith(b"^"):
-        return _parse_caret_response(frame)
-    if frame.startswith(b"("):
+        return _parse_caret_response(frame, escape_crc=escape_crc)
+    if escape_crc and frame.startswith(b"("):
         return _parse_q_response(frame)
     raise ProtocolError("inverter response uses unsupported framing")
 
 
-def _parse_caret_response(frame: bytes) -> P17Response:
+def _parse_caret_response(frame: bytes, *, escape_crc: bool) -> P17Response:
     """Parse standard and short caret-framed responses."""
     if len(frame) == 5 and frame[1:2] in {b"0", b"1"}:
         content = frame[:2]
-        if frame[2:4] != _encode_crc(content):
-            raise ProtocolError("inverter response CRC does not match")
+        if frame[2:4] != _encode_crc(content, escape_crc=escape_crc):
+            raise ProtocolError(
+                "inverter response CRC does not match", reason="crc_mismatch"
+            )
         return P17Response("A" if frame[1:2] == b"1" else "N", "")
 
     if len(frame) < 8 or frame[1:2] not in {b"D", b"A", b"N"}:
         raise ProtocolError("invalid P17 response header")
-    try:
-        declared_length = int(frame[2:5].decode("ascii"))
-    except (UnicodeDecodeError, ValueError) as err:
-        raise ProtocolError("invalid P17 length field") from err
+    if not frame[2:5].isdigit():
+        raise ProtocolError("invalid P17 length field")
+    declared_length = int(frame[2:5])
     if declared_length < 3:
         raise ProtocolError("invalid P17 declared length")
 
@@ -272,8 +286,10 @@ def _parse_caret_response(frame: bytes) -> P17Response:
             f"P17 response declares {expected_length} bytes, received {len(frame)}"
         )
     content = frame[:-3]
-    if frame[-3:-1] != _encode_crc(content):
-        raise ProtocolError("inverter response CRC does not match")
+    if frame[-3:-1] != _encode_crc(content, escape_crc=escape_crc):
+        raise ProtocolError(
+            "inverter response CRC does not match", reason="crc_mismatch"
+        )
     try:
         decoded = frame[5:-3].decode("ascii")
     except UnicodeDecodeError as err:
@@ -287,7 +303,9 @@ def _parse_q_response(frame: bytes) -> P17Response:
         raise ProtocolError("Q response is too short")
     content = frame[:-3]
     if frame[-3:-1] != _encode_crc(content):
-        raise ProtocolError("inverter response CRC does not match")
+        raise ProtocolError(
+            "inverter response CRC does not match", reason="crc_mismatch"
+        )
     try:
         decoded = frame[1:-3].decode("ascii")
     except UnicodeDecodeError as err:

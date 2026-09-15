@@ -1,0 +1,100 @@
+{
+  "err": 0,
+  "dat": [
+    {
+      "title": "PV2 input voltage",
+      "val": "0.0",
+      "unit": "V"
+    },
+    {
+      "title": "PV2 input power",
+      "val": "0",
+      "unit": "W"
+    },
+    {
+      "title": "Working State",
+      "val": "Invert Mode",
+      "unit": ""
+    },
+    {
+      "title": "AC Input Voltage",
+      "val": "237.1",
+      "unit": "V"
+    },
+    {
+      "title": "AC Input Frequency",
+      "val": "49.9",
+      "unit": "Hz"
+    },
+    {
+      "title": "PV1 Input Voltage",
+      "val": "315.5",
+      "unit": "V"
+    },
+    {
+      "title": "PV1 Input Power",
+      "val": "787",
+      "unit": "W"
+    },
+    {
+      "title": "PV total Power",
+      "val": "787",
+      "unit": "W"
+    },
+    {
+      "title": "Battery Voltage",
+      "val": "53.4",
+      "unit": "V"
+    },
+    {
+      "title": "Battery Capacity",
+      "val": "72",
+      "unit": "%"
+    },
+    {
+      "title": "Battery Charging Current",
+      "val": "0",
+      "unit": "A"
+    },
+    {
+      "title": "Battery Discharge Current",
+      "val": "1",
+      "unit": "A"
+    },
+    {
+      "title": "Output Voltage",
+      "val": "230.2",
+      "unit": "V"
+    },
+    {
+      "title": "Output Frequency",
+      "val": "49.9",
+      "unit": "Hz"
+    },
+    {
+      "title": "Output Apparent Power",
+      "val": "874",
+      "unit": "VA"
+    },
+    {
+      "title": "Output Active Power",
+      "val": "781",
+      "unit": "W"
+    },
+    {
+      "title": "AC Output Load",
+      "val": "14",
+      "unit": "%"
+    },
+    {
+      "title": "Output Source Priority",
+      "val": "SBU",
+      "unit": ""
+    },
+    {
+      "title": "Charger Source Priority",
+      "val": "Solar and mains",
+      "unit": ""
+    }
+  ]
+}

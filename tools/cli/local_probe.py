@@ -11,6 +11,7 @@ import logging
 import os
 import stat
 import sys
+from contextlib import AsyncExitStack
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -18,10 +19,7 @@ from typing import Any
 _PACKAGE_NAME = "_dessmonitor_local_probe"
 _LOGGER = logging.getLogger(__name__)
 _LOCAL_SOURCE = (
-    Path(__file__).resolve().parents[2]
-    / "custom_components"
-    / "dessmonitor"
-    / "local"
+    Path(__file__).resolve().parents[2] / "custom_components" / "dessmonitor" / "local"
 )
 
 
@@ -56,6 +54,7 @@ async def run_local_probe(args: Any) -> dict[str, Any]:
             "refusing to request a collector callback without --confirm-callback"
         )
     announcer_module = _load_local_module("announcer")
+    diagnostics_module = _load_local_module("diagnostics")
     drivers_module = _load_local_module("drivers")
     server_module = _load_local_module("server")
 
@@ -73,96 +72,114 @@ async def run_local_probe(args: Any) -> dict[str, Any]:
         expected_product_number=args.expected_product_number or "",
         on_ready=on_ready,
     )
-    announcer = None
-    await server.start()
+    diagnostics = diagnostics_module.ProbeDiagnostics()
+    report: dict[str, Any] = {
+        "report_version": 1,
+        "safety": "read_only",
+        "status": "failed",
+        "stage": "listener_start",
+        "collector": {"ip": _identifier(args.collector_ip, args.include_identifiers)},
+        "probe": {
+            "configured_device_code": args.device_code,
+            "request_timeout_seconds": server.request_timeout,
+            "probe_timeout_seconds": args.probe_timeout,
+            "max_address": args.max_address,
+        },
+        "inverters": [],
+    }
     try:
-        announcer = announcer_module.CollectorAnnouncer(
-            server_ip=args.listen_ip,
-            server_port=server.listening_port,
-            collector_ip=args.collector_ip,
-            collector_udp_port=args.udp_port,
-        )
-        await announcer.start()
-        try:
-            identity = await asyncio.wait_for(ready, timeout=args.timeout)
-        except TimeoutError as err:
-            raise TimeoutError(
-                f"collector {args.collector_ip} did not connect within "
-                f"{args.timeout:g} seconds"
-            ) from err
-        _LOGGER.debug("Collector callback accepted; stopping callback requests")
-        await announcer.stop()
-        _LOGGER.debug("Starting bounded read-only inverter detection")
-
-        async def send(payload: bytes, device_code: int, address: int) -> bytes:
-            return await server.send_command(
-                payload,
-                device_code=device_code,
-                device_address=address,
+        async with AsyncExitStack() as cleanup:
+            cleanup.push_async_callback(server.stop)
+            await server.start()
+            report["stage"] = "collector_callback"
+            announcer = announcer_module.CollectorAnnouncer(
+                server_ip=args.listen_ip,
+                server_port=server.listening_port,
+                collector_ip=args.collector_ip,
+                collector_udp_port=args.udp_port,
             )
-
-        try:
-            async with asyncio.timeout(args.probe_timeout):
-                driver, devices = await drivers_module.discover_supported_devices(
-                    send,
-                    collector_product_number=identity.product_number,
-                    configured_device_code=args.device_code,
-                    reported_device_code=identity.reported_device_code,
-                    max_address=args.max_address,
-                )
-                _LOGGER.debug(
-                    "Detected local driver %s with %d inverter(s)",
-                    driver.key,
-                    len(devices),
-                )
-
-                inverters: list[dict[str, Any]] = []
-                for device in devices:
-                    values = await driver.poll(send, device, cycle=12)
-                    device.values.update(values)
-                    inverters.append(
-                        {
-                            "address": device.device_address,
-                            "serial": _identifier(
-                                device.serial, args.include_identifiers
-                            ),
-                            "model": device.model,
-                            "firmware": device.firmware,
-                            "sensor_count": len(device.values),
-                            "sensors": dict(sorted(device.values.items())),
-                        }
-                    )
-        except TimeoutError as err:
-            raise TimeoutError(
-                f"read-only inverter detection exceeded {args.probe_timeout:g} seconds"
-            ) from err
-
-        report = {
-            "report_version": 1,
-            "safety": "read_only",
-            "collector": {
+            cleanup.push_async_callback(announcer.stop)
+            await announcer.start()
+            try:
+                identity = await asyncio.wait_for(ready, timeout=args.timeout)
+            except TimeoutError as err:
+                raise TimeoutError(
+                    f"collector did not connect within {args.timeout:g} seconds"
+                ) from err
+            _LOGGER.debug("Collector callback accepted; stopping callback requests")
+            await announcer.stop()
+            _LOGGER.debug("Starting bounded read-only inverter detection")
+            report["collector"] = {
                 "product_number": _identifier(
                     identity.product_number, args.include_identifiers
                 ),
                 "ip": _identifier(identity.peer_ip, args.include_identifiers),
                 "reported_device_code": identity.reported_device_code,
-            },
-            "detected": {
-                "profile": driver.key,
-                "tunnel_device_code": devices[0].transport_device_code,
-                "collector_address": devices[0].collector_address,
-                "inverter_count": len(devices),
-            },
-            "inverters": inverters,
-        }
-        if args.output:
-            output_path = Path(args.output).expanduser()
-            _write_private_report(output_path, report)
+            }
+            report["stage"] = "discovery"
+
+            async def send(payload: bytes, device_code: int, address: int) -> bytes:
+                return await server.send_command(
+                    payload,
+                    device_code=device_code,
+                    device_address=address,
+                )
+
+            try:
+                async with asyncio.timeout(args.probe_timeout):
+                    driver, devices = await drivers_module.discover_supported_devices(
+                        send,
+                        collector_product_number=identity.product_number,
+                        configured_device_code=args.device_code,
+                        reported_device_code=identity.reported_device_code,
+                        max_address=args.max_address,
+                        diagnostics=diagnostics,
+                    )
+                    _LOGGER.debug(
+                        "Detected local driver %s with %d inverter(s)",
+                        driver.key,
+                        len(devices),
+                    )
+
+                    report["detected"] = {
+                        "profile": driver.key,
+                        "tunnel_device_code": devices[0].transport_device_code,
+                        "collector_address": devices[0].collector_address,
+                        "inverter_count": len(devices),
+                    }
+                    report["stage"] = "polling"
+                    for device in devices:
+                        with diagnostics.capture():
+                            values = await driver.poll(send, device, cycle=12)
+                        device.values.update(values)
+                        report["inverters"].append(
+                            {
+                                "address": device.device_address,
+                                "serial": _identifier(
+                                    device.serial, args.include_identifiers
+                                ),
+                                "model": device.model,
+                                "firmware": device.firmware,
+                                "sensor_count": len(device.values),
+                                "sensors": dict(sorted(device.values.items())),
+                            }
+                        )
+            except TimeoutError as err:
+                raise TimeoutError(
+                    f"read-only inverter detection exceeded {args.probe_timeout:g} seconds"
+                ) from err
+
+        report["status"] = "success"
+        report["stage"] = "complete"
         return report
+    except (Exception, asyncio.CancelledError) as err:
+        report["error"] = {"reason": diagnostics_module.failure_reason(err)}
+        raise
     finally:
-        if announcer is not None:
-            await announcer.stop()
-        await server.stop()
+        report["diagnostics"] = diagnostics.as_dict()
+        if args.output:
+            _write_private_report(Path(args.output).expanduser(), report)
+            _LOGGER.info("Local probe report written (status=%s)", report["status"])
 
 
 async def run_local_scan(args: Any) -> dict[str, Any]:
@@ -184,9 +201,7 @@ async def run_local_scan(args: Any) -> dict[str, Any]:
         "report_version": 1,
         "safety": "bounded_callback_discovery",
         "network": str(
-            scanner_module.scan_network_for_host(
-                args.listen_ip, args.network or None
-            )
+            scanner_module.scan_network_for_host(args.listen_ip, args.network or None)
         ),
         "candidate_count": len(candidates),
         "candidates": [

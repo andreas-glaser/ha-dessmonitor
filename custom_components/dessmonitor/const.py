@@ -1,9 +1,10 @@
 """Constants for the DessMonitor integration."""
 
-from typing import Final
+from collections.abc import Mapping
+from typing import Any, Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "2.3.0"
+VERSION: Final = "2.4.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -56,6 +57,61 @@ UPDATE_INTERVAL_OPTIONS: Final = {
 }
 
 API_BASE_URL: Final = "https://api.dessmonitor.com/public/"
+API_REQUEST_TIMEOUT_SECONDS: Final = 30
+
+
+# The backend host, auth action and source identify a platform, not an account
+# privilege. Entries without a profile retain the original storage backend.
+CONF_API_PROFILE: Final = "api_profile"
+API_PROFILE_DESSMONITOR_ESS: Final = "dessmonitor_ess"
+API_PROFILE_SHINEMONITOR_SOLAR: Final = "shinemonitor_solar"
+DEFAULT_API_PROFILE: Final = API_PROFILE_DESSMONITOR_ESS
+
+# Preserve the backend for installations using the prerelease selector.
+LEGACY_CONF_ACCOUNT_MODE: Final = "account_mode"
+LEGACY_ACCOUNT_MODE_MAP: Final = {
+    "distributor": API_PROFILE_DESSMONITOR_ESS,
+    "end_user": API_PROFILE_SHINEMONITOR_SOLAR,
+}
+
+API_PROFILE_OPTIONS: Final = {
+    API_PROFILE_DESSMONITOR_ESS: "DessMonitor / SmartESS (default)",
+    API_PROFILE_SHINEMONITOR_SOLAR: "SmartClient for Solar / ShineMonitor",
+}
+
+# Both backends accept the integration's own application identity.
+API_PROFILES: Final = {
+    API_PROFILE_DESSMONITOR_ESS: {
+        "base_url": API_BASE_URL,
+        "auth_action": "authSource",
+        "source": "1",
+        "app_client": "web",
+        "app_id": "ha-dessmonitor",
+    },
+    API_PROFILE_SHINEMONITOR_SOLAR: {
+        "base_url": "https://ios.shinemonitor.com/public/",
+        "auth_action": "auth",
+        "source": "0",
+        "app_client": "web",
+        "app_id": "ha-dessmonitor",
+    },
+}
+
+
+def resolve_api_profile(data: Mapping[str, Any]) -> str:
+    """Resolve a stored platform without sending credentials to a guessed host."""
+    if CONF_API_PROFILE in data:
+        profile = data[CONF_API_PROFILE]
+        if isinstance(profile, str) and profile in API_PROFILES:
+            return profile
+        raise ValueError("Unsupported API profile")
+    if LEGACY_CONF_ACCOUNT_MODE in data:
+        legacy = data[LEGACY_CONF_ACCOUNT_MODE]
+        if isinstance(legacy, str) and legacy in LEGACY_ACCOUNT_MODE_MAP:
+            return LEGACY_ACCOUNT_MODE_MAP[legacy]
+        raise ValueError("Unsupported legacy account mode")
+    return DEFAULT_API_PROFILE
+
 
 UNITS: Final = {
     "POWER": "W",

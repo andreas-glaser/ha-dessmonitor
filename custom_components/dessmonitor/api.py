@@ -7,12 +7,22 @@ import hashlib
 import logging
 import time
 from typing import Any
+from urllib.parse import quote_plus
 
 import aiohttp
 import async_timeout
+import yarl
 from homeassistant.helpers.storage import Store
 
-from .const import API_BASE_URL, UNITS, VERSION
+from .const import (
+    API_PROFILES,
+    API_REQUEST_TIMEOUT_SECONDS,
+    CONF_API_PROFILE,
+    DEFAULT_API_PROFILE,
+    UNITS,
+    VERSION,
+    resolve_api_profile,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,12 +47,22 @@ class DessMonitorAPI:
         company_key: str = "bnrl_frRFjEz8Mkn",
         session: aiohttp.ClientSession | None = None,
         store: Store | None = None,
+        api_profile: str = DEFAULT_API_PROFILE,
     ) -> None:
         """Initialize the API client."""
         self.username = username
         self.password = password
         self.company_key = company_key
-        self.base_url = API_BASE_URL
+
+        # Resolve the API profile. Host, auth action, source
+        # and app identity all come from here so a session stays consistent.
+        self.api_profile = resolve_api_profile({CONF_API_PROFILE: api_profile})
+        profile = API_PROFILES[self.api_profile]
+        self.base_url = profile["base_url"]
+        self._auth_action = profile["auth_action"]
+        self._source = profile["source"]
+        self._app_client = profile["app_client"]
+        self._app_id = profile["app_id"]
 
         self._session = session
         self._close_session = False
@@ -115,18 +135,31 @@ class DessMonitorAPI:
 
     async def _ensure_token(self, action: str) -> None:
         """Refresh authentication token when required."""
-        if action == "authSource":
+        if action == self._auth_action:
             return
         if self._is_token_expired():
             _LOGGER.info("Token expired for action '%s', re-authenticating...", action)
             await self.authenticate()
 
     def _build_action_string(self, action: str, params: dict[str, Any] | None) -> str:
-        """Construct action string used by the API."""
+        """Construct action string used by the API.
+
+        Values are percent-encoded with quote_plus so that the string used to
+        compute the signature is byte-for-byte what the HTTP client transmits.
+        Signing the raw value while sending the encoded one makes the server
+        recompute a different signature and reject it as
+        ERR_PASSWORD_VERIF_FAIL. This bites any account whose username or
+        parameters contain a space or a reserved character.
+
+        Encoding here is only half the fix: yarl re-quotes a URL string it is
+        given, and its rules differ from quote_plus on "/" and "?" -- it turns
+        %2F and %3F back into the bare characters. So the URL must also be
+        handed to aiohttp as an already-encoded yarl.URL; see _fetch_json.
+        """
         action_string = f"&action={action}"
         if params:
             for key, value in params.items():
-                action_string += f"&{key}={value}"
+                action_string += f"&{key}={quote_plus(str(value))}"
         return action_string
 
     def _build_request_url(
@@ -134,24 +167,25 @@ class DessMonitorAPI:
     ) -> str:
         """Construct the full request URL including token when available."""
         url = f"{self.base_url}?sign={signature}&salt={salt}"
-        if self.token and action != "authSource":
+        if self.token and action != self._auth_action:
             url += f"&token={self.token}"
         return f"{url}{action_string}"
 
     async def _fetch_json(self, action: str, url: str) -> dict[str, Any]:
         """Execute HTTP GET and return JSON payload."""
         assert self._session is not None
-        timeout_seconds = 30
+        timeout_seconds = API_REQUEST_TIMEOUT_SECONDS
 
         try:
             async with async_timeout.timeout(timeout_seconds):
-                async with self._session.get(url) as response:
+                async with self._session.get(yarl.URL(url, encoded=True)) as response:
                     response.raise_for_status()
                     try:
                         return await response.json()
-                    except (aiohttp.ContentTypeError, ValueError) as err:
+                    except (aiohttp.ContentTypeError, ValueError):
                         _LOGGER.error("Invalid JSON response for action '%s'", action)
-                        raise DessMonitorError("Invalid response from server") from err
+                        # Content-type errors also carry the signed request URL.
+                        raise DessMonitorError("Invalid response from server") from None
         except asyncio.TimeoutError as err:
             _LOGGER.error(
                 "API request for action '%s' timed out after %ss",
@@ -159,25 +193,21 @@ class DessMonitorAPI:
                 timeout_seconds,
             )
             raise DessMonitorError("Request timed out") from err
-        except asyncio.CancelledError as err:
-            _LOGGER.error(
-                "API request for action '%s' was cancelled (likely due to timeout)",
-                action,
-            )
-            raise DessMonitorError("Request cancelled") from err
         except aiohttp.ClientResponseError as err:
             _LOGGER.error(
                 "HTTP %s error for action '%s'",
                 err.status,
                 action,
             )
-            raise DessMonitorError(f"Server returned HTTP {err.status}") from err
+            # aiohttp exception chains include signed URLs. Suppress the cause
+            # so debug tracebacks in callers cannot disclose authentication data.
+            raise DessMonitorError(f"Server returned HTTP {err.status}") from None
         except aiohttp.ClientError as err:
             error_type = type(err).__name__
             _LOGGER.error(
                 "HTTP request failed for action '%s' (%s)", action, error_type
             )
-            raise DessMonitorError(f"Request failed ({error_type})") from err
+            raise DessMonitorError(f"Request failed ({error_type})") from None
 
     @staticmethod
     def _validate_api_response(action: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -197,8 +227,9 @@ class DessMonitorAPI:
     async def authenticate(self) -> bool:
         """Authenticate with the DessMonitor API."""
         _LOGGER.debug(
-            "Starting authentication process for user: %s",
+            "Starting authentication process for user: %s (api_profile=%s)",
             _mask_identifier(self.username),
+            self.api_profile,
         )
         try:
             self.token = None
@@ -209,9 +240,9 @@ class DessMonitorAPI:
             auth_params = {
                 "usr": self.username,
                 "company-key": self.company_key,
-                "source": "1",
-                "_app_client_": "web",
-                "_app_id_": "ha-dessmonitor",
+                "source": self._source,
+                "_app_client_": self._app_client,
+                "_app_id_": self._app_id,
                 "_app_version_": VERSION,
             }
             _LOGGER.debug(
@@ -226,44 +257,35 @@ class DessMonitorAPI:
                 },
             )
 
-            response = await self._make_request("authSource", auth_params)
+            response = await self._make_request(self._auth_action, auth_params)
 
-            if "dat" in response:
-                data = response["dat"]
-                self.token = data.get("token")
-                self.secret = data.get("secret")
-                expire_duration = data.get("expire")
+            data = response.get("dat")
+            if not isinstance(data, dict):
+                raise DessMonitorError("Invalid authentication data")
+            token = data.get("token")
+            secret = data.get("secret")
+            expire_duration = data.get("expire")
+            if (
+                not isinstance(token, str)
+                or not token
+                or not isinstance(secret, str)
+                or not secret
+                or type(expire_duration) is not int
+                or expire_duration <= 0
+            ):
+                raise DessMonitorError("Invalid authentication data")
 
-                _LOGGER.debug(
-                    "Authentication response data keys: %s", list(data.keys())
-                )
-                _LOGGER.debug("Token received: %s", "Yes" if self.token else "No")
-                _LOGGER.debug("Secret received: %s", "Yes" if self.secret else "No")
-                _LOGGER.debug("Expire duration: %s seconds", expire_duration)
-
-                if expire_duration:
-                    self.token_expire = int(time.time()) + expire_duration
-                    _LOGGER.debug(
-                        "Token will expire at timestamp: %d (in %d seconds)",
-                        self.token_expire,
-                        expire_duration,
-                    )
-                else:
-                    self.token_expire = None
-                    _LOGGER.warning("No expiration duration provided by API")
-
-                _LOGGER.info(
-                    "Successfully authenticated with DessMonitor API, token valid for %d seconds, expires at: %s",
-                    expire_duration or 0,
-                    self.token_expire,
-                )
-
-                if self._store and self.token and self.secret and self.token_expire:
-                    await self._save_token()
-
-                return True
-
-            raise DessMonitorError("No authentication data received")
+            self.token = token
+            self.secret = secret
+            self.token_expire = int(time.time()) + expire_duration
+            _LOGGER.info(
+                "Authenticated with %s; token valid for %d seconds",
+                self.api_profile,
+                expire_duration,
+            )
+            if self._store:
+                await self._save_token()
+            return True
 
         except Exception as err:
             _LOGGER.error(
@@ -286,6 +308,22 @@ class DessMonitorAPI:
             return False
 
         if not data:
+            return False
+
+        # A token is only valid on the host that issued it. An entry whose
+        # profile changed would otherwise replay a dessmonitor.com token
+        # against ios.shinemonitor.com, which fails in a way that looks like
+        # bad credentials. Tokens cached before this field existed have no
+        # profile recorded, so they are treated as belonging to the default.
+        saved_profile = data.get("api_profile", DEFAULT_API_PROFILE)
+        if saved_profile != self.api_profile:
+            _LOGGER.debug(
+                "Cached token belongs to profile '%s' but this entry uses "
+                "'%s', discarding it",
+                saved_profile,
+                self.api_profile,
+            )
+            await self.clear_saved_token()
             return False
 
         saved_token = data.get("token")
@@ -325,6 +363,7 @@ class DessMonitorAPI:
                     "token": self.token,
                     "secret": self.secret,
                     "token_expire": self.token_expire,
+                    "api_profile": self.api_profile,
                 }
             )
             _LOGGER.debug("Token saved to storage")
@@ -513,6 +552,11 @@ class DessMonitorAPI:
 
         response = await self._make_request("queryDeviceLastData", params)
         device_data = response.get("dat", [])
+        if not isinstance(device_data, list) or any(
+            not isinstance(point, dict) or not isinstance(point.get("title"), str)
+            for point in device_data
+        ):
+            raise DessMonitorError("Invalid device data response")
 
         _LOGGER.debug("Retrieved %d data points for device %s", len(device_data), sn)
 
@@ -614,7 +658,7 @@ class DessMonitorAPI:
             "queryDeviceCtrlField",
             {
                 "i18n": "en_US",
-                "source": "1",
+                "source": self._source,
                 "pn": pn,
                 "devcode": devcode,
                 "devaddr": devaddr,
@@ -668,7 +712,7 @@ class DessMonitorAPI:
             "queryDeviceParsEs",
             {
                 "i18n": "en_US",
-                "source": "1",
+                "source": self._source,
                 "pn": pn,
                 "devcode": devcode,
                 "devaddr": devaddr,
@@ -714,7 +758,7 @@ class DessMonitorAPI:
                 "sn": sn,
                 "id": field_id,
                 "i18n": "en_US",
-                "source": "1",
+                "source": self._source,
             },
         )
         return response.get("dat", {})
@@ -744,7 +788,7 @@ class DessMonitorAPI:
             "id": param_id,
             "val": value,
             "i18n": "en_US",
-            "source": "1",
+            "source": self._source,
         }
 
         return await self._make_request("ctrlDevice", params)

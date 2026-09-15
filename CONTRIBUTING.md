@@ -46,6 +46,13 @@ main (production/stable)
    make lint    # Run all linting checks
    ```
 
+   Scope local checks to changed files. For example:
+   ```bash
+   make format PYTHON_PATHS='custom_components/dessmonitor/local/discovery.py'
+   make lint PYTHON_PATHS='custom_components/dessmonitor/local/discovery.py'
+   PYTEST_ADDOPTS='tests/local/test_discovery.py -q' make test
+   ```
+
 ### Development Process
 
 1. **For new features:**

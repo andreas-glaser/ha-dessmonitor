@@ -12,6 +12,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
+from .diagnostics import record_query
 from .modbus import (
     ModbusError,
     build_read_holding_request,
@@ -124,14 +125,31 @@ async def read_holding_registers(
     last_error: Exception | None = None
     for attempt in range(2):
         try:
-            response = await send(request, route.device_code, route.collector_address)
-            if not response:
-                raise ModbusError("collector returned an empty Modbus response")
-            return parse_read_holding_response(
-                response,
-                slave_address=route.slave_address,
-                register_count=register_count,
-            )
+            with record_query(
+                SMG_PROTOCOL,
+                "read_holding_registers",
+                route.device_code,
+                route.collector_address,
+                route.slave_address,
+            ) as query:
+                query.details = {
+                    "start_register": start_register,
+                    "register_count": register_count,
+                }
+                response = await send(
+                    request, route.device_code, route.collector_address
+                )
+                query.response_bytes = len(response)
+                if not response:
+                    raise ModbusError(
+                        "collector returned an empty Modbus response",
+                        reason="empty_response",
+                    )
+                return parse_read_holding_response(
+                    response,
+                    slave_address=route.slave_address,
+                    register_count=register_count,
+                )
         except (TimeoutError, ModbusError) as err:
             last_error = err
             if attempt == 0:

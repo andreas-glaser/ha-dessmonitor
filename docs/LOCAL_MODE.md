@@ -61,8 +61,12 @@ and falls back automatically when local telemetry is unavailable.
 ## Recommended setup
 
 For a new installation, select **DessMonitor API + preferred local telemetry**.
-Enter the normal API credentials first, then paste the local collector
-addresses in the short second step. To use only the API, select
+Choose the account platform and enter the normal API credentials first, then
+paste the local collector addresses in the short second step. **DessMonitor /
+SmartESS (default)** remains selected for existing accounts. Choose **SmartClient
+for Solar / ShineMonitor** for that service. Cloud profile selection does not
+add a local driver: devcode 518 cloud telemetry is supported, but its local
+protocol has not been verified. To use only the API, select
 **DessMonitor cloud API**. To skip the API and credentials entirely, select
 **Local network only**.
 
@@ -85,19 +89,38 @@ overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
 returns the same entities to API telemetry.
 
+If one inverter's status poll fails while another on the same collector succeeds,
+only the responding inverter contributes to the new local snapshot. Hybrid uses
+cloud data for the failed inverter until it responds again. Its device and sensor
+identities are retained; a healthy neighbour cannot refresh its stale readings.
+
 For a cloud-free installation, add another DessMonitor integration and choose
 **Local network**. Use the advanced path only for a documented non-standard
 port, product-number identity pin, or device-code hint.
 
 ## Supported read-only drivers
 
-- PI17/PI18 ASCII telemetry, with strict length, escaping, and CRC validation.
+- PI17/PI18 ASCII telemetry, with strict length and CRC validation. The inverter's
+  `PI` response selects P17's escaped CRC encoding or PI18's raw CRC encoding;
+  tunnel and cloud device codes do not select the field layout.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
+
+PI18 uses its 28-field `GS` response for battery charging current and both PV
+inputs, including PV2 voltage. It does not poll P17-only `GMN` or `GS2` commands.
+Firmware metadata preserves all three CPU versions. Existing sensor identifiers
+are retained; installing a decoder correction does not require deleting entities
+or recorder history. Earlier incorrect readings are not rewritten.
 
 Device detection is bounded and uses read queries only. Unsupported firmware
 fails closed instead of guessing register layouts. Local write frame builders
 and local control entities are intentionally absent.
+
+An explicitly configured tunnel code `2452` tries the P17/PI18 driver first,
+including when the collector reports `258` or `1`. Code `258` is shared by
+different inverter families; it does not establish the inverter's protocol.
+Automatic discovery and ambiguous hints retain their existing order. Both
+drivers remain fallbacks, and a validated response still determines the decoder.
 
 ## Contributor probe
 
@@ -114,7 +137,7 @@ python3 tools/cli/dessmonitor_cli.py local-probe \
   --confirm-callback \
   --output local-probe.json
 
-python3 tools/cli/dessmonitor_cli.py analyze \
+python3 tools/cli/dessmonitor_cli.py analyze --redacted \
   --local-report local-probe.json \
   --output combined-analysis.json
 ```
@@ -122,6 +145,25 @@ python3 tools/cli/dessmonitor_cli.py analyze \
 Reports redact collector product numbers, IP addresses, and inverter serials
 by default and are written with mode `0600`. Do not use
 `--include-identifiers` for a report that will be shared publicly.
+With `--output`, the probe also writes a report if the listener cannot start,
+the collector callback times out, discovery fails, or polling fails. The command
+still exits with an error. Share that file even when no inverter was found;
+failed reports are for troubleshooting and cannot be merged with `analyze`.
+
+Reports include `status`, the last `stage`, and bounded `diagnostics`: protocol,
+command, device code, collector/inverter address, response byte count, elapsed
+milliseconds, and outcome. A missing byte count means no payload was returned
+to the query; zero means an empty payload was received. Header mismatches also
+include the expected and received numeric routing fields. Raw payloads and
+exception text are not included in these diagnostic records. At most 128 query
+records are retained, with additional attempts counted in `dropped_attempts`.
+A random `probe_id` correlates a report and its log lines without identifying
+the collector, including when several collectors are discovered concurrently.
+An overall discovery deadline appears as a report-level `timeout`; the in-flight
+query appears as `cancelled` because the deadline interrupts it.
+An `unsupported_protocol` outcome means the inverter returned a protocol ID for
+which this driver has no verified field layout.
+
 The combined analysis matches a unique hashed collector product number and
 inverter address, refuses ambiguous matches, and also writes mode `0600`.
 Most collectors keep one callback connection. If Home Assistant already owns
@@ -140,6 +182,18 @@ then start it again; the configured integration reconnects automatically.
   logged after two minutes without a callback.
 - **Connected but no inverter is found:** create a sanitized local probe report
   and include the inverter model and collector firmware in a GitHub issue.
+  The final error includes query outcome counts. Enable debug logging for
+  `Local discovery` and `Local probe query` records showing each attempted route
+  and failure classification. Also include `Local forward request` and
+  `Local forward response` records: they show transaction IDs, routing fields,
+  byte counts, and whether the reply matched an active request. Each TCP session
+  has a random connection ID, so timestamps and transaction IDs can distinguish
+  delayed replies from unrelated traffic across reconnects. `pending_transaction_id=0`
+  means no request is active. These records contain no payload or device identifiers.
+  `outcome=matched` confirms the transport header only; the driver still validates
+  the payload's CRC and field layout.
+  An unmatched reply remains rejected. A rejected reply is different from a timeout;
+  changing the device code without this evidence may not help.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
 
@@ -154,3 +208,23 @@ logger:
 Debug messages avoid authentication tokens and full protocol payloads, but may
 include collector product numbers, device serials, private IP addresses, and
 live readings. Review logs and reports before sharing them.
+
+## Testing discovery diagnostics from dev
+
+If a maintainer asks you to test the development branch:
+
+1. Download the [dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip).
+2. Copy its `custom_components/dessmonitor/` directory over the same directory
+   in your Home Assistant configuration, then restart Home Assistant.
+3. Temporarily disable other local integrations or probes using this collector.
+   Enable debug logging for DessMonitor and reload the integration once.
+4. Capture the log sequence from collector connection through the first discovery
+   failure, including `Local discovery`, `Local probe query`, `Local forward request`,
+   and `Local forward response` lines. Include
+   the configured device code, Data Source state, and the commit/version tested.
+5. If using the contributor CLI, run the `local-probe` command above from the
+   same downloaded checkout and attach `local-probe.json`, including on failure.
+   Stop the HA local connection first so only the probe uses the collector.
+
+Enabling debug logging does not alter timeouts or response validation. Report
+the commit tested, since the development branch can also contain behavior fixes.

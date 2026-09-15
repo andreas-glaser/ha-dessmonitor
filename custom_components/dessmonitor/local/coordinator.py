@@ -71,6 +71,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         self._device_code: int | None = None
         self._driver: ReadOnlyLocalDriver | None = None
         self._devices: dict[str, LocalDevice] = {}
+        self._polled_serials: set[str] = set()
 
     @property
     def connected(self) -> bool:
@@ -217,7 +218,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         driver = self._driver
         if driver is None:
             raise ConnectionError("local inverter driver has not been discovered")
-        successful = False
+        polled_serials: set[str] = set()
         for device in self._devices.values():
             try:
                 values = await driver.poll(self._send_command, device, cycle=cycle)
@@ -230,8 +231,9 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                 )
                 continue
             device.values.update(values)
-            successful = True
-        return successful
+            polled_serials.add(device.serial)
+        self._polled_serials = polled_serials
+        return bool(polled_serials)
 
     async def _send_command(
         self, payload: bytes, device_code: int, device_address: int
@@ -250,6 +252,8 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         result: dict[str, Any] = {}
         timestamp = datetime.now(timezone.utc).isoformat()
         for device in self._devices.values():
+            if device.serial not in self._polled_serials:
+                continue
             points = [
                 {
                     "title": title,

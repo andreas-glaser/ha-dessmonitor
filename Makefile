@@ -1,5 +1,8 @@
 .PHONY: help lint format check test test-cov install clean
 
+# Override to scope formatting and lint checks to changed Python files.
+PYTHON_PATHS ?= custom_components/dessmonitor
+
 # Default target
 help:
 	@echo "DessMonitor Development Tools"
@@ -27,10 +30,10 @@ install:
 # Format code
 format:
 	@echo "🎨 Formatting code with Black..."
-	@.venv/bin/black custom_components/dessmonitor
+	@.venv/bin/black $(PYTHON_PATHS)
 	@echo ""
 	@echo "📦 Sorting imports with isort..."
-	@.venv/bin/isort custom_components/dessmonitor
+	@.venv/bin/isort $(PYTHON_PATHS)
 	@echo ""
 	@echo "✅ Code formatted successfully!"
 
@@ -42,23 +45,23 @@ check:
 	@echo "🔍 Running code quality checks..."
 	@echo ""
 	@echo "=== Black (code formatting) ==="
-	@.venv/bin/black --check --diff custom_components/dessmonitor || (echo "❌ Black formatting issues found. Run 'make format' to fix." && exit 1)
+	@.venv/bin/black --check --diff $(PYTHON_PATHS) || (echo "❌ Black formatting issues found. Run 'make format' to fix." && exit 1)
 	@echo "✅ Black: PASSED"
 	@echo ""
 	@echo "=== isort (import sorting) ==="
-	@.venv/bin/isort --check-only --diff custom_components/dessmonitor || (echo "❌ Import sorting issues found. Run 'make format' to fix." && exit 1)
+	@.venv/bin/isort --check-only --diff $(PYTHON_PATHS) || (echo "❌ Import sorting issues found. Run 'make format' to fix." && exit 1)
 	@echo "✅ isort: PASSED"
 	@echo ""
 	@echo "=== flake8 (syntax errors) ==="
-	@.venv/bin/flake8 custom_components/dessmonitor --count --select=E9,F63,F7,F82 --show-source --statistics || (echo "❌ flake8: FAILED" && exit 1)
+	@.venv/bin/flake8 $(PYTHON_PATHS) --count --select=E9,F63,F7,F82 --show-source --statistics || (echo "❌ flake8: FAILED" && exit 1)
 	@echo "✅ flake8 (critical): PASSED"
 	@echo ""
 	@echo "=== flake8 (code quality) ==="
-	@.venv/bin/flake8 custom_components/dessmonitor --count --max-complexity=10 --max-line-length=127 --statistics --exit-zero
+	@.venv/bin/flake8 $(PYTHON_PATHS) --count --max-complexity=10 --max-line-length=127 --statistics --exit-zero
 	@echo "✅ flake8 (quality): PASSED (warnings allowed)"
 	@echo ""
 	@echo "=== mypy (type checking) ==="
-	@.venv/bin/mypy custom_components/dessmonitor --ignore-missing-imports || echo "⚠️  mypy: Completed with warnings"
+	@.venv/bin/mypy $(PYTHON_PATHS) --ignore-missing-imports || echo "⚠️  mypy: Completed with warnings"
 	@echo ""
 	@echo "🎉 All critical checks passed!"
 

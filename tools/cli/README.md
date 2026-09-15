@@ -1,6 +1,6 @@
 # DessMonitor CLI Tool
 
-A Python CLI tool for DessMonitor API development and device analysis. This tool helps contributors query DessMonitor API endpoints to create device support configurations for the Home Assistant integration.
+A Python CLI tool for DessMonitor / SmartESS and SmartClient for Solar / ShineMonitor API development and device analysis. This tool helps contributors query DessMonitor API endpoints to create device support configurations for the Home Assistant integration.
 
 ## Purpose
 
@@ -13,7 +13,7 @@ This tool is designed for:
 ## Installation
 
 ### Prerequisites
-- Python 3.7+
+- Python 3.11+
 - `aiohttp` library
 
 ### Setup
@@ -31,7 +31,7 @@ python3 dessmonitor_cli.py auth --username YOUR_USERNAME --company-key YOUR_COMP
 ## Commands
 
 ### `auth` - Authentication
-Store your DessMonitor API credentials for subsequent commands.
+Choose the platform and store credentials for subsequent commands. DessMonitor / SmartESS remains the default; existing credential files continue to use it.
 
 ```bash
 python3 dessmonitor_cli.py auth --username USER --company-key KEY
@@ -41,6 +41,19 @@ python3 dessmonitor_cli.py auth --username USER --company-key KEY
 ```bash
 python3 dessmonitor_cli.py auth --username your_email@example.com --company-key your_company_key
 ```
+
+For SmartClient for Solar / ShineMonitor:
+
+```bash
+python3 dessmonitor_cli.py auth --username USER --api-profile shinemonitor_solar
+```
+
+`--api-profile dessmonitor_ess` explicitly selects the existing DessMonitor / SmartESS
+service. `--company-key` is optional and uses the same default as Home Assistant.
+The CLI remembers the profile for `collectors`, `devices`, `data`, `analyze`, and
+control commands. Run `auth` again to change accounts or platforms; this replaces
+the single saved CLI account and obtains a new token. Tokens are never reused
+across profiles.
 
 Omitting `--password` prompts without placing the password in shell history.
 
@@ -130,33 +143,61 @@ python3 dessmonitor_cli.py sp-keys --device-sn Q0045xxxxxxxxxYYYYYYY
 Generate structured analysis of device capabilities for devcode development.
 
 ```bash
-python3 dessmonitor_cli.py analyze --device-sn DEVICE_SN [--output OUTPUT_FILE]
+python3 dessmonitor_cli.py analyze --redacted --device-sn DEVICE_SN [--output OUTPUT_FILE]
 ```
 
 **Example:**
 ```bash
-python3 dessmonitor_cli.py analyze --device-sn Q0045xxxxxxxxxYYYYYYY --output analysis.json
+python3 dessmonitor_cli.py analyze --redacted --device-sn Q0045xxxxxxxxxYYYYYYY --output analysis.json
 ```
+
+Use `--redacted` for reports shared on GitHub or with an AI assistant. It blanks
+`device_sn` and `collector_alias`, plus known identifying values in telemetry
+samples, parameters, and unit-pattern samples. This includes the API's misspelled
+`devise serial number`, record IDs, serial/collector identifiers, aliases,
+network addresses, and credential labels. Sensor titles, parameter/control IDs,
+control options and ranges, ordinary readings, and hashed correlation identifiers
+remain available. The CLI computes the checksum after redaction for JSON and
+template input; combined cloud/local reports use the same sanitization.
+
+Regenerate reports made with older CLI versions before sharing: their samples
+may still contain serial numbers even when the two top-level fields are blank.
+Review unexpected vendor fields and free text before sharing; redaction recognizes
+known labels rather than arbitrary personal information. The flag cannot be
+combined with `--raw`.
 
 When a sanitized local probe is available, the CLI can resolve the matching
 API device and combine both evidence sources without manually exposing a
 device serial:
 
 ```bash
-python3 dessmonitor_cli.py analyze \
+python3 dessmonitor_cli.py analyze --redacted \
   --local-report local-probe.json \
   --output combined-analysis.json
 ```
 
 This requires a unique collector product-number hash and inverter address
 match. It refuses ambiguous matches instead of guessing. The combined output
-hashes the resolved device identity and is written with mode `0600`.
+retains hashed correlation identifiers and is written with mode `0600`.
 
 **Use Case:**
 - **Primary Tool** for creating device support configurations
 - Generate comprehensive sensor inventories
 - Extract operating modes and priority values
 - Save structured analysis for documentation
+
+### `verify` - Check Analysis Integrity
+
+Check an analysis report before sharing it or using it for device support:
+
+```bash
+python3 dessmonitor_cli.py verify analysis.json
+```
+
+New exports allow `device_sn` and `collector_alias` to be redacted or removed
+without invalidating the checksum. Other report data remains covered. The verifier
+also accepts unchanged older reports. See the [support guide](../../docs/ADDING_DEVCODES.md#2-verify-the-analysis-file)
+for legacy-report limitations and checksum output.
 
 ### `local-scan` - Bounded Collector Discovery
 
@@ -174,6 +215,14 @@ public networks and networks larger than `/24`. A callback request may briefly
 interrupt a collector's cloud session.
 
 ### `local-probe` - Read-Only Compatibility Report
+
+With `--output`, runtime failures also write a private JSON report before the
+command exits with an error. Attach this file even if no inverter was found.
+It includes the failed stage and bounded per-query outcomes, routes, response
+sizes, and timing, without raw response payloads or exception strings. Failed
+reports are troubleshooting evidence and are rejected by `analyze --redacted --local-report`.
+See [local diagnostics and testing dev](../../docs/LOCAL_MODE.md) for the
+Home Assistant logging procedure and report details.
 
 Probe one known collector and validate its local inverter protocol:
 
@@ -209,13 +258,13 @@ python3 dessmonitor_cli.py devices --pn YOUR_COLLECTOR_PN
 ### 2. Device Analysis
 ```bash
 # Analyze device capabilities
-python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE_SN --output device_analysis.json
+python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE_SN --output device_analysis.json
 
 # Get real-time data to understand sensor behavior
 python3 dessmonitor_cli.py data --device-sn YOUR_DEVICE_SN
 
 # Or correlate sanitized local and API evidence automatically
-python3 dessmonitor_cli.py analyze --local-report local-probe.json --output combined-analysis.json
+python3 dessmonitor_cli.py analyze --redacted --local-report local-probe.json --output combined-analysis.json
 ```
 
 ### 3. Create Device Support
@@ -235,13 +284,14 @@ Credentials are stored in `.dessmonitor_cli_config.json` (ignored by git):
   "company_key": "your_company_key",
   "token": "...",
   "secret": "...",
-  "token_expires": 1234567890
+  "token_expires": 1234567890,
+  "api_profile": "dessmonitor_ess"
 }
 ```
 
 ### Token Management
 - Tokens automatically refresh when expired
-- 7-day token lifetime
+- Token lifetime follows the expiry returned by the selected backend
 - Re-authentication happens transparently
 
 ## Error Handling
@@ -250,10 +300,7 @@ Credentials are stored in `.dessmonitor_cli_config.json` (ignored by git):
 - **"No saved credentials"**: Run `auth` command first
 - **"Device not found"**: Check device serial number and collector association
 - **"API Error: ERR_FORMAT_ERROR"**: Invalid collector PN or API parameters
-- **Authentication failures**: Check username, password, and company key
+- **Authentication failures**: Check the selected platform, username, password, and company key
 
 ### Debug Mode
-Enable debug logging by modifying the script:
-```python
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-```
+Use `--debug` with a command, for example `python3 dessmonitor_cli.py --debug collectors`. Transport errors omit signed URLs and tokens.

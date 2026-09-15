@@ -11,13 +11,13 @@
 [![Project Maintenance][maintenance-shield]][user_profile]
 [![Community Forum][forum-shield]][forum]
 
-A Home Assistant integration for monitoring solar inverters via DessMonitor/SmartESS platform with periodic updates (5-minute default; 1-minute with Detailed Data Collection Acceleration).
+A Home Assistant integration for monitoring solar inverters through DessMonitor / SmartESS or SmartClient for Solar / ShineMonitor. Cloud polling defaults to 5 minutes.
 
-> **Also known as:** SmartESS, WatchPower, Energy-Mate, Fronus Solar, or other Eybond cloud-based monitoring platforms. This integration works with any inverter system that reports to the DessMonitor web platform (www.dessmonitor.com).
+> **Also known as:** SmartESS, WatchPower, Energy-Mate, Fronus Solar, or other Eybond cloud-based monitoring platforms. Use the default profile for accounts on the DessMonitor web platform (www.dessmonitor.com). SmartClient for Solar / ShineMonitor accounts use the separate solar profile.
 
 ## 🧰 Supported Inverter Brands
 
-DessMonitor/SmartESS data collectors are typically installed alongside inverter systems from a variety of brands. This integration targets the DessMonitor backend and therefore works across many rebrands/OEM models that use the same platform.
+DessMonitor/SmartESS data collectors are typically installed alongside inverter systems from a variety of brands. The default profile targets the DessMonitor backend and works across many rebrands/OEM models that use that platform. The solar profile adds ShineMonitor cloud telemetry, including devcode 518 grid-tie inverters.
 
 - PowMr
 - EASUN Power
@@ -189,17 +189,24 @@ The integration exposes inverter settings as controllable Home Assistant entitie
 3. Choose **DessMonitor cloud API**, **API + preferred local telemetry**, or
    read-only **Local network only**.
 4. For either API path, enter your credentials:
-   - **Username**: Your DessMonitor account username
-   - **Password**: Your DessMonitor account password
+   - **Account platform**: Keep **DessMonitor / SmartESS (default)** for existing accounts. Choose **SmartClient for Solar / ShineMonitor** if that is the service you use.
+   - **Username**: Your account username
+   - **Password**: Your account password
    - **Company Key**: Leave default unless specified by installer
    - **Update Interval**: Choose based on your DessMonitor subscription:
      - **1 minute**: Requires "Detailed Data Collection Acceleration" (￥144/collector) from DessMonitor
      - **5 minutes**: Standard update rate for all accounts (recommended default)
      - **10+ minutes**: Reduced frequency to minimize API usage
 
+Existing installations keep their current profile, account identity, entities, and
+history automatically. No reconfiguration or migration is required. The platform
+selector is available in both cloud and hybrid setup. Adding the solar cloud
+profile does not establish local-protocol or write-control support for a device;
+devcode 518 has contributor-verified cloud telemetry.
+
 ### Update Interval Configuration
 
-**Important**: The 1-minute update interval only works if you have purchased the "Detailed Data Collection Acceleration" upgrade from the DessMonitor website. This is a one-time fee of ￥144.00 RMB per data collector. Without this upgrade, setting the interval to 1 minute will not provide faster updates and may cause unnecessary API calls.
+**For the DessMonitor / SmartESS profile**: The 1-minute update interval only works if you have purchased the "Detailed Data Collection Acceleration" upgrade from the DessMonitor website. This is a one-time fee of ￥144.00 RMB per data collector. Without this upgrade, setting the interval to 1 minute will not provide faster updates and may cause unnecessary API calls.
 
 **To purchase Detailed Data Collection Acceleration**:
 1. Log into your DessMonitor web account at www.dessmonitor.com
@@ -312,16 +319,16 @@ automation:
 
 **Authentication failures**
 - Verify username and password are correct
-- Ensure your account has access to the DessMonitor web portal
+- Choose the account platform that matches the app or website you use
 - Check that company key matches your installer's specification
 
 **No devices or sensors appearing**
-- Confirm your inverters are online and reporting to DessMonitor
+- Confirm your inverters are online in the selected platform
 - Check Home Assistant logs: Settings > System > Logs
 - Try removing and re-adding the integration
 
 **Sensors not updating**
-- Check your network connectivity to api.dessmonitor.com
+- Check connectivity to the selected backend: `api.dessmonitor.com` (default) or `ios.shinemonitor.com` (solar)
 - Verify your account subscription supports your chosen update interval
 - Review integration logs for specific error messages
 
@@ -349,8 +356,8 @@ logger:
 ## 📋 Requirements
 
 - **Home Assistant** 2024.1.0 or newer
-- **DessMonitor account** with active inverter(s), except for local-only mode
-- **Internet connection** to api.dessmonitor.com for API and hybrid modes
+- **DessMonitor / SmartESS or SmartClient for Solar / ShineMonitor account** with active inverter(s), except for local-only mode
+- **Internet connection** to the selected cloud backend for API and hybrid modes
 - **Fixed private LAN addresses** for Home Assistant and each local collector
 - **Python aiohttp** 3.8.0+ (installed automatically)
 
@@ -382,7 +389,7 @@ For integration contributors and developers, we provide a comprehensive CLI tool
 cd tools/cli
 pip install -r requirements.txt
 python3 dessmonitor_cli.py auth --username USER --company-key KEY
-python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE_SN --output analysis.json
+python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE_SN --output analysis.json
 ```
 
 **Use Cases**:
@@ -449,6 +456,7 @@ The integration now includes an extensible device support system:
 - **Metadata Tracking**: Device configs list confirmed inverter models via `known_inverters` when available
 
 ### Current Device Support
+- **DevCode 518**: Known to pair with [BYD BYD-S-1P5K-2M](https://registro.inmetro.gov.br/consulta/detalhe.aspx?NumeroRegistro=007268%2F2022&pag=1) (5 kW, 220 V) through Q0025-series collectors on SmartClient for Solar / ShineMonitor
 - **DevCode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **DevCode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
 - **DevCode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
@@ -456,15 +464,22 @@ The integration now includes an extensible device support system:
 - **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **DevCode 2428**: Known to pair with Hybrid inverter
 - **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
+- **DevCode 2477**: Contributor-reported 48 V / 5 kW unit, with telemetry mappings and battery-voltage dropdowns selected from 24 V / 48 V rated metadata; inverter brand/model not yet confirmed
+- **DevCode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **DevCode 6422**: Known to pair with Must PH19-6048 EXP
+- **DevCode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter
 - **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
 - **DevCode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
 - **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
 
 ### Adding New Device Support
+Seeing an `Unsupported devcode` warning? Follow the
+[request-support instructions](docs/ADDING_DEVCODES.md#request-support) to share an
+analysis JSON and your inverter model. No coding is required.
+
 See [`docs/ADDING_DEVCODES.md`](docs/ADDING_DEVCODES.md) for the full workflow. Short version:
-1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --device-sn YOUR_DEVICE`
+1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE`
 2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
 3. Test with the Docker development environment
 4. Submit a pull request with your analysis JSON
@@ -491,7 +506,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⚠️ Disclaimer
 
-This integration is **not officially endorsed** by DessMonitor. It uses the public API https://api.dessmonitor.com/
+This integration is **not officially endorsed** by DessMonitor. It uses Eybond cloud APIs for the selected account platform.
 
 - **Respect DessMonitor's terms of service**
 - **Use reasonable update intervals** to avoid API overload
