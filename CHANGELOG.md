@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-09-15
+
+This stable release includes all changes since 2.3.0, including everything shipped in 2.4.0-rc.1, 2.4.0-rc.2, and 2.4.0-rc.3.
+
+### Added
+- Devcode `2477` cloud telemetry and priority mappings, with bulk, float, equalization, battery/utility return, and low cut-off voltage dropdowns filtered to the reported 24 V or 48 V rating. Options refresh when rated metadata changes; invalid or unknown ratings make the affected controls unavailable and block writes until valid data arrives. Inverter brand/model and hardware write verification remain unconfirmed (#40, thanks to @albertdb for the analysis data).
+- CLI `analyze --redacted` blanks `device_sn`, `collector_alias`, and known identifying values in telemetry, parameters, and unit-pattern samples before computing the checksum for JSON output and template input. Combined cloud/local reports share this sanitization. All documented analysis examples recommend the flag for sharing; combining it with `--raw` is rejected.
+- Devcode `6416` (PowMr POW-HVM6.2M-48V-N) support for State of Charge, grid readings, both PV inputs and total PV power, load percentage, operating mode, and priority mappings. State of Charge uses existing telemetry without an extra API request (#36, thanks to @ufika for the CLI analysis data).
+- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
+- Devcode `518` (BYD BYD-S-1P5K-2M) grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
+- Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
+
+### Fixed
+- Devcode `2376` now maps the observed charging-priority value `PV is at the same level as mains` to `Solar and grid equal`. Removed ineffective title mappings while preserving existing sensor identities, readings, and parameter-based State of Charge.
+- Redacted CLI reports no longer retain nested `devise serial number` or record-ID values. Older reports should be regenerated before sharing; control metadata and ordinary readings remain covered by the checksum.
+- Apparent-power readings reported in kVA are now converted to VA, correcting the 1000x understatement on devcode `518` while preserving existing entity IDs and readings already in VA (#37, thanks to @trentas for the hardware report).
+- Unsupported devcode warnings now appear once per devcode until Home Assistant restarts, preventing repeated sensor reads from flooding the logs (#36, thanks to @ufika for reporting).
+- API and CLI signatures now preserve URL-encoded values through HTTP serialization, including usernames with spaces or reserved characters. Saved tokens remain associated with their account platform.
+- Authentication debug tracebacks no longer expose signed request URLs from aiohttp transport errors. CLI authentication clears old tokens before signing a new login. Both clients reject incomplete authentication responses, and Home Assistant cancellation propagates correctly.
+- Explicit local tunnel code `2452` now tries P17/PI18 before SMG even when the collector reports code `258` or `1`. Automatic discovery and ambiguous code hints keep their existing order, and both drivers remain available as fallbacks (#32).
+- A failed inverter on an otherwise healthy local collector no longer has its old readings republished with a fresh timestamp. Hybrid mode falls back to cloud data for that inverter and resumes local data under the same identity when it recovers.
+- Invalid outbound local frames are rejected before allocating a pending request, avoiding orphaned futures and unhandled exceptions on disconnect.
+- Local PI18 telemetry now selects its field layout and raw CRC encoding from the inverter's protocol ID. Corrected battery charging current, PV2 power, PV2 voltage, and firmware version decoding; PI18 no longer polls P17-only `GMN` or `GS2` commands. Existing P17 decoding and entity identifiers are preserved. These corrections address bugs found during #32's investigation; the reported connection failure still needs device evidence.
+- Local ASCII parsing rejects unsupported protocol IDs and malformed length fields, and handles oversized numeric responses as recoverable protocol errors.
+
+### Changed
+- CLI analysis checksums now exclude `collector_alias` as well as `device_sn`, allowing contributors to redact or remove both fields from new exports. Cloud exports, combined reports, and verification share the same checksum implementation. Unchanged older reports still verify; older reports with a redacted alias must be regenerated.
+- Unsupported devcode warnings now explain the raw-data fallback and link to instructions for requesting or adding support with a CLI analysis JSON and inverter model. The support guide includes reporting steps and uses a password prompt instead of asking reporters to share credentials.
+- Local transport debug logs now correlate requests and replies with a random connection ID, transaction IDs, numeric routing fields, byte counts, and match outcomes. Late or unsolicited replies remain rejected; payloads and device identifiers are excluded from these records (#32).
+- GitHub Actions workflows now use the Node.js 24-compatible `actions/checkout@v7` and `actions/setup-python@v7` releases, removing Node.js 20 deprecation warnings from CI.
+- Development formatting and lint commands accept `PYTHON_PATHS` to scope checks to the files being changed.
+- Expanded regression coverage for account platform selection, signed requests and authentication failures, report redaction and checksum compatibility, new device mappings, voltage-control validation, apparent-power unit changes, PI18 decoding, discovery diagnostics, transport matching, and partial inverter outages.
+- Local discovery now distinguishes timeouts, empty responses, unsupported commands, CRC failures, and transport-header mismatches. Debug logs include bounded per-query routing and timing evidence without response payloads. CLI probes save private diagnostic reports on runtime failure as well as success (#32).
+
+### Upgrade notes and known limitations
+- Restart Home Assistant after updating. Existing account backends, entity identities, and recorder history are preserved.
+- Remove any template workaround that multiplies the affected apparent-power sensor by 1000. Previously recorded incorrect apparent-power or PI18 readings are not rewritten.
+- Devcode `2376` automations matching the raw charging-priority state `PV is at the same level as mains` should use `Solar and grid equal` after updating.
+- Regenerate older analysis reports with the updated CLI and `--redacted` before sharing; blank top-level identifiers do not remove serial numbers from older nested samples. Review unexpected vendor fields and free text before uploading.
+- Devcode `2477` support is based on the contributor's reported 48 V / 5 kW unit. The inverter brand/model and hardware write verification remain unconfirmed. Voltage controls remain unavailable when rated metadata or API options cannot be validated.
+- Local compatibility for the setups in [#32](https://github.com/andreas-glaser/ha-dessmonitor/issues/32) and [#39](https://github.com/andreas-glaser/ha-dessmonitor/issues/39) remains under investigation. PI18 decoder corrections do not establish support for a collector/inverter that still fails discovery.
+
 ## [2.4.0-rc.3] - 2026-09-14
 
 Third release candidate for 2.4.0, including all changes from [RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.4.0-rc.2). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.3/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
@@ -406,7 +448,8 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.3...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0
 [2.4.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...v2.4.0-rc.3
 [2.4.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.1...v2.4.0-rc.2
 [2.4.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0-rc.1
