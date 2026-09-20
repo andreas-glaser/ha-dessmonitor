@@ -1,13 +1,13 @@
 # DessMonitor CLI Tool
 
-A Python CLI tool for DessMonitor / SmartESS and SmartClient for Solar / ShineMonitor API development and device analysis. This tool helps contributors query DessMonitor API endpoints to create device support configurations for the Home Assistant integration.
+A Python CLI tool for DessMonitor and ShineMonitor API development and device analysis. This tool helps contributors query either platform's API endpoints to create device support configurations for the Home Assistant integration.
 
 ## Purpose
 
 This tool is designed for:
 - **Integration Contributors**: Developing device support for new DessMonitor hardware
 - **Device Analysis**: Understanding sensor capabilities and data structures
-- **API Exploration**: Testing DessMonitor API endpoints and responses
+- **API Exploration**: Testing DessMonitor and ShineMonitor API endpoints and responses
 - **DevCode Discovery**: Finding device codes needed for Home Assistant integration mapping
 
 ## Installation
@@ -31,7 +31,7 @@ python3 dessmonitor_cli.py auth --username YOUR_USERNAME --company-key YOUR_COMP
 ## Commands
 
 ### `auth` - Authentication
-Choose the platform and store credentials for subsequent commands. DessMonitor / SmartESS remains the default; existing credential files continue to use it.
+Choose the platform and store credentials for subsequent commands. DessMonitor remains the default; existing credential files continue to use it.
 
 ```bash
 python3 dessmonitor_cli.py auth --username USER --company-key KEY
@@ -42,13 +42,13 @@ python3 dessmonitor_cli.py auth --username USER --company-key KEY
 python3 dessmonitor_cli.py auth --username your_email@example.com --company-key your_company_key
 ```
 
-For SmartClient for Solar / ShineMonitor:
+For ShineMonitor:
 
 ```bash
 python3 dessmonitor_cli.py auth --username USER --api-profile shinemonitor_solar
 ```
 
-`--api-profile dessmonitor_ess` explicitly selects the existing DessMonitor / SmartESS
+`--api-profile dessmonitor_ess` explicitly selects the existing DessMonitor
 service. `--company-key` is optional and uses the same default as Home Assistant.
 The CLI remembers the profile for `collectors`, `devices`, `data`, `analyze`, and
 control commands. Run `auth` again to change accounts or platforms; this replaces

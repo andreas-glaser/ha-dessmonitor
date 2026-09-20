@@ -1,6 +1,6 @@
 # Adding a New Devcode
 
-This guide explains how to request or add support for a new DessMonitor devcode.
+This guide explains how to request or add device support for DessMonitor or ShineMonitor, including sensor mappings and supported inverter settings.
 
 ## Request support
 
@@ -17,8 +17,9 @@ You do not need to write Python code to request support:
    computer with Python installed, following the commands below.
 3. Attach the JSON to the matching issue, or
    [open a support request](https://github.com/andreas-glaser/ha-dessmonitor/issues/new).
-   Include your devcode, inverter brand and model, integration version, and any
-   missing or incorrect readings compared with DessMonitor.
+   Include your devcode, inverter brand and model, integration version, account
+   platform, and any missing or incorrect readings or settings compared with
+   that platform's website or mobile app.
 
 Share only the analysis JSON, never your password or the CLI credentials file
 (`.dessmonitor_cli_config.json`). Use `--redacted`, as shown in every analysis example,
@@ -35,14 +36,14 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 
 ## Background
 
-- The **devcode** identifies the *data collector / gateway* (the WiFi/4G dongle that talks to the DessMonitor cloud), not the inverter itself. The same inverter family can ship with different collectors, and the same collector can be rebranded across several inverter brands.
+- The **devcode** identifies the *data collector / gateway* (the WiFi/4G dongle that talks to the monitoring platform), not the inverter itself. The same inverter family can ship with different collectors, and the same collector can be rebranded across several inverter brands.
 - Each supported devcode has a file `custom_components/dessmonitor/device_support/devcode_XXXX.py` that tells the integration how to translate that collector's API output into canonical sensor names, operating modes, and priority labels.
 - The registry in `device_support/device_registry.py` imports the supported devcode modules. Sensors call `apply_devcode_transformations()` when reading values.
 - Unknown devcodes still work through a generic fallback (raw titles and values, no enum mapping), so the goal of adding a devcode is to clean up names, normalise enum values, and expose sensors that the API hides behind verbose or typo-laden titles.
 
 ## Prerequisites
 
-- An `analysis.json` file the reporter produced with the CLI tool using their own DessMonitor account. Contributors do not need the reporter's credentials.
+- An `analysis.json` file the reporter produced with the CLI tool using their own DessMonitor or ShineMonitor account. Contributors do not need the reporter's credentials.
 - Python 3.11+ with the CLI dependencies installed as shown below.
 - A local checkout of the `dev` branch.
 
@@ -81,8 +82,8 @@ Use the same username and company key as your Home Assistant integration. The
 `collectors`, then use the serial number for the matching devcode from `devices`
 as `DEVICE_SN`. Replace `XXXX` in the output filename with your devcode.
 
-For SmartClient for Solar / ShineMonitor, add `--api-profile shinemonitor_solar`
-to `auth`. Omit it for DessMonitor / SmartESS, the default. The CLI prompts for
+For ShineMonitor, add `--api-profile shinemonitor_solar`
+to `auth`. Omit it for DessMonitor, the default. The CLI prompts for
 the password and remembers the chosen profile for subsequent commands.
 
 The `analyze` command writes a structured JSON file containing sensor titles, observed operating mode / priority values, unit patterns, a sample of live data, device control fields, and an HMAC checksum. The reporter should attach that file to the GitHub issue or PR.

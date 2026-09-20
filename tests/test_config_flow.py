@@ -706,10 +706,10 @@ async def test_platform_selector_defaults_to_existing_service(hass, step):
     field = _serialized_form_field(result, CONF_API_PROFILE)
     options = field["selector"]["select"]["options"]
     assert options == [
-        {"value": "dessmonitor_ess", "label": "DessMonitor / SmartESS (default)"},
+        {"value": "dessmonitor_ess", "label": "DessMonitor (default)"},
         {
             "value": "shinemonitor_solar",
-            "label": "SmartClient for Solar / ShineMonitor",
+            "label": "ShineMonitor",
         },
     ]
 

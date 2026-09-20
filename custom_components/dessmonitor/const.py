@@ -75,8 +75,8 @@ LEGACY_ACCOUNT_MODE_MAP: Final = {
 }
 
 API_PROFILE_OPTIONS: Final = {
-    API_PROFILE_DESSMONITOR_ESS: "DessMonitor / SmartESS (default)",
-    API_PROFILE_SHINEMONITOR_SOLAR: "SmartClient for Solar / ShineMonitor",
+    API_PROFILE_DESSMONITOR_ESS: "DessMonitor (default)",
+    API_PROFILE_SHINEMONITOR_SOLAR: "ShineMonitor",
 }
 
 # Both backends accept the integration's own application identity.

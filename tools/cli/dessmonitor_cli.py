@@ -2,7 +2,7 @@
 """
 DessMonitor CLI Tool
 
-A Python CLI tool to help contributors query DessMonitor API endpoints
+A Python CLI tool to help contributors query DessMonitor and ShineMonitor API endpoints
 for creating devcode support configurations.
 
 Usage:
@@ -992,12 +992,12 @@ def setup_argparser() -> argparse.ArgumentParser:
 
     # Auth command
     auth_parser = subparsers.add_parser(
-        "auth", help="Authenticate with DessMonitor API"
+        "auth", help="Authenticate with the selected cloud platform"
     )
-    auth_parser.add_argument("--username", required=True, help="DessMonitor username")
+    auth_parser.add_argument("--username", required=True, help="Account username")
     auth_parser.add_argument(
         "--password",
-        help="DessMonitor password (omit to enter it without shell-history exposure)",
+        help="Account password (omit to enter it without shell-history exposure)",
     )
     auth_parser.add_argument(
         "--company-key",
@@ -1008,8 +1008,8 @@ def setup_argparser() -> argparse.ArgumentParser:
         "--api-profile",
         choices=list(_CONSTANTS.API_PROFILES),
         default=_CONSTANTS.DEFAULT_API_PROFILE,
-        help="Account platform: dessmonitor_ess = DessMonitor / SmartESS (default); "
-        "shinemonitor_solar = SmartClient for Solar / ShineMonitor",
+        help="Account platform: dessmonitor_ess = DessMonitor (default); "
+        "shinemonitor_solar = ShineMonitor",
     )
 
     # Collectors command

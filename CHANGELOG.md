@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Simplified account platform names to DessMonitor and ShineMonitor throughout setup, CLI help, and documentation. SmartESS and SmartClient for Solar are identified as mobile clients; existing backend identifiers and account data are unchanged.
+- Renamed the HACS listing to DessMonitor / ShineMonitor and clarified support for monitoring and configuring supported inverter settings. Cloud and hybrid modes provide cloud controls; local-only monitoring remains read-only.
+- Reorganized the main README to consolidate installation, polling, troubleshooting, and contributor guidance. Added web and app-store links, compatibility guidance for rebranded apps, and a model list based on the device profiles.
+
+### Fixed
+- Corrected Energy Dashboard guidance to distinguish power readings from energy totals, removed a misleading daily-production automation, and replaced unsupported security claims and fixed collection-acceleration pricing with accurate guidance.
+
 ## [2.4.0] - 2026-09-15
 
 This stable release includes all changes since 2.3.0, including everything shipped in 2.4.0-rc.1, 2.4.0-rc.2, and 2.4.0-rc.3.
@@ -15,7 +23,7 @@ This stable release includes all changes since 2.3.0, including everything shipp
 - Devcode `2477` cloud telemetry and priority mappings, with bulk, float, equalization, battery/utility return, and low cut-off voltage dropdowns filtered to the reported 24 V or 48 V rating. Options refresh when rated metadata changes; invalid or unknown ratings make the affected controls unavailable and block writes until valid data arrives. Inverter brand/model and hardware write verification remain unconfirmed (#40, thanks to @albertdb for the analysis data).
 - CLI `analyze --redacted` blanks `device_sn`, `collector_alias`, and known identifying values in telemetry, parameters, and unit-pattern samples before computing the checksum for JSON output and template input. Combined cloud/local reports share this sanitization. All documented analysis examples recommend the flag for sharing; combining it with `--raw` is rejected.
 - Devcode `6416` (PowMr POW-HVM6.2M-48V-N) support for State of Charge, grid readings, both PV inputs and total PV power, load percentage, operating mode, and priority mappings. State of Charge uses existing telemetry without an extra API request (#36, thanks to @ufika for the CLI analysis data).
-- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
+- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor remains the default, with ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
 - Devcode `518` (BYD BYD-S-1P5K-2M) grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
@@ -93,7 +101,7 @@ Second release candidate for 2.4.0, including all changes from [RC1](https://git
 First release candidate for 2.4.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
 
 ### Added
-- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
+- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor remains the default, with ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
 - Devcode `518` grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 

@@ -5,15 +5,15 @@
         "title": "DessMonitor Setup",
         "description": "Choose how this collector should communicate with Home Assistant.",
         "menu_options": {
-          "cloud": "DessMonitor cloud API",
-          "hybrid": "DessMonitor API + preferred local telemetry",
+          "cloud": "Cloud API",
+          "hybrid": "Cloud API + preferred local telemetry",
           "local": "Local network only (read-only)",
           "local_advanced": "Local network (advanced)"
         }
       },
       "hybrid": {
-        "title": "DessMonitor API + Local Telemetry",
-        "description": "Connect your DessMonitor account first. The API remains the source for device identity, metadata, fallback telemetry, and controls; the next step adds faster local read-only telemetry.",
+        "title": "Cloud API + Local Telemetry",
+        "description": "Sign in to your DessMonitor or ShineMonitor account. Next, add local monitoring for faster readings. The cloud provides device information, settings, and backup readings.",
         "data": {
           "username": "Username",
           "password": "Password",
@@ -22,16 +22,16 @@
           "api_profile": "Account platform"
         },
         "data_description": {
-          "username": "Your DessMonitor account username",
-          "password": "Your DessMonitor account password",
+          "username": "Your account username on the selected platform",
+          "password": "Your account password on the selected platform",
           "company_key": "Your company/vendor key (default: {default_company_key})",
           "update_interval": "How often to refresh cloud fallback data. Local telemetry uses its own faster interval.",
-          "api_profile": "Choose the service you normally sign in to. Keep the default for DessMonitor or SmartESS accounts. Choose SmartClient for Solar / ShineMonitor if that is the app you use."
+          "api_profile": "Choose DessMonitor (default) for SmartESS or compatible rebranded apps. Choose ShineMonitor for SmartClient for Solar."
         }
       },
       "cloud": {
-        "title": "DessMonitor Cloud",
-        "description": "Connect through the DessMonitor cloud service.",
+        "title": "Cloud Connection",
+        "description": "Choose DessMonitor or ShineMonitor and sign in with the account you use on its website or mobile app.",
         "data": {
           "username": "Username",
           "password": "Password",
@@ -40,11 +40,11 @@
           "api_profile": "Account platform"
         },
         "data_description": {
-          "username": "Your DessMonitor account username",
-          "password": "Your DessMonitor account password",
+          "username": "Your account username on the selected platform",
+          "password": "Your account password on the selected platform",
           "company_key": "Your company/vendor key (default: {default_company_key})",
-          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes).",
-          "api_profile": "Choose the service you normally sign in to. Keep the default for DessMonitor or SmartESS accounts. Choose SmartClient for Solar / ShineMonitor if that is the app you use."
+          "update_interval": "How often to fetch data from the selected platform. Default is 300 seconds (5 minutes).",
+          "api_profile": "Choose DessMonitor (default) for SmartESS or compatible rebranded apps. Choose ShineMonitor for SmartClient for Solar."
         }
       },
       "local": {
@@ -111,7 +111,7 @@
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to DessMonitor API. Please check your internet connection.",
+      "cannot_connect": "Failed to connect. Please check your network connection and settings.",
       "invalid_auth": "Invalid username or password. Please verify your credentials.",
       "invalid_ip": "Enter a private LAN IPv4 address (10.x, 172.16-31.x, or 192.168.x).",
       "invalid_ip_list": "Enter between 1 and 16 private collector IPv4 addresses separated by commas, spaces, or new lines.",
@@ -128,7 +128,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "DessMonitor API Options",
+        "title": "Cloud API Options",
         "description": "The API remains the canonical source for identity, metadata, fallback data, and controls. Local telemetry uses its own faster polling interval.",
         "data": {
           "update_interval": "Cloud API interval",

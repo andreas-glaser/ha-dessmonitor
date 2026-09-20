@@ -56,7 +56,7 @@ def compute_range_and_step(
     Assistant's coarse default step of ``1`` (issue #23).
 
     For the range we trust the API hint only when it is present and actually
-    brackets the device's current value. The DessMonitor/SmartESS API has been
+    brackets the device's current value. The DessMonitor API has been
     observed returning hints that are wrong or missing for charging-voltage and
     current controls (e.g. a ``25-30V`` hint on a 48V system whose live setting
     is ``57.6V`` (issue #22), or no hint at all so HA defaults to ``0-100``

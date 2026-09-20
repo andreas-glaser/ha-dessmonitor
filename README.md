@@ -1,531 +1,218 @@
-# DessMonitor Home Assistant Integration
+# DessMonitor / ShineMonitor for Home Assistant
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
-
 [![hacs][hacsbadge]][hacs]
 [![HACS Action][hacs-action-shield]][hacs-action]
 [![Hassfest][hassfest-shield]][hassfest]
 
-[![Project Maintenance][maintenance-shield]][user_profile]
-[![Community Forum][forum-shield]][forum]
+Monitor your solar inverter and configure supported settings in Home Assistant through **DessMonitor** or **ShineMonitor**. Use the same account as SmartESS, SmartClient for Solar, or a compatible rebranded app.
 
-A Home Assistant integration for monitoring solar inverters through DessMonitor / SmartESS or SmartClient for Solar / ShineMonitor. Cloud polling defaults to 5 minutes.
+- Track solar production, battery status, grid use, and inverter health across multiple devices.
+- Adjust supported charging priorities, battery settings, and current limits from dashboards and automations.
+- Discover devices on your cloud account and set up the integration through the UI.
+- Optionally use faster, read-only local monitoring on compatible hardware, with cloud fallback in hybrid mode.
 
-> **Also known as:** SmartESS, WatchPower, Energy-Mate, Fronus Solar, or other Eybond cloud-based monitoring platforms. Use the default profile for accounts on the DessMonitor web platform (www.dessmonitor.com). SmartClient for Solar / ShineMonitor accounts use the separate solar profile.
+## Contents
 
-## 🧰 Supported Inverter Brands
+- [Platforms and mobile apps](#platforms-and-mobile-apps)
+- [Supported inverters](#supported-inverters)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Sensors and inverter settings](#sensors-and-inverter-settings)
+- [Screenshots](#screenshots)
+- [Energy Dashboard](#energy-dashboard)
+- [Automation example](#automation-example)
+- [Troubleshooting](#troubleshooting)
+- [Security and privacy](#security-and-privacy)
+- [Support and contributing](#support-and-contributing)
 
-DessMonitor/SmartESS data collectors are typically installed alongside inverter systems from a variety of brands. The default profile targets the DessMonitor backend and works across many rebrands/OEM models that use that platform. The solar profile adds ShineMonitor cloud telemetry, including devcode 518 grid-tie inverters.
+## Platforms and Mobile Apps
 
-- PowMr
-- EASUN Power
-- MPP Solar
-- MUST Power
-- Voltronic Power “Axpert” rebrands (various regional labels)
-- Fronus Solar
+Choose **DessMonitor (default)** or **ShineMonitor** as the account platform during setup. The mobile apps below are clients of those platforms:
 
-Notes:
-- This is a non-exhaustive list. Many Axpert/Voltronic-derived models and regional rebrands work when connected via a DessMonitor/SmartESS data collector.
-- If your installer provided SmartESS or DessMonitor app access, or your system uses WatchPower/Energy‑Mate and logs into dessmonitor.com, it’s very likely supported.
-- Don’t see your brand? If it reports to https://www.dessmonitor.com/ with a collector on your account, it should work. Open an issue with your device details if unsure.
+| Web app | Mobile app | Android | iOS |
+|---|---|---|---|
+| [DessMonitor](https://www.dessmonitor.com/) | SmartESS | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient.ess) | [App Store](https://apps.apple.com/us/app/smartess/id1334656760) |
+| [ShineMonitor](https://www.shinemonitor.com/) | SmartClient for Solar | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient) | [App Store](https://apps.apple.com/us/app/smartclient-for-solar/id1070155085) |
+| [DessMonitor](https://www.dessmonitor.com/) (see note) | WatchPower (Wi-Fi) | [Google Play](https://play.google.com/store/apps/details?id=wifiapp.volfw.watchpower) | [App Store](https://apps.apple.com/us/app/watchpower/id1487569321) |
+| [DessMonitor](https://www.dessmonitor.com/) (see note) | Energy-Mate | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient.energymate) | [App Store](https://apps.apple.com/us/app/energy-mate/id1672569936) |
+| [DessMonitor](https://www.dessmonitor.com/) (see note) | Fronus Solar | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.fronussolar) | No current listing verified |
 
-## 📚 Table of Contents
+SmartClient for Solar is listed as **SmartClient** on Google Play.
 
-- [🚀 Quick Start](#-quick-start)
-- [🌟 Features](#-features)
-- [🖼️ Screenshots](#-screenshots)
-- [📊 Available Sensors](#-available-sensors)
-- [🚀 Installation](#-installation)
-- [⚙️ Configuration](#%EF%B8%8F-configuration)
-- [🔧 Advanced Configuration](#-advanced-configuration)
-- [🛠️ Troubleshooting](#%EF%B8%8F-troubleshooting)
-- [🛠️ Development Tools](#%EF%B8%8F-development-tools)
-- [🤝 Contributing](#-contributing)
-- [📞 Support](#-support)
+**Rebranded app compatibility:** For WatchPower (Wi-Fi), Energy-Mate, and Fronus Solar, first check that your account signs in at [dessmonitor.com](https://www.dessmonitor.com/) and shows your collector. If it does, choose DessMonitor in setup. The app name alone does not confirm compatibility. The WatchPower links above are for Wi-Fi monitoring, not the separate WatchPower BLE app.
 
-## 🚀 Quick Start
+<a id="current-device-support"></a>
 
-**New to DessMonitor Integration? Get started in 3 steps:**
+## Supported Inverters
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andreas-glaser&repository=ha-dessmonitor&category=Integration)
-1. **Install via HACS**: 
-2. **Restart** Home Assistant
-3. **Add Integration**: Go to Settings → Devices & Services → Add Integration → "DessMonitor"
+The device profiles include known models from ANENJI, Axpert, BYD, EASUN, MUST, PowMr, SRNE, and WKS.
 
-**Already have an account?** Start with the DessMonitor API, then optionally
-add preferred local telemetry in the same guided setup. Local-only setup can
-skip account credentials entirely.
+**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, MUST PH19-6048 EXP, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
 
-## 🌟 Features
+Other profiles cover rebranded Axpert PI18 inverters and units whose exact model is not yet recorded. See the [device support reference](custom_components/dessmonitor/device_support/README.md#currently-supported-collectors) for the full devcode list and known pairings.
 
-- Periodic monitoring of multiple inverters/collectors (5-minute default)
-- Optional read-only local telemetry with 2-60 second polling
-- Preferred-local hybrid mode with automatic cloud and cached-cloud fallback
-- 1-minute updates available with Detailed Data Collection Acceleration (￥144 per collector)
-- Comprehensive sensor data: Power, voltage, current, frequency, temperature, and more
-- **Device configuration control** - Change inverter settings directly from Home Assistant
-- UI-based configuration - No YAML editing required
-- Automatic device discovery for all inverters on your account
-- Configurable update intervals (1-60 minutes based on your subscription)
-- Secure token-based authentication with automatic renewal
-- Energy Dashboard integration for production/consumption tracking
-- Smart device naming with collector part numbers for easy identification
+Sensors, cloud controls, and local monitoring depend on the inverter and collector model. A listed model does not imply support for every feature or local protocol. Unrecognized devices may expose basic readings without model-specific names or value mappings. To help add support for yours, follow the [support request guide](docs/ADDING_DEVCODES.md#request-support).
 
-Local mode supports strict PI17/PI18 and standard SMG/Modbus telemetry without
-adding local write controls. Existing cloud users can enable preferred-local
-telemetry without changing entity IDs or losing recorder history. See the
-[local and hybrid setup guide](docs/LOCAL_MODE.md) for networking, security,
-supported hardware, firewall directions, and the sanitized compatibility
-probe. Local mode requires outbound UDP `58899` from Home Assistant to each
-collector and inbound TCP `8899` from each collector to Home Assistant. Allow
-only the reserved private collector addresses and never forward these ports
-from the internet.
+## Installation
 
-## 🖼️ Screenshots
+Requires **Home Assistant 2024.1.0 or newer**. Cloud and hybrid modes need an internet connection and a DessMonitor or ShineMonitor account that shows your inverter. Local-only mode needs compatible hardware and fixed private LAN addresses; see the [local setup requirements](docs/LOCAL_MODE.md#before-setup).
+
+### HACS (recommended)
+
+With [HACS](https://www.hacs.xyz/) installed, use this button to open the repository:
+
+[![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andreas-glaser&repository=ha-dessmonitor&category=Integration)
+
+Alternatively, add `https://github.com/andreas-glaser/ha-dessmonitor` as a custom repository in HACS with category **Integration**.
+
+1. Find **DessMonitor / ShineMonitor** in HACS and download the latest stable release.
+2. Restart Home Assistant.
+3. Continue with [Configuration](#configuration).
+
+### Manual installation
+
+1. Download `ha-dessmonitor.zip` from the [latest stable release](https://github.com/andreas-glaser/ha-dessmonitor/releases/latest).
+2. Extract its contents into `config/custom_components/dessmonitor/`. The folder should contain `manifest.json` directly.
+3. Restart Home Assistant, then continue with [Configuration](#configuration).
+
+## Configuration
+
+Go to **Settings > Devices & Services > Add Integration**, search for **DessMonitor**, and choose a connection mode:
+
+| Mode | Monitoring | Inverter settings |
+|---|---|---|
+| Cloud API | Reads from the selected platform | Supported controls through the cloud |
+| Cloud API + preferred local telemetry | Prefers local readings, with cloud fallback | Supported controls through the cloud |
+| Local network only (read-only) | Reads directly from compatible collectors; no account required | Not available |
+
+### Cloud account
+
+For cloud or hybrid mode, enter:
+
+- **Account platform:** DessMonitor or ShineMonitor, matching the website where your account shows the collector. See the [app table](#platforms-and-mobile-apps) if unsure.
+- **Username and password:** Your account credentials.
+- **Company key:** Leave the default unless your installer provides a different key.
+- **Update interval:** Start with the default of 5 minutes.
+
+For hybrid or local-only mode, follow the [local and hybrid setup guide](docs/LOCAL_MODE.md). It covers supported protocols, collector discovery, fixed addresses, and required firewall rules. Existing cloud users can enable preferred local telemetry while keeping their entity IDs and history.
+
+### Update intervals
+
+Cloud polling is configurable from **1 to 60 minutes**, with a **5-minute default**. Polling more often does not make the platform collect new readings faster. DessMonitor offers a collection-acceleration option on eligible accounts; check your account for availability and current pricing before choosing a 1-minute interval.
+
+Local polling is configurable from **2 to 60 seconds** on compatible hardware. To change polling or connection options after setup, open the integration under **Settings > Devices & Services** and choose **Configure**.
+
+## Sensors and Inverter Settings
+
+### Available sensors
+
+The exact entities and units vary by device. Common readings include:
+
+| Category | Examples |
+|---|---|
+| Power | Inverter output, solar/PV, battery, grid, PV charging, and AC charging (W or kW); apparent output power (VA) |
+| Electrical | Battery, solar, and output voltages (V); charging and output currents (A); grid and output frequency (Hz) |
+| Energy | Energy Today and Energy Total (kWh), where reported by the device |
+| Status | Load percentage, operating mode, connectivity, and inverter temperatures |
+
+Diagnostic sensors can also show configured values such as output priority, charger source priority, and output voltage. These are disabled by default. To enable one, open the inverter's device page under **Settings > Devices & Services > DessMonitor**, select the disabled entity, and enable it in its settings.
+
+### Device Configuration Entities
+
+In cloud and hybrid modes, supported settings appear as **select**, **number**, and **button** entities on the inverter's device page. You can also use them in dashboards and automations.
+
+| Entity type | Examples, when supported |
+|---|---|
+| Select | Output priority, charger source priority, battery type, buzzer, output voltage/frequency, backlight, and power saving |
+| Number | Charging voltage targets, maximum charging currents, low-voltage and SOC protection thresholds, and equalization timing |
+| Button | Clear records, reset user settings, start equalization charging, and exit fault mode |
+
+Available controls, options, and numeric ranges come from the device. Control discovery runs in the background, so settings may appear after the first sensor readings. Changes always use the cloud API, including in hybrid mode; local-only mode provides sensors without configuration controls.
+
+## Screenshots
 
 ![DessMonitor integration overview](docs/assets/screenshot1.png)
 
 ![Device details and sensors](docs/assets/screenshot2.png)
 
-## 📊 Available Sensors
+## Energy Dashboard
 
-### Power Monitoring
-- **Output Power** (W) - Current inverter output
-- **Total PV Power** (kW) - Solar output at last update interval
-- **Battery Power** (W) - Charging/discharging power (+ = charging, - = discharging)  
-- **Solar Power** (W) - Current solar panel generation
-- **Grid Power** (W) - Grid import/export power
-- **PV Charge Power** (W) - Solar charging power to batteries
-- **AC Charging Power** (W) - Grid charging power to batteries
+Open **Settings > Dashboards > Energy** and choose sensors that measure the appropriate energy flow:
 
-### Electrical Measurements
-- **Voltages** (V) - Output, Battery, Solar voltages
-- **Currents** (A) - Output, Battery, Solar currents
-- **Frequencies** (Hz) - Output and Grid frequency monitoring
+- Use an **energy sensor in kWh** for solar production, grid import/export, or battery charge/discharge totals. Check what the sensor represents on your device; not every model exposes all these totals.
+- Use **power sensors in W or kW** only in fields that explicitly accept power. They measure the current rate, not accumulated energy.
+- If the device only reports power, Home Assistant's [Integral helper](https://www.home-assistant.io/integrations/integration/) can estimate energy over time. Grid import/export and battery charge/discharge need separate directional totals; a single signed net-power reading does not provide both.
 
-### Energy Tracking
-- **Energy Today** (kWh) - Daily energy production per inverter
-- **Energy Total** (kWh) - Lifetime energy production per inverter
-- **Output Apparent Power** (VA) - Total apparent power output
+See Home Assistant's [Energy Dashboard requirements](https://www.home-assistant.io/docs/energy/faq/) if a sensor does not appear in the selector.
 
-### System Status  
-- **Load Percentage** (%) - Current system load
-- **Operating Mode** - Off-Grid, Grid, Hybrid, Standby, Fault, or Shutdown Approaching
-- **Device Connectivity** - Online/offline status
-- **Temperatures** (°C) - Inverter and DC module temperatures
+## Automation Example
 
-### Diagnostic Sensors (Disabled by Default)
-The integration provides several diagnostic sensors that show battery and inverter configuration settings. These sensors are **disabled by default** to keep your dashboard clean, but can be selectively enabled as needed:
+This automation creates a Home Assistant notification when inverter load rises above 90%. Paste it into an automation's YAML editor and replace the example entity ID with your load sensor:
 
-- **Output Priority** - Power source priority setting (SBU, SUB, UTI, SOL)
-- **Charger Source Priority** - Battery charging source preference
-- **Output Voltage Setting** (V) - Configured output voltage target (e.g., 220.0V)
-
-#### Enabling Diagnostic Sensors
-1. Go to **Settings** > **Devices & Services** > **DessMonitor**
-2. Click on your device (e.g., "Inverter 1")
-3. Find the diagnostic sensor you want to enable
-4. Click the sensor and toggle **"Enable"**
-5. The sensor will now appear in your dashboard and be available for automations
-
-### Additional Measurement Sensors
-- **AC Charging Current** (A) - Current from grid charging
-- **PV Charging Current** (A) - Current from solar charging
-
-### Device Configuration Entities
-The integration exposes inverter settings as controllable Home Assistant entities. All current values are read from the device at startup.
-
-**Select entities** - Settings with predefined options:
-- **Output Priority** - Power source priority (SBU, SUB, UTI, SOL, SUF)
-- **Charger Source Priority** - Charging source preference (Utility First, PV First, etc.)
-- **Battery Type** - Battery chemistry setting (AGM, FLD, USER, Li1-Li4)
-- **Buzzer Mode** - Audible alert configuration
-- **Output Voltage / Frequency** - Output electrical configuration
-- **Boot Method, Backlight, Power Saving Mode**, and more
-
-**Number entities** - Numeric settings with min/max ranges from the device:
-- **Bulk / Floating / EQ Charging Voltage** (V) - Battery charging voltage targets
-- **Max Charging Current / Max AC Charging Current** (A)
-- **Low DC Protection Voltage** (V) - Per-mode battery protection thresholds
-- **SOC Protection Values** (%) - Battery discharge limits
-- **EQ Charging Time / Interval** (min/day)
-
-**Button entities** - One-shot device actions:
-- **Clear Record** - Clear device logs
-- **Reset User Settings** - Restore factory defaults
-- **Forced EQ Charging** - Trigger an EQ charge cycle
-- **Exit Fault Mode** - Clear fault lock state
-
-## 🚀 Installation
-
-### Method 1: HACS (Recommended)
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andreas-glaser&repository=ha-dessmonitor&category=Integration)
-
-1. **Install HACS** if you haven't already
-2. **Click the button above** or add custom repository manually:
-   - Go to HACS > Integrations > ⋮ > Custom repositories
-   - Add: `https://github.com/andreas-glaser/ha-dessmonitor`
-   - Category: Integration
-3. **Install**: Search for "DessMonitor" and install
-4. **Restart** Home Assistant
-5. **Configure**: Settings > Devices & Services > Add Integration > "DessMonitor"
-
-### Method 2: Manual Installation
-
-1. **Download** the `custom_components/dessmonitor` folder
-2. **Copy** to your Home Assistant `config/custom_components/` directory
-3. **Restart** Home Assistant
-4. **Configure**: Settings > Devices & Services > Add Integration > "DessMonitor"
-
-## ⚙️ Configuration
-
-### Initial Setup
-
-1. Navigate to **Settings** > **Devices & Services**
-2. Click **Add Integration** and search for "DessMonitor"
-3. Choose **DessMonitor cloud API**, **API + preferred local telemetry**, or
-   read-only **Local network only**.
-4. For either API path, enter your credentials:
-   - **Account platform**: Keep **DessMonitor / SmartESS (default)** for existing accounts. Choose **SmartClient for Solar / ShineMonitor** if that is the service you use.
-   - **Username**: Your account username
-   - **Password**: Your account password
-   - **Company Key**: Leave default unless specified by installer
-   - **Update Interval**: Choose based on your DessMonitor subscription:
-     - **1 minute**: Requires "Detailed Data Collection Acceleration" (￥144/collector) from DessMonitor
-     - **5 minutes**: Standard update rate for all accounts (recommended default)
-     - **10+ minutes**: Reduced frequency to minimize API usage
-
-Existing installations keep their current profile, account identity, entities, and
-history automatically. No reconfiguration or migration is required. The platform
-selector is available in both cloud and hybrid setup. Adding the solar cloud
-profile does not establish local-protocol or write-control support for a device;
-devcode 518 has contributor-verified cloud telemetry.
-
-### Update Interval Configuration
-
-**For the DessMonitor / SmartESS profile**: The 1-minute update interval only works if you have purchased the "Detailed Data Collection Acceleration" upgrade from the DessMonitor website. This is a one-time fee of ￥144.00 RMB per data collector. Without this upgrade, setting the interval to 1 minute will not provide faster updates and may cause unnecessary API calls.
-
-**To purchase Detailed Data Collection Acceleration**:
-1. Log into your DessMonitor web account at www.dessmonitor.com
-2. Navigate to your account settings or subscription page
-3. Purchase the "Detailed Data Collection Acceleration" upgrade (￥144 per collector)
-4. Once activated, you can set the integration to 1-minute updates
-
-**To modify update interval**:
-1. Go to **Settings** > **Devices & Services**
-2. Find your DessMonitor integration
-3. Click the **Configure** button (gear icon)
-4. Adjust settings and click **Submit**
-
-## 🔧 Advanced Configuration
-
-### Energy Dashboard Integration
-
-To add DessMonitor data to Home Assistant's Energy Dashboard:
-
-1. Navigate to **Settings** > **Dashboards** > **Energy**
-2. Configure energy sources:
-   - **Solar Production**: Add your `*_total_pv_power` sensors (recommended) or `*_solar_power` sensors
-   - **Battery Storage**: Add your `*_battery_power` sensors
-   - **Grid Consumption**: Add your `*_grid_power` sensors
-   - **Individual Device Production**: Use `*_energy_today` sensors for daily tracking
-
-### Automation Examples
-
-#### Battery Low Alert
 ```yaml
-automation:
-  - alias: "DessMonitor Battery Low Warning"
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.inverter_1_battery_voltage
-        below: 48
-    action:
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "⚠️ Battery Low"
-          message: "Battery voltage: {{ states('sensor.inverter_1_battery_voltage') }}V"
+alias: "Inverter high load alert"
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.inverter_1_load_percentage
+    above: 90
+action:
+  - service: persistent_notification.create
+    data:
+      title: "High inverter load"
+      message: "Inverter load is {{ states('sensor.inverter_1_load_percentage') }}%."
+mode: single
 ```
 
-#### High Load Notification
-```yaml
-automation:
-  - alias: "DessMonitor High Load Alert"
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.inverter_1_load_percentage
-        above: 90
-    action:
-      - service: notify.persistent_notification
-        data:
-          title: "🔥 High Load Warning"
-          message: "System load at {{ states('sensor.inverter_1_load_percentage') }}%"
-```
+The trigger fires when the reading crosses the threshold. Adjust the threshold to suit your system. You can also build automations with supported inverter setting entities in Home Assistant's automation editor.
 
-#### Daily Solar Summary
-```yaml
-automation:
-  - alias: "DessMonitor Daily Solar Summary"
-    trigger:
-      - platform: time
-        at: "18:00:00"
-    action:
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "☀️ Today's Solar Production"
-          message: |
-            Total solar power: 
-            {%- set ns = namespace(total=0) -%}
-            {%- for entity_id in states.sensor -%}
-              {%- if 'solar_power' in entity_id.entity_id and 'dessmonitor' in entity_id.entity_id -%}
-                {%- set ns.total = ns.total + (entity_id.state | float(0)) -%}
-              {%- endif -%}
-            {%- endfor -%}
-            {{ ns.total }}W across all inverters
-```
+## Troubleshooting
 
-#### Configuration Change Alert (Diagnostic Sensors)
-```yaml
-automation:
-  - alias: "DessMonitor Configuration Change Alert"
-    trigger:
-      - platform: state
-        entity_id: 
-          - sensor.inverter_1_output_priority
-          - sensor.inverter_1_charger_source_priority
-    condition:
-      - condition: template
-        value_template: "{{ trigger.from_state.state != trigger.to_state.state }}"
-    action:
-      - service: notify.persistent_notification
-        data:
-          title: "⚙️ Inverter Configuration Changed"
-          message: |
-            {{ trigger.to_state.attributes.friendly_name }} changed from 
-            "{{ trigger.from_state.state }}" to "{{ trigger.to_state.state }}"
-```
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-**Integration not found after installation**
-- Ensure files are in `config/custom_components/dessmonitor/`
-- Restart Home Assistant completely
-- Check logs for any error messages
-
-**Authentication failures**
-- Verify username and password are correct
-- Choose the account platform that matches the app or website you use
-- Check that company key matches your installer's specification
-
-**No devices or sensors appearing**
-- Confirm your inverters are online in the selected platform
-- Check Home Assistant logs: Settings > System > Logs
-- Try removing and re-adding the integration
-
-**Sensors not updating**
-- Check connectivity to the selected backend: `api.dessmonitor.com` (default) or `ios.shinemonitor.com` (solar)
-- Verify your account subscription supports your chosen update interval
-- Review integration logs for specific error messages
-
-**Diagnostic sensors not visible**
-- Diagnostic sensors are disabled by default to keep dashboards clean
-- Enable them manually: Settings > Devices & Services > DessMonitor > [Device] > [Sensor] > Enable
-- Only enable the diagnostic sensors you actually need to monitor
+| Problem | What to check |
+|---|---|
+| Integration not found | Confirm `config/custom_components/dessmonitor/manifest.json` exists, restart Home Assistant, and check **Settings > System > Logs**. |
+| Authentication fails | Confirm the account works on the selected platform's website, then check the username, password, and company key. |
+| No cloud devices or sensors | Confirm the website shows your collector and live readings. Review the logs for device discovery or unsupported-devcode messages. |
+| Cloud readings are stale | Compare with the website's latest readings. Check connectivity to `api.dessmonitor.com` for DessMonitor or `ios.shinemonitor.com` for ShineMonitor. A shorter polling interval cannot refresh stale upstream data. |
+| Local connection fails or falls back to cloud | Follow the [local troubleshooting guide](docs/LOCAL_MODE.md#troubleshooting) for network and protocol checks. Cloud support alone does not establish local compatibility. |
+| Settings are missing | Confirm you use cloud or hybrid mode, allow background discovery to finish, and check the logs. Controls depend on what the device exposes. |
+| Diagnostic sensors are missing | Check disabled entities on the device page; see [Available sensors](#available-sensors). |
 
 ### Debug Logging
 
-To enable detailed logging for troubleshooting:
+Add the following to `configuration.yaml`, merging it into an existing `logger:` section if present:
 
-1. Add to your `configuration.yaml`:
 ```yaml
-# configuration.yaml
 logger:
   logs:
     custom_components.dessmonitor: debug
 ```
 
-2. **Restart Home Assistant** to apply the logging configuration
+Restart Home Assistant and reproduce the problem, then review **Settings > System > Logs**. Remove the debug setting when finished. Before sharing logs, check for credentials, tokens, serial numbers, and other personal details and redact them.
 
-3. **View debug logs**: Settings > System > Logs (or check the Home Assistant log file)
+## Security and Privacy
 
-## 📋 Requirements
+Cloud authentication and setting changes use the selected platform's HTTPS API. The integration stores account credentials in Home Assistant and renews authentication tokens according to the expiry returned by the platform. Protect your Home Assistant configuration and backups as they contain sensitive account data.
 
-- **Home Assistant** 2024.1.0 or newer
-- **DessMonitor / SmartESS or SmartClient for Solar / ShineMonitor account** with active inverter(s), except for local-only mode
-- **Internet connection** to the selected cloud backend for API and hybrid modes
-- **Fixed private LAN addresses** for Home Assistant and each local collector
-- **Python aiohttp** 3.8.0+ (installed automatically)
+There is no project-operated data collection. Local monitoring connects to configured private collector addresses; follow the [networking and security guidance](docs/LOCAL_MODE.md#before-setup) and do not expose collector ports to the internet.
 
-## 🔒 Security & Privacy
+## Support and Contributing
 
-- **Secure authentication** with SHA-1 signature-based tokens
-- **Local credential storage** - passwords never leave your Home Assistant
-- **7-day token lifecycle** with automatic renewal
-- **Rate limiting respect** to avoid API overuse
-- **No project-operated data collection** - traffic goes only to the
-  DessMonitor API and, when configured, the exact private collector addresses
+For help, [open a GitHub issue](https://github.com/andreas-glaser/ha-dessmonitor/issues) with your integration version, inverter and collector models, connection mode, and relevant redacted logs. For an unsupported device, use the [device support request guide](docs/ADDING_DEVCODES.md#request-support), which explains how to collect a redacted analysis. Please keep passwords and tokens out of issues and attachments.
 
-## 🛠️ Development Tools
+Bug fixes, device reports, documentation improvements, and translations are welcome. Thanks to everyone who tests hardware and shares findings.
 
-### DessMonitor CLI Tool
+- [Contributing guide](CONTRIBUTING.md): development setup, scoped checks, and pull requests.
+- [CLI guide](tools/cli/README.md): account discovery, device analysis, and API exploration.
+- [Adding device support](docs/ADDING_DEVCODES.md): create and validate a device profile.
+- [Device support reference](custom_components/dessmonitor/device_support/README.md): supported devcodes and their mappings.
+- [Home Assistant Community](https://community.home-assistant.io/): broader Home Assistant discussion.
 
-For integration contributors and developers, we provide a comprehensive CLI tool for device analysis:
+## License
 
-**Location**: `tools/cli/`
-
-**Features**:
-- **Device Discovery**: List all collectors and devices in your account
-- **Live Data**: Query current readings (subject to account update interval)
-- **DevCode Analysis**: Generate device support configurations
-- **API Exploration**: Test DessMonitor endpoints for development
-
-**Quick Start**:
-```bash
-cd tools/cli
-pip install -r requirements.txt
-python3 dessmonitor_cli.py auth --username USER --company-key KEY
-python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE_SN --output analysis.json
-```
-
-**Use Cases**:
-- Adding support for new DessMonitor hardware models
-- Understanding device sensor capabilities
-- Creating device-specific configurations
-- Contributing to the integration
-
-See `tools/cli/README.md` for complete documentation.
-
-### Docker Development Environment
-
-A pre-configured Home Assistant development environment for testing and development:
-
-**Location**: `tools/docker/`
-
-**Quick Start**:
-```bash
-cd tools/docker
-docker compose up -d
-# Visit http://localhost:8123
-```
-
-**Features**:
-- **Latest Home Assistant** stable image with auto-updates
-- **Auto-mounted components** - changes reflect immediately
-- **Development configuration** with debug logging enabled
-- **Isolated environment** - no impact on production systems
-- **Pre-configured secrets** for quick testing
-
-**Development Workflow**:
-1. Make changes to integration code
-2. Restart Home Assistant container: `docker compose restart homeassistant`
-3. Test changes in the isolated environment
-4. Check logs: `docker compose logs -f homeassistant`
-
-### Testing Framework
-
-**Code Quality Tools**:
-```bash
-# Run linting and formatting
-black custom_components/
-isort custom_components/
-flake8 custom_components/
-
-# Run type checking
-mypy custom_components/dessmonitor --ignore-missing-imports
-```
-
-**CI/CD Pipeline**:
-- **Automated testing** with GitHub Actions
-- **HACS validation** ensures marketplace compatibility  
-- **Hassfest validation** verifies Home Assistant integration standards
-- **Code quality checks** with Black, isort, and flake8
-
-## 🧩 Device Support Architecture
-
-The integration now includes an extensible device support system:
-
-### DevCode System
-- **Automatic Detection**: Devices are automatically classified by their devcode
-- **Device-Specific Mappings**: Sensor names and values are transformed per device type
-- **Extensible Architecture**: Easy to add support for new device models
-- **Metadata Tracking**: Device configs list confirmed inverter models via `known_inverters` when available
-
-### Current Device Support
-- **DevCode 518**: Known to pair with [BYD BYD-S-1P5K-2M](https://registro.inmetro.gov.br/consulta/detalhe.aspx?NumeroRegistro=007268%2F2022&pag=1) (5 kW, 220 V) through Q0025-series collectors on SmartClient for Solar / ShineMonitor
-- **DevCode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
-- **DevCode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
-- **DevCode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
-- **DevCode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
-- **DevCode 2451**: Known to pair with Axpert MKS IV 5600VA
-- **DevCode 2428**: Known to pair with Hybrid inverter
-- **DevCode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
-- **DevCode 2477**: Contributor-reported 48 V / 5 kW unit, with telemetry mappings and battery-voltage dropdowns selected from 24 V / 48 V rated metadata; inverter brand/model not yet confirmed
-- **DevCode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
-- **DevCode 6422**: Known to pair with Must PH19-6048 EXP
-- **DevCode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter
-- **DevCode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
-- **DevCode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
-- **DevCode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
-- **Generic Fallback**: Unsupported devices still work with basic functionality (raw sensor titles/values, no mappings)
-
-### Adding New Device Support
-Seeing an `Unsupported devcode` warning? Follow the
-[request-support instructions](docs/ADDING_DEVCODES.md#request-support) to share an
-analysis JSON and your inverter model. No coding is required.
-
-See [`docs/ADDING_DEVCODES.md`](docs/ADDING_DEVCODES.md) for the full workflow. Short version:
-1. Use the CLI tool to analyze your device: `python3 dessmonitor_cli.py analyze --redacted --device-sn YOUR_DEVICE`
-2. Create a devcode configuration in `custom_components/dessmonitor/device_support/`
-3. Test with the Docker development environment
-4. Submit a pull request with your analysis JSON
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to:
-
-- **Report bugs** via [GitHub Issues](https://github.com/andreas-glaser/ha-dessmonitor/issues)
-- **Request features** for additional sensor types or functionality
-- **Add device support** using the CLI tool for analysis
-- **Submit pull requests** for improvements or bug fixes
-- **Improve documentation** with better examples or translations
-
-### For Device Support Contributors
-1. **Use the CLI tool** to analyze your device and generate configuration data
-2. **Include analysis JSON** in pull requests for new device support
-3. **Test thoroughly** with multiple devices of the same model when possible
-4. **Follow the devcode template** in `device_support/devcode_template.py`
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This integration is **not officially endorsed** by DessMonitor. It uses Eybond cloud APIs for the selected account platform.
-
-- **Respect DessMonitor's terms of service**
-- **Use reasonable update intervals** to avoid API overload
-- **Report any issues** that might affect DessMonitor's service
-
-## 🙏 Acknowledgments
-
-- **DessMonitor** for providing the energy storage hardware and API
-- **Home Assistant** community for the excellent platform and development tools
-- **Contributors** who help improve and maintain this integration
-
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/andreas-glaser/ha-dessmonitor/issues)
-- **Discussions**: [Home Assistant Community](https://community.home-assistant.io/)
-
-**Enjoying this integration?** ⭐ Star the repository to show your support!
+Released under the [MIT License](LICENSE). This is an independent community integration, not an official DessMonitor or ShineMonitor product. It uses Eybond cloud APIs for the selected platform; follow that platform's terms of service.
 
 <!-- Badge Links -->
 [releases-shield]: https://img.shields.io/github/release/andreas-glaser/ha-dessmonitor.svg?style=for-the-badge
@@ -539,7 +226,3 @@ This integration is **not officially endorsed** by DessMonitor. It uses Eybond c
 [hacs-action]: https://github.com/andreas-glaser/ha-dessmonitor/actions/workflows/hacs.yaml
 [hassfest-shield]: https://img.shields.io/github/actions/workflow/status/andreas-glaser/ha-dessmonitor/hassfest.yaml?label=Hassfest&style=for-the-badge
 [hassfest]: https://github.com/andreas-glaser/ha-dessmonitor/actions/workflows/hassfest.yaml
-[maintenance-shield]: https://img.shields.io/badge/maintainer-%40andreas--glaser-blue.svg?style=for-the-badge
-[user_profile]: https://github.com/andreas-glaser
-[forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
-[forum]: https://community.home-assistant.io/

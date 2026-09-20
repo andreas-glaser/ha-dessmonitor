@@ -1,21 +1,24 @@
 # Local and Hybrid Telemetry
 
-Local telemetry is a read-only path from an EyeBond-compatible Wi-Fi
-collector to Home Assistant. It does not require inverter firmware changes and
-does not expose local write controls.
+The integration can monitor inverter readings and change supported settings
+through DessMonitor or ShineMonitor. Local telemetry adds a read-only path from
+an EyeBond-compatible Wi-Fi collector to Home Assistant. It does not require
+inverter firmware changes. Settings changes continue to use the cloud API.
 
 ## Choose a mode
 
-- **DessMonitor cloud API** is the primary and existing default. It keeps all
-  cloud sensors and controls unchanged.
-- **DessMonitor API + preferred local telemetry** starts with the API for
-  canonical device identity, metadata, controls, and fallback. It keeps the
-  same config entry, entity IDs, and recorder history while fresh local
-  readings replace matching cloud readings. If one local route fails, only
-  that device falls back to cloud. If both transports fail briefly, the last
-  cloud snapshot remains available with Data Source `Cached Cloud`.
-- **Local network** creates a standalone, read-only entry without DessMonitor
-  credentials or internet access.
+| Setup mode | Monitoring | Inverter configuration |
+|---|---|---|
+| Cloud API | Cloud readings | Supported settings through the cloud |
+| Cloud API + preferred local telemetry | Local readings with cloud fallback | Supported settings through the cloud |
+| Local network only (read-only) | Local readings without a cloud account | No configuration controls |
+
+Cloud modes use your selected DessMonitor or ShineMonitor account. Hybrid mode
+keeps the same config entry, entity IDs, and recorder history while fresh local
+readings replace matching cloud readings. If one local route fails, only that
+device falls back to cloud. If both transports fail briefly, the last cloud
+snapshot remains available with Data Source `Cached Cloud`; cached readings do
+not provide an offline way to change inverter settings.
 
 One API entry can configure up to 16 local collectors. Standalone local mode
 uses one collector per entry. All routes share one TCP listener safely and are
@@ -60,14 +63,14 @@ and falls back automatically when local telemetry is unavailable.
 
 ## Recommended setup
 
-For a new installation, select **DessMonitor API + preferred local telemetry**.
+For a new installation, select **Cloud API + preferred local telemetry**.
 Choose the account platform and enter the normal API credentials first, then
-paste the local collector addresses in the short second step. **DessMonitor /
-SmartESS (default)** remains selected for existing accounts. Choose **SmartClient
-for Solar / ShineMonitor** for that service. Cloud profile selection does not
-add a local driver: devcode 518 cloud telemetry is supported, but its local
+paste the local collector addresses in the short second step. **DessMonitor
+(default)** remains selected for existing accounts. Choose **ShineMonitor** for
+that service. Cloud profile selection does not add a local driver: devcode 518
+cloud telemetry is supported, but its local
 protocol has not been verified. To use only the API, select
-**DessMonitor cloud API**. To skip the API and credentials entirely, select
+**Cloud API**. To skip the API and credentials entirely, select
 **Local network only**.
 
 For an existing cloud entry, do not create a new entry:

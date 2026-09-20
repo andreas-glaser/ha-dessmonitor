@@ -524,7 +524,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
     async def async_step_cloud(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Configure the existing DessMonitor cloud API."""
+        """Configure the selected cloud platform."""
         _LOGGER.debug("Config flow step_user called with input: %s", bool(user_input))
         errors: dict[str, str] = {}
 
