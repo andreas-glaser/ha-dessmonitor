@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0-rc.1] - 2026-09-21
+
+First release candidate for 2.5.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.5.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
 ### Added
-- Read-only PI30 local telemetry with strict identification, checksum and status-layout validation. PI30 discovery follows the existing P17/SMG drivers.
+- Read-only PI30 local telemetry with strict identification, checksum and status-layout validation. PI30 discovery follows the existing P17/SMG drivers. The SP-2200 in #39 is confirmed working with tunnel code `258`, inverter address `1`, and 16 local readings; its combined report matches the cloud inverter by serial.
 - An optional inverter address in setup, options and the CLI (`--device-address`), with automatic discovery preserved for existing entries.
 
 ### Changed
@@ -18,8 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Local reconfiguration now updates polling options as well as entry data, preventing a previous option from overriding the new interval.
-- Automatic ASCII discovery now tries bounded collector address `255` fallback routes. Unaddressed results require serial matching before they can overlay cloud telemetry. Corrected setup guidance that confused cloud devcodes with local tunnel codes. These changes address discovery gaps found during #39; SP-2200 hardware confirmation remains outstanding.
+- Automatic ASCII discovery now tries bounded collector address `255` fallback routes. Unaddressed results require serial matching before they can overlay cloud telemetry. Corrected setup guidance that confused cloud devcodes with local tunnel codes. PI30 support resolves the SP-2200 discovery failure reported in #39.
 - Corrected Energy Dashboard guidance to distinguish power readings from energy totals, removed a misleading daily-production automation, and replaced unsupported security claims and fixed collection-acceleration pricing with accurate guidance.
+
+### Upgrade notes and testing
+- Restart Home Assistant after updating. Existing entries retain automatic discovery and their entity identities. Setting an explicit inverter address selects where to read; it does not change the inverter's configured address.
+- Local monitoring remains read-only. PI30 local writes and energy totals are not included in this candidate.
+- SP-2200 hardware evidence confirms discovery and a polling cycle. Please test sustained readings, reconnects, and hybrid cloud fallback on your setup.
 
 ## [2.4.0] - 2026-09-15
 
@@ -462,7 +471,8 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0-rc.1...HEAD
+[2.5.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0-rc.1
 [2.4.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0
 [2.4.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...v2.4.0-rc.3
 [2.4.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.1...v2.4.0-rc.2

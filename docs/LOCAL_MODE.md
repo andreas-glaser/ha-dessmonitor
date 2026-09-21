@@ -150,8 +150,10 @@ ASCII fallback. SMG's collector address `255` is different: its Modbus payload
 still carries and validates the selected slave address.
 
 PI30 and the additional ASCII routes have simulated-collector regression
-coverage. Compatibility with the SP-2200 reported in issue #39 still requires
-confirmation on the physical inverter.
+coverage. The [SP-2200 report in issue #39](https://github.com/andreas-glaser/ha-dessmonitor/issues/39#issuecomment-5757878764)
+confirms hardware discovery and polling through tunnel code `258` at address
+`1`, with 16 local readings and a matching cloud inverter serial. Long-running
+Home Assistant operation and recovery on that hardware still need testing.
 
 ## Contributor probe
 
