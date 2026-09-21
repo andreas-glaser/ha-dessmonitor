@@ -278,6 +278,8 @@ def _find_local_match(
         if local_serial in already_matched:
             continue
         local_collector = str(local_payload.get("collector", {}).get("pn", ""))
+        if local_payload.get("device", {}).get("local_address_verified") is False:
+            continue
         local_address = local_payload.get("device", {}).get("devaddr")
         if (
             cloud_collector

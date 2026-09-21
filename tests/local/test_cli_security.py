@@ -373,6 +373,54 @@ def test_cli_profile_selection_keeps_existing_default():
         parser.parse_args(["auth", "--username", "test-user", "--api-profile", "typo"])
 
 
+def test_cli_inverter_address_preserves_auto_and_validates_overrides():
+    parser = _load_cli_module().setup_argparser()
+    command = [
+        "local-probe",
+        "--listen-ip",
+        "192.168.1.2",
+        "--collector-ip",
+        "192.168.1.3",
+    ]
+    assert parser.parse_args(command).device_address == 0
+    for address in (1, 5, 247):
+        assert (
+            parser.parse_args(
+                [*command, "--device-address", str(address)]
+            ).device_address
+            == address
+        )
+    for address in ("-1", "248", "255", "1.5"):
+        with pytest.raises(SystemExit):
+            parser.parse_args([*command, "--device-address", address])
+
+
+async def test_cli_does_not_resolve_cloud_device_from_unverified_address(
+    tmp_path, monkeypatch
+):
+    monkeypatch.syspath_prepend(str(Path(__file__).parents[2] / "tools" / "cli"))
+    module = _load_cli_module()
+    cli = MagicMock()
+    report = tmp_path / "local.json"
+    report.write_text(
+        json.dumps(
+            {
+                "report_version": 1,
+                "safety": "read_only",
+                "collector": {"product_number": "COLLECTOR"},
+                "inverters": [{"address": 1, "address_verified": False}],
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="provide --device-sn explicitly"):
+        await module._resolve_analysis_device_sn(cli, None, str(report), 1)
+    cli.get_collectors.assert_not_called()
+    assert (
+        await module._resolve_analysis_device_sn(cli, "EXPLICIT-SERIAL", str(report), 1)
+        == "EXPLICIT-SERIAL"
+    )
+
+
 @pytest.mark.parametrize(
     "auth_data",
     [

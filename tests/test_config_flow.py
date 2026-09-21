@@ -15,6 +15,7 @@ from custom_components.dessmonitor.const import (
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
     CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
     CONF_LOCAL_LISTEN_IP,
@@ -155,6 +156,7 @@ async def test_guided_hybrid_flow_creates_api_entry_with_local_options(
         {
             CONF_LOCAL_LISTEN_IP: "192.168.10.2",
             CONF_LOCAL_COLLECTOR_IPS: "192.168.10.50 192.168.10.51",
+            CONF_LOCAL_DEVICE_ADDRESS: "5",
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
     )
@@ -163,6 +165,7 @@ async def test_guided_hybrid_flow_creates_api_entry_with_local_options(
     assert created["type"] is FlowResultType.CREATE_ENTRY
     assert created["data"][CONF_CONNECTION_TYPE] == CONNECTION_TYPE_CLOUD
     assert created["options"][CONF_LOCAL_MODE] == LOCAL_MODE_PREFER_LOCAL
+    assert created["options"][CONF_LOCAL_DEVICE_ADDRESS] == 5
     assert created["options"][CONF_LOCAL_COLLECTOR_IPS] == [
         "192.168.10.50",
         "192.168.10.51",
@@ -259,6 +262,7 @@ async def test_local_flow_uses_secure_easy_defaults(hass: HomeAssistant) -> None
     assert set(result["data_schema"].schema) == {
         CONF_LOCAL_LISTEN_IP,
         CONF_LOCAL_COLLECTOR_IP,
+        CONF_LOCAL_DEVICE_ADDRESS,
         CONF_LOCAL_REDIRECT_CONFIRMED,
     }
 
@@ -277,6 +281,7 @@ async def test_local_flow_uses_secure_easy_defaults(hass: HomeAssistant) -> None
     assert created["data"][CONF_LOCAL_TCP_PORT] == DEFAULT_LOCAL_TCP_PORT
     assert created["data"][CONF_LOCAL_UDP_PORT] == DEFAULT_LOCAL_UDP_PORT
     assert created["data"][CONF_LOCAL_DEVICE_CODE] == DEFAULT_LOCAL_DEVICE_CODE
+    assert created["data"].get(CONF_LOCAL_DEVICE_ADDRESS, 0) == 0
     assert created["data"][CONF_LOCAL_POLL_INTERVAL] == DEFAULT_LOCAL_POLL_INTERVAL
     assert CONF_LOCAL_REDIRECT_CONFIRMED not in created["data"]
 
@@ -359,6 +364,7 @@ async def test_local_advanced_flow_stores_overrides(hass: HomeAssistant) -> None
             CONF_LOCAL_TCP_PORT: "18899",
             CONF_LOCAL_UDP_PORT: "58898",
             CONF_LOCAL_DEVICE_CODE: "2452",
+            CONF_LOCAL_DEVICE_ADDRESS: "5",
             CONF_LOCAL_POLL_INTERVAL: "10",
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
@@ -367,6 +373,7 @@ async def test_local_advanced_flow_stores_overrides(hass: HomeAssistant) -> None
     assert created["data"][CONF_LOCAL_EXPECTED_PN] == "PN-EXPECTED"
     assert created["data"][CONF_LOCAL_TCP_PORT] == 18899
     assert created["data"][CONF_LOCAL_DEVICE_CODE] == 2452
+    assert created["data"][CONF_LOCAL_DEVICE_ADDRESS] == 5
 
 
 @pytest.mark.usefixtures("mock_setup_entry")
@@ -407,6 +414,7 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
             CONF_LOCAL_POLL_INTERVAL: DEFAULT_LOCAL_POLL_INTERVAL,
             CONF_LOCAL_EXPECTED_PN: "",
         },
+        options={CONF_LOCAL_DEVICE_ADDRESS: 7, CONF_LOCAL_POLL_INTERVAL: 30},
         unique_id="local:192.168.10.50",
     )
     entry.add_to_hass(hass)
@@ -418,6 +426,8 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
         },
     )
     assert result["step_id"] == "reconfigure"
+    assert _form_default(result, CONF_LOCAL_DEVICE_ADDRESS) == 7
+    assert _form_default(result, CONF_LOCAL_POLL_INTERVAL) == "30"
 
     updated = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -428,6 +438,7 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
             CONF_LOCAL_TCP_PORT: 18899,
             CONF_LOCAL_UDP_PORT: 58898,
             CONF_LOCAL_DEVICE_CODE: 2376,
+            CONF_LOCAL_DEVICE_ADDRESS: "5",
             CONF_LOCAL_POLL_INTERVAL: 10,
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
@@ -437,6 +448,9 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
     assert entry.unique_id == "local:192.168.20.60"
     assert entry.data[CONF_LOCAL_COLLECTOR_IP] == "192.168.20.60"
     assert entry.data[CONF_LOCAL_EXPECTED_PN] == "EXPECTED-PN"
+    assert entry.data[CONF_LOCAL_DEVICE_ADDRESS] == 5
+    assert entry.options[CONF_LOCAL_DEVICE_ADDRESS] == 5
+    assert entry.options[CONF_LOCAL_POLL_INTERVAL] == 10
 
 
 @pytest.mark.usefixtures("mock_setup_entry")
@@ -460,6 +474,44 @@ async def test_local_options_coerce_poll_interval(hass: HomeAssistant) -> None:
         result["flow_id"], {CONF_LOCAL_POLL_INTERVAL: "10"}
     )
     assert created["data"][CONF_LOCAL_POLL_INTERVAL] == 10
+
+
+@pytest.mark.usefixtures("mock_setup_entry")
+@pytest.mark.parametrize("address", [0, 5, 247])
+async def test_local_address_option_is_persisted_and_restored(hass, address) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_LOCAL,
+            CONF_LOCAL_DEVICE_ADDRESS: 3,
+        },
+        options={CONF_LOCAL_DEVICE_ADDRESS: 7},
+    )
+    entry.add_to_hass(hass)
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _form_default(form, CONF_LOCAL_DEVICE_ADDRESS) == 7
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {CONF_LOCAL_DEVICE_ADDRESS: str(address)}
+    )
+    assert result["data"][CONF_LOCAL_DEVICE_ADDRESS] == address
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _form_default(form, CONF_LOCAL_DEVICE_ADDRESS) == address
+
+
+@pytest.mark.parametrize("address", [-1, 248, 255, "not-an-address"])
+async def test_setup_rejects_invalid_inverter_address(hass, address) -> None:
+    import voluptuous as vol
+
+    form = await _start_local_flow(hass)
+    with pytest.raises(vol.Invalid):
+        form["data_schema"](
+            {
+                CONF_LOCAL_LISTEN_IP: "192.168.1.10",
+                CONF_LOCAL_COLLECTOR_IP: "192.168.1.11",
+                CONF_LOCAL_REDIRECT_CONFIRMED: True,
+                CONF_LOCAL_DEVICE_ADDRESS: address,
+            }
+        )
 
 
 @pytest.mark.usefixtures("mock_setup_entry")
@@ -489,6 +541,7 @@ async def test_cloud_options_enable_preferred_local(hass: HomeAssistant) -> None
         {
             CONF_LOCAL_LISTEN_IP: "192.168.10.2",
             CONF_LOCAL_COLLECTOR_IPS: "192.168.10.50, 192.168.10.51",
+            CONF_LOCAL_DEVICE_ADDRESS: "247",
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
     )
@@ -499,6 +552,7 @@ async def test_cloud_options_enable_preferred_local(hass: HomeAssistant) -> None
         "192.168.10.51",
     ]
     assert created["data"][CONF_LOCAL_DEVICE_CODE] == DEFAULT_LOCAL_DEVICE_CODE
+    assert created["data"][CONF_LOCAL_DEVICE_ADDRESS] == 247
 
 
 @pytest.mark.usefixtures("mock_setup_entry")

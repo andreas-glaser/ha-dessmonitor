@@ -1114,9 +1114,17 @@ def setup_argparser() -> argparse.ArgumentParser:
         "--device-code",
         type=int,
         default=0,
-        help="Optional cloud-family or tunnel-code hint (0 auto-detects)",
+        help="Advanced tunnel-code override (0 auto-detects; not the cloud devcode)",
     )
     local_parser.add_argument("--max-address", type=int, default=16)
+    local_parser.add_argument(
+        "--device-address",
+        type=int,
+        choices=range(248),
+        default=0,
+        metavar="0..247",
+        help="Target one inverter address; 0 keeps automatic discovery starting at 1",
+    )
     local_parser.add_argument("--timeout", type=float, default=90.0)
     local_parser.add_argument(
         "--probe-timeout",
@@ -1189,6 +1197,14 @@ async def _resolve_analysis_device_sn(
     from evidence import load_local_report
 
     report = load_local_report(local_report_path)
+    if any(
+        inverter.get("address") == inverter_address
+        and inverter.get("address_verified") is False
+        for inverter in report["inverters"]
+    ):
+        raise ValueError(
+            "local inverter address is unverified; provide --device-sn explicitly"
+        )
     expected_collector = str(report.get("collector", {}).get("product_number", ""))
     matches: list[str] = []
     for collector in await cli.get_collectors():

@@ -56,9 +56,10 @@
           "local_expected_product_number": "Collector product number (optional security check)",
           "local_tcp_port": "Local TCP port",
           "local_udp_port": "Collector UDP configuration port",
-          "local_device_code": "Device code (0 = auto-detect)",
+          "local_device_code": "Tunnel code override (0 = automatic)",
           "local_poll_interval": "Polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
@@ -66,23 +67,25 @@
           "local_expected_product_number": "When set, a collector reporting a different product number is rejected.",
           "local_tcp_port": "The collector connects here; the default is 8899.",
           "local_udp_port": "Target port for the redirect command; the default is 58899.",
-          "local_device_code": "Auto-detect uses read-only protocol probes. Enter the cloud devcode to make startup faster.",
+          "local_device_code": "Leave 0 unless a verified local tunnel code is known. The cloud devcode does not identify the local protocol. Existing SMG hints 1 and 2376 remain supported.",
           "local_poll_interval": "Primary status requests are serialized to protect the RS485 bus.",
-          "local_redirect_confirmed": "Home Assistant sends UDP to this collector on port 58899. The collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session."
+          "local_redirect_confirmed": "Home Assistant sends UDP to this collector on port 58899. The collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       },
       "local_advanced": {
         "title": "DessMonitor Local Advanced Setup",
-        "description": "Use this only when automatic device-code detection or the standard EyeBond ports do not work.",
+        "description": "Override the tunnel code or standard EyeBond ports only when automatic discovery does not work.",
         "data": {
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ip": "Collector LAN IP",
           "local_expected_product_number": "Collector product number (optional security check)",
           "local_tcp_port": "Local TCP port",
           "local_udp_port": "Collector UDP configuration port",
-          "local_device_code": "Device code (0 = auto-detect)",
+          "local_device_code": "Tunnel code override (0 = automatic)",
           "local_poll_interval": "Polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
@@ -90,9 +93,10 @@
           "local_expected_product_number": "When set, a collector reporting a different product number is rejected.",
           "local_tcp_port": "The collector connects here; the default is 8899.",
           "local_udp_port": "Target port for the redirect command; the default is 58899.",
-          "local_device_code": "Enter the cloud devcode only when automatic read-only probing does not find the inverter.",
+          "local_device_code": "Leave 0 unless a verified local tunnel code is known. The cloud devcode does not identify the local protocol. Existing SMG hints 1 and 2376 remain supported.",
           "local_poll_interval": "Primary status requests are serialized to protect the RS485 bus.",
-          "local_redirect_confirmed": "Home Assistant sends UDP to the configured collector port. The collector must be allowed to connect back to the configured Home Assistant TCP port. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session."
+          "local_redirect_confirmed": "Home Assistant sends UDP to the configured collector port. The collector must be allowed to connect back to the configured Home Assistant TCP port. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       },
       "reconfigure": {
@@ -104,9 +108,14 @@
           "local_expected_product_number": "Collector product number (optional security check)",
           "local_tcp_port": "Local TCP port",
           "local_udp_port": "Collector UDP configuration port",
-          "local_device_code": "Device code (0 = auto-detect)",
+          "local_device_code": "Tunnel code override (0 = automatic)",
           "local_poll_interval": "Polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector",
+          "local_device_address": "Inverter address (0 = automatic)"
+        },
+        "data_description": {
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter.",
+          "local_device_code": "Leave 0 unless a verified local tunnel code is known. The cloud devcode does not identify the local protocol. Existing SMG hints 1 and 2376 remain supported."
         }
       }
     },
@@ -146,23 +155,27 @@
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ips": "Collector LAN IP addresses",
           "local_poll_interval": "Local polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from these collectors"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from these collectors",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
           "local_collector_ips": "Enter one or more fixed private addresses separated by commas, spaces, or new lines. Each connection is pinned to its exact address.",
           "local_poll_interval": "How often to read local inverter telemetry. Five seconds is recommended and is independent of the cloud API interval.",
-          "local_redirect_confirmed": "Home Assistant sends UDP to the listed collectors on port 58899. Each collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private addresses, and do not expose either port to the internet. API fallback remains enabled."
+          "local_redirect_confirmed": "Home Assistant sends UDP to the listed collectors on port 58899. Each collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private addresses, and do not expose either port to the internet. API fallback remains enabled.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       },
       "local": {
         "title": "DessMonitor Local Options",
         "description": "Configure local read-only polling.",
         "data": {
-          "local_poll_interval": "Polling interval"
+          "local_poll_interval": "Polling interval",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
-          "local_poll_interval": "How often to poll primary inverter status."
+          "local_poll_interval": "How often to poll primary inverter status.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       }
     }

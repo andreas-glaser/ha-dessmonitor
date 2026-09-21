@@ -88,3 +88,57 @@ async def test_discovery_fails_when_no_profile_responds() -> None:
 
     with pytest.raises(DiscoveryError, match="no P17-compatible"):
         await discover_p17(send, collector_product_number="COLLECTOR")
+
+
+@pytest.mark.parametrize("address", [5, 247])
+async def test_explicit_address_does_not_probe_address_one(address) -> None:
+    async def send(payload, _code, requested):
+        assert requested == address
+        if _command(payload) == "PI":
+            return build_p17_response("D", "17")
+        return build_p17_response("N")
+
+    result = await discover_p17(
+        send, collector_product_number="TEST", device_address=address
+    )
+    assert [device.address for device in result.inverters] == [address]
+
+
+async def test_ascii_collector_fallback_keeps_logical_inverter_address() -> None:
+    routes = []
+
+    async def send(payload, code, address):
+        routes.append((code, address))
+        if address != 255:
+            return b""
+        if _command(payload) == "PI":
+            return build_p17_response("D", "17")
+        return build_p17_response("N")
+
+    result = await discover_p17(send, collector_product_number="TEST")
+    assert routes[:2] == [(2452, 1), (258, 1)]
+    assert len(result.inverters) == 1
+    inverter = result.inverters[0]
+    assert inverter.address == 1
+    assert inverter.collector_address == 255
+    assert inverter.serial == "TEST-1"
+
+
+@pytest.mark.parametrize("address", [-1, 248, 255, True, 1.5, "5"])
+async def test_invalid_explicit_address_never_reaches_transport(address) -> None:
+    async def send(*_args):
+        pytest.fail("invalid address reached the collector")
+
+    with pytest.raises(DiscoveryError, match="inverter address"):
+        await discover_p17(
+            send, collector_product_number="TEST", device_address=address
+        )
+
+
+async def test_explicit_address_does_not_fall_back_to_unaddressed_inverter() -> None:
+    async def send(_payload, _code, address):
+        assert address == 5
+        return b""
+
+    with pytest.raises(DiscoveryError, match="no P17-compatible"):
+        await discover_p17(send, collector_product_number="TEST", device_address=5)

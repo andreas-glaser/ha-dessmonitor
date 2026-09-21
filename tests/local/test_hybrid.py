@@ -50,6 +50,21 @@ def _local_payload() -> dict:
     }
 
 
+def test_unaddressed_ascii_requires_a_serial_match() -> None:
+    local = _local_payload()
+    local["LOCAL-SERIAL"]["device"]["local_address_verified"] = False
+    merged = merge_cloud_and_local(_cloud_payload(), local, local_available=True)
+    values = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+    assert values["AC output active power"] == 700
+    assert values["Data Source"] == "Cloud"
+
+    local["CLOUD-SERIAL"] = local.pop("LOCAL-SERIAL")
+    merged = merge_cloud_and_local(_cloud_payload(), local, local_available=True)
+    values = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+    assert values["Output Active Power"] == 900
+    assert values["Data Source"] == "Local"
+
+
 def test_healthy_local_values_overlay_matching_cloud_device() -> None:
     """The cloud entity identity is retained while local values win by title."""
     merged = merge_cloud_and_local(
@@ -117,13 +132,9 @@ def test_partial_local_availability_falls_back_per_collector() -> None:
     }
 
     merged = merge_cloud_and_local(cloud, _local_payload(), local_available=True)
-    first = {
-        point["title"]: point["val"]
-        for point in merged["CLOUD-SERIAL"]["data"]
-    }
+    first = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
     second = {
-        point["title"]: point["val"]
-        for point in merged["SECOND-CLOUD-SERIAL"]["data"]
+        point["title"]: point["val"] for point in merged["SECOND-CLOUD-SERIAL"]["data"]
     }
 
     assert first["Data Source"] == "Local"
@@ -165,8 +176,7 @@ async def test_cloud_outage_keeps_healthy_local_data(hass: HomeAssistant) -> Non
         ):
             result = await coordinator._async_update_data()
         points = {
-            point["title"]: point["val"]
-            for point in result["CLOUD-SERIAL"]["data"]
+            point["title"]: point["val"] for point in result["CLOUD-SERIAL"]["data"]
         }
         assert points["Output Active Power"] == 900
         assert points["Data Source"] == "Local"
@@ -193,8 +203,7 @@ async def test_local_data_arriving_during_cloud_timeout_is_used(
         ):
             result = await coordinator._async_update_data()
         points = {
-            point["title"]: point["val"]
-            for point in result["CLOUD-SERIAL"]["data"]
+            point["title"]: point["val"] for point in result["CLOUD-SERIAL"]["data"]
         }
         assert points["Grid Voltage"] == 231.2
         assert points["Data Source"] == "Local"
@@ -215,8 +224,7 @@ async def test_both_outages_keep_last_cloud_snapshot(hass: HomeAssistant) -> Non
         ):
             result = await coordinator._async_update_data()
         points = {
-            point["title"]: point["val"]
-            for point in result["CLOUD-SERIAL"]["data"]
+            point["title"]: point["val"] for point in result["CLOUD-SERIAL"]["data"]
         }
         assert points["Grid voltage"] == 228
         assert points["Data Source"] == "Cached Cloud"
@@ -245,8 +253,7 @@ async def test_cloud_outage_marks_each_unmatched_device_as_cached(
         ):
             result = await coordinator._async_update_data()
         first = {
-            point["title"]: point["val"]
-            for point in result["CLOUD-SERIAL"]["data"]
+            point["title"]: point["val"] for point in result["CLOUD-SERIAL"]["data"]
         }
         second = {
             point["title"]: point["val"]

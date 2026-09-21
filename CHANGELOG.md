@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Read-only PI30 local telemetry with strict identification, checksum and status-layout validation. PI30 discovery follows the existing P17/SMG drivers.
+- An optional inverter address in setup, options and the CLI (`--device-address`), with automatic discovery preserved for existing entries.
+
 ### Changed
 - Simplified account platform names to DessMonitor and ShineMonitor throughout setup, CLI help, and documentation. SmartESS and SmartClient for Solar are identified as mobile clients; existing backend identifiers and account data are unchanged.
 - Renamed the HACS listing to DessMonitor / ShineMonitor and clarified support for monitoring and configuring supported inverter settings. Cloud and hybrid modes provide cloud controls; local-only monitoring remains read-only.
 - Reorganized the main README to consolidate installation, polling, troubleshooting, and contributor guidance. Added web and app-store links, compatibility guidance for rebranded apps, and a model list based on the device profiles.
 
 ### Fixed
+- Local reconfiguration now updates polling options as well as entry data, preventing a previous option from overriding the new interval.
+- Automatic ASCII discovery now tries bounded collector address `255` fallback routes. Unaddressed results require serial matching before they can overlay cloud telemetry. Corrected setup guidance that confused cloud devcodes with local tunnel codes. These changes address discovery gaps found during #39; SP-2200 hardware confirmation remains outstanding.
 - Corrected Energy Dashboard guidance to distinguish power readings from energy totals, removed a misleading daily-production automation, and replaced unsupported security claims and fixed collection-acceleration pricing with accurate guidance.
 
 ## [2.4.0] - 2026-09-15

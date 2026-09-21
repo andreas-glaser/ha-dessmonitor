@@ -28,6 +28,7 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
     CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
     CONF_LOCAL_LISTEN_IP,
@@ -44,6 +45,7 @@ from .const import (
     CONNECTION_TYPE_LOCAL,
     DEFAULT_API_PROFILE,
     DEFAULT_COMPANY_KEY,
+    DEFAULT_LOCAL_DEVICE_ADDRESS,
     DEFAULT_LOCAL_DEVICE_CODE,
     DEFAULT_LOCAL_POLL_INTERVAL,
     DEFAULT_LOCAL_TCP_PORT,
@@ -133,6 +135,12 @@ def _local_schema(
             CONF_LOCAL_COLLECTOR_IP,
             default=current.get(CONF_LOCAL_COLLECTOR_IP, ""),
         ): str,
+        vol.Optional(
+            CONF_LOCAL_DEVICE_ADDRESS,
+            default=current.get(
+                CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+            ),
+        ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
         vol.Required(
             CONF_LOCAL_REDIRECT_CONFIRMED,
             default=bool(current.get(CONF_LOCAL_COLLECTOR_IP)),
@@ -210,6 +218,9 @@ def _normalize_local_input(
     normalized[CONF_LOCAL_UDP_PORT] = user_input.get(
         CONF_LOCAL_UDP_PORT, DEFAULT_LOCAL_UDP_PORT
     )
+    normalized[CONF_LOCAL_DEVICE_ADDRESS] = user_input.get(
+        CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+    )
     normalized[CONF_LOCAL_DEVICE_CODE] = user_input.get(
         CONF_LOCAL_DEVICE_CODE, DEFAULT_LOCAL_DEVICE_CODE
     )
@@ -270,6 +281,10 @@ def _normalize_hybrid_local_input(
         CONF_LOCAL_COLLECTOR_IPS: collector_ips,
         CONF_LOCAL_TCP_PORT: current.get(CONF_LOCAL_TCP_PORT, DEFAULT_LOCAL_TCP_PORT),
         CONF_LOCAL_UDP_PORT: current.get(CONF_LOCAL_UDP_PORT, DEFAULT_LOCAL_UDP_PORT),
+        CONF_LOCAL_DEVICE_ADDRESS: user_input.get(
+            CONF_LOCAL_DEVICE_ADDRESS,
+            current.get(CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS),
+        ),
         CONF_LOCAL_DEVICE_CODE: current.get(
             CONF_LOCAL_DEVICE_CODE, DEFAULT_LOCAL_DEVICE_CODE
         ),
@@ -292,6 +307,7 @@ def _hybrid_local_schema(
     configured_collectors: Any = "",
     local_poll_interval: int = DEFAULT_LOCAL_POLL_INTERVAL,
     redirect_confirmed: bool | None = None,
+    device_address: int = DEFAULT_LOCAL_DEVICE_ADDRESS,
 ) -> vol.Schema:
     """Build the same minimal local-first form for setup and options."""
     if isinstance(configured_collectors, list):
@@ -310,6 +326,10 @@ def _hybrid_local_schema(
                 CONF_LOCAL_POLL_INTERVAL,
                 default=str(local_poll_interval),
             ): _list_choice(LOCAL_POLL_INTERVAL_OPTIONS),
+            vol.Optional(
+                CONF_LOCAL_DEVICE_ADDRESS,
+                default=device_address,
+            ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
             vol.Required(
                 CONF_LOCAL_REDIRECT_CONFIRMED,
                 default=(
@@ -517,6 +537,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_LOCAL_POLL_INTERVAL, DEFAULT_LOCAL_POLL_INTERVAL
                 ),
                 redirect_confirmed=form_values.get(CONF_LOCAL_REDIRECT_CONFIRMED),
+                device_address=form_values.get(
+                    CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                ),
             ),
             errors=errors,
         )
@@ -637,9 +660,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     unique_id=f"local:{collector_ip}",
                     title=f"DessMonitor Local ({collector_ip})",
                     data={**entry.data, **normalized},
+                    options={
+                        **entry.options,
+                        CONF_LOCAL_DEVICE_ADDRESS: normalized[
+                            CONF_LOCAL_DEVICE_ADDRESS
+                        ],
+                        CONF_LOCAL_POLL_INTERVAL: normalized[CONF_LOCAL_POLL_INTERVAL],
+                    },
                 )
 
-        defaults = {**entry.data, **(user_input or {})}
+        defaults = {**entry.data, **entry.options, **(user_input or {})}
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_local_schema(
@@ -776,6 +806,9 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_LOCAL_POLL_INTERVAL, DEFAULT_LOCAL_POLL_INTERVAL
                 ),
                 redirect_confirmed=form_values.get(CONF_LOCAL_REDIRECT_CONFIRMED),
+                device_address=form_values.get(
+                    CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                ),
             ),
             errors=errors,
         )
@@ -783,18 +816,26 @@ class OptionsFlow(config_entries.OptionsFlow):
     async def async_step_local(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Manage the local poll interval."""
+        """Manage local polling and the optional explicit inverter address."""
+        existing = {**self._config_entry.data, **self._config_entry.options}
         if user_input is not None:
             return self.async_create_entry(
                 title="",
                 data={
+                    **self._config_entry.options,
+                    CONF_LOCAL_DEVICE_ADDRESS: user_input.get(
+                        CONF_LOCAL_DEVICE_ADDRESS,
+                        existing.get(
+                            CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                        ),
+                    ),
                     CONF_LOCAL_POLL_INTERVAL: _normalized_choice(
                         user_input.get(
                             CONF_LOCAL_POLL_INTERVAL, DEFAULT_LOCAL_POLL_INTERVAL
                         ),
                         LOCAL_POLL_INTERVAL_OPTIONS,
                         DEFAULT_LOCAL_POLL_INTERVAL,
-                    )
+                    ),
                 },
             )
         current = self._config_entry.options.get(
@@ -812,7 +853,13 @@ class OptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_LOCAL_POLL_INTERVAL, default=str(current)
-                    ): _list_choice(LOCAL_POLL_INTERVAL_OPTIONS)
+                    ): _list_choice(LOCAL_POLL_INTERVAL_OPTIONS),
+                    vol.Optional(
+                        CONF_LOCAL_DEVICE_ADDRESS,
+                        default=existing.get(
+                            CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
                 }
             ),
         )

@@ -65,7 +65,11 @@ def combine_evidence(
         str(local_report.get("collector", {}).get("product_number", "")),
     )
     address_match = analysis.get("device_address") == inverter_address
-    route_identity_match = collector_identity_match == "matched" and address_match
+    route_identity_match = (
+        collector_identity_match == "matched"
+        and address_match
+        and inverter.get("address_verified", True) is True
+    )
 
     local_evidence = {
         "profile": detected.get("profile"),

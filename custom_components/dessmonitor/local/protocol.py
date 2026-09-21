@@ -236,6 +236,14 @@ def build_p17_poll(command: str, *, escape_crc: bool = True) -> bytes:
     return content + _encode_crc(content, escape_crc=escape_crc) + b"\r"
 
 
+def build_pi30_poll(command: str) -> bytes:
+    """Encode only the PI30 inquiries implemented by the read-only driver."""
+    if command not in {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QMOD"}:
+        raise ProtocolError("unsupported PI30 read-only command")
+    content = command.encode("ascii")
+    return content + _encode_crc(content) + b"\r"
+
+
 def build_p17_response(response_type: str, data: str = "") -> bytes:
     """Build a P17 response, primarily for protocol simulators and tests."""
     if response_type not in {"D", "A", "N"}:

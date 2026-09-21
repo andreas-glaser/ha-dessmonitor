@@ -99,13 +99,27 @@ identities are retained; a healthy neighbour cannot refresh its stale readings.
 
 For a cloud-free installation, add another DessMonitor integration and choose
 **Local network**. Use the advanced path only for a documented non-standard
-port, product-number identity pin, or device-code hint.
+port, product-number identity pin, or tunnel-code override.
+
+The **Inverter address** setting is available during setup and in options. Its
+value `0` preserves automatic discovery: identify address `1`, then check
+contiguous addresses up to `16`, stopping at a missing or duplicate inverter.
+Set `1` through `247` to target just that address, including addresses above
+`16`. This selects where to read; it does not change the inverter's configured
+address. Hybrid mode applies the setting to each listed collector. Existing
+entries without the setting retain automatic discovery.
 
 ## Supported read-only drivers
 
 - PI17/PI18 ASCII telemetry, with strict length and CRC validation. The inverter's
   `PI` response selects P17's escaped CRC encoding or PI18's raw CRC encoding;
   tunnel and cloud device codes do not select the field layout.
+- PI30 ASCII telemetry with verified `QPI` identification and a valid standard
+  17- or 21-field `QPIGS` status response. Reports grid/output voltage and
+  frequency, output power/load, battery voltage/current/charge estimate,
+  temperature, PV voltage and charging current. The 21-field layout also
+  supplies PV charging power. Other layouts and protocol IDs fail closed;
+  energy totals and local controls are not implemented for PI30.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
 
@@ -122,8 +136,22 @@ and local control entities are intentionally absent.
 An explicitly configured tunnel code `2452` tries the P17/PI18 driver first,
 including when the collector reports `258` or `1`. Code `258` is shared by
 different inverter families; it does not establish the inverter's protocol.
-Automatic discovery and ambiguous hints retain their existing order. Both
-drivers remain fallbacks, and a validated response still determines the decoder.
+Automatic discovery and ambiguous hints retain the P17/SMG driver order.
+PI30 is tried only after both existing drivers fail. Cloud devcodes are not
+local protocol identifiers; leave the tunnel-code override at `0` unless a
+working local route is known. Legacy SMG hints `1` and `2376` remain supported.
+
+ASCII discovery tries the direct inverter route first, then a bounded collector
+address `255` fallback in automatic mode. That fallback identifies at most one
+inverter; `255` is never treated as its inverter address. Its inferred logical
+address cannot be used to match a cloud device: hybrid mode requires the actual
+inverter serial to match. Explicit inverter addresses disable the unaddressed
+ASCII fallback. SMG's collector address `255` is different: its Modbus payload
+still carries and validates the selected slave address.
+
+PI30 and the additional ASCII routes have simulated-collector regression
+coverage. Compatibility with the SP-2200 reported in issue #39 still requires
+confirmation on the physical inverter.
 
 ## Contributor probe
 
@@ -145,6 +173,11 @@ python3 tools/cli/dessmonitor_cli.py analyze --redacted \
   --output combined-analysis.json
 ```
 
+For an inverter configured at address `5`, add `--device-address 5` to
+`local-probe`. This targets only address `5`; `--max-address` continues to bound
+automatic discovery and is ignored for an explicit address. Leave `--device-code`
+at `0` unless a verified tunnel code is known.
+
 Reports redact collector product numbers, IP addresses, and inverter serials
 by default and are written with mode `0600`. Do not use
 `--include-identifiers` for a report that will be shared publicly.
@@ -157,8 +190,9 @@ Reports include `status`, the last `stage`, and bounded `diagnostics`: protocol,
 command, device code, collector/inverter address, response byte count, elapsed
 milliseconds, and outcome. A missing byte count means no payload was returned
 to the query; zero means an empty payload was received. Header mismatches also
-include the expected and received numeric routing fields. Raw payloads and
-exception text are not included in these diagnostic records. At most 128 query
+include the expected and received numeric routing fields. The `address_verified`
+flag distinguishes a known address from an unaddressed ASCII route. Raw payloads
+and exception text are not included in these diagnostic records. At most 128 query
 records are retained, with additional attempts counted in `dropped_attempts`.
 A random `probe_id` correlates a report and its log lines without identifying
 the collector, including when several collectors are discovered concurrently.
@@ -169,6 +203,8 @@ which this driver has no verified field layout.
 
 The combined analysis matches a unique hashed collector product number and
 inverter address, refuses ambiguous matches, and also writes mode `0600`.
+For an unverified ASCII address, supply `--device-sn` explicitly; the combined
+report only confirms identity when the actual serial matches.
 Most collectors keep one callback connection. If Home Assistant already owns
 it, briefly disable or stop that test instance while running `local-probe`,
 then start it again; the configured integration reconnects automatically.

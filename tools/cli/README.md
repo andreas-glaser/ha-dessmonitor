@@ -234,6 +234,18 @@ python3 dessmonitor_cli.py local-probe \
   --output local-probe.json
 ```
 
+Use `--device-address 5` to read only inverter address `5`. The default `0`
+preserves discovery starting at `1`, with `--max-address` (default `16`) bounding
+the contiguous scan. Explicit addresses range from `1` through `247` and do not
+change the inverter's configuration. Keep `--device-code 0` for automatic
+protocol detection; this override is a local tunnel code, not a cloud devcode.
+
+Discovery supports PI17/PI18, standard SMG Modbus, and standard PI30 status
+layouts. Automatic ASCII discovery can also try collector route `255`; that
+route does not prove an inverter address. Its report sets `address_verified`
+to false, so cloud analysis requires an explicit `--device-sn` and verifies
+identity by serial rather than by the inferred address.
+
 The probe accepts only the exact configured collector peer, validates every
 transport and inverter response, and sends read queries only. Reports are
 written with mode `0600`; product numbers, IPs, and serial numbers are hashed

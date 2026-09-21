@@ -95,7 +95,7 @@ async def test_discovery_rejects_unimplemented_protocol(protocol_id) -> None:
             configured_device_code=2452,
             max_address=1,
         )
-    assert commands == [b"PI"]
+    assert commands == [b"PI", b"PI"]
 
 
 @pytest.mark.parametrize("count", [0, 19, 20, 27])
