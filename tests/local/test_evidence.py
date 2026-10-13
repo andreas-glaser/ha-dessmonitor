@@ -48,6 +48,20 @@ def _local_report(serial: str) -> dict:
     }
 
 
+def test_unverified_address_cannot_establish_cloud_identity() -> None:
+    report = _local_report("WRONG-SERIAL")
+    report["collector"] = {"product_number": "COLLECTOR"}
+    report["inverters"][0]["address_verified"] = False
+    cloud = {
+        "device_sn": "CLOUD-SERIAL",
+        "collector_identity": "COLLECTOR",
+        "device_address": 1,
+    }
+    combined = _load_evidence_module().combine_evidence(cloud, report)
+    assert combined["local_evidence"]["identity_basis"] == "unverified"
+    assert combined["local_evidence"]["identity_match"] != "matched"
+
+
 def test_failed_probe_cannot_be_used_as_verified_inverter_evidence(tmp_path) -> None:
     """Even partial polling data from a failed report is troubleshooting evidence only."""
     report = _local_report("SYNTHETIC")

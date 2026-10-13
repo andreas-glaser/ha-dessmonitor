@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 
 from custom_components.dessmonitor.const import (
     CONF_LOCAL_COLLECTOR_IP,
+    CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_LISTEN_IP,
     CONF_LOCAL_POLL_INTERVAL,
@@ -34,16 +35,18 @@ from custom_components.dessmonitor.local.protocol import (
     encode_header,
 )
 from custom_components.dessmonitor.local.server import CollectorIdentity
+from tests.local.test_pi30 import STATUS, wire
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
 
 class SimulatedCollector:
-    """Minimal EyeBond collector that exposes one P17 or PI18 inverter."""
+    """Minimal EyeBond collector exposing one PI17, PI18 or PI30 inverter."""
 
-    def __init__(self, port: int, protocol_id: str = "17") -> None:
+    def __init__(self, port: int, protocol_id: str = "17", address: int = 1) -> None:
         self.port = port
         self.protocol_id = protocol_id
+        self.address = address
         self.commands: list[str] = []
         self.writer: asyncio.StreamWriter | None = None
         self.task: asyncio.Task[None] | None = None
@@ -87,10 +90,29 @@ class SimulatedCollector:
                     + response
                 )
             elif header.function_code == FC_FORWARD_TO_DEVICE:
-                assert payload.startswith(b"^P"), "local mode sent a non-poll command"
-                command = payload[5:-3].decode("ascii")
-                self.commands.append(command)
-                response = self._response(header.device_address, command)
+                if self.protocol_id == "30":
+                    response = b""
+                    if (
+                        payload.startswith(b"Q")
+                        and header.device_address == self.address
+                    ):
+                        assert payload == wire(payload[:-3])
+                        command = payload[:-3].decode("ascii")
+                        self.commands.append(command)
+                        data = {
+                            "QPI": "PI30",
+                            "QID": "12345678901234",
+                            "QPIGS": STATUS,
+                            "QMOD": "B",
+                        }.get(command, "NAK")
+                        response = wire(b"(" + data.encode())
+                else:
+                    assert payload.startswith(
+                        b"^P"
+                    ), "local mode sent a non-poll command"
+                    command = payload[5:-3].decode("ascii")
+                    self.commands.append(command)
+                    response = self._response(header.device_address, command)
                 writer.write(
                     encode_header(
                         header.transaction_id,
@@ -104,7 +126,7 @@ class SimulatedCollector:
             await writer.drain()
 
     def _response(self, address: int, command: str) -> bytes:
-        if address > 1:
+        if address != self.address:
             return build_p17_response("N")
         responses = {
             "PI": "17",
@@ -257,12 +279,16 @@ async def _wait_until(predicate, timeout: float = 3.0) -> None:
 
 
 @pytest.mark.parametrize(
-    ("protocol_id", "serial"), [("17", "ABCD1234"), ("18", "01234500")]
+    ("protocol_id", "serial"),
+    [("17", "ABCD1234"), ("18", "01234500"), ("30", "12345678901234")],
 )
+@pytest.mark.parametrize(("address", "collector_address"), [(0, 1), (5, 5), (0, 255)])
 async def test_local_coordinator_discovers_polls_and_recovers(
     hass: HomeAssistant,
     protocol_id: str,
     serial: str,
+    address: int,
+    collector_address: int,
 ) -> None:
     """One code path handles startup, fast data, outage, and reconnection."""
     coordinator = DessMonitorLocalCoordinator(
@@ -273,15 +299,24 @@ async def test_local_coordinator_discovers_polls_and_recovers(
             CONF_LOCAL_TCP_PORT: 0,
             CONF_LOCAL_UDP_PORT: 9,
             CONF_LOCAL_DEVICE_CODE: 0,
+            CONF_LOCAL_DEVICE_ADDRESS: address,
             CONF_LOCAL_POLL_INTERVAL: 2,
         },
     )
     await coordinator.async_setup()
-    first = SimulatedCollector(coordinator._server.listening_port, protocol_id)
-    second = SimulatedCollector(coordinator._server.listening_port, protocol_id)
+    first = SimulatedCollector(
+        coordinator._server.listening_port, protocol_id, collector_address
+    )
+    second = SimulatedCollector(
+        coordinator._server.listening_port, protocol_id, collector_address
+    )
     try:
         await first.start()
         await _wait_until(lambda: bool(coordinator.data))
+        device = coordinator.data[serial]["device"]
+        assert device["devaddr"] == (address or 1)
+        assert device["local_collector_address"] == collector_address
+        assert device["local_address_verified"] is (collector_address != 255)
 
         assert coordinator.device_code == 2452
         assert set(coordinator.data) == {serial}
@@ -302,7 +337,8 @@ async def test_local_coordinator_discovers_polls_and_recovers(
 
         await second.start()
         await _wait_until(
-            lambda: coordinator.last_update_success and "GS" in second.commands
+            lambda: coordinator.last_update_success
+            and ("QPIGS" if protocol_id == "30" else "GS") in second.commands
         )
         assert set(coordinator.data) == {serial}
         assert coordinator.data[serial]["data"]

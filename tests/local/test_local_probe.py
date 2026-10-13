@@ -55,7 +55,7 @@ def test_probe_loads_each_registered_read_only_driver() -> None:
     """The standalone loader sees the same extensible driver registry as HA."""
     probe = _load_probe_module()
     drivers = probe._load_local_module("drivers")
-    assert [driver.key for driver in drivers.DRIVERS] == ["p17", "smg_modbus"]
+    assert [driver.key for driver in drivers.DRIVERS] == ["p17", "smg_modbus", "pi30"]
 
 
 @pytest.mark.usefixtures("socket_enabled")

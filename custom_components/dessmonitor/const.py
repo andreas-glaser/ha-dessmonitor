@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "2.4.0"
+VERSION: Final = "2.5.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -16,6 +16,7 @@ CONF_LOCAL_COLLECTOR_IP: Final = "local_collector_ip"
 CONF_LOCAL_COLLECTOR_IPS: Final = "local_collector_ips"
 CONF_LOCAL_TCP_PORT: Final = "local_tcp_port"
 CONF_LOCAL_UDP_PORT: Final = "local_udp_port"
+CONF_LOCAL_DEVICE_ADDRESS: Final = "local_device_address"
 CONF_LOCAL_DEVICE_CODE: Final = "local_device_code"
 CONF_LOCAL_POLL_INTERVAL: Final = "local_poll_interval"
 CONF_LOCAL_EXPECTED_PN: Final = "local_expected_product_number"
@@ -36,6 +37,7 @@ DEFAULT_COMPANY_KEY: Final = "bnrl_frRFjEz8Mkn"
 DEFAULT_UPDATE_INTERVAL: Final = 300
 DEFAULT_LOCAL_TCP_PORT: Final = 8899
 DEFAULT_LOCAL_UDP_PORT: Final = 58899
+DEFAULT_LOCAL_DEVICE_ADDRESS: Final = 0
 DEFAULT_LOCAL_DEVICE_CODE: Final = 0
 DEFAULT_LOCAL_POLL_INTERVAL: Final = 5
 LOCAL_POLL_INTERVAL_OPTIONS: Final = {
@@ -75,8 +77,8 @@ LEGACY_ACCOUNT_MODE_MAP: Final = {
 }
 
 API_PROFILE_OPTIONS: Final = {
-    API_PROFILE_DESSMONITOR_ESS: "DessMonitor / SmartESS (default)",
-    API_PROFILE_SHINEMONITOR_SOLAR: "SmartClient for Solar / ShineMonitor",
+    API_PROFILE_DESSMONITOR_ESS: "DessMonitor (default)",
+    API_PROFILE_SHINEMONITOR_SOLAR: "ShineMonitor",
 }
 
 # Both backends accept the integration's own application identity.

@@ -221,7 +221,9 @@ class DessMonitorAPI:
                 action,
                 error_msg,
             )
-            raise DessMonitorError(error_msg)
+            raise DessMonitorError(
+                error_msg, error_code if type(error_code) is int else None
+            )
         return data
 
     async def authenticate(self) -> bool:
@@ -294,7 +296,9 @@ class DessMonitorAPI:
                 err,
             )
             _LOGGER.debug("Authentication error details", exc_info=True)
-            raise DessMonitorError(f"Authentication failed: {err}") from err
+            raise DessMonitorError(
+                f"Authentication failed: {err}", getattr(err, "code", None)
+            ) from err
 
     async def load_saved_token(self) -> bool:
         """Load saved token from storage."""
@@ -795,4 +799,12 @@ class DessMonitorAPI:
 
 
 class DessMonitorError(Exception):
-    """Exception raised for DessMonitor API errors."""
+    """Exception raised for DessMonitor API errors.
+
+    ``code`` is the platform's ``err`` value when the server rejected the
+    request, and None for transport or malformed-response failures.
+    """
+
+    def __init__(self, message: str, code: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code

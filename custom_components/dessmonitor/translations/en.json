@@ -5,15 +5,15 @@
         "title": "DessMonitor Setup",
         "description": "Choose how this collector should communicate with Home Assistant.",
         "menu_options": {
-          "cloud": "DessMonitor cloud API",
-          "hybrid": "DessMonitor API + preferred local telemetry",
+          "cloud": "Cloud API",
+          "hybrid": "Cloud API + preferred local telemetry",
           "local": "Local network only (read-only)",
           "local_advanced": "Local network (advanced)"
         }
       },
       "hybrid": {
-        "title": "DessMonitor API + Local Telemetry",
-        "description": "Connect your DessMonitor account first. The API remains the source for device identity, metadata, fallback telemetry, and controls; the next step adds faster local read-only telemetry.",
+        "title": "Cloud API + Local Telemetry",
+        "description": "Sign in to your DessMonitor or ShineMonitor account. Next, add local monitoring for faster readings. The cloud provides device information, settings, and backup readings.",
         "data": {
           "username": "Username",
           "password": "Password",
@@ -22,16 +22,16 @@
           "api_profile": "Account platform"
         },
         "data_description": {
-          "username": "Your DessMonitor account username",
-          "password": "Your DessMonitor account password",
+          "username": "Your account username on the selected platform",
+          "password": "Your account password on the selected platform",
           "company_key": "Your company/vendor key (default: {default_company_key})",
           "update_interval": "How often to refresh cloud fallback data. Local telemetry uses its own faster interval.",
-          "api_profile": "Choose the service you normally sign in to. Keep the default for DessMonitor or SmartESS accounts. Choose SmartClient for Solar / ShineMonitor if that is the app you use."
+          "api_profile": "Choose DessMonitor (default) for SmartESS or compatible rebranded apps. Choose ShineMonitor for SmartClient for Solar."
         }
       },
       "cloud": {
-        "title": "DessMonitor Cloud",
-        "description": "Connect through the DessMonitor cloud service.",
+        "title": "Cloud Connection",
+        "description": "Choose DessMonitor or ShineMonitor and sign in with the account you use on its website or mobile app.",
         "data": {
           "username": "Username",
           "password": "Password",
@@ -40,11 +40,11 @@
           "api_profile": "Account platform"
         },
         "data_description": {
-          "username": "Your DessMonitor account username",
-          "password": "Your DessMonitor account password",
+          "username": "Your account username on the selected platform",
+          "password": "Your account password on the selected platform",
           "company_key": "Your company/vendor key (default: {default_company_key})",
-          "update_interval": "How often to fetch data from DessMonitor. Default is 300 seconds (5 minutes).",
-          "api_profile": "Choose the service you normally sign in to. Keep the default for DessMonitor or SmartESS accounts. Choose SmartClient for Solar / ShineMonitor if that is the app you use."
+          "update_interval": "How often to fetch data from the selected platform. Default is 300 seconds (5 minutes).",
+          "api_profile": "Choose DessMonitor (default) for SmartESS or compatible rebranded apps. Choose ShineMonitor for SmartClient for Solar."
         }
       },
       "local": {
@@ -56,9 +56,10 @@
           "local_expected_product_number": "Collector product number (optional security check)",
           "local_tcp_port": "Local TCP port",
           "local_udp_port": "Collector UDP configuration port",
-          "local_device_code": "Device code (0 = auto-detect)",
+          "local_device_code": "Tunnel code override (0 = automatic)",
           "local_poll_interval": "Polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
@@ -66,23 +67,25 @@
           "local_expected_product_number": "When set, a collector reporting a different product number is rejected.",
           "local_tcp_port": "The collector connects here; the default is 8899.",
           "local_udp_port": "Target port for the redirect command; the default is 58899.",
-          "local_device_code": "Auto-detect uses read-only protocol probes. Enter the cloud devcode to make startup faster.",
+          "local_device_code": "Leave 0 unless a verified local tunnel code is known. The cloud devcode does not identify the local protocol. Existing SMG hints 1 and 2376 remain supported.",
           "local_poll_interval": "Primary status requests are serialized to protect the RS485 bus.",
-          "local_redirect_confirmed": "Home Assistant sends UDP to this collector on port 58899. The collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session."
+          "local_redirect_confirmed": "Home Assistant sends UDP to this collector on port 58899. The collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       },
       "local_advanced": {
         "title": "DessMonitor Local Advanced Setup",
-        "description": "Use this only when automatic device-code detection or the standard EyeBond ports do not work.",
+        "description": "Override the tunnel code or standard EyeBond ports only when automatic discovery does not work.",
         "data": {
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ip": "Collector LAN IP",
           "local_expected_product_number": "Collector product number (optional security check)",
           "local_tcp_port": "Local TCP port",
           "local_udp_port": "Collector UDP configuration port",
-          "local_device_code": "Device code (0 = auto-detect)",
+          "local_device_code": "Tunnel code override (0 = automatic)",
           "local_poll_interval": "Polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
@@ -90,9 +93,10 @@
           "local_expected_product_number": "When set, a collector reporting a different product number is rejected.",
           "local_tcp_port": "The collector connects here; the default is 8899.",
           "local_udp_port": "Target port for the redirect command; the default is 58899.",
-          "local_device_code": "Enter the cloud devcode only when automatic read-only probing does not find the inverter.",
+          "local_device_code": "Leave 0 unless a verified local tunnel code is known. The cloud devcode does not identify the local protocol. Existing SMG hints 1 and 2376 remain supported.",
           "local_poll_interval": "Primary status requests are serialized to protect the RS485 bus.",
-          "local_redirect_confirmed": "Home Assistant sends UDP to the configured collector port. The collector must be allowed to connect back to the configured Home Assistant TCP port. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session."
+          "local_redirect_confirmed": "Home Assistant sends UDP to the configured collector port. The collector must be allowed to connect back to the configured Home Assistant TCP port. Check host and VLAN firewalls, allow only the configured private address, and do not expose either port to the internet. Depending on firmware, the request may briefly interrupt the collector's cloud session.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       },
       "reconfigure": {
@@ -104,15 +108,23 @@
           "local_expected_product_number": "Collector product number (optional security check)",
           "local_tcp_port": "Local TCP port",
           "local_udp_port": "Collector UDP configuration port",
-          "local_device_code": "Device code (0 = auto-detect)",
+          "local_device_code": "Tunnel code override (0 = automatic)",
           "local_poll_interval": "Polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from this collector",
+          "local_device_address": "Inverter address (0 = automatic)"
+        },
+        "data_description": {
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter.",
+          "local_device_code": "Leave 0 unless a verified local tunnel code is known. The cloud devcode does not identify the local protocol. Existing SMG hints 1 and 2376 remain supported."
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to DessMonitor API. Please check your internet connection.",
-      "invalid_auth": "Invalid username or password. Please verify your credentials.",
+      "cannot_connect": "Failed to connect. Please check your network connection and settings.",
+      "invalid_auth": "The password was not accepted. Check it and try again.",
+      "user_not_found": "No account was found for this username on the selected account platform. Try your email address, or choose the other account platform.",
+      "company_key_not_found": "The company key was not recognized. Use the default unless your installer gave you a different one.",
+      "account_disabled": "This account is disabled on the platform. Contact your installer or the platform's support.",
       "invalid_ip": "Enter a private LAN IPv4 address (10.x, 172.16-31.x, or 192.168.x).",
       "invalid_ip_list": "Enter between 1 and 16 private collector IPv4 addresses separated by commas, spaces, or new lines.",
       "collector_is_home_assistant": "The collector address must be different from the Home Assistant address.",
@@ -128,7 +140,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "DessMonitor API Options",
+        "title": "Cloud API Options",
         "description": "The API remains the canonical source for identity, metadata, fallback data, and controls. Local telemetry uses its own faster polling interval.",
         "data": {
           "update_interval": "Cloud API interval",
@@ -146,23 +158,27 @@
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ips": "Collector LAN IP addresses",
           "local_poll_interval": "Local polling interval",
-          "local_redirect_confirmed": "Allow Home Assistant to request local data from these collectors"
+          "local_redirect_confirmed": "Allow Home Assistant to request local data from these collectors",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
           "local_collector_ips": "Enter one or more fixed private addresses separated by commas, spaces, or new lines. Each connection is pinned to its exact address.",
           "local_poll_interval": "How often to read local inverter telemetry. Five seconds is recommended and is independent of the cloud API interval.",
-          "local_redirect_confirmed": "Home Assistant sends UDP to the listed collectors on port 58899. Each collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private addresses, and do not expose either port to the internet. API fallback remains enabled."
+          "local_redirect_confirmed": "Home Assistant sends UDP to the listed collectors on port 58899. Each collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private addresses, and do not expose either port to the internet. API fallback remains enabled.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       },
       "local": {
         "title": "DessMonitor Local Options",
         "description": "Configure local read-only polling.",
         "data": {
-          "local_poll_interval": "Polling interval"
+          "local_poll_interval": "Polling interval",
+          "local_device_address": "Inverter address (0 = automatic)"
         },
         "data_description": {
-          "local_poll_interval": "How often to poll primary inverter status."
+          "local_poll_interval": "How often to poll primary inverter status.",
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       }
     }

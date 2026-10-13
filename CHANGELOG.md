@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-13
+
+This stable release includes all changes since 2.4.0, including everything shipped in 2.5.0-rc.1.
+
+### Added
+- Read-only PI30 local telemetry with strict identification, checksum and status-layout validation. PI30 discovery follows the existing P17/SMG drivers. The SP-2200 in #39 is confirmed working with tunnel code `258`, inverter address `1`, and 16 local readings; its combined report matches the cloud inverter by serial.
+- An optional inverter address in setup, options and the CLI (`--device-address`), with automatic discovery preserved for existing entries.
+
+### Fixed
+- Cloud and hybrid setup now report why sign-in failed. An unknown username, an unrecognized company key, a rejected password, a disabled account, and a connection failure each show their own message. Previously all of them, including timeouts, appeared as "Invalid username or password" (#43).
+- Removed `aiohttp` from the manifest requirements. Home Assistant provides it, and Hassfest now rejects custom integrations that list it.
+- Local reconfiguration now updates polling options as well as entry data, preventing a previous option from overriding the new interval.
+- Automatic ASCII discovery now tries bounded collector address `255` fallback routes. Unaddressed results require serial matching before they can overlay cloud telemetry. Corrected setup guidance that confused cloud devcodes with local tunnel codes. PI30 support resolves the SP-2200 discovery failure reported in #39.
+- Corrected Energy Dashboard guidance to distinguish power readings from energy totals, removed a misleading daily-production automation, and replaced unsupported security claims and fixed collection-acceleration pricing with accurate guidance.
+
+### Changed
+- Simplified account platform names to DessMonitor and ShineMonitor throughout setup, CLI help, and documentation. SmartESS and SmartClient for Solar are identified as mobile clients; existing backend identifiers and account data are unchanged.
+- Renamed the HACS listing to DessMonitor / ShineMonitor and clarified support for monitoring and configuring supported inverter settings. Cloud and hybrid modes provide cloud controls; local-only monitoring remains read-only.
+- Reorganized the main README to consolidate installation, polling, troubleshooting, and contributor guidance. Added web and app-store links, compatibility guidance for rebranded apps, and a model list based on the device profiles. The app table leads with the mobile app so you can look up which account platform to choose.
+
+### Upgrade notes and known limitations
+- Restart Home Assistant after updating. Existing entries retain automatic discovery, their account platform, and their entity identities. Setting an explicit inverter address selects where to read; it does not change the inverter's configured address.
+- Local monitoring remains read-only. PI30 local writes and energy totals are not included.
+- SP-2200 hardware evidence confirms PI30 discovery and a polling cycle. Sustained readings, reconnects, and hybrid cloud fallback on other PI30 units are not yet verified on hardware.
+- The clearer sign-in messages apply to the cloud and hybrid setup forms only. If setup reports that no account was found, try your email address and the other account platform before changing the company key. The SolarPower Wi-Fi sign-in report in [#43](https://github.com/andreas-glaser/ha-dessmonitor/issues/43) remains under investigation; this release does not confirm compatibility with that app.
+
+## [2.5.0-rc.1] - 2026-09-21
+
+First release candidate for 2.5.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.5.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+### Added
+- Read-only PI30 local telemetry with strict identification, checksum and status-layout validation. PI30 discovery follows the existing P17/SMG drivers. The SP-2200 in #39 is confirmed working with tunnel code `258`, inverter address `1`, and 16 local readings; its combined report matches the cloud inverter by serial.
+- An optional inverter address in setup, options and the CLI (`--device-address`), with automatic discovery preserved for existing entries.
+
+### Changed
+- Simplified account platform names to DessMonitor and ShineMonitor throughout setup, CLI help, and documentation. SmartESS and SmartClient for Solar are identified as mobile clients; existing backend identifiers and account data are unchanged.
+- Renamed the HACS listing to DessMonitor / ShineMonitor and clarified support for monitoring and configuring supported inverter settings. Cloud and hybrid modes provide cloud controls; local-only monitoring remains read-only.
+- Reorganized the main README to consolidate installation, polling, troubleshooting, and contributor guidance. Added web and app-store links, compatibility guidance for rebranded apps, and a model list based on the device profiles.
+
+### Fixed
+- Local reconfiguration now updates polling options as well as entry data, preventing a previous option from overriding the new interval.
+- Automatic ASCII discovery now tries bounded collector address `255` fallback routes. Unaddressed results require serial matching before they can overlay cloud telemetry. Corrected setup guidance that confused cloud devcodes with local tunnel codes. PI30 support resolves the SP-2200 discovery failure reported in #39.
+- Corrected Energy Dashboard guidance to distinguish power readings from energy totals, removed a misleading daily-production automation, and replaced unsupported security claims and fixed collection-acceleration pricing with accurate guidance.
+
+### Upgrade notes and testing
+- Restart Home Assistant after updating. Existing entries retain automatic discovery and their entity identities. Setting an explicit inverter address selects where to read; it does not change the inverter's configured address.
+- Local monitoring remains read-only. PI30 local writes and energy totals are not included in this candidate.
+- SP-2200 hardware evidence confirms discovery and a polling cycle. Please test sustained readings, reconnects, and hybrid cloud fallback on your setup.
+
 ## [2.4.0] - 2026-09-15
 
 This stable release includes all changes since 2.3.0, including everything shipped in 2.4.0-rc.1, 2.4.0-rc.2, and 2.4.0-rc.3.
@@ -15,7 +64,7 @@ This stable release includes all changes since 2.3.0, including everything shipp
 - Devcode `2477` cloud telemetry and priority mappings, with bulk, float, equalization, battery/utility return, and low cut-off voltage dropdowns filtered to the reported 24 V or 48 V rating. Options refresh when rated metadata changes; invalid or unknown ratings make the affected controls unavailable and block writes until valid data arrives. Inverter brand/model and hardware write verification remain unconfirmed (#40, thanks to @albertdb for the analysis data).
 - CLI `analyze --redacted` blanks `device_sn`, `collector_alias`, and known identifying values in telemetry, parameters, and unit-pattern samples before computing the checksum for JSON output and template input. Combined cloud/local reports share this sanitization. All documented analysis examples recommend the flag for sharing; combining it with `--raw` is rejected.
 - Devcode `6416` (PowMr POW-HVM6.2M-48V-N) support for State of Charge, grid readings, both PV inputs and total PV power, load percentage, operating mode, and priority mappings. State of Charge uses existing telemetry without an extra API request (#36, thanks to @ufika for the CLI analysis data).
-- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
+- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor remains the default, with ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
 - Devcode `518` (BYD BYD-S-1P5K-2M) grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
@@ -93,7 +142,7 @@ Second release candidate for 2.4.0, including all changes from [RC1](https://git
 First release candidate for 2.4.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.4.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
 
 ### Added
-- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor / SmartESS remains the default, with SmartClient for Solar / ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
+- Explicit account platform selection in cloud and hybrid setup and the CLI: DessMonitor remains the default, with ShineMonitor available for photovoltaic accounts. Existing entries retain their identities and backend (#31, thanks to @trentas for the contribution and device evidence).
 - Devcode `518` grid-tie power, energy, PV voltage/current, temperature, and frequency mappings, with duplicate summary energy readings merged into the same entities.
 - Devcode `6514` (ANENJI 5KW 48V Hybrid Solar Inverter) support for battery State of Charge, fetched from the device parameters endpoint and mapped from `Battery percentage` (#35, thanks to @vyore1980 for the CLI analysis data).
 
@@ -448,7 +497,9 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0
+[2.5.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0-rc.1
 [2.4.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0
 [2.4.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...v2.4.0-rc.3
 [2.4.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.1...v2.4.0-rc.2

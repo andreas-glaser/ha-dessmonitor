@@ -1,31 +1,34 @@
-# DessMonitor Home Assistant Integration
+# DessMonitor / ShineMonitor for Home Assistant
 
-A custom integration for DessMonitor / SmartESS and SmartClient for Solar / ShineMonitor accounts in Home Assistant.
-Cloud updates default to 5 minutes. Faster DessMonitor updates require its collection-acceleration service.
+Monitor your solar inverter and configure supported settings directly in Home Assistant through DessMonitor or ShineMonitor. Track solar production, battery status, and energy use with the same account you use in SmartESS, SmartClient for Solar, or a compatible rebranded app. Configuration uses the cloud; optional local monitoring is read-only and requires compatible hardware.
+
+For Android and iOS downloads, see the [platforms and mobile apps table](../../README.md#platforms-and-mobile-apps).
 
 ## Quick Setup
 1. In Home Assistant: Settings > Devices & Services > Add Integration > "DessMonitor".
-2. Choose the primary **DessMonitor cloud API**, the guided **API + preferred
-   local telemetry** path, or read-only **Local network only**.
-3. For either API path, choose **Account platform**. Keep **DessMonitor / SmartESS
-   (default)** for existing accounts, or select **SmartClient for Solar / ShineMonitor**.
+2. Choose **Cloud API**, **Cloud API + preferred local telemetry**, or
+   **Local network only (read-only)**.
+3. For either API path, choose **Account platform**. Keep **DessMonitor (default)**
+   for existing accounts, or select **ShineMonitor**.
    Enter Username and Password; keep the Company Key default unless your installer supplied another.
 4. Choose Update Interval:
    - 5 minutes: Standard rate (recommended)
    - 1 minute: Requires "Detailed Data Collection Acceleration" from DessMonitor
 
 ## Key Features
+- Supported inverter configuration from dashboards and automations via select, number, and button entities (output priority, charger source, battery settings, buzzer mode, and more).
 - Multiple inverter support with automatic discovery.
 - Optional read-only local telemetry and preferred-local cloud fallback.
 - Sensors for power, voltages, currents, frequency, temperature, load %, operating mode.
-- Energy Dashboard compatible (use `*_total_pv_power`, `*_battery_power`, `*_grid_power`).
-- Device configuration via select, number, and button entities (output priority, charger source, battery settings, buzzer mode, and more).
+- Energy Dashboard support where suitable energy sensors are available; see the [energy and power sensor guidance](../../README.md#energy-dashboard).
 - Supported devcodes: 518, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2477, 2507, 6416, 6422, 6514, 6515, 6544.
 - Diagnostic sensors available but disabled by default to avoid clutter.
 
 ## Device Configuration
 
-The integration exposes inverter settings as Home Assistant entities, allowing you to read and change device configuration directly from your dashboard or automations.
+In cloud and hybrid modes, the integration exposes supported inverter settings as Home Assistant entities. Open your inverter's device page under **Settings > Devices & Services > DessMonitor**, or add its controls to dashboards and automations. Control discovery runs in the background, so settings can appear after sensor readings.
+
+Settings changes use the selected platform's cloud API even when monitoring uses a local connection. Local-only mode provides monitoring without configuration controls.
 
 For devcode 2477, the bulk, float, equalization, battery/utility return, and low
 cut-off voltage dropdowns show only the API options for the reported 24 V or 48 V
@@ -39,7 +42,7 @@ Other controls retain their API options and ranges.
 - **Number entities**: Numeric settings with min/max ranges from the device (charging voltages, max currents, SOC protection values, EQ timers, etc.)
 - **Button entities**: One-shot actions (clear record, reset user settings, forced EQ charging, exit fault mode)
 
-All current values are read from the device at startup. Changes take effect immediately via the DessMonitor cloud API.
+Current values and available settings are fetched from the selected cloud platform. Changes are sent through that platform's API; available controls depend on the device.
 
 ## Manage & Configure
 - Change options anytime: Settings > Devices & Services > DessMonitor > Configure.
@@ -70,8 +73,8 @@ All current values are read from the device at startup. Changes take effect imme
 - Existing entries keep their profile, entity identities, and history without migration.
 - Tokens renew using the expiry returned by the selected backend and are never reused across profiles.
 - Devcode 518 cloud telemetry is supported; its local protocol and write controls have not been verified.
-- Respect DessMonitor API limits; avoid excessively frequent polling.
-- Control values are cached at startup and updated optimistically after writes. Restart HA to re-read values from the device.
+- Respect your platform's API limits; avoid excessively frequent polling.
+- Select and number entities update their displayed values after successful API writes. Numeric settings included in regular telemetry also refresh when new readings arrive; changes made outside Home Assistant may not appear automatically for other controls.
 
 ## Support
 - Issues: https://github.com/andreas-glaser/ha-dessmonitor/issues

@@ -62,7 +62,9 @@ def _request_fields(payload: bytes) -> tuple[int, int, int, int]:
 def _ascii_registers(value: str, count: int) -> list[int]:
     """Encode two ASCII characters per register."""
     raw = value.encode("ascii").ljust(count * 2, b"\x00")[: count * 2]
-    return [int.from_bytes(raw[index : index + 2], "big") for index in range(0, len(raw), 2)]
+    return [
+        int.from_bytes(raw[index : index + 2], "big") for index in range(0, len(raw), 2)
+    ]
 
 
 def test_live_decoder_uses_canonical_titles_and_scaling() -> None:
@@ -93,9 +95,7 @@ async def test_discovery_and_poll_send_only_function_three_reads() -> None:
 
     async def send(payload: bytes, device_code: int, collector_address: int) -> bytes:
         slave, function, register, count = _request_fields(payload)
-        calls.append(
-            (device_code, collector_address, slave, function, register, count)
-        )
+        calls.append((device_code, collector_address, slave, function, register, count))
         if device_code != 1 or collector_address != 0xFF or slave != 1:
             return b""
         if register == 201:
@@ -164,3 +164,21 @@ async def test_reported_collector_code_258_prefers_standard_smg_tunnel() -> None
 
     assert devices
     assert routes[0] == (1, 0xFF)
+
+
+@pytest.mark.parametrize("address", [5, 247])
+async def test_explicit_slave_address_is_preserved_when_polling(address) -> None:
+    async def send(payload, _code, collector_address):
+        slave, function, register, count = _request_fields(payload)
+        assert slave == address
+        assert collector_address == 255
+        assert function == 3
+        values = _live_registers() if register == 201 else [0] * count
+        return build_read_holding_response(slave, values)
+
+    (device,) = await discover_smg(
+        send, collector_product_number="TEST", device_address=address
+    )
+    assert device.route.slave_address == address
+    assert device.serial == f"TEST-{address}"
+    assert (await poll_smg(send, device.route))["Battery Voltage"] == 52.3

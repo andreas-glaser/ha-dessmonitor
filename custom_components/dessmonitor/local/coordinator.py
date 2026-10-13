@@ -13,12 +13,14 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from ..const import (
     CONF_LOCAL_COLLECTOR_IP,
+    CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
     CONF_LOCAL_LISTEN_IP,
     CONF_LOCAL_POLL_INTERVAL,
     CONF_LOCAL_TCP_PORT,
     CONF_LOCAL_UDP_PORT,
+    DEFAULT_LOCAL_DEVICE_ADDRESS,
     DEFAULT_LOCAL_DEVICE_CODE,
     DEFAULT_LOCAL_POLL_INTERVAL,
     DEFAULT_LOCAL_TCP_PORT,
@@ -27,6 +29,7 @@ from ..const import (
     SENSOR_TYPES,
 )
 from .announcer import CollectorAnnouncer
+from .discovery import inverter_addresses
 from .drivers import LocalDevice, ReadOnlyLocalDriver, discover_supported_devices
 from .protocol import ProtocolError
 from .server import CollectorIdentity, CollectorServer
@@ -45,6 +48,10 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         """Initialize local services without opening sockets."""
         super().__init__(hass, _LOGGER, name=f"{DOMAIN}_local", always_update=False)
         self._entry_data = entry_data
+        self._device_address = entry_data.get(
+            CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+        )
+        inverter_addresses(self._device_address, _MAX_DEVICE_ADDRESS)
         self._poll_interval = int(
             entry_data.get(CONF_LOCAL_POLL_INTERVAL, DEFAULT_LOCAL_POLL_INTERVAL)
         )
@@ -169,6 +176,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
             ),
             reported_device_code=identity.reported_device_code,
             max_address=_MAX_DEVICE_ADDRESS,
+            device_address=self._device_address,
         )
         self._driver = driver
         self._devices = {device.serial: device for device in devices}
@@ -282,6 +290,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                     "local_protocol": device.driver_key,
                     "local_tunnel_device_code": device.transport_device_code,
                     "local_collector_address": device.collector_address,
+                    "local_address_verified": device.address_verified,
                 },
                 "data": points,
             }

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .diagnostics import record_query
+from .discovery import inverter_addresses
 from .modbus import (
     ModbusError,
     build_read_holding_request,
@@ -204,17 +205,20 @@ async def discover_smg(
     configured_device_code: int = 0,
     reported_device_code: int = 0,
     max_address: int = 16,
+    device_address: int = 0,
 ) -> tuple[SmgDevice, ...]:
     """Discover one or more SMG Modbus slaves using read-only requests."""
     if not 1 <= max_address <= 247:
         raise ModbusError("maximum SMG slave address must be between 1 and 247")
+    addresses = inverter_addresses(device_address, max_address)
+    first_address = addresses.start
 
     tunnel_codes = _tunnel_device_codes(configured_device_code, reported_device_code)
     selected: tuple[int, int] | None = None
     first_live: tuple[int, ...] | None = None
     for device_code in tunnel_codes:
-        for collector_address in (SMG_TUNNEL_COLLECTOR_ADDRESS, 1):
-            route = SmgRoute(device_code, collector_address, 1)
+        for collector_address in (SMG_TUNNEL_COLLECTOR_ADDRESS, first_address):
+            route = SmgRoute(device_code, collector_address, first_address)
             try:
                 candidate = await read_holding_registers(
                     send, route, _LIVE_START, _LIVE_COUNT
@@ -232,12 +236,12 @@ async def discover_smg(
 
     devices: list[SmgDevice] = []
     seen_serials: set[str] = set()
-    for slave_address in range(1, max_address + 1):
+    for slave_address in addresses:
         route = SmgRoute(selected[0], selected[1], slave_address)
         try:
             live_registers = (
                 first_live
-                if slave_address == 1
+                if slave_address == first_address
                 else await read_holding_registers(send, route, _LIVE_START, _LIVE_COUNT)
             )
             live_values = decode_live_registers(live_registers)

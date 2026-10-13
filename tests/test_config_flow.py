@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import aiohttp
 import pytest
 import voluptuous_serialize
 from homeassistant import config_entries
@@ -15,6 +21,7 @@ from custom_components.dessmonitor.const import (
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
     CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
     CONF_LOCAL_LISTEN_IP,
@@ -155,6 +162,7 @@ async def test_guided_hybrid_flow_creates_api_entry_with_local_options(
         {
             CONF_LOCAL_LISTEN_IP: "192.168.10.2",
             CONF_LOCAL_COLLECTOR_IPS: "192.168.10.50 192.168.10.51",
+            CONF_LOCAL_DEVICE_ADDRESS: "5",
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
     )
@@ -163,6 +171,7 @@ async def test_guided_hybrid_flow_creates_api_entry_with_local_options(
     assert created["type"] is FlowResultType.CREATE_ENTRY
     assert created["data"][CONF_CONNECTION_TYPE] == CONNECTION_TYPE_CLOUD
     assert created["options"][CONF_LOCAL_MODE] == LOCAL_MODE_PREFER_LOCAL
+    assert created["options"][CONF_LOCAL_DEVICE_ADDRESS] == 5
     assert created["options"][CONF_LOCAL_COLLECTOR_IPS] == [
         "192.168.10.50",
         "192.168.10.51",
@@ -259,6 +268,7 @@ async def test_local_flow_uses_secure_easy_defaults(hass: HomeAssistant) -> None
     assert set(result["data_schema"].schema) == {
         CONF_LOCAL_LISTEN_IP,
         CONF_LOCAL_COLLECTOR_IP,
+        CONF_LOCAL_DEVICE_ADDRESS,
         CONF_LOCAL_REDIRECT_CONFIRMED,
     }
 
@@ -277,6 +287,7 @@ async def test_local_flow_uses_secure_easy_defaults(hass: HomeAssistant) -> None
     assert created["data"][CONF_LOCAL_TCP_PORT] == DEFAULT_LOCAL_TCP_PORT
     assert created["data"][CONF_LOCAL_UDP_PORT] == DEFAULT_LOCAL_UDP_PORT
     assert created["data"][CONF_LOCAL_DEVICE_CODE] == DEFAULT_LOCAL_DEVICE_CODE
+    assert created["data"].get(CONF_LOCAL_DEVICE_ADDRESS, 0) == 0
     assert created["data"][CONF_LOCAL_POLL_INTERVAL] == DEFAULT_LOCAL_POLL_INTERVAL
     assert CONF_LOCAL_REDIRECT_CONFIRMED not in created["data"]
 
@@ -359,6 +370,7 @@ async def test_local_advanced_flow_stores_overrides(hass: HomeAssistant) -> None
             CONF_LOCAL_TCP_PORT: "18899",
             CONF_LOCAL_UDP_PORT: "58898",
             CONF_LOCAL_DEVICE_CODE: "2452",
+            CONF_LOCAL_DEVICE_ADDRESS: "5",
             CONF_LOCAL_POLL_INTERVAL: "10",
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
@@ -367,6 +379,7 @@ async def test_local_advanced_flow_stores_overrides(hass: HomeAssistant) -> None
     assert created["data"][CONF_LOCAL_EXPECTED_PN] == "PN-EXPECTED"
     assert created["data"][CONF_LOCAL_TCP_PORT] == 18899
     assert created["data"][CONF_LOCAL_DEVICE_CODE] == 2452
+    assert created["data"][CONF_LOCAL_DEVICE_ADDRESS] == 5
 
 
 @pytest.mark.usefixtures("mock_setup_entry")
@@ -407,6 +420,7 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
             CONF_LOCAL_POLL_INTERVAL: DEFAULT_LOCAL_POLL_INTERVAL,
             CONF_LOCAL_EXPECTED_PN: "",
         },
+        options={CONF_LOCAL_DEVICE_ADDRESS: 7, CONF_LOCAL_POLL_INTERVAL: 30},
         unique_id="local:192.168.10.50",
     )
     entry.add_to_hass(hass)
@@ -418,6 +432,8 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
         },
     )
     assert result["step_id"] == "reconfigure"
+    assert _form_default(result, CONF_LOCAL_DEVICE_ADDRESS) == 7
+    assert _form_default(result, CONF_LOCAL_POLL_INTERVAL) == "30"
 
     updated = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -428,6 +444,7 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
             CONF_LOCAL_TCP_PORT: 18899,
             CONF_LOCAL_UDP_PORT: 58898,
             CONF_LOCAL_DEVICE_CODE: 2376,
+            CONF_LOCAL_DEVICE_ADDRESS: "5",
             CONF_LOCAL_POLL_INTERVAL: 10,
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
@@ -437,6 +454,9 @@ async def test_local_entry_can_be_reconfigured(hass: HomeAssistant) -> None:
     assert entry.unique_id == "local:192.168.20.60"
     assert entry.data[CONF_LOCAL_COLLECTOR_IP] == "192.168.20.60"
     assert entry.data[CONF_LOCAL_EXPECTED_PN] == "EXPECTED-PN"
+    assert entry.data[CONF_LOCAL_DEVICE_ADDRESS] == 5
+    assert entry.options[CONF_LOCAL_DEVICE_ADDRESS] == 5
+    assert entry.options[CONF_LOCAL_POLL_INTERVAL] == 10
 
 
 @pytest.mark.usefixtures("mock_setup_entry")
@@ -460,6 +480,44 @@ async def test_local_options_coerce_poll_interval(hass: HomeAssistant) -> None:
         result["flow_id"], {CONF_LOCAL_POLL_INTERVAL: "10"}
     )
     assert created["data"][CONF_LOCAL_POLL_INTERVAL] == 10
+
+
+@pytest.mark.usefixtures("mock_setup_entry")
+@pytest.mark.parametrize("address", [0, 5, 247])
+async def test_local_address_option_is_persisted_and_restored(hass, address) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_LOCAL,
+            CONF_LOCAL_DEVICE_ADDRESS: 3,
+        },
+        options={CONF_LOCAL_DEVICE_ADDRESS: 7},
+    )
+    entry.add_to_hass(hass)
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _form_default(form, CONF_LOCAL_DEVICE_ADDRESS) == 7
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {CONF_LOCAL_DEVICE_ADDRESS: str(address)}
+    )
+    assert result["data"][CONF_LOCAL_DEVICE_ADDRESS] == address
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _form_default(form, CONF_LOCAL_DEVICE_ADDRESS) == address
+
+
+@pytest.mark.parametrize("address", [-1, 248, 255, "not-an-address"])
+async def test_setup_rejects_invalid_inverter_address(hass, address) -> None:
+    import voluptuous as vol
+
+    form = await _start_local_flow(hass)
+    with pytest.raises(vol.Invalid):
+        form["data_schema"](
+            {
+                CONF_LOCAL_LISTEN_IP: "192.168.1.10",
+                CONF_LOCAL_COLLECTOR_IP: "192.168.1.11",
+                CONF_LOCAL_REDIRECT_CONFIRMED: True,
+                CONF_LOCAL_DEVICE_ADDRESS: address,
+            }
+        )
 
 
 @pytest.mark.usefixtures("mock_setup_entry")
@@ -489,6 +547,7 @@ async def test_cloud_options_enable_preferred_local(hass: HomeAssistant) -> None
         {
             CONF_LOCAL_LISTEN_IP: "192.168.10.2",
             CONF_LOCAL_COLLECTOR_IPS: "192.168.10.50, 192.168.10.51",
+            CONF_LOCAL_DEVICE_ADDRESS: "247",
             CONF_LOCAL_REDIRECT_CONFIRMED: True,
         },
     )
@@ -499,6 +558,7 @@ async def test_cloud_options_enable_preferred_local(hass: HomeAssistant) -> None
         "192.168.10.51",
     ]
     assert created["data"][CONF_LOCAL_DEVICE_CODE] == DEFAULT_LOCAL_DEVICE_CODE
+    assert created["data"][CONF_LOCAL_DEVICE_ADDRESS] == 247
 
 
 @pytest.mark.usefixtures("mock_setup_entry")
@@ -706,10 +766,10 @@ async def test_platform_selector_defaults_to_existing_service(hass, step):
     field = _serialized_form_field(result, CONF_API_PROFILE)
     options = field["selector"]["select"]["options"]
     assert options == [
-        {"value": "dessmonitor_ess", "label": "DessMonitor / SmartESS (default)"},
+        {"value": "dessmonitor_ess", "label": "DessMonitor (default)"},
         {
             "value": "shinemonitor_solar",
-            "label": "SmartClient for Solar / ShineMonitor",
+            "label": "ShineMonitor",
         },
     ]
 
@@ -727,3 +787,71 @@ async def test_existing_cloud_account_is_not_duplicated(hass):
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
     assert hass.config_entries.async_entries(DOMAIN) == [entry]
+
+
+class _RejectingSession:
+    """Session stand-in that answers every request with one outcome."""
+
+    def __init__(self, outcome: dict | Exception) -> None:
+        self._outcome = outcome
+
+    def get(self, url: object, **_: object) -> MagicMock:
+        if isinstance(self._outcome, Exception):
+            raise self._outcome
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        response.json = AsyncMock(return_value=self._outcome)
+        ctx = MagicMock()
+        ctx.__aenter__ = AsyncMock(return_value=response)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        return ctx
+
+
+@pytest.mark.parametrize(
+    "start_flow", [_start_cloud_flow, _start_hybrid_flow], ids=["cloud", "hybrid"]
+)
+@pytest.mark.parametrize(
+    ("outcome", "error"),
+    [
+        ({"err": 15, "desc": "ERR_NOT_FOUND_COMPANY_KEY"}, "company_key_not_found"),
+        ({"err": 16, "desc": "ERR_PASSWORD_VERIF_FAIL"}, "invalid_auth"),
+        ({"err": 25, "desc": "ERR_USR_DISABLED"}, "account_disabled"),
+        ({"err": 261, "desc": "ERR_NOT_FOUND_USR"}, "user_not_found"),
+        ({"err": 1, "desc": "ERR_FAIL"}, "cannot_connect"),
+        (asyncio.TimeoutError(), "cannot_connect"),
+        (aiohttp.ClientConnectionError(), "cannot_connect"),
+    ],
+    ids=[
+        "unknown-company-key",
+        "password-rejected",
+        "account-disabled",
+        "unknown-user",
+        "other-api-error",
+        "timeout",
+        "connection-error",
+    ],
+)
+async def test_cloud_setup_reports_why_sign_in_failed(
+    hass: HomeAssistant, start_flow, outcome, error
+) -> None:
+    """Each sign-in failure names its cause instead of blaming the password."""
+    with patch(
+        "custom_components.dessmonitor.config_flow.async_get_clientsession",
+        return_value=_RejectingSession(outcome),
+    ):
+        result = await start_flow(hass)
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"], BASE_INPUT
+        )
+
+    assert result2["type"] is FlowResultType.FORM
+    assert result2["errors"] == {"base": error}
+
+
+def test_every_cloud_setup_error_has_a_message() -> None:
+    from custom_components.dessmonitor.config_flow import AUTH_ERROR_KEYS
+
+    strings = Path(__file__).parents[1] / "custom_components/dessmonitor/strings.json"
+    messages = json.loads(strings.read_text(encoding="utf-8"))["config"]["error"]
+
+    assert {*AUTH_ERROR_KEYS.values(), "cannot_connect"} <= messages.keys()

@@ -53,6 +53,8 @@ async def run_local_probe(args: Any) -> dict[str, Any]:
         raise ValueError(
             "refusing to request a collector callback without --confirm-callback"
         )
+    device_address = getattr(args, "device_address", 0)
+    _load_local_module("discovery").inverter_addresses(device_address, args.max_address)
     announcer_module = _load_local_module("announcer")
     diagnostics_module = _load_local_module("diagnostics")
     drivers_module = _load_local_module("drivers")
@@ -81,6 +83,7 @@ async def run_local_probe(args: Any) -> dict[str, Any]:
         "collector": {"ip": _identifier(args.collector_ip, args.include_identifiers)},
         "probe": {
             "configured_device_code": args.device_code,
+            "device_address": device_address,
             "request_timeout_seconds": server.request_timeout,
             "probe_timeout_seconds": args.probe_timeout,
             "max_address": args.max_address,
@@ -133,6 +136,7 @@ async def run_local_probe(args: Any) -> dict[str, Any]:
                         configured_device_code=args.device_code,
                         reported_device_code=identity.reported_device_code,
                         max_address=args.max_address,
+                        device_address=device_address,
                         diagnostics=diagnostics,
                     )
                     _LOGGER.debug(
@@ -155,6 +159,7 @@ async def run_local_probe(args: Any) -> dict[str, Any]:
                         report["inverters"].append(
                             {
                                 "address": device.device_address,
+                                "address_verified": device.address_verified,
                                 "serial": _identifier(
                                     device.serial, args.include_identifiers
                                 ),

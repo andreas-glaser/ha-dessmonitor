@@ -1,12 +1,12 @@
 # DessMonitor Device Support
 
-This directory contains collector-specific mappings and configurations for different DessMonitor data collector models (devcodes).
+This directory contains device profiles for inverters connected through DessMonitor or ShineMonitor. Profiles map sensor readings and supported configuration fields to Home Assistant entities. Available settings, options, and ranges come from the device's cloud API metadata.
 
-**Note**: The devcode refers to the data collector/gateway device, not the inverter itself. The data collector communicates with one or more inverters and reports their data to the DessMonitor API.
+**Note**: The devcode refers to the data collector/gateway device, not the inverter itself. The data collector communicates with one or more inverters and reports their data to the selected platform. A cloud profile does not establish local protocol support or make settings writable locally.
 
 ## Currently Supported Collectors
 
-- **devcode 518**: Known to pair with BYD BYD-S-1P5K-2M through Q0025-series collectors on SmartClient for Solar / ShineMonitor; local protocol and writes are not verified.
+- **devcode 518**: Known to pair with BYD BYD-S-1P5K-2M through Q0025-series collectors on ShineMonitor; local protocol and writes are not verified.
 
 - **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh

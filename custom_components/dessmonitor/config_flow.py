@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from ipaddress import ip_address
-from typing import Any
+from typing import Any, Final
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -28,6 +28,7 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
     CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
     CONF_LOCAL_LISTEN_IP,
@@ -44,6 +45,7 @@ from .const import (
     CONNECTION_TYPE_LOCAL,
     DEFAULT_API_PROFILE,
     DEFAULT_COMPANY_KEY,
+    DEFAULT_LOCAL_DEVICE_ADDRESS,
     DEFAULT_LOCAL_DEVICE_CODE,
     DEFAULT_LOCAL_POLL_INTERVAL,
     DEFAULT_LOCAL_TCP_PORT,
@@ -133,6 +135,12 @@ def _local_schema(
             CONF_LOCAL_COLLECTOR_IP,
             default=current.get(CONF_LOCAL_COLLECTOR_IP, ""),
         ): str,
+        vol.Optional(
+            CONF_LOCAL_DEVICE_ADDRESS,
+            default=current.get(
+                CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+            ),
+        ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
         vol.Required(
             CONF_LOCAL_REDIRECT_CONFIRMED,
             default=bool(current.get(CONF_LOCAL_COLLECTOR_IP)),
@@ -210,6 +218,9 @@ def _normalize_local_input(
     normalized[CONF_LOCAL_UDP_PORT] = user_input.get(
         CONF_LOCAL_UDP_PORT, DEFAULT_LOCAL_UDP_PORT
     )
+    normalized[CONF_LOCAL_DEVICE_ADDRESS] = user_input.get(
+        CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+    )
     normalized[CONF_LOCAL_DEVICE_CODE] = user_input.get(
         CONF_LOCAL_DEVICE_CODE, DEFAULT_LOCAL_DEVICE_CODE
     )
@@ -270,6 +281,10 @@ def _normalize_hybrid_local_input(
         CONF_LOCAL_COLLECTOR_IPS: collector_ips,
         CONF_LOCAL_TCP_PORT: current.get(CONF_LOCAL_TCP_PORT, DEFAULT_LOCAL_TCP_PORT),
         CONF_LOCAL_UDP_PORT: current.get(CONF_LOCAL_UDP_PORT, DEFAULT_LOCAL_UDP_PORT),
+        CONF_LOCAL_DEVICE_ADDRESS: user_input.get(
+            CONF_LOCAL_DEVICE_ADDRESS,
+            current.get(CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS),
+        ),
         CONF_LOCAL_DEVICE_CODE: current.get(
             CONF_LOCAL_DEVICE_CODE, DEFAULT_LOCAL_DEVICE_CODE
         ),
@@ -292,6 +307,7 @@ def _hybrid_local_schema(
     configured_collectors: Any = "",
     local_poll_interval: int = DEFAULT_LOCAL_POLL_INTERVAL,
     redirect_confirmed: bool | None = None,
+    device_address: int = DEFAULT_LOCAL_DEVICE_ADDRESS,
 ) -> vol.Schema:
     """Build the same minimal local-first form for setup and options."""
     if isinstance(configured_collectors, list):
@@ -310,6 +326,10 @@ def _hybrid_local_schema(
                 CONF_LOCAL_POLL_INTERVAL,
                 default=str(local_poll_interval),
             ): _list_choice(LOCAL_POLL_INTERVAL_OPTIONS),
+            vol.Optional(
+                CONF_LOCAL_DEVICE_ADDRESS,
+                default=device_address,
+            ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
             vol.Required(
                 CONF_LOCAL_REDIRECT_CONFIRMED,
                 default=(
@@ -355,6 +375,15 @@ def _normalize_update_interval(user_input: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Platform err codes that identify why sign-in was rejected.
+AUTH_ERROR_KEYS: Final[dict[int | None, str]] = {
+    15: "company_key_not_found",
+    16: "invalid_auth",
+    25: "account_disabled",
+    261: "user_not_found",
+}
+
+
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
@@ -383,42 +412,26 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     try:
         _LOGGER.debug("Attempting authentication during config validation")
-        success = await api.authenticate()
-        if not success:
-            _LOGGER.error(
-                "Authentication returned False for user: %s",
-                _mask_username(username),
-            )
-            raise InvalidAuth("Authentication failed")
-
+        await api.authenticate()
         _LOGGER.debug("Authentication successful, fetching collectors")
         collectors, _projects = await api.get_collectors()
-        if not collectors:
-            _LOGGER.error("No collectors found for user: %s", _mask_username(username))
-            raise CannotConnect("No collectors found")
-
-        _LOGGER.info(
-            "Validation successful: user=%s, collectors=%d",
-            _mask_username(username),
-            len(collectors),
-        )
-        return {
-            "title": f"DessMonitor ({username})",
-            "collectors_count": len(collectors),
-        }
     except DessMonitorError as err:
-        error_msg = str(err).lower()
         _LOGGER.error("DessMonitor API error during validation: %s", err)
-        if "password" in error_msg or "auth" in error_msg:
-            raise InvalidAuth from err
-        raise CannotConnect from err
-    except Exception as err:
-        _LOGGER.exception(
-            "Unexpected exception during validation for user %s: %s",
-            _mask_username(username),
-            err,
-        )
-        raise CannotConnect from err
+        raise CloudSetupError(AUTH_ERROR_KEYS.get(err.code, "cannot_connect")) from err
+
+    if not collectors:
+        _LOGGER.error("No collectors found for user: %s", _mask_username(username))
+        raise CloudSetupError("cannot_connect")
+
+    _LOGGER.info(
+        "Validation successful: user=%s, collectors=%d",
+        _mask_username(username),
+        len(collectors),
+    )
+    return {
+        "title": f"DessMonitor ({username})",
+        "collectors_count": len(collectors),
+    }
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
@@ -455,10 +468,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             username = user_input[CONF_USERNAME]
             try:
                 info = await validate_input(self.hass, user_input)
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
+            except CloudSetupError as err:
+                errors["base"] = err.error_key
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception(
                     "Unexpected exception in hybrid setup for user %s",
@@ -517,6 +528,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_LOCAL_POLL_INTERVAL, DEFAULT_LOCAL_POLL_INTERVAL
                 ),
                 redirect_confirmed=form_values.get(CONF_LOCAL_REDIRECT_CONFIRMED),
+                device_address=form_values.get(
+                    CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                ),
             ),
             errors=errors,
         )
@@ -524,7 +538,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
     async def async_step_cloud(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Configure the existing DessMonitor cloud API."""
+        """Configure the selected cloud platform."""
         _LOGGER.debug("Config flow step_user called with input: %s", bool(user_input))
         errors: dict[str, str] = {}
 
@@ -538,12 +552,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             try:
                 info = await validate_input(self.hass, user_input)
                 _LOGGER.debug("Input validation successful: %s", info)
-            except CannotConnect as err:
-                _LOGGER.error("Cannot connect error in config flow: %s", err)
-                errors["base"] = "cannot_connect"
-            except InvalidAuth as err:
-                _LOGGER.error("Invalid auth error in config flow: %s", err)
-                errors["base"] = "invalid_auth"
+            except CloudSetupError as err:
+                errors["base"] = err.error_key
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception(
                     "Unexpected exception in config flow for user %s: %s",
@@ -637,9 +647,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     unique_id=f"local:{collector_ip}",
                     title=f"DessMonitor Local ({collector_ip})",
                     data={**entry.data, **normalized},
+                    options={
+                        **entry.options,
+                        CONF_LOCAL_DEVICE_ADDRESS: normalized[
+                            CONF_LOCAL_DEVICE_ADDRESS
+                        ],
+                        CONF_LOCAL_POLL_INTERVAL: normalized[CONF_LOCAL_POLL_INTERVAL],
+                    },
                 )
 
-        defaults = {**entry.data, **(user_input or {})}
+        defaults = {**entry.data, **entry.options, **(user_input or {})}
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_local_schema(
@@ -661,12 +678,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         return OptionsFlow(config_entry)
 
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
+class CloudSetupError(HomeAssistantError):
+    """Cloud validation failed; error_key names the message shown in the form."""
 
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+    def __init__(self, error_key: str) -> None:
+        super().__init__(error_key)
+        self.error_key = error_key
 
 
 class InvalidLocalAddress(HomeAssistantError):
@@ -776,6 +793,9 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_LOCAL_POLL_INTERVAL, DEFAULT_LOCAL_POLL_INTERVAL
                 ),
                 redirect_confirmed=form_values.get(CONF_LOCAL_REDIRECT_CONFIRMED),
+                device_address=form_values.get(
+                    CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                ),
             ),
             errors=errors,
         )
@@ -783,18 +803,26 @@ class OptionsFlow(config_entries.OptionsFlow):
     async def async_step_local(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Manage the local poll interval."""
+        """Manage local polling and the optional explicit inverter address."""
+        existing = {**self._config_entry.data, **self._config_entry.options}
         if user_input is not None:
             return self.async_create_entry(
                 title="",
                 data={
+                    **self._config_entry.options,
+                    CONF_LOCAL_DEVICE_ADDRESS: user_input.get(
+                        CONF_LOCAL_DEVICE_ADDRESS,
+                        existing.get(
+                            CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                        ),
+                    ),
                     CONF_LOCAL_POLL_INTERVAL: _normalized_choice(
                         user_input.get(
                             CONF_LOCAL_POLL_INTERVAL, DEFAULT_LOCAL_POLL_INTERVAL
                         ),
                         LOCAL_POLL_INTERVAL_OPTIONS,
                         DEFAULT_LOCAL_POLL_INTERVAL,
-                    )
+                    ),
                 },
             )
         current = self._config_entry.options.get(
@@ -812,7 +840,13 @@ class OptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_LOCAL_POLL_INTERVAL, default=str(current)
-                    ): _list_choice(LOCAL_POLL_INTERVAL_OPTIONS)
+                    ): _list_choice(LOCAL_POLL_INTERVAL_OPTIONS),
+                    vol.Optional(
+                        CONF_LOCAL_DEVICE_ADDRESS,
+                        default=existing.get(
+                            CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
                 }
             ),
         )

@@ -17,8 +17,6 @@
     "custom_components.dessmonitor"
   ],
   "quality_scale": "silver",
-  "requirements": [
-    "aiohttp>=3.8.0"
-  ],
-  "version": "2.4.0"
+  "requirements": [],
+  "version": "2.5.0"
 }

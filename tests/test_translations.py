@@ -25,7 +25,8 @@ def test_both_cloud_setup_paths_explain_account_platform() -> None:
     for step in ("cloud", "hybrid"):
         assert steps[step]["data"]["api_profile"] == "Account platform"
         help_text = steps[step]["data_description"]["api_profile"]
-        assert "default" in help_text
+        assert "DessMonitor (default)" in help_text
+        assert "Choose ShineMonitor" in help_text
         assert "SmartESS" in help_text
         assert "SmartClient for Solar" in help_text
         assert "source=" not in help_text

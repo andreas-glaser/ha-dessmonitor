@@ -14,6 +14,7 @@ from typing import Any, Protocol
 
 from .diagnostics import ProbeDiagnostics, failure_reason
 from .discovery import DiscoveryError, discover_p17, query_p17
+from .pi30 import discover_pi30, query_pi30
 from .profile import CommandNotSupported
 from .protocol import P17_DEFAULT_DEVCODE, ProtocolError
 from .smg import (
@@ -46,6 +47,7 @@ class LocalDevice:
     metadata: dict[str, Any] = field(default_factory=dict)
     values: dict[str, Any] = field(default_factory=dict)
     disabled_queries: set[str] = field(default_factory=set)
+    address_verified: bool = True
 
 
 class ReadOnlyLocalDriver(Protocol):
@@ -61,6 +63,7 @@ class ReadOnlyLocalDriver(Protocol):
         configured_device_code: int,
         reported_device_code: int,
         max_address: int,
+        device_address: int = 0,
     ) -> tuple[LocalDevice, ...]:
         """Return verified devices or raise when this protocol does not match."""
 
@@ -83,6 +86,7 @@ class P17Driver:
         configured_device_code: int,
         reported_device_code: int,
         max_address: int,
+        device_address: int = 0,
     ) -> tuple[LocalDevice, ...]:
         # 2376 and tunnel code 1 are SMG hints, not P17 tunnel codes.
         p17_configured = (
@@ -97,6 +101,7 @@ class P17Driver:
             configured_device_code=p17_configured,
             reported_device_code=p17_reported,
             max_address=max_address,
+            device_address=device_address,
         )
         devices: list[LocalDevice] = []
         for inverter in result.inverters:
@@ -116,7 +121,8 @@ class P17Driver:
             device = LocalDevice(
                 driver_key=self.key,
                 transport_device_code=result.device_code,
-                collector_address=inverter.address,
+                collector_address=inverter.collector_address,
+                address_verified=inverter.collector_address != 255,
                 device_address=inverter.address,
                 entity_device_code=result.device_code,
                 serial=inverter.serial,
@@ -147,8 +153,9 @@ class P17Driver:
                 result = await query_p17(
                     send,
                     device.transport_device_code,
-                    device.collector_address,
+                    device.device_address,
                     command,
+                    collector_address=device.collector_address,
                     protocol_id=protocol_id,
                 )
             except CommandNotSupported:
@@ -178,6 +185,7 @@ class SmgModbusDriver:
         configured_device_code: int,
         reported_device_code: int,
         max_address: int,
+        device_address: int = 0,
     ) -> tuple[LocalDevice, ...]:
         discovered = await discover_smg(
             send,
@@ -185,6 +193,7 @@ class SmgModbusDriver:
             configured_device_code=configured_device_code,
             reported_device_code=reported_device_code,
             max_address=max_address,
+            device_address=device_address,
         )
         return tuple(
             LocalDevice(
@@ -216,7 +225,85 @@ class SmgModbusDriver:
         )
 
 
-DRIVERS: tuple[ReadOnlyLocalDriver, ...] = (P17Driver(), SmgModbusDriver())
+class Pi30Driver:
+    """Read-only standard PI30 driver; never selected from a cloud family hint."""
+
+    key = "pi30"
+
+    async def discover(
+        self,
+        send: SendCommand,
+        *,
+        collector_product_number: str,
+        configured_device_code: int,
+        reported_device_code: int,
+        max_address: int,
+        device_address: int = 0,
+    ) -> tuple[LocalDevice, ...]:
+        result = await discover_pi30(
+            send,
+            collector_product_number=collector_product_number,
+            configured_device_code=(
+                0
+                if configured_device_code in (1, SMG_CLOUD_DEVICE_CODE)
+                else configured_device_code
+            ),
+            reported_device_code=(
+                0 if reported_device_code == 1 else reported_device_code
+            ),
+            max_address=max_address,
+            device_address=device_address,
+        )
+        return tuple(
+            LocalDevice(
+                driver_key=self.key,
+                transport_device_code=result.device_code,
+                collector_address=item.collector_address,
+                device_address=item.address,
+                entity_device_code=result.device_code,
+                serial=item.serial,
+                model="PI30 inverter",
+                firmware=str(item.metadata.get("VFW", "")),
+                metadata=dict(item.metadata),
+                values=dict(item.values),
+                address_verified=item.collector_address != 255,
+            )
+            for item in result.inverters
+        )
+
+    async def poll(
+        self, send: SendCommand, device: LocalDevice, *, cycle: int
+    ) -> dict[str, Any]:
+        values = await query_pi30(
+            send,
+            device.transport_device_code,
+            device.collector_address,
+            device.device_address,
+            "QPIGS",
+        )
+        if "QMOD" not in device.disabled_queries:
+            try:
+                values.update(
+                    await query_pi30(
+                        send,
+                        device.transport_device_code,
+                        device.collector_address,
+                        device.device_address,
+                        "QMOD",
+                    )
+                )
+            except CommandNotSupported:
+                device.disabled_queries.add("QMOD")
+            except (TimeoutError, ProtocolError):
+                return values
+        return values
+
+
+DRIVERS: tuple[ReadOnlyLocalDriver, ...] = (
+    P17Driver(),
+    SmgModbusDriver(),
+    Pi30Driver(),
+)
 
 
 async def discover_supported_devices(
@@ -226,6 +313,7 @@ async def discover_supported_devices(
     configured_device_code: int = 0,
     reported_device_code: int = 0,
     max_address: int = 16,
+    device_address: int = 0,
     diagnostics: ProbeDiagnostics | None = None,
 ) -> tuple[ReadOnlyLocalDriver, tuple[LocalDevice, ...]]:
     """Try a bounded driver order and return the first verified protocol."""
@@ -235,7 +323,7 @@ async def discover_supported_devices(
         configured_device_code != P17_DEFAULT_DEVCODE
         and reported_device_code in SMG_REPORTED_COLLECTOR_CODES
     ):
-        drivers.reverse()
+        drivers[0], drivers[1] = drivers[1], drivers[0]
 
     failures: list[str] = []
     _LOGGER.debug(
@@ -254,6 +342,7 @@ async def discover_supported_devices(
                     configured_device_code=configured_device_code,
                     reported_device_code=reported_device_code,
                     max_address=max_address,
+                    device_address=device_address,
                 )
         except (TimeoutError, ProtocolError, DiscoveryError) as err:
             failures.append(f"{driver.key}: {failure_reason(err)}")

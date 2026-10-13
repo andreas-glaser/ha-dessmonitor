@@ -95,6 +95,7 @@ async def test_discovery_failure_summary_preserves_query_outcomes() -> None:
     assert {attempt.protocol for attempt in diagnostics.attempts} == {
         "p17",
         "smg_modbus",
+        "pi30",
     }
     assert "PRIVATE-PN" not in json.dumps(diagnostics.as_dict())
 
@@ -135,6 +136,7 @@ async def test_explicit_device_hint_precedes_collector_hint(
     assert {attempt.protocol for attempt in diagnostics.attempts} == {
         "p17",
         "smg_modbus",
+        "pi30",
     }
 
 

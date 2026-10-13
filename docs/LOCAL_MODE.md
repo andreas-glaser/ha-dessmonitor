@@ -1,21 +1,24 @@
 # Local and Hybrid Telemetry
 
-Local telemetry is a read-only path from an EyeBond-compatible Wi-Fi
-collector to Home Assistant. It does not require inverter firmware changes and
-does not expose local write controls.
+The integration can monitor inverter readings and change supported settings
+through DessMonitor or ShineMonitor. Local telemetry adds a read-only path from
+an EyeBond-compatible Wi-Fi collector to Home Assistant. It does not require
+inverter firmware changes. Settings changes continue to use the cloud API.
 
 ## Choose a mode
 
-- **DessMonitor cloud API** is the primary and existing default. It keeps all
-  cloud sensors and controls unchanged.
-- **DessMonitor API + preferred local telemetry** starts with the API for
-  canonical device identity, metadata, controls, and fallback. It keeps the
-  same config entry, entity IDs, and recorder history while fresh local
-  readings replace matching cloud readings. If one local route fails, only
-  that device falls back to cloud. If both transports fail briefly, the last
-  cloud snapshot remains available with Data Source `Cached Cloud`.
-- **Local network** creates a standalone, read-only entry without DessMonitor
-  credentials or internet access.
+| Setup mode | Monitoring | Inverter configuration |
+|---|---|---|
+| Cloud API | Cloud readings | Supported settings through the cloud |
+| Cloud API + preferred local telemetry | Local readings with cloud fallback | Supported settings through the cloud |
+| Local network only (read-only) | Local readings without a cloud account | No configuration controls |
+
+Cloud modes use your selected DessMonitor or ShineMonitor account. Hybrid mode
+keeps the same config entry, entity IDs, and recorder history while fresh local
+readings replace matching cloud readings. If one local route fails, only that
+device falls back to cloud. If both transports fail briefly, the last cloud
+snapshot remains available with Data Source `Cached Cloud`; cached readings do
+not provide an offline way to change inverter settings.
 
 One API entry can configure up to 16 local collectors. Standalone local mode
 uses one collector per entry. All routes share one TCP listener safely and are
@@ -60,14 +63,14 @@ and falls back automatically when local telemetry is unavailable.
 
 ## Recommended setup
 
-For a new installation, select **DessMonitor API + preferred local telemetry**.
+For a new installation, select **Cloud API + preferred local telemetry**.
 Choose the account platform and enter the normal API credentials first, then
-paste the local collector addresses in the short second step. **DessMonitor /
-SmartESS (default)** remains selected for existing accounts. Choose **SmartClient
-for Solar / ShineMonitor** for that service. Cloud profile selection does not
-add a local driver: devcode 518 cloud telemetry is supported, but its local
+paste the local collector addresses in the short second step. **DessMonitor
+(default)** remains selected for existing accounts. Choose **ShineMonitor** for
+that service. Cloud profile selection does not add a local driver: devcode 518
+cloud telemetry is supported, but its local
 protocol has not been verified. To use only the API, select
-**DessMonitor cloud API**. To skip the API and credentials entirely, select
+**Cloud API**. To skip the API and credentials entirely, select
 **Local network only**.
 
 For an existing cloud entry, do not create a new entry:
@@ -96,13 +99,27 @@ identities are retained; a healthy neighbour cannot refresh its stale readings.
 
 For a cloud-free installation, add another DessMonitor integration and choose
 **Local network**. Use the advanced path only for a documented non-standard
-port, product-number identity pin, or device-code hint.
+port, product-number identity pin, or tunnel-code override.
+
+The **Inverter address** setting is available during setup and in options. Its
+value `0` preserves automatic discovery: identify address `1`, then check
+contiguous addresses up to `16`, stopping at a missing or duplicate inverter.
+Set `1` through `247` to target just that address, including addresses above
+`16`. This selects where to read; it does not change the inverter's configured
+address. Hybrid mode applies the setting to each listed collector. Existing
+entries without the setting retain automatic discovery.
 
 ## Supported read-only drivers
 
 - PI17/PI18 ASCII telemetry, with strict length and CRC validation. The inverter's
   `PI` response selects P17's escaped CRC encoding or PI18's raw CRC encoding;
   tunnel and cloud device codes do not select the field layout.
+- PI30 ASCII telemetry with verified `QPI` identification and a valid standard
+  17- or 21-field `QPIGS` status response. Reports grid/output voltage and
+  frequency, output power/load, battery voltage/current/charge estimate,
+  temperature, PV voltage and charging current. The 21-field layout also
+  supplies PV charging power. Other layouts and protocol IDs fail closed;
+  energy totals and local controls are not implemented for PI30.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
 
@@ -119,8 +136,24 @@ and local control entities are intentionally absent.
 An explicitly configured tunnel code `2452` tries the P17/PI18 driver first,
 including when the collector reports `258` or `1`. Code `258` is shared by
 different inverter families; it does not establish the inverter's protocol.
-Automatic discovery and ambiguous hints retain their existing order. Both
-drivers remain fallbacks, and a validated response still determines the decoder.
+Automatic discovery and ambiguous hints retain the P17/SMG driver order.
+PI30 is tried only after both existing drivers fail. Cloud devcodes are not
+local protocol identifiers; leave the tunnel-code override at `0` unless a
+working local route is known. Legacy SMG hints `1` and `2376` remain supported.
+
+ASCII discovery tries the direct inverter route first, then a bounded collector
+address `255` fallback in automatic mode. That fallback identifies at most one
+inverter; `255` is never treated as its inverter address. Its inferred logical
+address cannot be used to match a cloud device: hybrid mode requires the actual
+inverter serial to match. Explicit inverter addresses disable the unaddressed
+ASCII fallback. SMG's collector address `255` is different: its Modbus payload
+still carries and validates the selected slave address.
+
+PI30 and the additional ASCII routes have simulated-collector regression
+coverage. The [SP-2200 report in issue #39](https://github.com/andreas-glaser/ha-dessmonitor/issues/39#issuecomment-5757878764)
+confirms hardware discovery and polling through tunnel code `258` at address
+`1`, with 16 local readings and a matching cloud inverter serial. Long-running
+Home Assistant operation and recovery on that hardware still need testing.
 
 ## Contributor probe
 
@@ -142,6 +175,11 @@ python3 tools/cli/dessmonitor_cli.py analyze --redacted \
   --output combined-analysis.json
 ```
 
+For an inverter configured at address `5`, add `--device-address 5` to
+`local-probe`. This targets only address `5`; `--max-address` continues to bound
+automatic discovery and is ignored for an explicit address. Leave `--device-code`
+at `0` unless a verified tunnel code is known.
+
 Reports redact collector product numbers, IP addresses, and inverter serials
 by default and are written with mode `0600`. Do not use
 `--include-identifiers` for a report that will be shared publicly.
@@ -154,8 +192,9 @@ Reports include `status`, the last `stage`, and bounded `diagnostics`: protocol,
 command, device code, collector/inverter address, response byte count, elapsed
 milliseconds, and outcome. A missing byte count means no payload was returned
 to the query; zero means an empty payload was received. Header mismatches also
-include the expected and received numeric routing fields. Raw payloads and
-exception text are not included in these diagnostic records. At most 128 query
+include the expected and received numeric routing fields. The `address_verified`
+flag distinguishes a known address from an unaddressed ASCII route. Raw payloads
+and exception text are not included in these diagnostic records. At most 128 query
 records are retained, with additional attempts counted in `dropped_attempts`.
 A random `probe_id` correlates a report and its log lines without identifying
 the collector, including when several collectors are discovered concurrently.
@@ -166,6 +205,8 @@ which this driver has no verified field layout.
 
 The combined analysis matches a unique hashed collector product number and
 inverter address, refuses ambiguous matches, and also writes mode `0600`.
+For an unverified ASCII address, supply `--device-sn` explicitly; the combined
+report only confirms identity when the actual serial matches.
 Most collectors keep one callback connection. If Home Assistant already owns
 it, briefly disable or stop that test instance while running `local-probe`,
 then start it again; the configured integration reconnects automatically.
