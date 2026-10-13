@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0-rc.2] - 2026-10-13
+
+Second release candidate for 2.5.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.5.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.5.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
 ### Fixed
 - Cloud and hybrid setup now report why sign-in failed. An unknown username, an unrecognized company key, a rejected password, a disabled account, and a connection failure each show their own message. Previously all of them, including timeouts, appeared as "Invalid username or password" (#43).
+
+### Upgrade and testing notes
+- Existing entries are unaffected; the change applies only to the cloud and hybrid setup forms.
+- Testers who could not sign in: retry setup and report the message now shown. If no account is found, try your email address and the other account platform before changing the company key.
 
 ## [2.5.0-rc.1] - 2026-09-21
 
@@ -474,7 +482,8 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0-rc.1...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0-rc.2...HEAD
+[2.5.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0-rc.1...v2.5.0-rc.2
 [2.5.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0-rc.1
 [2.4.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0
 [2.4.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...v2.4.0-rc.3
