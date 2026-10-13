@@ -30,15 +30,15 @@ Monitor your solar inverter and configure supported settings in Home Assistant t
 
 ## Platforms and Mobile Apps
 
-Choose **DessMonitor (default)** or **ShineMonitor** as the account platform during setup. The mobile apps below are clients of those platforms:
+Choose **DessMonitor (default)** or **ShineMonitor** as the account platform during setup. Find the mobile app you use to see which platform it belongs to:
 
-| Web app | Mobile app | Android | iOS |
+| Mobile app | Account platform | Android | iOS |
 |---|---|---|---|
-| [DessMonitor](https://www.dessmonitor.com/) | SmartESS | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient.ess) | [App Store](https://apps.apple.com/us/app/smartess/id1334656760) |
-| [ShineMonitor](https://www.shinemonitor.com/) | SmartClient for Solar | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient) | [App Store](https://apps.apple.com/us/app/smartclient-for-solar/id1070155085) |
-| [DessMonitor](https://www.dessmonitor.com/) (see note) | WatchPower (Wi-Fi) | [Google Play](https://play.google.com/store/apps/details?id=wifiapp.volfw.watchpower) | [App Store](https://apps.apple.com/us/app/watchpower/id1487569321) |
-| [DessMonitor](https://www.dessmonitor.com/) (see note) | Energy-Mate | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient.energymate) | [App Store](https://apps.apple.com/us/app/energy-mate/id1672569936) |
-| [DessMonitor](https://www.dessmonitor.com/) (see note) | Fronus Solar | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.fronussolar) | No current listing verified |
+| SmartESS | [DessMonitor](https://www.dessmonitor.com/) | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient.ess) | [App Store](https://apps.apple.com/us/app/smartess/id1334656760) |
+| SmartClient for Solar | [ShineMonitor](https://www.shinemonitor.com/) | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient) | [App Store](https://apps.apple.com/us/app/smartclient-for-solar/id1070155085) |
+| WatchPower (Wi-Fi) | [DessMonitor](https://www.dessmonitor.com/) (see note) | [Google Play](https://play.google.com/store/apps/details?id=wifiapp.volfw.watchpower) | [App Store](https://apps.apple.com/us/app/watchpower/id1487569321) |
+| Energy-Mate | [DessMonitor](https://www.dessmonitor.com/) (see note) | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.smartclient.energymate) | [App Store](https://apps.apple.com/us/app/energy-mate/id1672569936) |
+| Fronus Solar | [DessMonitor](https://www.dessmonitor.com/) (see note) | [Google Play](https://play.google.com/store/apps/details?id=com.eybond.fronussolar) | No current listing verified |
 
 SmartClient for Solar is listed as **SmartClient** on Google Play.
 
