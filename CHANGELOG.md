@@ -13,6 +13,7 @@ Second release candidate for 2.5.0, including all changes from [RC1](https://git
 
 ### Fixed
 - Cloud and hybrid setup now report why sign-in failed. An unknown username, an unrecognized company key, a rejected password, a disabled account, and a connection failure each show their own message. Previously all of them, including timeouts, appeared as "Invalid username or password" (#43).
+- Removed `aiohttp` from the manifest requirements. Home Assistant provides it, and Hassfest now rejects custom integrations that list it.
 
 ### Upgrade and testing notes
 - Existing entries are unaffected; the change applies only to the cloud and hybrid setup forms.
