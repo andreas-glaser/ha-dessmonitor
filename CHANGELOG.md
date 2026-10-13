@@ -7,17 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.5.0-rc.2] - 2026-10-13
+## [2.5.0] - 2026-10-13
 
-Second release candidate for 2.5.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.5.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.5.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+This stable release includes all changes since 2.4.0, including everything shipped in 2.5.0-rc.1.
+
+### Added
+- Read-only PI30 local telemetry with strict identification, checksum and status-layout validation. PI30 discovery follows the existing P17/SMG drivers. The SP-2200 in #39 is confirmed working with tunnel code `258`, inverter address `1`, and 16 local readings; its combined report matches the cloud inverter by serial.
+- An optional inverter address in setup, options and the CLI (`--device-address`), with automatic discovery preserved for existing entries.
 
 ### Fixed
 - Cloud and hybrid setup now report why sign-in failed. An unknown username, an unrecognized company key, a rejected password, a disabled account, and a connection failure each show their own message. Previously all of them, including timeouts, appeared as "Invalid username or password" (#43).
 - Removed `aiohttp` from the manifest requirements. Home Assistant provides it, and Hassfest now rejects custom integrations that list it.
+- Local reconfiguration now updates polling options as well as entry data, preventing a previous option from overriding the new interval.
+- Automatic ASCII discovery now tries bounded collector address `255` fallback routes. Unaddressed results require serial matching before they can overlay cloud telemetry. Corrected setup guidance that confused cloud devcodes with local tunnel codes. PI30 support resolves the SP-2200 discovery failure reported in #39.
+- Corrected Energy Dashboard guidance to distinguish power readings from energy totals, removed a misleading daily-production automation, and replaced unsupported security claims and fixed collection-acceleration pricing with accurate guidance.
 
-### Upgrade and testing notes
-- Existing entries are unaffected; the change applies only to the cloud and hybrid setup forms.
-- Testers who could not sign in: retry setup and report the message now shown. If no account is found, try your email address and the other account platform before changing the company key.
+### Changed
+- Simplified account platform names to DessMonitor and ShineMonitor throughout setup, CLI help, and documentation. SmartESS and SmartClient for Solar are identified as mobile clients; existing backend identifiers and account data are unchanged.
+- Renamed the HACS listing to DessMonitor / ShineMonitor and clarified support for monitoring and configuring supported inverter settings. Cloud and hybrid modes provide cloud controls; local-only monitoring remains read-only.
+- Reorganized the main README to consolidate installation, polling, troubleshooting, and contributor guidance. Added web and app-store links, compatibility guidance for rebranded apps, and a model list based on the device profiles. The app table leads with the mobile app so you can look up which account platform to choose.
+
+### Upgrade notes and known limitations
+- Restart Home Assistant after updating. Existing entries retain automatic discovery, their account platform, and their entity identities. Setting an explicit inverter address selects where to read; it does not change the inverter's configured address.
+- Local monitoring remains read-only. PI30 local writes and energy totals are not included.
+- SP-2200 hardware evidence confirms PI30 discovery and a polling cycle. Sustained readings, reconnects, and hybrid cloud fallback on other PI30 units are not yet verified on hardware.
+- The clearer sign-in messages apply to the cloud and hybrid setup forms only. If setup reports that no account was found, try your email address and the other account platform before changing the company key. The SolarPower Wi-Fi sign-in report in [#43](https://github.com/andreas-glaser/ha-dessmonitor/issues/43) remains under investigation; this release does not confirm compatibility with that app.
 
 ## [2.5.0-rc.1] - 2026-09-21
 
@@ -483,8 +497,8 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0-rc.2...HEAD
-[2.5.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0-rc.1...v2.5.0-rc.2
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0
 [2.5.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0-rc.1
 [2.4.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0
 [2.4.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0-rc.2...v2.4.0-rc.3
