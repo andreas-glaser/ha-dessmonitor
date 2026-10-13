@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from ipaddress import ip_address
-from typing import Any
+from typing import Any, Final
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -375,6 +375,15 @@ def _normalize_update_interval(user_input: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Platform err codes that identify why sign-in was rejected.
+AUTH_ERROR_KEYS: Final[dict[int | None, str]] = {
+    15: "company_key_not_found",
+    16: "invalid_auth",
+    25: "account_disabled",
+    261: "user_not_found",
+}
+
+
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
@@ -403,42 +412,26 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     try:
         _LOGGER.debug("Attempting authentication during config validation")
-        success = await api.authenticate()
-        if not success:
-            _LOGGER.error(
-                "Authentication returned False for user: %s",
-                _mask_username(username),
-            )
-            raise InvalidAuth("Authentication failed")
-
+        await api.authenticate()
         _LOGGER.debug("Authentication successful, fetching collectors")
         collectors, _projects = await api.get_collectors()
-        if not collectors:
-            _LOGGER.error("No collectors found for user: %s", _mask_username(username))
-            raise CannotConnect("No collectors found")
-
-        _LOGGER.info(
-            "Validation successful: user=%s, collectors=%d",
-            _mask_username(username),
-            len(collectors),
-        )
-        return {
-            "title": f"DessMonitor ({username})",
-            "collectors_count": len(collectors),
-        }
     except DessMonitorError as err:
-        error_msg = str(err).lower()
         _LOGGER.error("DessMonitor API error during validation: %s", err)
-        if "password" in error_msg or "auth" in error_msg:
-            raise InvalidAuth from err
-        raise CannotConnect from err
-    except Exception as err:
-        _LOGGER.exception(
-            "Unexpected exception during validation for user %s: %s",
-            _mask_username(username),
-            err,
-        )
-        raise CannotConnect from err
+        raise CloudSetupError(AUTH_ERROR_KEYS.get(err.code, "cannot_connect")) from err
+
+    if not collectors:
+        _LOGGER.error("No collectors found for user: %s", _mask_username(username))
+        raise CloudSetupError("cannot_connect")
+
+    _LOGGER.info(
+        "Validation successful: user=%s, collectors=%d",
+        _mask_username(username),
+        len(collectors),
+    )
+    return {
+        "title": f"DessMonitor ({username})",
+        "collectors_count": len(collectors),
+    }
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
@@ -475,10 +468,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             username = user_input[CONF_USERNAME]
             try:
                 info = await validate_input(self.hass, user_input)
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
+            except CloudSetupError as err:
+                errors["base"] = err.error_key
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception(
                     "Unexpected exception in hybrid setup for user %s",
@@ -561,12 +552,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             try:
                 info = await validate_input(self.hass, user_input)
                 _LOGGER.debug("Input validation successful: %s", info)
-            except CannotConnect as err:
-                _LOGGER.error("Cannot connect error in config flow: %s", err)
-                errors["base"] = "cannot_connect"
-            except InvalidAuth as err:
-                _LOGGER.error("Invalid auth error in config flow: %s", err)
-                errors["base"] = "invalid_auth"
+            except CloudSetupError as err:
+                errors["base"] = err.error_key
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception(
                     "Unexpected exception in config flow for user %s: %s",
@@ -691,12 +678,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         return OptionsFlow(config_entry)
 
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
+class CloudSetupError(HomeAssistantError):
+    """Cloud validation failed; error_key names the message shown in the form."""
 
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+    def __init__(self, error_key: str) -> None:
+        super().__init__(error_key)
+        self.error_key = error_key
 
 
 class InvalidLocalAddress(HomeAssistantError):

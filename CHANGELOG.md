@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Cloud and hybrid setup now report why sign-in failed. An unknown username, an unrecognized company key, a rejected password, a disabled account, and a connection failure each show their own message. Previously all of them, including timeouts, appeared as "Invalid username or password" (#43).
+
 ## [2.5.0-rc.1] - 2026-09-21
 
 First release candidate for 2.5.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.5.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).

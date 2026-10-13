@@ -121,7 +121,10 @@
     },
     "error": {
       "cannot_connect": "Failed to connect. Please check your network connection and settings.",
-      "invalid_auth": "Invalid username or password. Please verify your credentials.",
+      "invalid_auth": "The password was not accepted. Check it and try again.",
+      "user_not_found": "No account was found for this username on the selected account platform. Try your email address, or choose the other account platform.",
+      "company_key_not_found": "The company key was not recognized. Use the default unless your installer gave you a different one.",
+      "account_disabled": "This account is disabled on the platform. Contact your installer or the platform's support.",
       "invalid_ip": "Enter a private LAN IPv4 address (10.x, 172.16-31.x, or 192.168.x).",
       "invalid_ip_list": "Enter between 1 and 16 private collector IPv4 addresses separated by commas, spaces, or new lines.",
       "collector_is_home_assistant": "The collector address must be different from the Home Assistant address.",

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import aiohttp
 import pytest
 import voluptuous_serialize
 from homeassistant import config_entries
@@ -781,3 +787,71 @@ async def test_existing_cloud_account_is_not_duplicated(hass):
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
     assert hass.config_entries.async_entries(DOMAIN) == [entry]
+
+
+class _RejectingSession:
+    """Session stand-in that answers every request with one outcome."""
+
+    def __init__(self, outcome: dict | Exception) -> None:
+        self._outcome = outcome
+
+    def get(self, url: object, **_: object) -> MagicMock:
+        if isinstance(self._outcome, Exception):
+            raise self._outcome
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        response.json = AsyncMock(return_value=self._outcome)
+        ctx = MagicMock()
+        ctx.__aenter__ = AsyncMock(return_value=response)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        return ctx
+
+
+@pytest.mark.parametrize(
+    "start_flow", [_start_cloud_flow, _start_hybrid_flow], ids=["cloud", "hybrid"]
+)
+@pytest.mark.parametrize(
+    ("outcome", "error"),
+    [
+        ({"err": 15, "desc": "ERR_NOT_FOUND_COMPANY_KEY"}, "company_key_not_found"),
+        ({"err": 16, "desc": "ERR_PASSWORD_VERIF_FAIL"}, "invalid_auth"),
+        ({"err": 25, "desc": "ERR_USR_DISABLED"}, "account_disabled"),
+        ({"err": 261, "desc": "ERR_NOT_FOUND_USR"}, "user_not_found"),
+        ({"err": 1, "desc": "ERR_FAIL"}, "cannot_connect"),
+        (asyncio.TimeoutError(), "cannot_connect"),
+        (aiohttp.ClientConnectionError(), "cannot_connect"),
+    ],
+    ids=[
+        "unknown-company-key",
+        "password-rejected",
+        "account-disabled",
+        "unknown-user",
+        "other-api-error",
+        "timeout",
+        "connection-error",
+    ],
+)
+async def test_cloud_setup_reports_why_sign_in_failed(
+    hass: HomeAssistant, start_flow, outcome, error
+) -> None:
+    """Each sign-in failure names its cause instead of blaming the password."""
+    with patch(
+        "custom_components.dessmonitor.config_flow.async_get_clientsession",
+        return_value=_RejectingSession(outcome),
+    ):
+        result = await start_flow(hass)
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"], BASE_INPUT
+        )
+
+    assert result2["type"] is FlowResultType.FORM
+    assert result2["errors"] == {"base": error}
+
+
+def test_every_cloud_setup_error_has_a_message() -> None:
+    from custom_components.dessmonitor.config_flow import AUTH_ERROR_KEYS
+
+    strings = Path(__file__).parents[1] / "custom_components/dessmonitor/strings.json"
+    messages = json.loads(strings.read_text(encoding="utf-8"))["config"]["error"]
+
+    assert {*AUTH_ERROR_KEYS.values(), "cannot_connect"} <= messages.keys()
