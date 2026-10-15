@@ -16,9 +16,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
+from .control_values import cloud_control_snapshot, control_value, find_control_value
 from .device_support.device_registry import map_control_field
 from .entity_loader import async_setup_dynamic_entities
 from .number_range import compute_range_and_step, is_hint_range_usable
+from .temporal_controls import temporal_control_kind
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,6 +100,8 @@ async def _async_build_number_entities(
             param_id = config.get("id")
             if not param_id:
                 continue
+            if temporal_control_kind(devcode, param_id) is not None:
+                continue
 
             friendly_name = map_control_field(devcode, name)
             entity_key = f"{device_sn}:{param_id}"
@@ -150,6 +154,8 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         self._api_name = api_name
         self._param_id = param_id
         self._hint = hint
+        self._last_cloud_sample: object = None
+        self._last_raw_value = initial_value
         self._attr_native_unit_of_measurement = unit
 
         # Initialize identity
@@ -179,6 +185,20 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
             )
 
         self._apply_range_and_step(hint, current_value)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        status = "last_known"
+        if self.native_value is None:
+            status = (
+                "unsupported_format"
+                if control_value(self._last_raw_value) is not None
+                else "not_loaded"
+            )
+        return {
+            "control_transport": "cloud",
+            "value_status": status,
+        }
 
     @staticmethod
     def _coerce_value(raw: str | float | None) -> float | None:
@@ -210,17 +230,21 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
     def _value_from_coordinator(self) -> float | None:
         """Read this control from the regular polled device payload when present."""
         coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
-        device_info = coordinator.data.get(self._device_sn, {})
-        source_names = {
-            self._api_name.strip().casefold(),
-            self._param_name.strip().casefold(),
-        }
-
-        for data_point in device_info.get("data", []):
-            title = data_point.get("title")
-            if isinstance(title, str) and title.strip().casefold() in source_names:
-                return self._coerce_value(data_point.get("val"))
-        return None
+        stamp, points = cloud_control_snapshot(coordinator, self._device_sn)
+        if stamp != self._last_cloud_sample:
+            self._last_cloud_sample = stamp
+            raw = find_control_value(points, self._api_name, self._param_name)
+            if raw is not None:
+                self._last_raw_value = raw
+            value = self._coerce_value(raw)
+            if value is not None:
+                return value
+        raw = control_value(
+            coordinator.ctrl_value_cache.get(self._device_sn, {}).get(self._param_id)
+        )
+        if raw is not None:
+            self._last_raw_value = raw
+        return self._coerce_value(raw)
 
     def _expand_range_to_include(self, value: float) -> None:
         """Expand a heuristic range when a newly polled value falls outside it."""
@@ -255,9 +279,9 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
 
             coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
             if self._device_sn in coordinator.ctrl_value_cache:
-                coordinator.ctrl_value_cache[self._device_sn][self._param_id] = str(
-                    value
-                )
+                cached = coordinator.ctrl_value_cache[self._device_sn]
+                if self._coerce_value(cached.get(self._param_id)) != value:
+                    cached[self._param_id] = str(value)
 
         super()._handle_coordinator_update()
 
@@ -282,6 +306,9 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
                 value=str(value),
             )
             self._attr_native_value = value
+            self._last_cloud_sample = cloud_control_snapshot(
+                coordinator, self._device_sn
+            )[0]
             if self._device_sn in coordinator.ctrl_value_cache:
                 coordinator.ctrl_value_cache[self._device_sn][self._param_id] = str(
                     value

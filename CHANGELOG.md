@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Cloud-backed time entities for the four secondary-priority schedule boundaries
+  on devcode 6544, plus a calendar-validated text control for its timezone-free
+  inverter clock. Matching obsolete number entities are disabled, not deleted.
+  Device writes still need hardware verification; no clock timezone is assumed (thanks to @jay0x for investigation and testing).
+
+### Fixed
+- Cloud-backed controls seed their current values from ordinary cloud telemetry
+  and retry missing reads once per successful cloud revision. Late results now
+  update existing select and number entities; placeholders do not erase known
+  settings. Fast local pushes and repeated upstream timestamps no longer undo
+  accepted changes. Control attributes identify the cloud transport and whether
+  a last-known value has been loaded (thanks to @jay0x for investigation and testing).
+
 ## [2.5.0] - 2026-10-13
 
 This stable release includes all changes since 2.4.0, including everything shipped in 2.5.0-rc.1.
