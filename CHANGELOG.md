@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Read-only downloadable runtime diagnostics for source selection, local routes,
+  Data Source entity binding/state and installed-code fingerprints. Device and
+  entity identifiers are hashed; credentials and protocol payloads are excluded (thanks to @jay0x for investigation and testing).
+
+### Fixed
+- A successful cloud refresh rechecks current local availability before merging,
+  preventing a stale pre-request snapshot from overriding newer local state (thanks to @jay0x for investigation and testing).
+
 ## [2.5.0] - 2026-10-13
 
 This stable release includes all changes since 2.4.0, including everything shipped in 2.5.0-rc.1.

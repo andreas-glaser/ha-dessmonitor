@@ -19,7 +19,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -251,6 +251,7 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         self._collector_meta = collector_meta
         self._sensor_type = sensor_type
         self._source_titles = source_titles or {sensor_type}
+        self._last_source_publication: tuple[Any, ...] | None = None
 
         sensor_config: dict[str, Any] = cast(
             dict[str, Any], SENSOR_TYPES.get(sensor_type, {})
@@ -415,6 +416,22 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         ):
             return value * 1000
         return value
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Publish normally and make Data Source transitions observable."""
+        super()._handle_coordinator_update()
+        if self._sensor_type != "Data Source":
+            return
+        state = self.hass.states.get(self.entity_id)
+        published = state.state if state is not None else None
+        summary = (self.native_value, published, self.enabled)
+        if summary != self._last_source_publication:
+            _LOGGER.debug(
+                "Data Source publication: native=%s ha_state=%s enabled=%s",
+                *summary,
+            )
+            self._last_source_publication = summary
 
     def _get_device_payload(self) -> dict[str, Any] | None:
         """Return cached device payload for this sensor."""
