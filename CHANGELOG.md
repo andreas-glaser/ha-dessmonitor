@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A collector listed in multiple cloud projects is polled once per refresh,
+  avoiding duplicate device-discovery and telemetry API calls while retaining
+  the same final collector metadata (thanks to @jay0x for investigation and testing).
+
 ## [2.5.0] - 2026-10-13
 
 This stable release includes all changes since 2.4.0, including everything shipped in 2.5.0-rc.1.
