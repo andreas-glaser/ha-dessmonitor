@@ -485,6 +485,12 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if isinstance(value, str):
             stripped_value = value.strip()
 
+            if (
+                self._sensor_type == "Output Voltage Setting"
+                and stripped_value.endswith("V")
+            ):
+                stripped_value = stripped_value[:-1].strip()
+
             # DessMonitor sometimes returns "-" (or similar placeholders) when a value is
             # not available. Treat these as unknown to avoid HA numeric parsing errors.
             placeholder_values = {"-", "--", "—"}

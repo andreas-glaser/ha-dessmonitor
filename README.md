@@ -50,7 +50,7 @@ SmartClient for Solar is listed as **SmartClient** on Google Play.
 
 The device profiles include known models from ANENJI, Axpert, BYD, EASUN, MUST, PowMr, SRNE, and WKS.
 
-**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, MUST PH19-6048 EXP, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
+**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, ANENJI ANJ-11KW-48V-W-P, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, MUST PH19-6048 EXP, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
 
 Other profiles cover rebranded Axpert PI18 inverters and units whose exact model is not yet recorded. See the [device support reference](custom_components/dessmonitor/device_support/README.md#currently-supported-collectors) for the full devcode list and known pairings.
 

@@ -302,29 +302,37 @@ def _merge_data_points(
     except (TypeError, ValueError):
         device_code = 0
 
-    indexed: dict[str, dict[str, Any]] = {}
-    order: list[str] = []
-    for point in cloud_points:
-        raw_title = str(point.get("title", "")).strip()
-        if not raw_title:
-            continue
-        title = map_sensor_title(device_code, raw_title) if device_code else raw_title
-        if title not in indexed:
-            order.append(title)
-        indexed[title] = copy.deepcopy(point)
-
-    for point in local_points:
+    def key_for(point: dict[str, Any]) -> str:
         title = str(point.get("title", "")).strip()
-        if not title or title == "Data Source":
-            continue
-        if title not in indexed:
-            order.append(title)
-        indexed[title] = copy.deepcopy(point)
+        return (
+            map_sensor_title(device_code, title) if device_code else title
+        ).casefold()
 
-    order = [title for title in order if title != "Data Source"]
-    return [indexed[title] for title in order] + [
-        {"title": "Data Source", "val": "Local", "unit": ""}
-    ]
+    local_by_key: dict[str, dict[str, Any]] = {}
+    for point in local_points:
+        key = key_for(point)
+        if key and key != "data source":
+            local_by_key[key] = point
+
+    result: list[dict[str, Any]] = []
+    overlaid: set[str] = set()
+    for point in cloud_points:
+        key = key_for(point)
+        if not key or key == "data source":
+            continue
+        if key not in local_by_key:
+            # Main and Current priority can map to the same sensor key but
+            # are distinct cloud controls. Retain both raw fields and order.
+            result.append(copy.deepcopy(point))
+        elif key not in overlaid:
+            result.append(copy.deepcopy(local_by_key[key]))
+            overlaid.add(key)
+    result.extend(
+        copy.deepcopy(point)
+        for key, point in local_by_key.items()
+        if key not in overlaid
+    )
+    return result + [{"title": "Data Source", "val": "Local", "unit": ""}]
 
 
 def _with_data_source(
