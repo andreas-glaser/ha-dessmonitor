@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
+  (cloud devcode 6544), selected by register 184. Hardware snapshots cover
+  battery, grid, output, dual-PV, temperatures and energy counters. Existing
+  cloud sensor identities, including SOC, are retained in hybrid mode (thanks to @jay0x for investigation and testing).
+
+### Fixed
+- Local SMG detection no longer treats protocol-4 power and flag registers as
+  current and frequency, or reserved registers as battery/output telemetry.
+  Protocol layouts are retained per inverter; an incomplete protocol-4 poll
+  fails instead of publishing a partial fresh snapshot (thanks to @jay0x for investigation and testing).
+- Hybrid merging retains distinct main/current cloud priority fields when
+  there is no local replacement, and matches mapped field names without
+  case-dependent duplicates (thanks to @jay0x for investigation and testing).
+- The diagnostic Output Voltage Setting sensor accepts values such as `230V` (thanks to @jay0x for investigation and testing).
+- Devcode 6544 normalizes the observed cloud mode `OffgridMode` to
+  `Off-grid Mode`, matching local telemetry and the existing inverter-mode alias (thanks to @jay0x for investigation and testing).
+
 ## [2.5.0] - 2026-10-13
 
 This stable release includes all changes since 2.4.0, including everything shipped in 2.5.0-rc.1.

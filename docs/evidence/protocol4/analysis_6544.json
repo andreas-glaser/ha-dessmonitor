@@ -1,0 +1,805 @@
+{
+  "timestamp": "2026-10-13 22:35:18",
+  "analysis": {
+    "api_profile": "dessmonitor_ess",
+    "analysis_version": 3,
+    "devcode": 6544,
+    "device_sn": "",
+    "device_identity": "sha256:75bef7dc1ffe",
+    "collector_identity": "sha256:f5bbd1fcb62f",
+    "device_address": 1,
+    "collector_alias": "",
+    "total_sensors": 92,
+    "operating_modes": [
+      "OffgridMode"
+    ],
+    "output_priorities": [
+      "15:30",
+      "17:00",
+      "OFF",
+      "SBU"
+    ],
+    "charger_priorities": [
+      "15:00",
+      "20:00",
+      "OFF",
+      "SOR"
+    ],
+    "sensor_titles": [
+      " Inverter Date",
+      "AC charging power",
+      "Automatic mains output enable",
+      "Automatic restart when over temperature",
+      "Battery Current",
+      "Battery Eq mode enable",
+      "Battery Low Cut Off SOC",
+      "Battery Power",
+      "Battery Type",
+      "Battery Voltage",
+      "Battery overvoltage protection point",
+      "Boot method",
+      "Buzzer Mode",
+      "Charger Source Priority",
+      "Constant pressure to float waiting time",
+      "Current charging priority",
+      "Current output priority",
+      "DC Module Termperature",
+      "Daily PV energy generation",
+      "Dry contact",
+      "Energy-saving mode switch",
+      "Eq charging interval",
+      "Eq charging voltage",
+      "Eq timeout exit",
+      "Equipment type",
+      "Floating charge voltage",
+      "Grid Frequency",
+      "Grid Power",
+      "Grid Voltage",
+      "INV Module Termperature",
+      "Input Mode",
+      "LCD automatically returns to the homepage",
+      "LCD backlight",
+      "Load L1 Percentage",
+      "Load L2 Percentage",
+      "Low DC Protection SOC In AC Mode",
+      "Low DC Recovery SOC In AC Mode",
+      "Main Output Priority",
+      "Mains mode battery discharge recovery point",
+      "Mains mode battery low voltage protection point",
+      "Maximum charging current",
+      "Maximum charging voltage",
+      "Maximum discharge current protection",
+      "Maximum mains charging current",
+      "OP2 overload alarm setting",
+      "Off-grid mode OP1 battery low voltage protection point",
+      "Off-grid mode battery low voltage protection point",
+      "Operating mode",
+      "Output Frequency Setting",
+      "Output L1 Active Power",
+      "Output L1 Apparent Power",
+      "Output L1 Current",
+      "Output L1 Voltage",
+      "Output L2 Active Power",
+      "Output L2 Apparent Power",
+      "Output L2 Current",
+      "Output L2 Voltage",
+      "Output Voltage Setting",
+      "Output frequency",
+      "Output mode",
+      "Overload automatic restart",
+      "Overload transfer to bypass enable",
+      "PV temperature",
+      "PV1 Current",
+      "PV1 Power",
+      "PV1 Voltage",
+      "PV2 Current",
+      "PV2 Power",
+      "PV2 Voltage",
+      "Protocol Number",
+      "Remote switch",
+      "SOC",
+      "SOC Protection value of OP1  In off-grid mode",
+      "Secondary Charging Priority",
+      "Secondary Charging Priority End Time",
+      "Secondary Charging Priority Start Time",
+      "Secondary Output Priority",
+      "Secondary Output Priority End Time",
+      "Secondary Output Priority Start Time",
+      "Timestamp",
+      "Total Load Percentage",
+      "Total Output Active Power",
+      "Total Output Aparent Power",
+      "Total Output Current",
+      "Total PV Charging Current",
+      "Total PV Charging Power",
+      "Total PV Power",
+      "Total PV energy generation",
+      "Whether the OP2 allows the output",
+      "bat_eq_time",
+      "devise serial number",
+      "id"
+    ],
+    "potential_typos": [
+      {
+        "original": "devise serial number",
+        "suggested": "device serial number"
+      },
+      {
+        "original": "INV Module Termperature",
+        "suggested": "INV Module Temperature"
+      },
+      {
+        "original": "DC Module Termperature",
+        "suggested": "DC Module Temperature"
+      }
+    ],
+    "unit_patterns": {
+      "Output Voltage Setting": [
+        "230V"
+      ],
+      "Output Frequency Setting": [
+        "50Hz"
+      ],
+      "Whether the OP2 allows the output": [
+        "Allow"
+      ],
+      "Overload automatic restart": [
+        "Automatic restart after overload failure"
+      ],
+      "Automatic restart when over temperature": [
+        "Auto restart after over temperature failure"
+      ]
+    },
+    "sample_data": [
+      {
+        "title": "id",
+        "value": "",
+        "unit": ""
+      },
+      {
+        "title": "Timestamp",
+        "value": "2026-10-13 22:29:07",
+        "unit": ""
+      },
+      {
+        "title": "Equipment type",
+        "value": "32771",
+        "unit": ""
+      },
+      {
+        "title": "Protocol Number",
+        "value": "4",
+        "unit": ""
+      },
+      {
+        "title": "devise serial number",
+        "value": "",
+        "unit": ""
+      },
+      {
+        "title": "Operating mode",
+        "value": "OffgridMode",
+        "unit": ""
+      },
+      {
+        "title": "Grid Frequency",
+        "value": "49.99",
+        "unit": "Hz"
+      },
+      {
+        "title": "AC charging power",
+        "value": "0",
+        "unit": "W"
+      },
+      {
+        "title": "INV Module Termperature",
+        "value": "47",
+        "unit": "\u00b0C"
+      },
+      {
+        "title": "Total Output Current",
+        "value": "4.5",
+        "unit": "A"
+      },
+      {
+        "title": "Output frequency",
+        "value": "49.99",
+        "unit": "Hz"
+      },
+      {
+        "title": "Total Output Active Power",
+        "value": "775",
+        "unit": "W"
+      },
+      {
+        "title": "Total Output Aparent Power",
+        "value": "1035",
+        "unit": "VA"
+      },
+      {
+        "title": "Total Load Percentage",
+        "value": "9",
+        "unit": "%"
+      },
+      {
+        "title": "Battery Voltage",
+        "value": "52.9",
+        "unit": "V"
+      },
+      {
+        "title": "Battery Current",
+        "value": "-15.4",
+        "unit": "A"
+      },
+      {
+        "title": "Battery Power",
+        "value": "-814",
+        "unit": "W"
+      },
+      {
+        "title": "SOC",
+        "value": "73",
+        "unit": "%"
+      },
+      {
+        "title": "DC Module Termperature",
+        "value": "40",
+        "unit": "\u00b0C"
+      },
+      {
+        "title": "Total PV Power",
+        "value": "0",
+        "unit": "W"
+      }
+    ],
+    "control_field_count": 50,
+    "control_fields": [
+      {
+        "name": " Inverter Date",
+        "type": "value",
+        "id": "sys_eybond_read_44023",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Automatic mains output enable",
+        "type": "options",
+        "id": "sys_eybond_read_44018",
+        "options": {
+          "0": "Do not press the boot will not output",
+          "1": "Do not press the boot will also be output"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Automatic restart when over temperature",
+        "type": "options",
+        "id": "sys_eybond_read_44015",
+        "options": {
+          "0": "Over temperature failure will not restart",
+          "1": "Auto restart after over temperature failure"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Battery Eq mode enable",
+        "type": "options",
+        "id": "bat_eybond_read_44003",
+        "options": {
+          "0": "Prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Battery Low Cut Off SOC",
+        "type": "value",
+        "id": "bat_eybond_read_44002",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Battery Type",
+        "type": "options",
+        "id": "bat_eybond_read_43984",
+        "options": {
+          "0": "AGM",
+          "1": "FLD",
+          "2": "USER",
+          "4": "Li2",
+          "6": "Li4",
+          "8": "LiB"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Battery overvoltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_43985",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Boot method",
+        "type": "options",
+        "id": "sys_eybond_read_44020",
+        "options": {
+          "0": "Can be powered on locally or remotely",
+          "1": "Only boot locally",
+          "2": "Only remote boot"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Buzzer Mode",
+        "type": "options",
+        "id": "sys_eybond_read_44010",
+        "options": {
+          "0": "Beeps OFF",
+          "1": "Beeps ON",
+          "2": "Mute when input source changes",
+          "3": "Beeps only in fault mode"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Charger Source Priority",
+        "type": "options",
+        "id": "bat_eybond_read_43986",
+        "options": {
+          "1": "SOF",
+          "2": "SNU",
+          "3": "OSO",
+          "4": "SOR"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Clean Generation Power",
+        "type": "options",
+        "id": "sys_eybond_ctrl_44026",
+        "options": {
+          "170": "Clean Generation Power"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Constant pressure to float waiting time",
+        "type": "value",
+        "id": "bat_eybond_read_43993",
+        "options": null,
+        "unit": "Min",
+        "hint": null
+      },
+      {
+        "name": "Dry contact",
+        "type": "options",
+        "id": "sys_eybond_read_44017",
+        "options": {
+          "0": "Normal mode",
+          "1": "Ground box mode"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Energy-saving mode switch",
+        "type": "options",
+        "id": "sys_eybond_read_44013",
+        "options": {
+          "0": "Energy saving mode off",
+          "1": "Energy saving mode is on"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Eq charging interval",
+        "type": "value",
+        "id": "bat_eybond_read_44007",
+        "options": null,
+        "unit": "Day",
+        "hint": null
+      },
+      {
+        "name": "Eq charging voltage",
+        "type": "value",
+        "id": "bat_eybond_read_44004",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Eq timeout exit",
+        "type": "value",
+        "id": "bat_eybond_read_44006",
+        "options": null,
+        "unit": "Min",
+        "hint": null
+      },
+      {
+        "name": "Equalization activated immediately",
+        "type": "options",
+        "id": "bat_eybond_ctrl_44008",
+        "options": {
+          "1": "Manually force Eq to charge once"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Exit Fault Mode",
+        "type": "options",
+        "id": "sys_eybond_ctrl_44022",
+        "options": {
+          "1": "Exit Fault Lock State"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Floating charge voltage",
+        "type": "value",
+        "id": "bat_eybond_read_43992",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Input Mode",
+        "type": "options",
+        "id": "sys_eybond_read_44009",
+        "options": {
+          "0": "APL",
+          "1": "UPS",
+          "2": "GNT"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "LCD automatically returns to the homepage",
+        "type": "options",
+        "id": "sys_eybond_read_44012",
+        "options": {
+          "0": "Do not return automatically",
+          "1": "Return automatically after 1 minute"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "LCD backlight",
+        "type": "options",
+        "id": "sys_eybond_read_44011",
+        "options": {
+          "0": "Timed off",
+          "1": "Always on"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Low DC Protection SOC In AC Mode",
+        "type": "value",
+        "id": "bat_eybond_read_44000",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Low DC Recovery SOC In AC Mode",
+        "type": "value",
+        "id": "bat_eybond_read_44001",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Main Output Priority",
+        "type": "options",
+        "id": "bse_eybond_read_43977",
+        "options": {
+          "1": "SUB",
+          "2": "SBU",
+          "3": "SUF"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Mains mode battery discharge recovery point",
+        "type": "value",
+        "id": "bat_eybond_read_43997",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Mains mode battery low voltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_43998",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Maximum charging current",
+        "type": "value",
+        "id": "bat_eybond_read_43994",
+        "options": null,
+        "unit": "A",
+        "hint": null
+      },
+      {
+        "name": "Maximum charging voltage",
+        "type": "value",
+        "id": "bat_eybond_read_43991",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Maximum discharge current protection",
+        "type": "value",
+        "id": "bat_eybond_read_43996",
+        "options": null,
+        "unit": "A",
+        "hint": null
+      },
+      {
+        "name": "Maximum mains charging current",
+        "type": "value",
+        "id": "bat_eybond_read_43995",
+        "options": null,
+        "unit": "A",
+        "hint": null
+      },
+      {
+        "name": "OP2 overload alarm setting",
+        "type": "value",
+        "id": "bse_eybond_read_55429",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Off-grid mode OP1 battery low voltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_55431",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Off-grid mode battery low voltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_43999",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Output Frequency Setting",
+        "type": "options",
+        "id": "bse_eybond_read_43983",
+        "options": {
+          "5000": "50Hz",
+          "6000": "60Hz"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Output Voltage Setting",
+        "type": "options",
+        "id": "bse_eybond_read_43982",
+        "options": {
+          "2200": "220V",
+          "2300": "230V",
+          "2400": "240V"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Output mode",
+        "type": "options",
+        "id": "bse_eybond_read_43976",
+        "options": {
+          "0": "Single",
+          "1": "Parallel",
+          "2": "3P1",
+          "3": "3P2",
+          "4": "3P3",
+          "5": "2P1",
+          "6": "2P2"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Overload automatic restart",
+        "type": "options",
+        "id": "sys_eybond_read_44014",
+        "options": {
+          "0": "Overload failure does not restart",
+          "1": "Automatic restart after overload failure"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Overload transfer to bypass enable",
+        "type": "options",
+        "id": "sys_eybond_read_44016",
+        "options": {
+          "0": "Prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Remote switch",
+        "type": "options",
+        "id": "sys_eybond_read_44021",
+        "options": {
+          "0": "Remote shutdown",
+          "1": "Remote boot"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "SOC Protection value of OP1  In off-grid mode",
+        "type": "value",
+        "id": "bat_eybond_read_55433",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Secondary Charging Priority",
+        "type": "options",
+        "id": "bat_eybond_read_43987",
+        "options": {
+          "0": "OFF",
+          "1": "SOF",
+          "2": "SNU",
+          "3": "OSO",
+          "4": "SOR"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Secondary Charging Priority End Time",
+        "type": "value",
+        "id": "bat_eybond_read_43989",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Secondary Charging Priority Start Time",
+        "type": "value",
+        "id": "bat_eybond_read_43988",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Secondary Output Priority",
+        "type": "options",
+        "id": "bse_eybond_read_43978",
+        "options": {
+          "0": "OFF",
+          "1": "SUB",
+          "2": "SBU",
+          "3": "SUF"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Secondary Output Priority End Time",
+        "type": "value",
+        "id": "bse_eybond_read_43980",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Secondary Output Priority Start Time",
+        "type": "value",
+        "id": "bse_eybond_read_43979",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Whether the OP2 allows the output",
+        "type": "options",
+        "id": "bse_eybond_read_55430",
+        "options": {
+          "0": "Prohibit",
+          "1": "Allow"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "bat_eq_time",
+        "type": "value",
+        "id": "bat_eybond_read_44005",
+        "options": null,
+        "unit": "Min",
+        "hint": null
+      }
+    ],
+    "parameter_count": 8,
+    "parameters": [
+      {
+        "name": "Daily PV energy generation",
+        "value": "12.33",
+        "unit": "kWh",
+        "id": "energy_today"
+      },
+      {
+        "name": "Grid Frequency",
+        "value": "49.99",
+        "unit": "Hz",
+        "id": "eybond_read_43938"
+      },
+      {
+        "name": "Grid Power",
+        "value": "0",
+        "unit": "W",
+        "id": "grid_active_power"
+      },
+      {
+        "name": "Output L1 Active Power",
+        "value": "459",
+        "unit": "W",
+        "id": "eybond_read_43967"
+      },
+      {
+        "name": "Output L2 Active Power",
+        "value": "290",
+        "unit": "W",
+        "id": "eybond_read_55425"
+      },
+      {
+        "name": "PV1 Power",
+        "value": "0",
+        "unit": "W",
+        "id": "eybond_read_43972"
+      },
+      {
+        "name": "PV2 Power",
+        "value": "0",
+        "unit": "W",
+        "id": "eybond_read_43975"
+      },
+      {
+        "name": "SOC",
+        "value": "73",
+        "unit": "%",
+        "id": "bt_battery_capacity"
+      }
+    ],
+    "checksum": "c50da54634240fb551c48fd4f0707b61b9b14f4dec6d9041845ace78bfa8c014"
+  }
+}
