@@ -87,6 +87,19 @@ Cloud keeps its existing 5-minute default for metadata, controls, cloud-only
 fields, and fallback data. Local telemetry defaults to the recommended
 5 seconds. A local update never triggers an extra API refresh.
 
+In hybrid mode, settings still use the cloud. Their options and current values
+can finish loading after local telemetry starts. The integration uses settings
+already present in the normal cloud payload and retries missing control values
+once per successful cloud refresh, without retrying on every local push.
+`unknown` means no usable current value has been read; it is not an inverter
+setting and is never written as a default. Previously known values are retained
+through read failures. Select/number attributes show `control_transport: cloud`
+and `value_status: not_loaded` or `last_known`. A known value or an enabled
+control does not guarantee that the next cloud write will succeed.
+Numeric controls reporting a non-numeric format (for example a time or date)
+show `value_status: unsupported_format`; retrying the connection cannot turn
+such a value into a numeric setting.
+
 The `Data Source` sensor shows `Local`, `Cloud`, or `Cached Cloud`. Hybrid only
 overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
