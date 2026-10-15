@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+from collections import Counter
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -63,6 +64,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         self._shutdown = False
         self._cloud_stale = False
         self._local_push_handle: asyncio.TimerHandle | None = None
+        self._last_source_counts: dict[str, int] | None = None
 
     async def async_setup_local(self) -> None:
         """Start optional local services without weakening cloud availability."""
@@ -153,10 +155,13 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
 
         self._cloud_stale = False
         self._initial_refresh_completed = True
+        # Discovery/disconnection can finish while the cloud request awaits IO.
+        # Do not overwrite a newer local push with the pre-request snapshot.
+        local_data = self._current_local_data()
         return merge_cloud_and_local(
             cloud_data,
             local_data,
-            local_available=local_available,
+            local_available=bool(local_data),
         )
 
     def _handle_local_update(self) -> None:
@@ -185,6 +190,17 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         )
         self.last_exception = None
         self.last_update_success = True
+        source_counts = dict(
+            Counter(
+                str(point.get("val"))
+                for payload in self.data.values()
+                for point in payload.get("data", [])
+                if point.get("title") == "Data Source"
+            )
+        )
+        if source_counts != self._last_source_counts:
+            _LOGGER.debug("Hybrid source selection: %s", source_counts)
+            self._last_source_counts = source_counts
         # DataUpdateCoordinator.async_set_updated_data() resets its refresh
         # timer. Local pushes arrive much faster than the API interval, so using
         # it here would postpone cloud refreshes forever. Notify listeners

@@ -11,8 +11,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -22,6 +22,16 @@ from .device_support import map_charger_priority, map_output_priority
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> dict[str, Any]:
+    """Export a redacted source-selection snapshot without cloud/device requests."""
+    from .runtime_diagnostics import async_runtime_report
+
+    return await async_runtime_report(hass, entry)
+
 
 # Diagnostic sensors that get their data from the regular API (queryDeviceLastData)
 # These sensors show device configuration/status that's already included in the regular data feed

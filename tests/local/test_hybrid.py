@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.dessmonitor import DessMonitorDataUpdateCoordinator
@@ -21,6 +23,7 @@ from custom_components.dessmonitor.local.hybrid import (
     DessMonitorHybridCoordinator,
     merge_cloud_and_local,
 )
+from custom_components.dessmonitor.sensor import _build_sensor_entities
 
 
 def _cloud_payload() -> dict:
@@ -211,6 +214,49 @@ async def test_local_data_arriving_during_cloud_timeout_is_used(
         await coordinator.async_shutdown()
 
 
+async def test_local_arriving_during_successful_cloud_refresh_is_used(hass):
+    coordinator = _hybrid_coordinator(hass)
+
+    async def cloud_result():
+        coordinator.local.async_set_updated_data(_local_payload())
+        return _cloud_payload()
+
+    try:
+        with patch.object(
+            DessMonitorDataUpdateCoordinator,
+            "_async_update_data",
+            AsyncMock(side_effect=cloud_result),
+        ):
+            result = await coordinator._async_update_data()
+        points = {p["title"]: p["val"] for p in result["CLOUD-SERIAL"]["data"]}
+        assert points["Data Source"] == "Local"
+        assert points["Output Active Power"] == 900
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_disconnect_during_successful_cloud_refresh_does_not_restore_local(hass):
+    coordinator = _hybrid_coordinator(hass)
+    coordinator.local.async_set_updated_data(_local_payload())
+
+    async def cloud_result():
+        coordinator.local.async_set_update_error(UpdateFailed("disconnected"))
+        return _cloud_payload()
+
+    try:
+        with patch.object(
+            DessMonitorDataUpdateCoordinator,
+            "_async_update_data",
+            AsyncMock(side_effect=cloud_result),
+        ):
+            result = await coordinator._async_update_data()
+        points = {p["title"]: p["val"] for p in result["CLOUD-SERIAL"]["data"]}
+        assert points["Data Source"] == "Cloud"
+        assert points["AC output active power"] == 700
+    finally:
+        await coordinator.async_shutdown()
+
+
 async def test_both_outages_keep_last_cloud_snapshot(hass: HomeAssistant) -> None:
     """A transient double outage preserves history with an explicit stale source."""
     coordinator = _hybrid_coordinator(hass)
@@ -346,3 +392,35 @@ def test_hybrid_coordinator_is_attached_to_config_entry(
         config_entry=entry,
     )
     assert coordinator.config_entry is entry
+
+
+async def test_data_source_state_changes_in_home_assistant(hass: HomeAssistant) -> None:
+    """Check HA's actual state machine, not just the merged dict/native_value."""
+    coordinator = _hybrid_coordinator(hass)
+    cloud = _cloud_payload()
+    coordinator._cached_cloud_data = cloud
+    coordinator._initial_refresh_completed = True
+    coordinator.async_set_updated_data(
+        merge_cloud_and_local(cloud, {}, local_available=False)
+    )
+    component = EntityComponent(logging.getLogger(__name__), "sensor", hass)
+    await component.async_setup({})
+    source = next(
+        entity
+        for entity in _build_sensor_entities(coordinator, set())
+        if entity._sensor_type == "Data Source"
+    )
+    try:
+        await component.async_add_entities([source])
+        assert hass.states.get(source.entity_id).state == "Cloud"
+        coordinator.local.async_set_updated_data(_local_payload())
+        await asyncio.sleep(0.15)
+        await hass.async_block_till_done()
+        assert hass.states.get(source.entity_id).state == "Local"
+        coordinator.local.async_set_update_error(UpdateFailed("disconnected"))
+        await asyncio.sleep(0.15)
+        await hass.async_block_till_done()
+        assert hass.states.get(source.entity_id).state == "Cloud"
+    finally:
+        await component._async_reset()
+        await coordinator.async_shutdown()

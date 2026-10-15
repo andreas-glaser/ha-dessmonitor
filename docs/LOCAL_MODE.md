@@ -92,6 +92,14 @@ overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
 returns the same entities to API telemetry.
 
+Changing Cloud API / Prefer local in the **same entry's options** reloads the
+integration. Shared entities retain their registry IDs and dashboard/automation
+references, but can briefly be unavailable during reload. Automation events
+during that gap are not replayed. A local-only reading with no cloud equivalent
+can remain unavailable in cloud mode and return under the same ID when local
+telemetry resumes. A separate Local network only entry has a different identity
+path; deleting/recreating entries is not equivalent to switching this option.
+
 If one inverter's status poll fails while another on the same collector succeeds,
 only the responding inverter contributes to the new local snapshot. Hybrid uses
 cloud data for the failed inverter until it responds again. Its device and sensor
@@ -237,6 +245,12 @@ then start it again; the configured integration reconnects automatically.
   changing the device code without this evidence may not help.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
+  If local polling is healthy but Data Source remains Cloud, download diagnostics
+  from the integration entry's menu. The report compares local snapshots,
+  recomputed source selection, the entity's native value and HA's stored state.
+  It also records entity binding/listener status and file fingerprints without
+  requesting another cloud or inverter update. `Hybrid source selection` and
+  `Data Source publication` debug messages log source transitions.
 
 Debug logging:
 
