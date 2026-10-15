@@ -20,6 +20,7 @@ from .control_values import cloud_control_snapshot, control_value, find_control_
 from .device_support.device_registry import map_control_field
 from .entity_loader import async_setup_dynamic_entities
 from .number_range import compute_range_and_step, is_hint_range_usable
+from .temporal_controls import temporal_control_kind
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,6 +99,8 @@ async def _async_build_number_entities(
 
             param_id = config.get("id")
             if not param_id:
+                continue
+            if temporal_control_kind(devcode, param_id) is not None:
                 continue
 
             friendly_name = map_control_field(devcode, name)

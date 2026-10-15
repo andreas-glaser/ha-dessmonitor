@@ -100,6 +100,38 @@ Numeric controls reporting a non-numeric format (for example a time or date)
 show `value_status: unsupported_format`; retrying the connection cannot turn
 such a value into a numeric setting.
 
+### Schedule times and inverter clock (devcode 6544)
+
+The four advertised Secondary Charging/Output Priority Start/End Time controls
+are `time` entities. They use the inverter's local wall-clock time in `HH:MM`
+format; seconds must be zero. They do not activate a priority mode or impose
+ordering on start/end times, so overnight schedules remain possible.
+
+`Inverter Date` is a **text** control accepting a valid calendar timestamp in
+`YYYY-MM-DD HH:MM:SS` format. The API value has no timezone. A timezone-aware
+`datetime` entity would require knowing the inverter's timezone; the integration
+does not assume that it equals Home Assistant's timezone or convert the entered
+clock value. There is no automatic clock synchronization.
+
+Only the verified devcode 6544 field IDs are reclassified, and only when advertised
+by the cloud API. Both platforms share the existing control cache/recovery path;
+they do not add local writes or an independent polling loop. Empty or malformed
+readings never become midnight or a fabricated date. A successful cloud API
+response updates the displayed value; hardware readback is still required to
+confirm the inverter applied it.
+
+After upgrading, the matching old `number` registry entries are disabled by the
+integration and retained for history. New controls have `time`/`text` entity IDs:
+update dashboard references and automations to use `time.set_value` or
+`text.set_value`. Other numbers and user-disabled registry entries are preserved.
+When rolling back, restore the previous files and manually re-enable only the
+old number entries disabled by this replacement if needed.
+
+The serializers follow the official web client's string round-trip behavior
+and the observed device read formats. Unit tests cover exact payloads, calendar
+validation, recovery and state publication. On-device writes of these new
+controls have not yet been verified.
+
 The `Data Source` sensor shows `Local`, `Cloud`, or `Cached Cloud`. Hybrid only
 overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode

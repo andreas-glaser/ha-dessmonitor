@@ -43,3 +43,11 @@ shared in issue #17. Raw XMODEM CRC interoperability was cross-checked against
 [Dess Monitor Local's PI18 codec](https://github.com/Antoxa1081/home-assistant-dess-monitor-local/blob/main/custom_components/dess_monitor_local/api/decoders/pi18.py).
 No source code from that codec is included here; regression frames use synthetic
 data and Python's independent standard-library CRC implementation.
+
+The cloud time/clock control serialization was informed by the public DessMonitor
+web client's `queryDeviceCtrlValue` / `ctrlDevice` string round-trip behavior,
+observed on 2026-10-15 in
+[`chunk-4eb723b8.221dae61.js`](https://www.dessmonitor.com/js/chunk-4eb723b8.221dae61.js).
+Only interface behavior was used; no vendor JavaScript is included. Read formats
+for the five devcode 6544 fields were independently observed in hardware logs.
+This establishes client serialization, not successful on-device write validation.
