@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hybrid refresh uses the current local snapshot after an awaited cloud request,
   preserving a collector connection or disconnection that happened during that
   request (thanks to @jay0x for investigation and testing).
+- Cloud-backed controls seed their current values from ordinary cloud telemetry
+  and retry missing reads at most once per successful cloud revision, stopping
+  after three consecutive rounds without recovery. Partial recovery resets the
+  budget; ordinary telemetry still updates values after retries stop. Reloading
+  the integration starts a new budget. Late results update existing select/number
+  entities and placeholders do not erase known settings. Local pushes and repeated
+  cloud timestamps no longer undo accepted changes (thanks to @jay0x for
+  investigation/testing and @andreas-glaser for the bounded-retry fix).
 - Collector pagination no longer stops after the first page when the API omits
   a `total`, which truncated accounts holding more than one page of collectors.
   The loop is also capped so it terminates even if the API keeps returning full
