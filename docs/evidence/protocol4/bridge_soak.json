@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "source": "source_07",
+  "app_version": "0.16.0",
+  "transport": "intercepted_collector_tcp_at_then_raw_modbus_rtu",
+  "poll_port": 18899,
+  "protocol_number": 4,
+  "model_code": 32771,
+  "poll_interval_seconds": 10,
+  "started_at": "2026-10-22T13:46:43.686753+00:00",
+  "observed_at": "2026-10-23T13:57:25.973165+00:00",
+  "wall_clock_duration_hours": 24.178413,
+  "complete_cycles": 8522,
+  "poll_errors": 119,
+  "error_classes": {
+    "TimeoutError": 89,
+    "ControlError": 29,
+    "ConnectionError": 1
+  },
+  "max_snapshot_gap_seconds": 44.08,
+  "recovered_availability_gaps_seconds": [
+    11.834473,
+    13.809264,
+    11.65079
+  ],
+  "availability_ttl_seconds_at_observation": 30,
+  "limitations": [
+    "Same register layout, different collector transport and scheduler from DessMonitor.",
+    "Includes extra settings/clock reads; not an eight-requests-only workload.",
+    "ControlError is a wrapper, not proof of a write or a specific physical failure.",
+    "Availability gaps use the then-current 3T freshness rule, not the later 5T rule.",
+    "Does not validate DessMonitor Local at five seconds or vendor HTTP writes."
+  ],
+  "source_sha256": {
+    "source_07": "7037fa134d4d7205f5a9e4ffcf5b129888e08de9dfb50c3f397c812f1ba0a00b"
+  }
+}

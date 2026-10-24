@@ -150,8 +150,16 @@ python tools/cli/dessmonitor_cli.py verify docs/evidence/protocol4/combined_anal
   firmware lacking that register. The known bad protocol-4 legacy capture is
   rejected by voltage plausibility; a different false positive during a failed
   selector read remains a residual risk to discuss, not a proven hardware failure.
-- Earlier malformed-frame errors were not reproduced in later captures; no
-  claim is made that their root cause was repaired.
+- At the original PR submission, later captures had not reproduced the earlier
+  malformed-frame errors. Subsequent October 16 captures did establish a missing
+  EyeBond-envelope failure; see the [review follow-up](PROTOCOL4_FOLLOWUP.md).
+  This decoder PR does not repair that transport failure.
 - Successful Local publication on HA is confirmed, but neither continuous
   availability of cloud-only functions nor the cause of earlier dashboard
   symptoms is established by this protocol work.
+
+## October 24 review follow-up
+
+[User-visible discovery/merge changes and longer-run evidence](PROTOCOL4_FOLLOWUP.md)
+separate the direct EyeBond observations from later AT/raw RTU bridge observations.
+The new observations do not expand the hardware support claim to other models.

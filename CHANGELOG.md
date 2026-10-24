@@ -13,17 +13,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   battery, grid, output, dual-PV, temperatures and energy counters. Existing
   cloud sensor identities, including SOC, are retained in hybrid mode (thanks to @jay0x for investigation and testing).
 
+- Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
+  so Home Assistant 2026.3 and newer load the icon and logo locally instead of
+  from the central brands repository (thanks to @frenck).
+
 ### Fixed
 - Local SMG detection no longer treats protocol-4 power and flag registers as
   current and frequency, or reserved registers as battery/output telemetry.
   Protocol layouts are retained per inverter; an incomplete protocol-4 poll
   fails instead of publishing a partial fresh snapshot (thanks to @jay0x for investigation and testing).
-- Hybrid merging retains distinct main/current cloud priority fields when
-  there is no local replacement, and matches mapped field names without
-  case-dependent duplicates (thanks to @jay0x for investigation and testing).
 - The diagnostic Output Voltage Setting sensor accepts values such as `230V` (thanks to @jay0x for investigation and testing).
 - Devcode 6544 normalizes the observed cloud mode `OffgridMode` to
   `Off-grid Mode`, matching local telemetry and the existing inverter-mode alias (thanks to @jay0x for investigation and testing).
+- Collector pagination no longer stops after the first page when the API omits
+  a `total`, which truncated accounts holding more than one page of collectors.
+  The loop is also capped so it terminates even if the API keeps returning full
+  pages without ever reporting a total.
+- The device **Download diagnostics** button works. Home Assistant reads these
+  hooks from an integration's `diagnostics` module, and the implementation only
+  existed in `__init__`, so the download was never wired up and the report code
+  was unreachable.
+- PI30 local mode accepts a `QPIGS` reply that appends vendor fields after the
+  standard 21, instead of rejecting the inverter with "no supported read-only
+  local protocol". The extra fields are ignored and the standard readings are
+  unchanged; a truncated 18 to 20 field reply is still refused. Reported with a
+  captured frame and a working patch by @respira-crece-lidera (#50).
+- Numeric controls are written without a trailing `.0`. Home Assistant always
+  hands a number entity a float, so an integral setting was sent as `30.0`
+  where the official clients send `30`. Integer-typed fields such as the SOC
+  percentages appear to reject that form, leaving the setting unchanged in the
+  cloud. Fractional values are unaffected. Reported by @olegvsh (#49).
+- A collector listed in multiple cloud projects is polled once per refresh,
+  avoiding duplicate device-discovery and telemetry API calls while retaining
+  the same final collector metadata (thanks to @jay0x for investigation and testing).
+
+### Changed
+- SMG discovery rejects a successfully read register-184 layout other than 0, 1
+  or 4 rather than guessing the legacy map. A failed selector read retains the
+  legacy compatibility fallback. An unsupported slave can also end automatic
+  discovery after an earlier slave has matched.
+- Legacy SMG snapshots require at least one strictly positive Output, Battery,
+  PV or Grid voltage; merely present zero-valued voltage fields no longer pass.
+- Hybrid overlay retains distinct Main/Current cloud priority fields without a
+  local replacement. A sensor sharing their mapped key now displays the first
+  matching cloud field instead of the last; dashboards and automations observing
+  that sensor can therefore see a different value. Cloud-only and devices with
+  no local match retain their existing behavior. Field matching is case-insensitive
+  (thanks to @jay0x for investigation and testing).
 
 ## [2.5.0] - 2026-10-13
 
