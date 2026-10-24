@@ -1,4 +1,8 @@
-"""Read-only PI30 identification and standard 17/21-field status decoding."""
+"""Read-only PI30 identification and 17/21-field status decoding.
+
+Some Axpert and VM IV firmwares append vendor fields after the standard 21.
+Those extras are ignored rather than rejected; see issue #50.
+"""
 
 from __future__ import annotations
 
@@ -73,7 +77,10 @@ def parse_pi30_response(command: str, frame: bytes) -> dict[str, Any]:
         return {"PI": "30"}
     if command == "QPIGS":
         fields = data.split(" ")
-        if len(fields) not in (17, 21):
+        # A longer reply carries vendor fields after the standard 21, which we
+        # ignore. Between 18 and 20 is a truncated extended block instead, so
+        # its trailing flags cannot be validated and it stays rejected.
+        if len(fields) != 17 and len(fields) < 21:
             raise ProtocolError("unsupported PI30 status field count")
         values = {
             title: _number(fields[index], maximum)
@@ -81,7 +88,7 @@ def parse_pi30_response(command: str, frame: bytes) -> dict[str, Any]:
         }
         if re.fullmatch(r"[01]{8}", fields[16]) is None:
             raise ProtocolError("invalid PI30 status flags")
-        if len(fields) == 21:
+        if len(fields) >= 21:
             _number(fields[17], 255)
             _number(fields[18], 255)
             values["PV Charge Power"] = _number(fields[19], 150_000)

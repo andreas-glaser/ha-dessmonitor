@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the central brands repository (thanks to @frenck).
 
 ### Fixed
+- PI30 local mode accepts a `QPIGS` reply that appends vendor fields after the
+  standard 21, instead of rejecting the inverter with "no supported read-only
+  local protocol". The extra fields are ignored and the standard readings are
+  unchanged; a truncated 18 to 20 field reply is still refused. Reported with a
+  captured frame and a working patch by @respira-crece-lidera (#50).
 - A collector listed in multiple cloud projects is polled once per refresh,
   avoiding duplicate device-discovery and telemetry API calls while retaining
   the same final collector metadata (thanks to @jay0x for investigation and testing).
