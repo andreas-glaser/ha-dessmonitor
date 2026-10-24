@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
+  so Home Assistant 2026.3 and newer load the icon and logo locally instead of
+  from the central brands repository (thanks to @frenck).
+
 ### Fixed
 - A collector listed in multiple cloud projects is polled once per refresh,
   avoiding duplicate device-discovery and telemetry API calls while retaining
