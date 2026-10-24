@@ -1,0 +1,337 @@
+{
+  "schema_version": 1,
+  "source": "source_08",
+  "transport": "vendor_http_api",
+  "devcode": 6544,
+  "fields": {
+    "start": "bat_eybond_read_43988",
+    "end": "bat_eybond_read_43989"
+  },
+  "operations": [
+    {
+      "label": "setup_end",
+      "source": "source_09",
+      "path": "ha_service_to_vendor_api",
+      "at": "2026-10-17T12:23:22.467624+00:00",
+      "field": "end",
+      "previous": "20:00",
+      "requested": "20:02",
+      "restoring": false,
+      "service_calls": 1,
+      "service_acknowledged": false,
+      "service_elapsed_seconds": 30.098,
+      "first_independent_read": {
+        "field": "end",
+        "at": "2026-10-17T12:25:30Z",
+        "label": "setup_end-after",
+        "status": "read",
+        "api_error": 0,
+        "value": "20:00",
+        "http_code": 200
+      }
+    },
+    {
+      "label": "setup_start",
+      "source": "source_10",
+      "path": "ha_service_to_vendor_api",
+      "at": "2026-10-17T12:32:40.326642+00:00",
+      "field": "start",
+      "previous": "15:00",
+      "requested": "20:01",
+      "restoring": false,
+      "service_calls": 1,
+      "service_acknowledged": true,
+      "service_elapsed_seconds": 1.863,
+      "first_independent_read": {
+        "field": "start",
+        "at": "2026-10-17T12:33:26Z",
+        "label": "setup_start-after",
+        "status": "transport_error",
+        "http_code": 0
+      }
+    },
+    {
+      "label": "setup_end_reconciled",
+      "source": "source_11",
+      "path": "ha_service_to_vendor_api",
+      "at": "2026-10-17T12:39:42.500357+00:00",
+      "field": "end",
+      "previous": "20:00",
+      "requested": "20:02",
+      "restoring": false,
+      "service_calls": 1,
+      "service_acknowledged": true,
+      "service_elapsed_seconds": 1.916,
+      "first_independent_read": {
+        "field": "end",
+        "at": "2026-10-17T12:40:28Z",
+        "label": "setup_end_reconciled-after",
+        "status": "read",
+        "api_error": 0,
+        "value": "20:02",
+        "http_code": 200
+      }
+    },
+    {
+      "label": "restore_start_direct",
+      "sources": [
+        "source_12",
+        "source_13"
+      ],
+      "path": "direct_vendor_api_restoration",
+      "at": "2026-10-17T13:33:21.368843+00:00",
+      "field": "start",
+      "previous": "20:01",
+      "requested": "15:00",
+      "command": {
+        "field": "start",
+        "at": "2026-10-17T13:34:00Z",
+        "status": "transport_error",
+        "http_code": 0
+      },
+      "first_independent_read": {
+        "field": "start",
+        "at": "2026-10-17T13:34:32Z",
+        "label": "restore_start_direct-after",
+        "status": "invalid_value",
+        "api_error": 0,
+        "value": null,
+        "http_code": 200
+      },
+      "restored_observation": false
+    },
+    {
+      "label": "restore_end_direct",
+      "sources": [
+        "source_14",
+        "source_15"
+      ],
+      "path": "direct_vendor_api_restoration",
+      "at": "2026-10-17T13:35:59.611365+00:00",
+      "field": "end",
+      "previous": "20:02",
+      "requested": "20:00",
+      "command": {
+        "field": "end",
+        "at": "2026-10-17T13:36:38Z",
+        "status": "api_error",
+        "api_error": 2,
+        "http_code": 200
+      },
+      "first_independent_read": {
+        "field": "end",
+        "at": "2026-10-17T13:36:56Z",
+        "label": "restore_end_direct-after",
+        "status": "read",
+        "api_error": 0,
+        "value": "20:00",
+        "http_code": 200
+      },
+      "restored_observation": true
+    },
+    {
+      "label": "restore_start_paused",
+      "sources": [
+        "source_16",
+        "source_17"
+      ],
+      "path": "direct_vendor_api_restoration",
+      "at": "2026-10-17T13:40:01.585339+00:00",
+      "field": "start",
+      "previous": "20:01",
+      "requested": "15:00",
+      "command": {
+        "field": "start",
+        "at": "2026-10-17T13:40:40Z",
+        "status": "write_acknowledged_not_read_back",
+        "api_error": 0,
+        "http_code": 200
+      },
+      "first_independent_read": {
+        "field": "start",
+        "at": "2026-10-17T13:40:44Z",
+        "label": "restore_start_paused-after",
+        "status": "read",
+        "api_error": 0,
+        "value": "15:00",
+        "http_code": 200
+      },
+      "restored_observation": true
+    }
+  ],
+  "selected_independent_reads": [
+    {
+      "field": "start",
+      "at": "2026-10-17T12:15:38Z",
+      "label": "baseline_local5",
+      "status": "read",
+      "api_error": 0,
+      "value": "15:00",
+      "http_code": 200
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T12:15:43Z",
+      "label": "baseline_local5",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:00",
+      "http_code": 200
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T12:23:47Z",
+      "label": "setup_end-before",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:00",
+      "http_code": 200
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T12:25:30Z",
+      "label": "setup_end-after",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:00",
+      "http_code": 200
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T12:33:05Z",
+      "label": "setup_start-before",
+      "status": "read",
+      "api_error": 0,
+      "value": "15:00",
+      "http_code": 200
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T12:33:26Z",
+      "label": "setup_start-after",
+      "status": "transport_error",
+      "api_error": null,
+      "value": null,
+      "http_code": 0
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T12:34:43Z",
+      "label": "setup_start_reconcile",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:01",
+      "http_code": 200
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T12:34:56Z",
+      "label": "setup_end_reconciled-before",
+      "status": "transport_error",
+      "api_error": null,
+      "value": null,
+      "http_code": 0
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T12:39:01Z",
+      "label": "setup_end_reconciled-before",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:00",
+      "http_code": 200
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T12:40:28Z",
+      "label": "setup_end_reconciled-after",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:02",
+      "http_code": 200
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T13:22:00Z",
+      "label": "quiet15m_start",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:01",
+      "http_code": 200
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T13:23:04Z",
+      "label": "quiet15m_end",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:02",
+      "http_code": 200
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T13:34:32Z",
+      "label": "restore_start_direct-after",
+      "status": "invalid_value",
+      "api_error": 0,
+      "value": null,
+      "http_code": 200
+    },
+    {
+      "field": "end",
+      "at": "2026-10-17T13:36:56Z",
+      "label": "restore_end_direct-after",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:00",
+      "http_code": 200
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T13:37:16Z",
+      "label": "restore_start_reconcile",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:01",
+      "http_code": 200
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T13:40:31Z",
+      "label": "restore_start_paused-before",
+      "status": "read",
+      "api_error": 0,
+      "value": "20:01",
+      "http_code": 200
+    },
+    {
+      "field": "start",
+      "at": "2026-10-17T13:40:44Z",
+      "label": "restore_start_paused-after",
+      "status": "read",
+      "api_error": 0,
+      "value": "15:00",
+      "http_code": 200
+    }
+  ],
+  "limitations": [
+    "Historical October17 combined build, not the exact focused PR48 candidate.",
+    "Requested wall-clock values and service/API outcomes, not a raw HTTP wire capture.",
+    "Independent API reads are distinct from optimistic HA states, not a physical display inspection.",
+    "Recorded tool and HA clocks differed; use operation labels, not cross-source latency subtraction.",
+    "Keep initial write/read failures and API-error restoration in the evidence.",
+    "Output schedule and calendar cloud writes remain unverified; native bridge writes do not substitute."
+  ],
+  "source_sha256": {
+    "source_08": "013e3b309edb05089accf3687451b80568b9d96e96096933b42e53abdb243445",
+    "source_09": "2a060f3645d0ecb527843d8b49b3e67dca583ed038a733e0486b362a03c4dec7",
+    "source_10": "4742d714e1dd061790d893e9864d0947a1e09f7a16f6dd777f6cab15ce6ec3a1",
+    "source_11": "c42ffc39059e6634d6131ff4f75f3d0bbe5fddf7ef0f6d5b9a0bf46262dbc455",
+    "source_12": "f731f558a7bf099e8306f19b659139176918539d4f366b33ea410304ccca7970",
+    "source_13": "379bfe8467839318744a3a1bb09967fbcd2d1302ec8fb5959385c9a45c2cd897",
+    "source_14": "902882298f047349c13edbbc7e559724f42d9a089da089f8fd7820f6c661d8dc",
+    "source_15": "8a563b63f85496ad2387246b77bdcd9368ef76ffd24168757bb87d1fe833de57",
+    "source_16": "b04549fc5f61567632332ff6278723364fb0798a2cf60c0c22dfe2782e09ccb3",
+    "source_17": "80c214fec470ce30e8fc4d3f0a01246624e7a6df5cb1445f3828c187243bed77"
+  }
+}

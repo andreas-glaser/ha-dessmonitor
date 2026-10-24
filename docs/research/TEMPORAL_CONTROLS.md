@@ -76,6 +76,9 @@ is tested offline with HA's real registry; it has not been installed on hardware
 
 ## Later write/readback observations, separate by transport
 
+The [compact cloud evidence](../evidence/temporal_controls/README.md) includes
+selected command/readback records, failures, reconciliation and source hashes.
+
 | Setting | Vendor HTTP API / DessMonitor | Separate native bridge |
 |---|---|---|
 | Secondary charging start/end (43988/43989) | October 17: 15:00/20:00 changed to 20:01/20:02; separate `queryDeviceCtrlValue` calls returned the changed strings; baseline restored | FC16/FC03 configuration tests on registers 634/635 |
