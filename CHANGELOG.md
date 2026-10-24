@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the central brands repository (thanks to @frenck).
 
 ### Fixed
+- Collector pagination no longer stops after the first page when the API omits
+  a `total`, which truncated accounts holding more than one page of collectors.
+  The loop is also capped so it terminates even if the API keeps returning full
+  pages without ever reporting a total.
 - The device **Download diagnostics** button works. Home Assistant reads these
   hooks from an integration's `diagnostics` module, and the implementation only
   existed in `__init__`, so the download was never wired up and the report code
