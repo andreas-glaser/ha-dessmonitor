@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   local protocol". The extra fields are ignored and the standard readings are
   unchanged; a truncated 18 to 20 field reply is still refused. Reported with a
   captured frame and a working patch by @respira-crece-lidera (#50).
+- Numeric controls are written without a trailing `.0`. Home Assistant always
+  hands a number entity a float, so an integral setting was sent as `30.0`
+  where the official clients send `30`. Integer-typed fields such as the SOC
+  percentages appear to reject that form, leaving the setting unchanged in the
+  cloud. Fractional values are unaffected. Reported by @olegvsh (#49).
 - A collector listed in multiple cloud projects is polled once per refresh,
   avoiding duplicate device-discovery and telemetry API calls while retaining
   the same final collector metadata (thanks to @jay0x for investigation and testing).

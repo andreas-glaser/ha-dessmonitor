@@ -10,6 +10,7 @@ from homeassistant.components.number import NumberMode
 from custom_components.dessmonitor.number import (
     DessMonitorNumber,
     _async_build_number_entities,
+    _format_control_value,
 )
 
 
@@ -195,7 +196,8 @@ def test_coordinator_update_refreshes_external_control_change() -> None:
     assert entity.native_value == 22.0
     assert entity.native_min_value == 0.0
     assert entity.native_max_value == 200.0
-    assert coordinator.ctrl_value_cache["SN-1"]["bat_current"] == "22.0"
+    # The cache holds the same form the API would be sent (#49).
+    assert coordinator.ctrl_value_cache["SN-1"]["bat_current"] == "22"
     write_state.assert_called_once_with()
 
 
@@ -278,10 +280,10 @@ async def test_successful_write_updates_state_and_cache() -> None:
         devaddr=1,
         sn="SN-1",
         param_id="bat_current",
-        value="25.0",
+        value="25",
     )
     assert entity.native_value == 25.0
-    assert coordinator.ctrl_value_cache["SN-1"]["bat_current"] == "25.0"
+    assert coordinator.ctrl_value_cache["SN-1"]["bat_current"] == "25"
     write_state.assert_called_once_with()
 
 
@@ -332,3 +334,31 @@ async def test_non_finite_write_is_rejected_locally(value: float) -> None:
     coordinator.api.set_device_control_value.assert_not_awaited()
     assert entity.native_value == 9.0
     assert coordinator.ctrl_value_cache["SN-1"]["bat_current"] == "9"
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (30.0, "30"),
+        (0.0, "0"),
+        (100.0, "100"),
+        (57.6, "57.6"),
+        (12.5, "12.5"),
+        (-5.0, "-5"),
+    ],
+)
+def test_integral_settings_are_written_without_a_decimal_part(value, expected) -> None:
+    """Home Assistant hands over a float; integer fields reject "30.0" (#49)."""
+    assert _format_control_value(value) == expected
+
+
+async def test_percentage_write_matches_the_official_client_form() -> None:
+    """A SOC percentage is sent as "30", the form the web client uses (#49)."""
+    coordinator = _make_coordinator()
+    coordinator.api.set_device_control_value = AsyncMock(return_value={"err": 0})
+    entity = _make_entity(coordinator)
+
+    with patch.object(entity, "async_write_ha_state"):
+        await entity.async_set_native_value(30.0)
+
+    assert coordinator.api.set_device_control_value.await_args.kwargs["value"] == "30"
