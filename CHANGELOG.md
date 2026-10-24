@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0-rc.1] - 2026-10-24
+
+First release candidate for 2.6.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate changes how numeric controls are written for
+every device, and three fixes are not yet confirmed on hardware. If you use
+number entities such as charge current or an SOC percentage, please set one and
+check that the value still holds after the next cloud refresh a few minutes
+later. Reports either way are useful.
+
 ### Added
 - Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
   so Home Assistant 2026.3 and newer load the icon and logo locally instead of
