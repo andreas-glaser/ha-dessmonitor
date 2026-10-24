@@ -153,10 +153,13 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
 
         self._cloud_stale = False
         self._initial_refresh_completed = True
+        # Discovery/disconnection can finish while the cloud request awaits IO.
+        # Do not overwrite a newer local push with the pre-request snapshot.
+        local_data = self._current_local_data()
         return merge_cloud_and_local(
             cloud_data,
             local_data,
-            local_available=local_available,
+            local_available=bool(local_data),
         )
 
     def _handle_local_update(self) -> None:
