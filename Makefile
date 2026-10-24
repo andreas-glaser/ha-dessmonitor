@@ -61,7 +61,16 @@ check:
 	@echo "✅ flake8 (quality): PASSED (warnings allowed)"
 	@echo ""
 	@echo "=== mypy (type checking) ==="
-	@.venv/bin/mypy $(PYTHON_PATHS) --ignore-missing-imports || echo "⚠️  mypy: Completed with warnings"
+	@.venv/bin/mypy $(PYTHON_PATHS) --ignore-missing-imports; \
+	status=$$?; \
+	if [ $$status -eq 0 ]; then echo "✅ mypy: PASSED"; \
+	elif [ $$status -eq 1 ]; then echo "⚠️  mypy: type warnings (not blocking)"; \
+	else \
+		echo "❌ mypy: did not run (exit $$status)"; \
+		echo "   A stale or unwritable .mypy_cache is the usual cause:"; \
+		echo "   rm -rf .mypy_cache  (sudo if it is owned by root)"; \
+		exit 1; \
+	fi
 	@echo ""
 	@echo "🎉 All critical checks passed!"
 

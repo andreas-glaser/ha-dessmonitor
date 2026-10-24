@@ -26,6 +26,10 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Upper bound on collector pages per project, so pagination terminates even if
+# the API keeps returning full pages and never reports a total.
+MAX_COLLECTOR_PAGES = 20
+
 
 def _mask_identifier(value: str | None) -> str:
     """Return a redacted identifier for logging."""
@@ -447,7 +451,11 @@ class DessMonitorAPI:
                 break
 
             batch = data.get("collector", [])
-            total_from_api = total_from_api or data.get("total", 0)
+            reported_total = data.get("total")
+            if total_from_api is None and isinstance(reported_total, int):
+                # A missing or zero total must not be read as "nothing left",
+                # which would silently truncate an account at one page.
+                total_from_api = reported_total or None
             if not batch:
                 break
 
@@ -468,6 +476,15 @@ class DessMonitorAPI:
                 break
 
             page += 1
+            if page >= MAX_COLLECTOR_PAGES:
+                # The loop must terminate even if the API keeps returning full
+                # pages without ever reporting a total.
+                _LOGGER.warning(
+                    "Stopped paginating collectors for project %s after %d pages",
+                    pid,
+                    MAX_COLLECTOR_PAGES,
+                )
+                break
 
         if collectors:
             _LOGGER.info(
