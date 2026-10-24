@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the central brands repository (thanks to @frenck).
 
 ### Fixed
+- Hybrid refresh uses the current local snapshot after an awaited cloud request,
+  preserving a collector connection or disconnection that happened during that
+  request (thanks to @jay0x for investigation and testing).
 - Collector pagination no longer stops after the first page when the API omits
   a `total`, which truncated accounts holding more than one page of collectors.
   The loop is also capped so it terminates even if the API keeps returning full

@@ -211,6 +211,49 @@ async def test_local_data_arriving_during_cloud_timeout_is_used(
         await coordinator.async_shutdown()
 
 
+async def test_local_arriving_during_successful_cloud_refresh_is_used(hass):
+    coordinator = _hybrid_coordinator(hass)
+
+    async def cloud_result():
+        coordinator.local.async_set_updated_data(_local_payload())
+        return _cloud_payload()
+
+    try:
+        with patch.object(
+            DessMonitorDataUpdateCoordinator,
+            "_async_update_data",
+            AsyncMock(side_effect=cloud_result),
+        ):
+            result = await coordinator._async_update_data()
+        points = {p["title"]: p["val"] for p in result["CLOUD-SERIAL"]["data"]}
+        assert points["Data Source"] == "Local"
+        assert points["Output Active Power"] == 900
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_disconnect_during_successful_cloud_refresh_does_not_restore_local(hass):
+    coordinator = _hybrid_coordinator(hass)
+    coordinator.local.async_set_updated_data(_local_payload())
+
+    async def cloud_result():
+        coordinator.local.async_set_update_error(UpdateFailed("disconnected"))
+        return _cloud_payload()
+
+    try:
+        with patch.object(
+            DessMonitorDataUpdateCoordinator,
+            "_async_update_data",
+            AsyncMock(side_effect=cloud_result),
+        ):
+            result = await coordinator._async_update_data()
+        points = {p["title"]: p["val"] for p in result["CLOUD-SERIAL"]["data"]}
+        assert points["Data Source"] == "Cloud"
+        assert points["AC output active power"] == 700
+    finally:
+        await coordinator.async_shutdown()
+
+
 async def test_both_outages_keep_last_cloud_snapshot(hass: HomeAssistant) -> None:
     """A transient double outage preserves history with an explicit stale source."""
     coordinator = _hybrid_coordinator(hass)
