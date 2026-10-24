@@ -21,6 +21,7 @@ from .modbus import (
     to_signed_16,
 )
 from .protocol import ProtocolError
+from .smg_protocol4 import PROTOCOL4_BLOCKS, decode_protocol4
 
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
 
@@ -56,6 +57,7 @@ class SmgRoute:
     device_code: int
     collector_address: int
     slave_address: int
+    protocol_number: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,7 +193,7 @@ def decode_live_registers(registers: tuple[int, ...]) -> dict[str, Any]:
         values[field.title] = value
 
     if not any(
-        title in values
+        values.get(title, 0) > 0
         for title in ("Output Voltage", "Battery Voltage", "PV Voltage", "Grid Voltage")
     ):
         raise ModbusError("SMG live block failed voltage plausibility checks")
@@ -215,23 +217,20 @@ async def discover_smg(
 
     tunnel_codes = _tunnel_device_codes(configured_device_code, reported_device_code)
     selected: tuple[int, int] | None = None
-    first_live: tuple[int, ...] | None = None
+    first_snapshot: tuple[int, dict[str, Any]] | None = None
     for device_code in tunnel_codes:
         for collector_address in (SMG_TUNNEL_COLLECTOR_ADDRESS, first_address):
             route = SmgRoute(device_code, collector_address, first_address)
             try:
-                candidate = await read_holding_registers(
-                    send, route, _LIVE_START, _LIVE_COUNT
-                )
-                decode_live_registers(candidate)
+                candidate = await _read_discovery_snapshot(send, route)
             except (TimeoutError, ProtocolError):
                 continue
             selected = (device_code, collector_address)
-            first_live = candidate
+            first_snapshot = candidate
             break
         if selected is not None:
             break
-    if selected is None or first_live is None:
+    if selected is None or first_snapshot is None:
         raise ModbusError("no SMG/Modbus inverter responded")
 
     devices: list[SmgDevice] = []
@@ -239,17 +238,17 @@ async def discover_smg(
     for slave_address in addresses:
         route = SmgRoute(selected[0], selected[1], slave_address)
         try:
-            live_registers = (
-                first_live
+            protocol_number, live_values = (
+                first_snapshot
                 if slave_address == first_address
-                else await read_holding_registers(send, route, _LIVE_START, _LIVE_COUNT)
+                else await _read_discovery_snapshot(send, route)
             )
-            live_values = decode_live_registers(live_registers)
         except (TimeoutError, ProtocolError):
             if devices:
                 break
             continue
 
+        route = SmgRoute(*selected, slave_address, protocol_number)
         serial = await _read_serial(send, route)
         if serial and serial in seen_serials:
             break
@@ -258,7 +257,9 @@ async def discover_smg(
         metadata = await _read_identity_metadata(send, route)
         rated_power = metadata.get("rated_power")
         model_code = metadata.get("model_code")
-        model_parts = ["SMG / Modbus"]
+        model_parts = [
+            "SMG / Modbus protocol 4" if protocol_number == 4 else "SMG / Modbus"
+        ]
         if model_code not in (None, 0, 0xFFFF):
             model_parts.append(f"model {model_code}")
         if isinstance(rated_power, int) and 100 <= rated_power <= 100_000:
@@ -290,6 +291,10 @@ async def poll_smg(
     send: SendCommand, route: SmgRoute, *, include_status: bool = False
 ) -> dict[str, Any]:
     """Poll the live block and, less often, the two read-only status blocks."""
+    if route.protocol_number == 4:
+        return await _poll_protocol4(send, route)
+    if route.protocol_number not in (0, 1):
+        raise ModbusError("unsupported SMG register layout")
     live = await read_holding_registers(send, route, _LIVE_START, _LIVE_COUNT)
     values = decode_live_registers(live)
     if not include_status:
@@ -302,6 +307,36 @@ async def poll_smg(
             continue
         values[title] = (words[0] << 16) | words[1]
     return values
+
+
+async def _read_discovery_snapshot(
+    send: SendCommand, route: SmgRoute
+) -> tuple[int, dict[str, Any]]:
+    """Select the register layout before interpreting live values."""
+    # Some legacy firmware has no layout register. Preserve that route only
+    # if the standard live map also passes its non-zero voltage checks.
+    try:
+        (protocol_number,) = await read_holding_registers(send, route, 184, 1)
+    except (TimeoutError, ProtocolError):
+        protocol_number = 0
+    if protocol_number not in (0, 1, 4):
+        raise ModbusError(
+            f"unsupported SMG register layout {protocol_number}",
+            reason="unsupported_protocol",
+        )
+    selected = SmgRoute(
+        route.device_code, route.collector_address, route.slave_address, protocol_number
+    )
+    return protocol_number, await poll_smg(send, selected)
+
+
+async def _poll_protocol4(send: SendCommand, route: SmgRoute) -> dict[str, Any]:
+    """Read verified protocol-4 blocks without applying legacy status fields."""
+    registers: dict[int, int] = {}
+    for start, count in PROTOCOL4_BLOCKS:
+        words = await read_holding_registers(send, route, start, count)
+        registers.update((start + offset, word) for offset, word in enumerate(words))
+    return decode_protocol4(registers)
 
 
 def _tunnel_device_codes(configured: int, reported: int) -> tuple[int, ...]:
@@ -341,12 +376,15 @@ async def _read_serial(send: SendCommand, route: SmgRoute) -> str:
 
 async def _read_identity_metadata(send: SendCommand, route: SmgRoute) -> dict[str, Any]:
     """Collect optional, read-only model anchors; failures never block telemetry."""
-    result: dict[str, Any] = {"protocol": SMG_PROTOCOL}
-    for register, key in (
-        (171, "model_code"),
-        (184, "layout_code"),
-        (643, "rated_power"),
-    ):
+    result: dict[str, Any] = {
+        "protocol": SMG_PROTOCOL,
+        "layout_code": route.protocol_number,
+    }
+    fields = [(171, "model_code")]
+    # In protocol 4, 643 is a battery setting, NOT a power rating.
+    if route.protocol_number != 4:
+        fields.append((643, "rated_power"))
+    for register, key in fields:
         try:
             words = await read_holding_registers(send, route, register, 1)
         except (TimeoutError, ProtocolError):

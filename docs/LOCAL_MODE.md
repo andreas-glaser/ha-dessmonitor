@@ -139,6 +139,14 @@ entries without the setting retain automatic discovery.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
 
+- Modbus protocol-number `4` (register `184`), verified with read-only samples
+  from an ANENJI ANJ-11KW-48V-W-P (cloud devcode `6544`). This layout uses
+  separate output, battery, grid, dual-PV and energy blocks; it must not use
+  the standard SMG `201..234` field positions. Detection selects the layout
+  per inverter address and retains it for subsequent polling. Local controls
+  are not provided. Sustained polling and reconnects still require hardware
+  verification after installing this change.
+
 PI18 uses its 28-field `GS` response for battery charging current and both PV
 inputs, including PV2 voltage. It does not poll P17-only `GMN` or `GS2` commands.
 Firmware metadata preserves all three CPU versions. Existing sensor identifiers

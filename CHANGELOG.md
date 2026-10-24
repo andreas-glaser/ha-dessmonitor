@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
+  (cloud devcode 6544), selected by register 184. Hardware snapshots cover
+  battery, grid, output, dual-PV, temperatures and energy counters. Existing
+  cloud sensor identities, including SOC, are retained in hybrid mode (thanks to @jay0x for investigation and testing).
+
 - Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
   so Home Assistant 2026.3 and newer load the icon and logo locally instead of
   from the central brands repository (thanks to @frenck).
@@ -24,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entities and placeholders do not erase known settings. Local pushes and repeated
   cloud timestamps no longer undo accepted changes (thanks to @jay0x for
   investigation/testing and @andreas-glaser for the bounded-retry fix).
+- Local SMG detection no longer treats protocol-4 power and flag registers as
+  current and frequency, or reserved registers as battery/output telemetry.
+  Protocol layouts are retained per inverter; an incomplete protocol-4 poll
+  fails instead of publishing a partial fresh snapshot (thanks to @jay0x for investigation and testing).
+- The diagnostic Output Voltage Setting sensor accepts values such as `230V` (thanks to @jay0x for investigation and testing).
+- Devcode 6544 normalizes the observed cloud mode `OffgridMode` to
+  `Off-grid Mode`, matching local telemetry and the existing inverter-mode alias (thanks to @jay0x for investigation and testing).
 - Collector pagination no longer stops after the first page when the API omits
   a `total`, which truncated accounts holding more than one page of collectors.
   The loop is also capped so it terminates even if the API keeps returning full
@@ -45,6 +57,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A collector listed in multiple cloud projects is polled once per refresh,
   avoiding duplicate device-discovery and telemetry API calls while retaining
   the same final collector metadata (thanks to @jay0x for investigation and testing).
+
+### Changed
+- SMG discovery rejects a successfully read register-184 layout other than 0, 1
+  or 4 rather than guessing the legacy map. A failed selector read retains the
+  legacy compatibility fallback. An unsupported slave can also end automatic
+  discovery after an earlier slave has matched.
+- Legacy SMG snapshots require at least one strictly positive Output, Battery,
+  PV or Grid voltage; merely present zero-valued voltage fields no longer pass.
+- Hybrid overlay retains distinct Main/Current cloud priority fields without a
+  local replacement. A sensor sharing their mapped key now displays the first
+  matching cloud field instead of the last; dashboards and automations observing
+  that sensor can therefore see a different value. Cloud-only and devices with
+  no local match retain their existing behavior. Field matching is case-insensitive
+  (thanks to @jay0x for investigation and testing).
 
 ## [2.5.0] - 2026-10-13
 

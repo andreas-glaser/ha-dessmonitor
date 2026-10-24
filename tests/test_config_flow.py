@@ -9,11 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
-import voluptuous_serialize
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType, InvalidData
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.data_entry_flow import FlowManagerIndexView
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dessmonitor.const import (
@@ -55,7 +54,7 @@ BASE_INPUT = {
 
 
 def _form_default(result: dict, field: str) -> object:
-    """Return the raw frontend default for one voluptuous field marker."""
+    """Return the raw frontend default for one schema field marker."""
     for marker in result["data_schema"].schema:
         if marker.schema == field:
             return marker.default()
@@ -64,9 +63,11 @@ def _form_default(result: dict, field: str) -> object:
 
 def _serialized_form_field(result: dict, field: str) -> dict:
     """Return a field exactly as Home Assistant sends it to the frontend."""
-    serialized = voluptuous_serialize.convert(
-        result["data_schema"], custom_serializer=cv.custom_serializer
-    )
+    # Use HA's own serializer: older releases use voluptuous_serialize,
+    # while current Core uses probatio.to_field_list.
+    serialized = FlowManagerIndexView(MagicMock())._prepare_result_json(result)[
+        "data_schema"
+    ]
     return next(item for item in serialized if item["name"] == field)
 
 
