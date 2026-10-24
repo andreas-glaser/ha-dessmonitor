@@ -30,3 +30,23 @@ does not claim to repair the server/network or retry control writes. Schedule
 and clock entity typing is a separate, dependent contribution.
 
 No raw account logs or identifiers are needed to reproduce these tests.
+
+## Review follow-up: bounded missing-value reads
+
+The original once-per-revision rule did not limit the lifetime cost of a field
+that never resolves. The maintainer's fix, commit
+`7337136b9354c7cc47e44c4ed99050c351a1ff3f`, stops explicit value reads after three
+consecutive rounds without recovery, including the initial round. Any round
+that fills a missing field resets the per-device budget. One info log explains
+the stop; reloading the integration creates a new budget. This limits value
+reads, not definition discovery or all API traffic.
+
+Ordinary cloud telemetry still seeds values after the budget is exhausted.
+Regression coverage checks both that permanently unreadable fields stop costing
+requests and that already-created select/number entities recover from a later
+ordinary cloud refresh without another per-field read. Failed reads do not
+trigger control writes. The dependent time/text platforms use the same budget.
+
+Updated against upstream dev `9ddc66310005c58221e272b8f339ba4bdc6e4347`.
+Numeric writes retain upstream's integral formatting (`30`, not `30.0`) while
+cache synchronization retains this PR's protection of unchanged raw values.

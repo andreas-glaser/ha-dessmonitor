@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.dessmonitor.api import DessMonitorAPI
+from custom_components.dessmonitor.api import MAX_COLLECTOR_PAGES, DessMonitorAPI
 from custom_components.dessmonitor.const import (
     API_PROFILE_DESSMONITOR_ESS,
     API_PROFILE_SHINEMONITOR_SOLAR,
@@ -303,3 +303,47 @@ async def test_invalid_auth_response_does_not_create_a_session(
         await api.authenticate()
     assert api.token is None
     assert api.secret is None
+
+
+async def _collector_api(pages, total):
+    """An API client whose collector query returns the given pages."""
+    api = DessMonitorAPI("user", "pass", session=_CapturingSession())
+    calls = []
+
+    async def _request(action, params):
+        calls.append(params["page"])
+        page = params["page"]
+        batch = pages[page] if page < len(pages) else []
+        dat = {"collector": batch}
+        if total is not None:
+            dat["total"] = total
+        return {"dat": dat}
+
+    api._make_request = _request
+    return api, calls
+
+
+async def test_pagination_continues_when_the_api_omits_a_total() -> None:
+    """A missing total must not truncate a large account at one page."""
+    pages = [[{"pn": f"P{i}{j}"} for j in range(50)] for i in range(3)]
+    api, calls = await _collector_api(pages, total=None)
+    collectors = await api._fetch_collectors_for_project(1)
+    assert len(collectors) == 150
+    assert calls == [0, 1, 2, 3]
+
+
+async def test_pagination_stops_at_the_reported_total() -> None:
+    """A correct total still ends pagination immediately."""
+    pages = [[{"pn": f"P{j}"} for j in range(50)]]
+    api, calls = await _collector_api(pages, total=50)
+    assert len(await api._fetch_collectors_for_project(1)) == 50
+    assert calls == [0]
+
+
+async def test_pagination_cannot_loop_forever_on_full_pages() -> None:
+    """An API that always returns a full page must still terminate."""
+    endless = [[{"pn": f"P{i}{j}"} for j in range(50)] for i in range(100)]
+    api, calls = await _collector_api(endless, total=None)
+    collectors = await api._fetch_collectors_for_project(1)
+    assert len(calls) == MAX_COLLECTOR_PAGES
+    assert len(collectors) == MAX_COLLECTOR_PAGES * 50

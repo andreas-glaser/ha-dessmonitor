@@ -90,7 +90,10 @@ fields, and fallback data. Local telemetry defaults to the recommended
 In hybrid mode, settings still use the cloud. Their options and current values
 can finish loading after local telemetry starts. The integration uses settings
 already present in the normal cloud payload and retries missing control values
-once per successful cloud refresh, without retrying on every local push.
+at most once per successful cloud refresh, without retrying on every local push.
+Explicit value reads stop after three consecutive rounds recover nothing; a
+round with partial recovery resets that budget. Ordinary cloud telemetry can
+still fill values afterward. Reloading the integration starts a new budget.
 `unknown` means no usable current value has been read; it is not an inverter
 setting and is never written as a default. Previously known values are retained
 through read failures. Select/number attributes show `control_transport: cloud`
@@ -105,7 +108,8 @@ such a value into a numeric setting.
 The four advertised Secondary Charging/Output Priority Start/End Time controls
 are `time` entities. They use the inverter's local wall-clock time in `HH:MM`
 format; seconds must be zero. They do not activate a priority mode or impose
-ordering on start/end times, so overnight schedules remain possible.
+ordering on start/end times. That permissive input validation does not establish
+whether the device supports overnight or equal-boundary schedules.
 
 `Inverter Date` is a **text** control accepting a valid calendar timestamp in
 `YYYY-MM-DD HH:MM:SS` format. The API value has no timezone. A timezone-aware
@@ -120,8 +124,12 @@ readings never become midnight or a fabricated date. A successful cloud API
 response updates the displayed value; hardware readback is still required to
 confirm the inverter applied it.
 
-After upgrading, the matching old `number` registry entries are disabled by the
-integration and retained for history. New controls have `time`/`text` entity IDs:
+This domain migration requires a minor release and an explicit upgrade note.
+After upgrading, matching old `number` entries are disabled once and retained
+for history. The migration decision is persisted on each old registry entry;
+later user re-enables survive rediscovery and restart. A re-enabled old record
+does not gain a numeric implementation in the new version.
+New controls have `time`/`text` entity IDs:
 update dashboard references and automations to use `time.set_value` or
 `text.set_value`. Other numbers and user-disabled registry entries are preserved.
 When rolling back, restore the previous files and manually re-enable only the
@@ -129,8 +137,10 @@ old number entries disabled by this replacement if needed.
 
 The serializers follow the official web client's string round-trip behavior
 and the observed device read formats. Unit tests cover exact payloads, calendar
-validation, recovery and state publication. On-device writes of these new
-controls have not yet been verified.
+validation, recovery and state publication. Later vendor-API tests observed
+changed secondary charging start/end values through separate reads; output
+schedule and clock cloud writes remain unverified. Native Modbus bridge writes
+are a different interface. See the [evidence and migration details](research/TEMPORAL_CONTROLS.md).
 
 The `Data Source` sensor shows `Local`, `Cloud`, or `Cached Cloud`. Hybrid only
 overlays a local device after matching it to canonical API or cached metadata;

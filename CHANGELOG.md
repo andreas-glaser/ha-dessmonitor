@@ -11,15 +11,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cloud-backed time entities for the four secondary-priority schedule boundaries
   on devcode 6544, plus a calendar-validated text control for its timezone-free
   inverter clock. Matching obsolete number entities are disabled, not deleted.
-  Device writes still need hardware verification; no clock timezone is assumed (thanks to @jay0x for investigation and testing).
+  Cloud write verification remains partial; no clock timezone is assumed (thanks to @jay0x for investigation and testing).
+- Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
+  so Home Assistant 2026.3 and newer load the icon and logo locally instead of
+  from the central brands repository (thanks to @frenck).
 
 ### Fixed
 - Cloud-backed controls seed their current values from ordinary cloud telemetry
-  and retry missing reads once per successful cloud revision. Late results now
-  update existing select and number entities; placeholders do not erase known
-  settings. Fast local pushes and repeated upstream timestamps no longer undo
-  accepted changes. Control attributes identify the cloud transport and whether
-  a last-known value has been loaded (thanks to @jay0x for investigation and testing).
+  and retry missing reads at most once per successful cloud revision, stopping
+  after three consecutive rounds without recovery. Partial recovery resets the
+  budget; ordinary telemetry still updates values after retries stop. Reloading
+  the integration starts a new budget. Late results update existing select/number
+  entities and placeholders do not erase known settings. Local pushes and repeated
+  cloud timestamps no longer undo accepted changes (thanks to @jay0x for
+  investigation/testing and @andreas-glaser for the bounded-retry fix).
+- Collector pagination no longer stops after the first page when the API omits
+  a `total`, which truncated accounts holding more than one page of collectors.
+  The loop is also capped so it terminates even if the API keeps returning full
+  pages without ever reporting a total.
+- The device **Download diagnostics** button works. Home Assistant reads these
+  hooks from an integration's `diagnostics` module, and the implementation only
+  existed in `__init__`, so the download was never wired up and the report code
+  was unreachable.
+- PI30 local mode accepts a `QPIGS` reply that appends vendor fields after the
+  standard 21, instead of rejecting the inverter with "no supported read-only
+  local protocol". The extra fields are ignored and the standard readings are
+  unchanged; a truncated 18 to 20 field reply is still refused. Reported with a
+  captured frame and a working patch by @respira-crece-lidera (#50).
+- Numeric controls are written without a trailing `.0`. Home Assistant always
+  hands a number entity a float, so an integral setting was sent as `30.0`
+  where the official clients send `30`. Integer-typed fields such as the SOC
+  percentages appear to reject that form, leaving the setting unchanged in the
+  cloud. Fractional values are unaffected. Reported by @olegvsh (#49).
+- A collector listed in multiple cloud projects is polled once per refresh,
+  avoiding duplicate device-discovery and telemetry API calls while retaining
+  the same final collector metadata (thanks to @jay0x for investigation and testing).
+
+### Upgrade notes — devcode 6544 time and clock controls
+- This domain migration belongs in a minor release with a prominent upgrade note.
+  Four schedule controls move from `number` to `time`, and Inverter Date moves
+  from `number` to `text`. Update dashboard/automation entity references and use
+  `time.set_value` / `text.set_value` instead of `number.set_value`.
+- Old number registry/history entries are retained. Migration records its decision
+  per old entity so user disables and later re-enables survive reload/restart.
+  A re-enabled legacy number is retained in the registry but is not implemented
+  by the new numeric platform. Rollback requires explicitly re-enabling the old
+  numbers; it does not automatically restore old UI references or disabled flags.
 
 ## [2.5.0] - 2026-10-13
 

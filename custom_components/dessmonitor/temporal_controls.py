@@ -16,24 +16,11 @@ from .const import DOMAIN
 from .control_values import cloud_control_snapshot, control_value, find_control_value
 from .device_support.device_registry import map_control_field
 from .entity_loader import async_setup_dynamic_entities
+from .number import number_unique_suffix
+from .temporal_fields import temporal_control_kind
 from .utils import create_device_info
 
-# These are cloud control IDs, not local Modbus write addresses. The web client
-# round-trips queryDeviceCtrlValue.val as ctrlDevice.val without numeric encoding.
-_FIELDS = {
-    "bat_eybond_read_43988": "time",
-    "bat_eybond_read_43989": "time",
-    "bse_eybond_read_43979": "time",
-    "bse_eybond_read_43980": "time",
-    "sys_eybond_read_44023": "text",
-}
-
-
-def temporal_control_kind(devcode: Any, field_id: Any) -> str | None:
-    """Select only the field IDs verified for this cloud device family."""
-    if str(devcode) != "6544" or not isinstance(field_id, str):
-        return None
-    return _FIELDS.get(field_id)
+_MIGRATION_OPTION = "temporal_number_migrated"
 
 
 async def async_setup_temporal_platform(
@@ -114,7 +101,7 @@ def disable_replaced_numbers(
     entry: ConfigEntry,
     entities: list[DessMonitorTemporalControl],
 ) -> None:
-    """Preserve old registry/history records, but hide the invalid number UI."""
+    """Retire each old number once, preserving subsequent user overrides."""
     registry = er.async_get(hass)
     for entity in entities:
         entity_id = registry.async_get_entity_id(
@@ -123,10 +110,21 @@ def disable_replaced_numbers(
         if entity_id is None:
             continue
         old = registry.async_get(entity_id)
-        if old and old.config_entry_id == entry.entry_id and old.disabled_by is None:
+        if old is None or old.config_entry_id != entry.entry_id:
+            continue
+        options = dict(old.options.get(DOMAIN, {}))
+        if options.get(_MIGRATION_OPTION) is True:
+            continue
+        if old.disabled_by is None:
             registry.async_update_entity(
                 entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION
             )
+        # The registry persists this decision with the old entity, including
+        # user-disabled entries. A later user re-enable must survive new setup.
+        # Both registry updates are synchronous callbacks: discovery cannot
+        # interleave between changing the flag and recording the decision.
+        options[_MIGRATION_OPTION] = True
+        registry.async_update_entity_options(entity_id, DOMAIN, options)
 
 
 class DessMonitorTemporalControl(CoordinatorEntity[DessMonitorDataUpdateCoordinator]):
@@ -153,9 +151,7 @@ class DessMonitorTemporalControl(CoordinatorEntity[DessMonitorDataUpdateCoordina
         friendly = map_control_field(device["devcode"], api_name)
         self._attr_name = f"{device.get('alias', 'DessMonitor')} {friendly.strip()}"
         self._attr_unique_id = f"{serial}_{field_id}"
-        self.legacy_number_unique_id = (
-            f"{serial}_{friendly.lower().replace(' ', '_').replace('-', '_')}"
-        )
+        self.legacy_number_unique_id = f"{serial}_{number_unique_suffix(friendly)}"
         self._attr_device_info = create_device_info(serial, device, collector)
         self._last_cloud_sample = cloud_control_snapshot(coordinator, serial)[0]
         self._last_raw_value = control_value(initial_value)

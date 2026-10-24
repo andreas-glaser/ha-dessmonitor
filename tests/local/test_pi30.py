@@ -134,8 +134,9 @@ def test_malformed_frames_are_rejected(frame) -> None:
         parse_pi30_response("QPI", frame)
 
 
-@pytest.mark.parametrize("count", [0, 16, 18, 20, 22, 24, 28])
+@pytest.mark.parametrize("count", [0, 16, 18, 19, 20])
 def test_unknown_status_layouts_are_rejected(count) -> None:
+    """A short reply, or a truncated extended block, is still not telemetry."""
     fields = (STATUS.split() + ["0"] * 7)[:count]
     with pytest.raises(
         ProtocolError, match="truncated" if count == 0 else "field count"
@@ -258,3 +259,36 @@ async def test_optional_mode_failure_preserves_valid_status(response) -> None:
     values = await Pi30Driver().poll(send, _device(), cycle=1)
     assert values["Battery Voltage"] == 12.8
     assert "Operating mode" not in values
+
+
+# Captured on a WatchPower Wi-Fi collector in issue #50: the standard 21
+# fields followed by three vendor fields.
+_ISSUE_50_FRAME = (
+    b"(000.0 00.0 229.9 50.0 0345 0299 008 357 26.00 000 065 0031 00.1 067.9 "
+    b"00.00 00017 00010000 00 00 00000 011 0 00 0000\xe9C\r"
+)
+
+
+def test_trailing_vendor_fields_are_ignored() -> None:
+    """A 24-field QPIGS reply decodes from its standard prefix (#50)."""
+    values = parse_pi30_response("QPIGS", _ISSUE_50_FRAME)
+    assert values["Battery Voltage"] == 26.0
+    assert values["Output Voltage"] == 229.9
+    assert values["State of Charge"] == 65.0
+    assert values["PV Charge Power"] == 0.0
+
+
+@pytest.mark.parametrize("extra", [1, 3, 7])
+def test_extra_fields_do_not_change_decoded_values(extra) -> None:
+    """Whatever a firmware appends must not alter the standard readings."""
+    baseline = parse_pi30_response("QPIGS", wire(b"(" + STATUS.encode()))
+    padded = " ".join(STATUS.split() + ["0"] * extra)
+    assert parse_pi30_response("QPIGS", wire(b"(" + padded.encode())) == baseline
+
+
+def test_extended_flags_are_still_validated_in_a_longer_reply() -> None:
+    """Ignoring the tail must not skip the checks on the standard fields."""
+    fields = STATUS.split() + ["0", "00"]
+    fields[20] = "1111"
+    with pytest.raises(ProtocolError, match="extended status flags"):
+        parse_pi30_response("QPIGS", wire(b"(" + " ".join(fields).encode()))

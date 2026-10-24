@@ -5,7 +5,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.dessmonitor import DessMonitorDataUpdateCoordinator
+from custom_components.dessmonitor import (
+    MAX_CONTROL_VALUE_RETRIES,
+    DessMonitorDataUpdateCoordinator,
+)
 from custom_components.dessmonitor.api import DessMonitorError
 from custom_components.dessmonitor.control_values import control_value
 from custom_components.dessmonitor.number import _async_build_number_entities
@@ -307,6 +310,98 @@ async def test_time_string_is_identified_as_unsupported_number_format(hass):
     assert number.extra_state_attributes["value_status"] == "unsupported_format"
     coordinator.api.get_device_control_value.assert_not_awaited()
     await coordinator.async_shutdown()
+
+
+async def test_permanently_unreadable_values_stop_being_re_read(hass):
+    """An unresolvable field must not cost one request every cloud refresh."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "null"}
+    for _ in range(MAX_CONTROL_VALUE_RETRIES + 3):
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+        coordinator.cloud_revision += 1
+    # Two readable fields per round; "Reset" is a single-option action.
+    assert (
+        coordinator.api.get_device_control_value.await_count
+        == 2 * MAX_CONTROL_VALUE_RETRIES
+    )
+    await coordinator.async_shutdown()
+
+
+async def test_partial_recovery_restores_the_retry_budget(hass):
+    """A device still making progress keeps retrying whatever is left."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "null"}
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    coordinator.cloud_revision += 1
+
+    # One field recovers, which must not be counted as a wasted round.
+    coordinator.api.get_device_control_value.side_effect = [
+        {"val": "2"},
+        {"val": "null"},
+    ]
+    _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    assert values["priority"] == "2"
+    assert coordinator._ctrl_value_retries["TEST"] == 0
+
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "null"}
+    before = coordinator.api.get_device_control_value.await_count
+    for _ in range(MAX_CONTROL_VALUE_RETRIES + 2):
+        coordinator.cloud_revision += 1
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    # Only the remaining field is still missing, for a bounded run of rounds.
+    assert (
+        coordinator.api.get_device_control_value.await_count - before
+        == MAX_CONTROL_VALUE_RETRIES
+    )
+    await coordinator.async_shutdown()
+
+
+async def test_ordinary_telemetry_recovers_existing_entities_after_budget_exhausted(hass):
+    """Stopping per-field reads must not strand entities at unknown."""
+    coordinator = _coordinator(hass, _cloud())
+    select_known, number_known = set(), set()
+    (select,) = await _async_build_select_entities(coordinator, select_known)
+    (number,) = await _async_build_number_entities(coordinator, number_known)
+    try:
+        for index in range(MAX_CONTROL_VALUE_RETRIES + 1):
+            await _publish_cloud(coordinator, _cloud(f"missing-{index}"))
+            await _async_build_select_entities(coordinator, select_known)
+            await _async_build_number_entities(coordinator, number_known)
+        reads = coordinator.api.get_device_control_value.await_count
+        assert reads == 2 * MAX_CONTROL_VALUE_RETRIES
+        assert select.current_option is None and number.native_value is None
+        with patch.object(select, "async_write_ha_state"), patch.object(
+            number, "async_write_ha_state"
+        ):
+            remove_select = coordinator.async_add_listener(
+                select._handle_coordinator_update
+            )
+            remove_number = coordinator.async_add_listener(
+                number._handle_coordinator_update
+            )
+            try:
+                await _publish_cloud(
+                    coordinator,
+                    _cloud(
+                        "recovered",
+                        _point("Main Output Priority", "SBU"),
+                        _point("Maximum mains charging current", "17A"),
+                    ),
+                )
+                assert select.current_option == "SBU"
+                assert number.native_value == 17
+                assert await _async_build_select_entities(coordinator, select_known) == []
+                assert await _async_build_number_entities(coordinator, number_known) == []
+                assert coordinator.api.get_device_control_value.await_count == reads
+                coordinator.api.set_device_control_value.assert_not_awaited()
+            finally:
+                remove_select()
+                remove_number()
+    finally:
+        await coordinator.async_shutdown()
 
 
 @pytest.mark.parametrize(

@@ -20,7 +20,7 @@ from .control_values import cloud_control_snapshot, control_value, find_control_
 from .device_support.device_registry import map_control_field
 from .entity_loader import async_setup_dynamic_entities
 from .number_range import compute_range_and_step, is_hint_range_usable
-from .temporal_controls import temporal_control_kind
+from .temporal_fields import temporal_control_kind
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +28,11 @@ _LOGGER = logging.getLogger(__name__)
 _NUMBER_WITH_OPTIONAL_UNIT_RE = re.compile(
     r"^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[^\d]*$"
 )
+
+
+def number_unique_suffix(name: str) -> str:
+    """Preserve the historical number ID, including leading whitespace."""
+    return name.lower().replace(" ", "_").replace("-", "_")
 
 
 async def async_setup_entry(
@@ -129,6 +134,18 @@ async def _async_build_number_entities(
     return entities
 
 
+def _format_control_value(value: float) -> str:
+    """Serialize a control value the way the official clients send it.
+
+    Home Assistant always hands a float to a number entity, so an integral
+    setting would otherwise be written as "30.0". Integer-typed fields such as
+    the SOC percentages reject that form while accepting "30" (#49). Genuinely
+    fractional values are unchanged.
+    """
+    number = float(value)
+    return str(int(number)) if number.is_integer() else str(number)
+
+
 class DessMonitorNumber(CoordinatorEntity, NumberEntity):
     """Representation of a DessMonitor number entity."""
 
@@ -161,7 +178,7 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         # Initialize identity
         device_alias = device_meta.get("alias", "DessMonitor")
         self._attr_name = f"{device_alias} {name}"
-        unique_suffix = name.lower().replace(" ", "_").replace("-", "_")
+        unique_suffix = number_unique_suffix(name)
         self._attr_unique_id = f"{device_sn}_{unique_suffix}"
         self._attr_device_info = create_device_info(
             device_sn, device_meta, collector_meta
@@ -281,7 +298,7 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
             if self._device_sn in coordinator.ctrl_value_cache:
                 cached = coordinator.ctrl_value_cache[self._device_sn]
                 if self._coerce_value(cached.get(self._param_id)) != value:
-                    cached[self._param_id] = str(value)
+                    cached[self._param_id] = _format_control_value(value)
 
         super()._handle_coordinator_update()
 
@@ -296,6 +313,8 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         device = coordinator.data.get(self._device_sn, {}).get("device", {})
         collector = coordinator.data.get(self._device_sn, {}).get("collector", {})
 
+        serialized = _format_control_value(value)
+
         try:
             await coordinator.api.set_device_control_value(
                 pn=collector.get("pn"),
@@ -303,16 +322,16 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
                 devaddr=device.get("devaddr"),
                 sn=self._device_sn,
                 param_id=self._param_id,
-                value=str(value),
+                value=serialized,
             )
             self._attr_native_value = value
             self._last_cloud_sample = cloud_control_snapshot(
                 coordinator, self._device_sn
             )[0]
             if self._device_sn in coordinator.ctrl_value_cache:
-                coordinator.ctrl_value_cache[self._device_sn][self._param_id] = str(
-                    value
-                )
+                coordinator.ctrl_value_cache[self._device_sn][
+                    self._param_id
+                ] = serialized
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set value for %s: %s", self._attr_unique_id, err)

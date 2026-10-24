@@ -12,7 +12,10 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_component import EntityComponent
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.dessmonitor import DessMonitorDataUpdateCoordinator
+from custom_components.dessmonitor import (
+    MAX_CONTROL_VALUE_RETRIES,
+    DessMonitorDataUpdateCoordinator,
+)
 from custom_components.dessmonitor.api import DessMonitorError
 from custom_components.dessmonitor.const import DOMAIN
 from custom_components.dessmonitor.number import _async_build_number_entities
@@ -230,6 +233,39 @@ async def test_fresh_external_cloud_values_update_controls(hass):
             coordinator._sync_control_values_from_cloud("TEST")
             entity._handle_coordinator_update()
             assert entity.native_value == time(6, 45)
+    finally:
+        await coordinator.async_shutdown()
+
+
+@pytest.mark.parametrize(
+    "kind,raw", [("time", "06:45"), ("text", "2028-02-29 12:34:56")]
+)
+async def test_telemetry_recovers_temporal_entities_after_retry_budget(hass, kind, raw):
+    coordinator = _coordinator(hass, values=False)
+    known = set()
+    entity = (await _entities(coordinator, kind, known))[0]
+    try:
+        for _ in range(MAX_CONTROL_VALUE_RETRIES + 1):
+            coordinator.cloud_revision += 1
+            await _entities(coordinator, kind, known)
+        reads = coordinator.api.get_device_control_value.await_count
+        assert reads == len(FIELDS) * MAX_CONTROL_VALUE_RETRIES
+        assert entity.native_value is None
+        cloud = coordinator._cached_cloud_data["TEST"]["data"]
+        cloud[0]["val"] = "recovered"
+        cloud.append({"title": entity._api_name, "val": raw})
+        coordinator.cloud_revision += 1
+        with patch.object(entity, "async_write_ha_state"):
+            remove_listener = coordinator.async_add_listener(
+                entity._handle_coordinator_update
+            )
+            try:
+                assert await _entities(coordinator, kind, known) == []
+            finally:
+                remove_listener()
+        assert entity.native_value == (time(6, 45) if kind == "time" else raw)
+        assert coordinator.api.get_device_control_value.await_count == reads
+        coordinator.api.set_device_control_value.assert_not_awaited()
     finally:
         await coordinator.async_shutdown()
 
