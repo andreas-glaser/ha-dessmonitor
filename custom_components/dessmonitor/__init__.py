@@ -53,6 +53,11 @@ PLATFORMS: list[Platform] = [
 ]
 LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
+# Consecutive cloud revisions that may re-read a control value which never
+# resolves. Without a bound, a permanently unreadable field would cost one API
+# request every refresh for as long as the entry stays loaded.
+MAX_CONTROL_VALUE_RETRIES = 3
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -286,6 +291,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_value_attempts: dict[str, int] = {}
+        self._ctrl_value_retries: dict[str, int] = {}
         self._ctrl_cloud_samples: dict[str, object] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
@@ -387,7 +393,12 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     cfg.get("type") == "options" and len(cfg.get("options", {})) == 1
                 )
             ]
-            if missing and self._ctrl_value_attempts.get(sn) != self.cloud_revision:
+            retries = self._ctrl_value_retries.get(sn, 0)
+            if (
+                missing
+                and retries < MAX_CONTROL_VALUE_RETRIES
+                and self._ctrl_value_attempts.get(sn) != self.cloud_revision
+            ):
                 self._ctrl_value_attempts[sn] = self.cloud_revision
                 fetched = await self._fetch_all_control_values(
                     pn, devcode, devaddr, sn, missing
@@ -402,6 +413,24 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         values[field_id] = normalized
                 self._sync_control_values_from_cloud(sn)
+                # Spend the budget only on rounds that recovered nothing, so a
+                # device still making progress keeps retrying the remainder.
+                if any(
+                    setting_value(by_id[field_id], values.get(field_id)) is not None
+                    for field_id in missing
+                ):
+                    self._ctrl_value_retries[sn] = 0
+                else:
+                    self._ctrl_value_retries[sn] = retries + 1
+                    if self._ctrl_value_retries[sn] == MAX_CONTROL_VALUE_RETRIES:
+                        _LOGGER.info(
+                            "Giving up on %d unreadable control value(s) for device "
+                            "%s after %d attempts; ordinary cloud telemetry still "
+                            "updates them, and reloading the entry retries",
+                            len(missing),
+                            sn,
+                            MAX_CONTROL_VALUE_RETRIES,
+                        )
             changed = values != before
         if changed:
             # Existing entities also need to see late read recovery. Preserve
