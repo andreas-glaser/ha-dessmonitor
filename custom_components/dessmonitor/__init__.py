@@ -445,11 +445,18 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             raise update_error from err
 
     async def _fetch_collectors(self) -> list[dict[str, Any]]:
-        """Fetch list of collectors from the API."""
+        """Fetch each physical collector once even if it belongs to two projects."""
         _LOGGER.debug("Fetching collectors list")
         collectors, _projects = await self.api.get_collectors()
-        _LOGGER.debug("Found %d collectors to process", len(collectors))
-        return collectors
+        # Device queries use PN, not project ID. Keep the last occurrence's
+        # metadata, as the previous per-project data.update() loop did.
+        unique = {collector["pn"]: collector for collector in collectors}
+        _LOGGER.debug(
+            "Found %d unique collectors to process from %d API rows",
+            len(unique),
+            len(collectors),
+        )
+        return list(unique.values())
 
     async def _gather_all_device_data(
         self, collectors: list[dict[str, Any]]
