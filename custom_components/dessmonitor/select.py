@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
+from .control_values import cloud_control_snapshot, control_value, find_control_value
 from .device_support.device_registry import filter_control_options, map_control_field
 from .entity_loader import async_setup_dynamic_entities
 from .utils import create_device_info
@@ -105,6 +106,7 @@ async def _async_build_select_entities(
                     param_id,
                     options_map,
                     current_values.get(param_id),
+                    api_name=name,
                 )
             )
             known_entities.add(entity_key)
@@ -127,6 +129,7 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         param_id: str,
         options_map: dict[str, str],
         initial_value: str | None,
+        api_name: str | None = None,
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator)
@@ -134,7 +137,9 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         self._device_meta = device_meta
         self._collector_meta = collector_meta
         self._param_name = name
+        self._api_name = api_name or name
         self._param_id = param_id
+        self._last_cloud_sample: object = None
 
         self._all_options = dict(options_map)
         self._current_value = initial_value
@@ -156,6 +161,16 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
     def available(self) -> bool:
         """Keep a control unavailable until its options can be safely determined."""
         return super().available and bool(self._attr_options)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        """Explain why Local telemetry does not make a control locally writable."""
+        return {
+            "control_transport": "cloud",
+            "value_status": (
+                "last_known" if self.current_option is not None else "not_loaded"
+            ),
+        }
 
     def _refresh_options(self) -> None:
         coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
@@ -190,7 +205,22 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Reevaluate options when rated metadata arrives or changes."""
+        """Recover current values without treating a local push as a cloud read."""
+        coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
+        stamp, points = cloud_control_snapshot(coordinator, self._device_sn)
+        cached = coordinator.ctrl_value_cache.get(self._device_sn, {})
+        value = control_value(cached.get(self._param_id))
+        if stamp != self._last_cloud_sample:
+            self._last_cloud_sample = stamp
+            value = (
+                find_control_value(points, self._api_name, self._param_name) or value
+            )
+        if value is not None and (
+            value in self._all_options or value in self._all_options.values()
+        ):
+            self._current_value = value
+            if self._device_sn in coordinator.ctrl_value_cache:
+                cached[self._param_id] = value
         self._refresh_options()
         super()._handle_coordinator_update()
 
@@ -220,6 +250,9 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
                 value=api_value,
             )
             self._current_value = option
+            self._last_cloud_sample = cloud_control_snapshot(
+                coordinator, self._device_sn
+            )[0]
             self._attr_current_option = option
             if self._device_sn in coordinator.ctrl_value_cache:
                 coordinator.ctrl_value_cache[self._device_sn][self._param_id] = option
