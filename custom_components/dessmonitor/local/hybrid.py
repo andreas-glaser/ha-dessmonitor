@@ -102,8 +102,6 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Refresh cloud state, then overlay healthy local measurements."""
-        local_data = self._current_local_data()
-        local_available = bool(local_data)
         try:
             if not self.api.token or not self.api.secret:
                 if not await self.api.load_saved_token():
