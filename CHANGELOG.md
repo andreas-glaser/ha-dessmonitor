@@ -7,13 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
+  so Home Assistant 2026.3 and newer load the icon and logo locally instead of
+  from the central brands repository (thanks to @frenck).
+
 ### Fixed
 - Cloud-backed controls seed their current values from ordinary cloud telemetry
-  and retry missing reads once per successful cloud revision. Late results now
-  update existing select and number entities; placeholders do not erase known
-  settings. Fast local pushes and repeated upstream timestamps no longer undo
-  accepted changes. Control attributes identify the cloud transport and whether
-  a last-known value has been loaded (thanks to @jay0x for investigation and testing).
+  and retry missing reads at most once per successful cloud revision, stopping
+  after three consecutive rounds without recovery. Partial recovery resets the
+  budget; ordinary telemetry still updates values after retries stop. Reloading
+  the integration starts a new budget. Late results update existing select/number
+  entities and placeholders do not erase known settings. Local pushes and repeated
+  cloud timestamps no longer undo accepted changes (thanks to @jay0x for
+  investigation/testing and @andreas-glaser for the bounded-retry fix).
+- Collector pagination no longer stops after the first page when the API omits
+  a `total`, which truncated accounts holding more than one page of collectors.
+  The loop is also capped so it terminates even if the API keeps returning full
+  pages without ever reporting a total.
+- The device **Download diagnostics** button works. Home Assistant reads these
+  hooks from an integration's `diagnostics` module, and the implementation only
+  existed in `__init__`, so the download was never wired up and the report code
+  was unreachable.
+- PI30 local mode accepts a `QPIGS` reply that appends vendor fields after the
+  standard 21, instead of rejecting the inverter with "no supported read-only
+  local protocol". The extra fields are ignored and the standard readings are
+  unchanged; a truncated 18 to 20 field reply is still refused. Reported with a
+  captured frame and a working patch by @respira-crece-lidera (#50).
+- Numeric controls are written without a trailing `.0`. Home Assistant always
+  hands a number entity a float, so an integral setting was sent as `30.0`
+  where the official clients send `30`. Integer-typed fields such as the SOC
+  percentages appear to reject that form, leaving the setting unchanged in the
+  cloud. Fractional values are unaffected. Reported by @olegvsh (#49).
+- A collector listed in multiple cloud projects is polled once per refresh,
+  avoiding duplicate device-discovery and telemetry API calls while retaining
+  the same final collector metadata (thanks to @jay0x for investigation and testing).
 
 ## [2.5.0] - 2026-10-13
 

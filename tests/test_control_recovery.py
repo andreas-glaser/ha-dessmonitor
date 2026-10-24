@@ -359,6 +359,51 @@ async def test_partial_recovery_restores_the_retry_budget(hass):
     await coordinator.async_shutdown()
 
 
+async def test_ordinary_telemetry_recovers_existing_entities_after_budget_exhausted(hass):
+    """Stopping per-field reads must not strand entities at unknown."""
+    coordinator = _coordinator(hass, _cloud())
+    select_known, number_known = set(), set()
+    (select,) = await _async_build_select_entities(coordinator, select_known)
+    (number,) = await _async_build_number_entities(coordinator, number_known)
+    try:
+        for index in range(MAX_CONTROL_VALUE_RETRIES + 1):
+            await _publish_cloud(coordinator, _cloud(f"missing-{index}"))
+            await _async_build_select_entities(coordinator, select_known)
+            await _async_build_number_entities(coordinator, number_known)
+        reads = coordinator.api.get_device_control_value.await_count
+        assert reads == 2 * MAX_CONTROL_VALUE_RETRIES
+        assert select.current_option is None and number.native_value is None
+        with patch.object(select, "async_write_ha_state"), patch.object(
+            number, "async_write_ha_state"
+        ):
+            remove_select = coordinator.async_add_listener(
+                select._handle_coordinator_update
+            )
+            remove_number = coordinator.async_add_listener(
+                number._handle_coordinator_update
+            )
+            try:
+                await _publish_cloud(
+                    coordinator,
+                    _cloud(
+                        "recovered",
+                        _point("Main Output Priority", "SBU"),
+                        _point("Maximum mains charging current", "17A"),
+                    ),
+                )
+                assert select.current_option == "SBU"
+                assert number.native_value == 17
+                assert await _async_build_select_entities(coordinator, select_known) == []
+                assert await _async_build_number_entities(coordinator, number_known) == []
+                assert coordinator.api.get_device_control_value.await_count == reads
+                coordinator.api.set_device_control_value.assert_not_awaited()
+            finally:
+                remove_select()
+                remove_number()
+    finally:
+        await coordinator.async_shutdown()
+
+
 @pytest.mark.parametrize(
     "value", [None, "null", "NULL", "", "unknown", "unavailable", "nan", {}, []]
 )

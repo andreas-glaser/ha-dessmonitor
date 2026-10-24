@@ -39,7 +39,13 @@ jobs:
 
       - name: "Type checking with mypy"
         run: |
-          mypy custom_components/dessmonitor --ignore-missing-imports || echo "MyPy checks completed with warnings"
+          # Exit 1 is a type warning and stays non-blocking. Anything else
+          # means mypy did not run, which must not be reported as a pass.
+          mypy custom_components/dessmonitor --ignore-missing-imports; status=$?
+          if [ $status -gt 1 ]; then
+            echo "mypy did not run (exit $status)"
+            exit 1
+          fi
 
       - name: "Installation check"
         run: |

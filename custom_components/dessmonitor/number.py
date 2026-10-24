@@ -126,6 +126,18 @@ async def _async_build_number_entities(
     return entities
 
 
+def _format_control_value(value: float) -> str:
+    """Serialize a control value the way the official clients send it.
+
+    Home Assistant always hands a float to a number entity, so an integral
+    setting would otherwise be written as "30.0". Integer-typed fields such as
+    the SOC percentages reject that form while accepting "30" (#49). Genuinely
+    fractional values are unchanged.
+    """
+    number = float(value)
+    return str(int(number)) if number.is_integer() else str(number)
+
+
 class DessMonitorNumber(CoordinatorEntity, NumberEntity):
     """Representation of a DessMonitor number entity."""
 
@@ -278,7 +290,7 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
             if self._device_sn in coordinator.ctrl_value_cache:
                 cached = coordinator.ctrl_value_cache[self._device_sn]
                 if self._coerce_value(cached.get(self._param_id)) != value:
-                    cached[self._param_id] = str(value)
+                    cached[self._param_id] = _format_control_value(value)
 
         super()._handle_coordinator_update()
 
@@ -293,6 +305,8 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         device = coordinator.data.get(self._device_sn, {}).get("device", {})
         collector = coordinator.data.get(self._device_sn, {}).get("collector", {})
 
+        serialized = _format_control_value(value)
+
         try:
             await coordinator.api.set_device_control_value(
                 pn=collector.get("pn"),
@@ -300,16 +314,16 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
                 devaddr=device.get("devaddr"),
                 sn=self._device_sn,
                 param_id=self._param_id,
-                value=str(value),
+                value=serialized,
             )
             self._attr_native_value = value
             self._last_cloud_sample = cloud_control_snapshot(
                 coordinator, self._device_sn
             )[0]
             if self._device_sn in coordinator.ctrl_value_cache:
-                coordinator.ctrl_value_cache[self._device_sn][self._param_id] = str(
-                    value
-                )
+                coordinator.ctrl_value_cache[self._device_sn][
+                    self._param_id
+                ] = serialized
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set value for %s: %s", self._attr_unique_id, err)

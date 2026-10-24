@@ -355,7 +355,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         """Get control field definitions and their current values.
 
         Seed values from the ordinary cloud payload and retry only missing
-        values once per cloud revision. Local pushes cannot trigger retries.
+        values once per cloud revision, until three rounds recover nothing.
+        Ordinary telemetry can still recover values after that budget is spent.
+        Local pushes cannot trigger retries.
         The per-device lock shares work between select/number/button loaders.
         """
         if sn not in self._ctrl_locks:
@@ -528,11 +530,18 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             raise update_error from err
 
     async def _fetch_collectors(self) -> list[dict[str, Any]]:
-        """Fetch list of collectors from the API."""
+        """Fetch each physical collector once even if it belongs to two projects."""
         _LOGGER.debug("Fetching collectors list")
         collectors, _projects = await self.api.get_collectors()
-        _LOGGER.debug("Found %d collectors to process", len(collectors))
-        return collectors
+        # Device queries use PN, not project ID. Keep the last occurrence's
+        # metadata, as the previous per-project data.update() loop did.
+        unique = {collector["pn"]: collector for collector in collectors}
+        _LOGGER.debug(
+            "Found %d unique collectors to process from %d API rows",
+            len(unique),
+            len(collectors),
+        )
+        return list(unique.values())
 
     async def _gather_all_device_data(
         self, collectors: list[dict[str, Any]]

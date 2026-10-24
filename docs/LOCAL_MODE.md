@@ -90,7 +90,10 @@ fields, and fallback data. Local telemetry defaults to the recommended
 In hybrid mode, settings still use the cloud. Their options and current values
 can finish loading after local telemetry starts. The integration uses settings
 already present in the normal cloud payload and retries missing control values
-once per successful cloud refresh, without retrying on every local push.
+at most once per successful cloud refresh, without retrying on every local push.
+Explicit value reads stop after three consecutive rounds recover nothing; a
+round with partial recovery resets that budget. Ordinary cloud telemetry can
+still fill values afterward. Reloading the integration starts a new budget.
 `unknown` means no usable current value has been read; it is not an inverter
 setting and is never written as a default. Previously known values are retained
 through read failures. Select/number attributes show `control_transport: cloud`
