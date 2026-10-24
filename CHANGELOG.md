@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the central brands repository (thanks to @frenck).
 
 ### Fixed
+- The device **Download diagnostics** button works. Home Assistant reads these
+  hooks from an integration's `diagnostics` module, and the implementation only
+  existed in `__init__`, so the download was never wired up and the report code
+  was unreachable.
 - PI30 local mode accepts a `QPIGS` reply that appends vendor fields after the
   standard 21, instead of rejecting the inverter with "no supported read-only
   local protocol". The extra fields are ignored and the standard readings are
