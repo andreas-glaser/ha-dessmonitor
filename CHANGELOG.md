@@ -7,15 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.6.0-rc.1] - 2026-10-24
+## [2.6.0-rc.2] - 2026-10-25
 
-First release candidate for 2.6.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+Second release candidate for 2.6.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
 
-**Testing focus:** this candidate changes how numeric controls are written for
-every device, and three fixes are not yet confirmed on hardware. If you use
-number entities such as charge current or an SOC percentage, please set one and
-check that the value still holds after the next cloud refresh a few minutes
-later. Reports either way are useful.
+**Testing focus:** this candidate adds local telemetry for one ANENJI model, and
+it changes three things that also affect other devices: how SMG local discovery
+treats a register layout it cannot decode, how strictly a legacy SMG snapshot is
+checked, and which cloud field a hybrid sensor displays when two share a mapped
+key. If you run Local or Hybrid mode, please confirm your inverter is still
+discovered after updating and that your dashboard values still look right.
 
 ### Added
 - Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
@@ -23,9 +24,6 @@ later. Reports either way are useful.
   battery, grid, output, dual-PV, temperatures and energy counters. Existing
   cloud sensor identities, including SOC, are retained in hybrid mode
   (thanks to @jay0x for investigation and testing).
-- Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
-  so Home Assistant 2026.3 and newer load the icon and logo locally instead of
-  from the central brands repository (thanks to @frenck).
 
 ### Fixed
 - Hybrid refresh uses the current local snapshot after an awaited cloud request,
@@ -49,6 +47,58 @@ later. Reports either way are useful.
 - Devcode 6544 normalizes the observed cloud mode `OffgridMode` to
   `Off-grid Mode`, matching local telemetry and the existing inverter-mode
   alias (thanks to @jay0x for investigation and testing).
+
+### Changed
+- SMG discovery rejects a successfully read register-184 layout other than 0, 1
+  or 4 rather than guessing the legacy map. A failed selector read retains the
+  legacy compatibility fallback. An unsupported slave can also end automatic
+  discovery after an earlier slave has matched.
+- Legacy SMG snapshots require at least one strictly positive Output, Battery,
+  PV or Grid voltage; merely present zero-valued voltage fields no longer pass.
+- Hybrid overlay retains distinct Main/Current cloud priority fields without a
+  local replacement. A sensor sharing their mapped key now displays the first
+  matching cloud field instead of the last; dashboards and automations observing
+  that sensor can therefore see a different value. Cloud-only and devices with
+  no local match retain their existing behavior. Field matching is case-insensitive
+  (thanks to @jay0x for investigation and testing).
+
+### Upgrade and testing notes
+- The RC1 testing request is settled. The numeric control write format is
+  confirmed working on a devcode 6514 inverter, where both SOC settings now hold
+  after the next cloud refresh (#49). No further testing is needed for that fix.
+- **Local and Hybrid SMG users:** discovery now refuses a register-184 layout it
+  cannot decode instead of falling back to the legacy map, and an unsupported
+  inverter address can end an automatic scan that had already matched an earlier
+  address. A failed selector read still falls back as before. If local discovery
+  stops finding your inverter after this update, that is the change to report,
+  together with any `Local Modbus register layout` line in your log.
+- **Devcode 6544 owners:** where two cloud fields map to the same sensor key,
+  such as Main and Current priority, the sensor now shows the first match rather
+  than the last. An existing dashboard or automation can therefore read a
+  different value without anything else changing.
+- **ANENJI ANJ-11KW-48V-W-P owners:** local protocol-4 telemetry is new and
+  verified against captures from a single unit. A protocol-4 cycle issues eight
+  register reads, more tunnel traffic than the legacy map, so please report
+  anything that looks like collector instability at a five-second interval.
+- Everything in RC1 is included. Nothing in this candidate is a breaking change,
+  and existing entity IDs are retained.
+
+## [2.6.0-rc.1] - 2026-10-24
+
+First release candidate for 2.6.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate changes how numeric controls are written for
+every device, and three fixes are not yet confirmed on hardware. If you use
+number entities such as charge current or an SOC percentage, please set one and
+check that the value still holds after the next cloud refresh a few minutes
+later. Reports either way are useful.
+
+### Added
+- Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
+  so Home Assistant 2026.3 and newer load the icon and logo locally instead of
+  from the central brands repository (thanks to @frenck).
+
+### Fixed
 - Collector pagination no longer stops after the first page when the API omits
   a `total`, which truncated accounts holding more than one page of collectors.
   The loop is also capped so it terminates even if the API keeps returning full
@@ -72,20 +122,6 @@ later. Reports either way are useful.
 - A collector listed in multiple cloud projects is polled once per refresh,
   avoiding duplicate device-discovery and telemetry API calls while retaining
   the same final collector metadata (thanks to @jay0x for investigation and testing).
-
-### Changed
-- SMG discovery rejects a successfully read register-184 layout other than 0, 1
-  or 4 rather than guessing the legacy map. A failed selector read retains the
-  legacy compatibility fallback. An unsupported slave can also end automatic
-  discovery after an earlier slave has matched.
-- Legacy SMG snapshots require at least one strictly positive Output, Battery,
-  PV or Grid voltage; merely present zero-valued voltage fields no longer pass.
-- Hybrid overlay retains distinct Main/Current cloud priority fields without a
-  local replacement. A sensor sharing their mapped key now displays the first
-  matching cloud field instead of the last; dashboards and automations observing
-  that sensor can therefore see a different value. Cloud-only and devices with
-  no local match retain their existing behavior. Field matching is case-insensitive
-  (thanks to @jay0x for investigation and testing).
 
 ## [2.5.0] - 2026-10-13
 
@@ -577,7 +613,9 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0-rc.2...HEAD
+[2.6.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0-rc.1...v2.6.0-rc.2
+[2.6.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0...v2.6.0-rc.1
 [2.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0
 [2.5.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0-rc.1
 [2.4.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0
