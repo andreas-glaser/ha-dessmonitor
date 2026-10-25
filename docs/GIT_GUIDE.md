@@ -95,18 +95,33 @@ git push -u origin hotfix/short-desc
 
 ## Version Bumping
 
-Preferred: GitHub Action “Bump Version” (updates VERSION, manifest.json, and CHANGELOG):
-1. Actions → “Bump Version” → choose bump type (patch/minor/major) and branch (`dev`).
-2. Action commits the bump to `dev`.
+`dev` stays on the last stable version. The bump belongs to the release branch,
+in the same commit that writes the changelog section, so that the tag, the
+packaged ZIP and the committed files all state one version. The release workflow
+verifies this and fails a tag whose files disagree with it.
 
-Manual (local):
+Three files state the version and are always bumped together:
+
 ```bash
 echo "1.2.3" > VERSION
 yq eval -i -P '.version="1.2.3"' custom_components/dessmonitor/manifest.json
-# Update CHANGELOG.md under [Unreleased]
-git add VERSION custom_components/dessmonitor/manifest.json CHANGELOG.md
-git commit -m "Bump version to 1.2.3"
+sed -i -E 's/^VERSION: Final = "[^"]+"$/VERSION: Final = "1.2.3"/' \
+  custom_components/dessmonitor/const.py
+# Add the matching "## [1.2.3] - YYYY-MM-DD" section to CHANGELOG.md.
+make check   # includes the released-changelog-section check
+git add VERSION CHANGELOG.md custom_components/dessmonitor/manifest.json \
+  custom_components/dessmonitor/const.py
+git commit -m "chore: prepare v1.2.3"
 ```
+
+`make check` runs `tools/check_changelog.py`, which reads every released section
+back from its own tag. This catches the one mistake this file layout invites:
+preparing a release leaves the published section exactly where `dev` keeps
+appending entries, so a later merge from `dev` can file new entries under a tag
+that never shipped them without producing a conflict.
+
+For the full sequence, see [RELEASE_GUIDE.md](RELEASE_GUIDE.md) and, for
+candidates, [RELEASE_CANDIDATES.md](RELEASE_CANDIDATES.md).
 
 ## Tagging and Releases
 
