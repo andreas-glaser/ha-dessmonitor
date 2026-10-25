@@ -25,6 +25,7 @@ from .smg import (
     discover_smg,
     poll_smg,
 )
+from .smg_protocol4 import PROTOCOL4_CLOUD_DEVICE_CODE
 
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
 
@@ -195,13 +196,23 @@ class SmgModbusDriver:
             max_address=max_address,
             device_address=device_address,
         )
+        for item in discovered:
+            _LOGGER.info(
+                "Local Modbus register layout %d selected at inverter address %d",
+                item.route.protocol_number,
+                item.route.slave_address,
+            )
         return tuple(
             LocalDevice(
                 driver_key=self.key,
                 transport_device_code=item.route.device_code,
                 collector_address=item.route.collector_address,
                 device_address=item.route.slave_address,
-                entity_device_code=SMG_CLOUD_DEVICE_CODE,
+                entity_device_code=(
+                    PROTOCOL4_CLOUD_DEVICE_CODE
+                    if item.route.protocol_number == 4
+                    else SMG_CLOUD_DEVICE_CODE
+                ),
                 serial=item.serial,
                 model=item.model,
                 firmware=item.firmware,
@@ -220,6 +231,7 @@ class SmgModbusDriver:
                 device.transport_device_code,
                 device.collector_address,
                 device.device_address,
+                int(device.metadata.get("layout_code", 0)),
             ),
             include_status=cycle % 6 == 0,
         )

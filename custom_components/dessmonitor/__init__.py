@@ -30,6 +30,12 @@ from .const import (
     UNITS,
     resolve_api_profile,
 )
+from .control_values import (
+    cloud_control_snapshot,
+    control_value,
+    find_control_value,
+    setting_value,
+)
 from .data_sources import snapshot_with_data_source
 from .device_support import (
     get_parameter_sensor_names,
@@ -46,6 +52,11 @@ PLATFORMS: list[Platform] = [
     Platform.SELECT,
 ]
 LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+
+# Consecutive cloud revisions that may re-read a control value which never
+# resolves. Without a bound, a permanently unreadable field would cost one API
+# request every refresh for as long as the entry stays loaded.
+MAX_CONTROL_VALUE_RETRIES = 3
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -278,6 +289,10 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.ctrl_field_cache: dict[str, dict[str, Any]] = {}
         self.ctrl_value_cache: dict[str, dict[str, str]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
+        self._ctrl_field_attempts: dict[str, int] = {}
+        self._ctrl_value_attempts: dict[str, int] = {}
+        self._ctrl_value_retries: dict[str, int] = {}
+        self._ctrl_cloud_samples: dict[str, object] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
         self._allow_cached_fallback = allow_cached_fallback
@@ -339,17 +354,20 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> tuple[dict[str, Any], dict[str, str]]:
         """Get control field definitions and their current values.
 
-        Returns (controls, current_values) where current_values maps
-        field_id -> current value string.  Both are cached so repeated
-        calls (select.py + number.py) don't re-fetch.  A per-device
-        lock prevents the duplicate fetch that would otherwise occur
-        when both platforms start concurrently.
+        Seed values from the ordinary cloud payload and retry only missing
+        values once per cloud revision, until three rounds recover nothing.
+        Ordinary telemetry can still recover values after that budget is spent.
+        Local pushes cannot trigger retries.
+        The per-device lock shares work between select/number/button loaders.
         """
         if sn not in self._ctrl_locks:
             self._ctrl_locks[sn] = asyncio.Lock()
 
         async with self._ctrl_locks[sn]:
-            if sn not in self.ctrl_field_cache:
+            if not self.ctrl_field_cache.get(sn):
+                if self._ctrl_field_attempts.get(sn) == self.cloud_revision:
+                    return {}, self.ctrl_value_cache.get(sn, {})
+                self._ctrl_field_attempts[sn] = self.cloud_revision
                 try:
                     controls = await self.api.get_device_control_fields(
                         pn, devcode, devaddr, sn
@@ -364,14 +382,79 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 self.ctrl_field_cache[sn] = controls
 
             controls = self.ctrl_field_cache[sn]
-
-            if sn not in self.ctrl_value_cache:
-                field_ids = [cfg["id"] for cfg in controls.values() if cfg.get("id")]
-                self.ctrl_value_cache[sn] = await self._fetch_all_control_values(
-                    pn, devcode, devaddr, sn, field_ids
+            values = self.ctrl_value_cache.setdefault(sn, {})
+            before = dict(values)
+            self._sync_control_values_from_cloud(sn)
+            by_id = {cfg["id"]: cfg for cfg in controls.values() if cfg.get("id")}
+            missing = [
+                cfg["id"]
+                for cfg in controls.values()
+                if cfg.get("id")
+                and setting_value(cfg, values.get(cfg["id"])) is None
+                and not (
+                    cfg.get("type") == "options" and len(cfg.get("options", {})) == 1
                 )
+            ]
+            retries = self._ctrl_value_retries.get(sn, 0)
+            if (
+                missing
+                and retries < MAX_CONTROL_VALUE_RETRIES
+                and self._ctrl_value_attempts.get(sn) != self.cloud_revision
+            ):
+                self._ctrl_value_attempts[sn] = self.cloud_revision
+                fetched = await self._fetch_all_control_values(
+                    pn, devcode, devaddr, sn, missing
+                )
+                # A cloud refresh or accepted write may have filled a value
+                # while these reads were in flight. Do not overwrite it.
+                for field_id, value in fetched.items():
+                    normalized = setting_value(by_id[field_id], value)
+                    if (
+                        normalized is not None
+                        and setting_value(by_id[field_id], values.get(field_id)) is None
+                    ):
+                        values[field_id] = normalized
+                self._sync_control_values_from_cloud(sn)
+                # Spend the budget only on rounds that recovered nothing, so a
+                # device still making progress keeps retrying the remainder.
+                if any(
+                    setting_value(by_id[field_id], values.get(field_id)) is not None
+                    for field_id in missing
+                ):
+                    self._ctrl_value_retries[sn] = 0
+                else:
+                    self._ctrl_value_retries[sn] = retries + 1
+                    if self._ctrl_value_retries[sn] == MAX_CONTROL_VALUE_RETRIES:
+                        _LOGGER.info(
+                            "Giving up on %d unreadable control value(s) for device "
+                            "%s after %d attempts; ordinary cloud telemetry still "
+                            "updates them, and reloading the entry retries",
+                            len(missing),
+                            sn,
+                            MAX_CONTROL_VALUE_RETRIES,
+                        )
+            changed = values != before
+        if changed:
+            # Existing entities also need to see late read recovery. Preserve
+            # the independent cloud refresh timer and revision counter.
+            self.async_update_listeners()
+        return controls, values
 
-        return controls, self.ctrl_value_cache[sn]
+    def _sync_control_values_from_cloud(self, sn: str) -> None:
+        """Refresh exact settings only when a new cloud sample arrives."""
+        stamp, points = cloud_control_snapshot(self, sn)
+        if self._ctrl_cloud_samples.get(sn) == stamp:
+            return
+        controls = self.ctrl_field_cache.get(sn, {})
+        if not controls:
+            return
+        self._ctrl_cloud_samples[sn] = stamp
+        values = self.ctrl_value_cache.setdefault(sn, {})
+        for name, config in controls.items():
+            field_id = config.get("id")
+            value = setting_value(config, find_control_value(points, name))
+            if field_id and value is not None:
+                values[field_id] = value
 
     async def _fetch_all_control_values(
         self,
@@ -393,7 +476,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     result = await self.api.get_device_control_value(
                         pn, devcode, devaddr, sn, field_id
                     )
-                    return field_id, result.get("val")
+                    return field_id, control_value(result.get("val"))
                 except Exception as err:
                     _LOGGER.debug(
                         "Failed to read control value %s for %s: %s",
@@ -427,6 +510,8 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             )
             await self._async_store_cloud_snapshot(data)
             self.cloud_revision += 1
+            for sn in self.ctrl_field_cache:
+                self._sync_control_values_from_cloud(sn)
             return snapshot_with_data_source(data, "Cloud")
         except UpdateFailed as err:
             if cached := self._cached_cloud_fallback(err):

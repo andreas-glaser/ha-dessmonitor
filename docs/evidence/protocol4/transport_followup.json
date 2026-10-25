@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "transport": "direct_local_eyebond",
+  "model": "ANJ-11KW-48V-W-P",
+  "protocol_number": 4,
+  "model_code": 32771,
+  "analysis_sources": [
+    "source_01",
+    "source_02",
+    "source_03"
+  ],
+  "short_load": {
+    "source": "source_04",
+    "configured_local_interval_seconds": 5,
+    "window_seconds": 405.983,
+    "forward_requests": 655,
+    "matched_replies": 655,
+    "requests_per_minute": 96.802,
+    "roundtrip_ms": {
+      "samples": 655,
+      "median": 191.0,
+      "p95": 557.0,
+      "max": 1927.0
+    }
+  },
+  "faults": [
+    {
+      "sample": "fault_1",
+      "capture_source": "source_05",
+      "packet": 17334,
+      "utc": "2026-10-16T10:06:47.208245+00:00",
+      "slave": 1,
+      "function": 3,
+      "register": 384,
+      "count": 8,
+      "reply_hex": "010310094c000800a900be00020b2c003f071ca4c3",
+      "tcp_payload_bytes": 21,
+      "expected_eyebond_bytes": 29,
+      "false_eyebond_length": 19462,
+      "modbus_crc_valid": true,
+      "ipv4_checksum_valid": true,
+      "tcp_checksum_valid": true,
+      "full_poll_after_close_seconds": 11.896,
+      "full_poll_utc": "2026-10-16T10:06:59.105333+00:00"
+    },
+    {
+      "sample": "fault_2",
+      "capture_source": "source_06",
+      "packet": 2049,
+      "utc": "2026-10-16T10:30:32.839978+00:00",
+      "slave": 1,
+      "function": 3,
+      "register": 338,
+      "count": 16,
+      "reply_hex": "01032009710000017f0000096b003d05ce00000970003504560500000b0a2600190290c97f",
+      "tcp_payload_bytes": 37,
+      "expected_eyebond_bytes": 45,
+      "false_eyebond_length": 28934,
+      "modbus_crc_valid": true,
+      "ipv4_checksum_valid": true,
+      "tcp_checksum_valid": true,
+      "full_poll_after_close_seconds": 11.753,
+      "full_poll_utc": "2026-10-16T10:30:44.595174+00:00"
+    },
+    {
+      "sample": "fault_3",
+      "capture_source": "source_06",
+      "packet": 5397,
+      "utc": "2026-10-16T10:41:33.838990+00:00",
+      "slave": 1,
+      "function": 3,
+      "register": 702,
+      "count": 3,
+      "reply_hex": "010306047c000089b416dc",
+      "tcp_payload_bytes": 11,
+      "expected_eyebond_bytes": 19,
+      "false_eyebond_length": 31750,
+      "modbus_crc_valid": true,
+      "ipv4_checksum_valid": true,
+      "tcp_checksum_valid": true,
+      "full_poll_after_close_seconds": 13.734,
+      "full_poll_utc": "2026-10-16T10:41:47.576468+00:00"
+    },
+    {
+      "sample": "fault_4",
+      "capture_source": "source_06",
+      "packet": 9710,
+      "utc": "2026-10-16T10:55:35.511946+00:00",
+      "slave": 1,
+      "function": 3,
+      "register": 252,
+      "count": 5,
+      "reply_hex": "01030a005a1385080e088a001478c8",
+      "tcp_payload_bytes": 15,
+      "expected_eyebond_bytes": 23,
+      "false_eyebond_length": 23065,
+      "modbus_crc_valid": true,
+      "ipv4_checksum_valid": true,
+      "tcp_checksum_valid": true,
+      "full_poll_after_close_seconds": 11.257,
+      "full_poll_utc": "2026-10-16T10:55:46.773238+00:00"
+    },
+    {
+      "sample": "fault_5",
+      "capture_source": "source_06",
+      "packet": 48104,
+      "utc": "2026-10-16T13:03:59.842184+00:00",
+      "slave": 1,
+      "function": 3,
+      "register": 302,
+      "count": 4,
+      "reply_hex": "010308033f00950022002bf6c9",
+      "tcp_payload_bytes": 13,
+      "expected_eyebond_bytes": 21,
+      "false_eyebond_length": 16134,
+      "modbus_crc_valid": true,
+      "ipv4_checksum_valid": true,
+      "tcp_checksum_valid": true,
+      "full_poll_after_close_seconds": 11.489,
+      "full_poll_utc": "2026-10-16T13:04:11.334855+00:00"
+    }
+  ],
+  "mixed_request_groups": [
+    {
+      "capture_source": "source_05",
+      "first_packet": 17332,
+      "first_utc": "2026-10-16T10:06:46.927073+00:00",
+      "frames": [
+        {
+          "tid": 10632,
+          "function": 4,
+          "code": 1,
+          "address": 255,
+          "bytes": 16
+        },
+        {
+          "tid": 10633,
+          "function": 1,
+          "code": 0,
+          "address": 1,
+          "bytes": 16
+        }
+      ],
+      "observed_packet_occurrences": 1,
+      "associated_fault": "fault_1"
+    },
+    {
+      "capture_source": "source_06",
+      "first_packet": 2047,
+      "first_utc": "2026-10-16T10:30:32.493757+00:00",
+      "frames": [
+        {
+          "tid": 587,
+          "function": 4,
+          "code": 1,
+          "address": 255,
+          "bytes": 16
+        },
+        {
+          "tid": 588,
+          "function": 1,
+          "code": 0,
+          "address": 1,
+          "bytes": 16
+        }
+      ],
+      "observed_packet_occurrences": 1,
+      "associated_fault": "fault_2"
+    },
+    {
+      "capture_source": "source_06",
+      "first_packet": 5395,
+      "first_utc": "2026-10-16T10:41:33.493012+00:00",
+      "frames": [
+        {
+          "tid": 1665,
+          "function": 1,
+          "code": 0,
+          "address": 1,
+          "bytes": 16
+        },
+        {
+          "tid": 1666,
+          "function": 4,
+          "code": 1,
+          "address": 255,
+          "bytes": 16
+        }
+      ],
+      "observed_packet_occurrences": 1,
+      "associated_fault": "fault_3"
+    },
+    {
+      "capture_source": "source_06",
+      "first_packet": 9708,
+      "first_utc": "2026-10-16T10:55:35.244209+00:00",
+      "frames": [
+        {
+          "tid": 3031,
+          "function": 4,
+          "code": 1,
+          "address": 255,
+          "bytes": 16
+        },
+        {
+          "tid": 3032,
+          "function": 1,
+          "code": 0,
+          "address": 1,
+          "bytes": 16
+        }
+      ],
+      "observed_packet_occurrences": 1,
+      "associated_fault": "fault_4"
+    },
+    {
+      "capture_source": "source_06",
+      "first_packet": 24234,
+      "first_utc": "2026-10-16T11:43:59.509547+00:00",
+      "frames": [
+        {
+          "tid": 7729,
+          "function": 4,
+          "code": 1,
+          "address": 255,
+          "bytes": 16
+        },
+        {
+          "tid": 7730,
+          "function": 1,
+          "code": 0,
+          "address": 1,
+          "bytes": 16
+        }
+      ],
+      "observed_packet_occurrences": 8,
+      "associated_fault": null
+    },
+    {
+      "capture_source": "source_06",
+      "first_packet": 48102,
+      "first_utc": "2026-10-16T13:03:59.516958+00:00",
+      "frames": [
+        {
+          "tid": 15491,
+          "function": 4,
+          "code": 1,
+          "address": 255,
+          "bytes": 16
+        },
+        {
+          "tid": 15492,
+          "function": 1,
+          "code": 0,
+          "address": 1,
+          "bytes": 16
+        }
+      ],
+      "observed_packet_occurrences": 1,
+      "associated_fault": "fault_5"
+    }
+  ],
+  "limitations": [
+    "Selected historical fault samples, not a new acceptance run.",
+    "Register telemetry only; identity frames and network addresses excluded.",
+    "Five associated faults and one non-failing mixed pair do not prove firmware causality.",
+    "Recovery delays start at connection close, not at the preceding read request.",
+    "This does not demonstrate that the proposed mitigation eliminates hardware failures."
+  ],
+  "source_sha256": {
+    "source_01": "115e3e8b0bd737401a8c8662cad78790a04597a9f15a9365280b422e0524d11d",
+    "source_02": "e909f5b65188f675bceb7a827b56d91a333e0330ad2a68c99dbb106036b66e8c",
+    "source_03": "5f55a7147b5bcf467c0e0ef3202b89dccd968a71492d90d2c1609cca1ef49c7d",
+    "source_04": "2c4b6a4608b6a02ad50930d84c24c8ff0715f420e00cc983fc53cabb9b37b04c",
+    "source_05": "9843e64855186ad4e385e511d755e78c1cb2ab69966246c3085af4bdf63c4530",
+    "source_06": "d1cdf33dc38d1e544056c058371dc459478854a19a64c0c9dfc5e1954ad920e6"
+  }
+}

@@ -87,6 +87,22 @@ Cloud keeps its existing 5-minute default for metadata, controls, cloud-only
 fields, and fallback data. Local telemetry defaults to the recommended
 5 seconds. A local update never triggers an extra API refresh.
 
+In hybrid mode, settings still use the cloud. Their options and current values
+can finish loading after local telemetry starts. The integration uses settings
+already present in the normal cloud payload and retries missing control values
+at most once per successful cloud refresh, without retrying on every local push.
+Explicit value reads stop after three consecutive rounds recover nothing; a
+round with partial recovery resets that budget. Ordinary cloud telemetry can
+still fill values afterward. Reloading the integration starts a new budget.
+`unknown` means no usable current value has been read; it is not an inverter
+setting and is never written as a default. Previously known values are retained
+through read failures. Select/number attributes show `control_transport: cloud`
+and `value_status: not_loaded` or `last_known`. A known value or an enabled
+control does not guarantee that the next cloud write will succeed.
+Numeric controls reporting a non-numeric format (for example a time or date)
+show `value_status: unsupported_format`; retrying the connection cannot turn
+such a value into a numeric setting.
+
 The `Data Source` sensor shows `Local`, `Cloud`, or `Cached Cloud`. Hybrid only
 overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
@@ -122,6 +138,14 @@ entries without the setting retain automatic discovery.
   energy totals and local controls are not implemented for PI30.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
+
+- Modbus protocol-number `4` (register `184`), verified with read-only samples
+  from an ANENJI ANJ-11KW-48V-W-P (cloud devcode `6544`). This layout uses
+  separate output, battery, grid, dual-PV and energy blocks; it must not use
+  the standard SMG `201..234` field positions. Detection selects the layout
+  per inverter address and retains it for subsequent polling. Local controls
+  are not provided. Sustained polling and reconnects still require hardware
+  verification after installing this change.
 
 PI18 uses its 28-field `GS` response for battery charging current and both PV
 inputs, including PV2 voltage. It does not poll P17-only `GMN` or `GS2` commands.
