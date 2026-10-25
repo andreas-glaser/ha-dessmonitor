@@ -6,6 +6,10 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+
+permissions:
+  contents: read
+
 jobs:
   hacs:
     runs-on: "ubuntu-latest"
