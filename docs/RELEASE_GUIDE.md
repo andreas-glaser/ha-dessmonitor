@@ -14,13 +14,14 @@
   git checkout dev
   ```
 
-2. **Run code quality checks**
+2. **Run the project's checks**
    ```bash
-   black custom_components/dessmonitor
-   isort custom_components/dessmonitor
-   flake8 custom_components/dessmonitor --max-line-length=127
-   mypy custom_components/dessmonitor --ignore-missing-imports
+   make format
+   make test
+   make check
    ```
+   `make check` covers Black, isort, flake8, mypy and the changelog, failing
+   when a section for an already-released version no longer matches its tag.
 
 3. **Update version files**
   - `custom_components/dessmonitor/manifest.json` → `"version": "X.Y.Z"`
@@ -30,6 +31,10 @@
 4. **Update CHANGELOG.md**
    - Add section `## [X.Y.Z] - YYYY-MM-DD`
    - List changes under: Added/Changed/Fixed/Removed
+   - A released section is closed: new entries belong to the version being
+     prepared, never to one that is already tagged. Inserting the new heading
+     above the `[Unreleased]` entries leaves the published section where `dev`
+     appends, so check what landed where before committing
    - Set the date with `date +%F` (ISO, YYYY-MM-DD)
    - Use git logs to gather changes since the last tag:
      ```bash

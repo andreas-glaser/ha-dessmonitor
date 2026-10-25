@@ -10,7 +10,7 @@ help:
 	@echo "Usage:"
 	@echo "  make install    - Install development dependencies"
 	@echo "  make format     - Format code with Black and isort"
-	@echo "  make lint       - Run all linting checks (Black, isort, flake8, mypy)"
+	@echo "  make lint       - Run all linting checks (Black, isort, flake8, mypy, changelog)"
 	@echo "  make check      - Run lint checks without modifying files"
 	@echo "  make test       - Run the test suite (pytest)"
 	@echo "  make test-cov   - Run the test suite with a coverage report"
@@ -71,6 +71,10 @@ check:
 		echo "   rm -rf .mypy_cache  (sudo if it is owned by root)"; \
 		exit 1; \
 	fi
+	@echo ""
+	@echo "=== changelog (released sections closed) ==="
+	@.venv/bin/python tools/check_changelog.py || (echo "❌ changelog: FAILED" && exit 1)
+	@echo "✅ changelog: PASSED"
 	@echo ""
 	@echo "🎉 All critical checks passed!"
 
