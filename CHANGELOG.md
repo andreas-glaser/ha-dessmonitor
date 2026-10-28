@@ -28,6 +28,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the central brands repository (thanks to @frenck).
 
 ### Fixed
+- A cloud cycle that fails for one device no longer drops that device. Its last
+  known payload is retained and labelled `Cached Cloud`, so a single slow
+  `queryDeviceLastData` cannot make a whole inverter's entities unavailable, and
+  in hybrid mode fresh local telemetry keeps flowing through the gap instead of
+  going unknown for minutes. The same applies when one collector times out while
+  another answers, which left a second inverter registered but unavailable. A
+  device the API stops listing is still removed (#54, #55, thanks to
+  @banyaigabor-web for the log timeline and code-level analysis and to @infordbf
+  for the two-collector report).
+- A refresh in which no device answered is now reported as a failure instead of
+  succeeding with an empty snapshot. Such a cycle previously overwrote the stored
+  cloud snapshot with nothing, disabling the cached-cloud fallback it had just
+  destroyed, and still counted as a successful cloud revision. An empty collector
+  list is treated the same way while devices are known, rather than as removal.
 - Devcode 6514 publishes the readings it was already receiving: grid power and
   voltage, summed output power, apparent power and current, load percentage, PV
   charge power, and both output legs. The profile was added for battery SOC only
