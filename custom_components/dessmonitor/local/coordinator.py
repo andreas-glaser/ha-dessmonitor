@@ -167,7 +167,13 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
             await self._server.disconnect()
 
     async def _discover(self, identity: CollectorIdentity) -> None:
-        """Probe registered read-only drivers and discover unique devices."""
+        """Probe registered read-only drivers and discover unique devices.
+
+        A collector that drops its tunnel reconnects and rediscovers. Naming
+        the driver that last worked keeps a flapping collector from paying for
+        a full blind probe on every reconnect, which is time spent with no
+        local telemetry at all.
+        """
         driver, devices = await discover_supported_devices(
             self._send_command,
             collector_product_number=identity.product_number,
@@ -177,6 +183,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
             reported_device_code=identity.reported_device_code,
             max_address=_MAX_DEVICE_ADDRESS,
             device_address=self._device_address,
+            preferred_driver_key=self._driver.key if self._driver else None,
         )
         self._driver = driver
         self._devices = {device.serial: device for device in devices}
