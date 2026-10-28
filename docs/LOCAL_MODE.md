@@ -108,6 +108,15 @@ overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
 returns the same entities to API telemetry.
 
+Each device carries its own `Data Source`. When the cloud answers for some
+devices and times out for others, the ones that failed keep the readings of the
+last cycle that reached them and report `Cached Cloud`, while their neighbours
+report `Cloud`. In hybrid mode a healthy local route still makes such a device
+`Local`. A device the API stops listing is removed instead of retained, so this
+retention never keeps hardware alive that was taken off the account. Readings
+labelled `Cached Cloud` can be arbitrarily old; the device's `Timestamp` sensor
+shows when the cloud last answered for it.
+
 If one inverter's status poll fails while another on the same collector succeeds,
 only the responding inverter contributes to the new local snapshot. Hybrid uses
 cloud data for the failed inverter until it responds again. Its device and sensor

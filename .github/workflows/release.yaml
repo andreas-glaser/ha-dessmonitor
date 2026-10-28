@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate-version:
@@ -48,9 +48,9 @@ jobs:
             PRERELEASE=false
           fi
 
-          # Workflow dispatch operates on the default branch and may commit
-          # version files there. RCs must instead be tagged from a reviewed
-          # release branch so main remains on the latest stable version.
+          # Workflow dispatch builds the default branch. RCs must instead be
+          # tagged from a reviewed release branch, so that main remains on the
+          # latest stable version.
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "$PRERELEASE" == "true" ]]; then
             echo "Error: Release candidates must be published by pushing their tag"
             exit 1
@@ -72,37 +72,50 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "Validate changelog entry exists"
+      - name: "Validate the changelog"
         shell: bash
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
-          if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
-            echo "Error: No changelog entry found for version $VERSION"
-            echo "Please add a changelog entry in CHANGELOG.md"
-            exit 1
+          # Requires a section for this version, and verifies that the sections
+          # of earlier releases still match the tags that shipped them.
+          python3 tools/check_changelog.py --require-version "$VERSION"
+
+      - name: "Verify version files match the released version"
+        shell: bash
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          INTEGRATION="${{ github.workspace }}/custom_components/dessmonitor"
+
+          # The release is built from the tagged tree, so the committed files
+          # must already state this version. Rewriting them here would publish
+          # a ZIP that does not match its own tag.
+          failed=0
+          declared=$(cat VERSION)
+          if [[ "$declared" != "$VERSION" ]]; then
+            echo "Error: VERSION says $declared, tag says $VERSION"
+            failed=1
           fi
 
-      - name: "Update version files"
-        shell: bash
-        run: |
-          VERSION="${{ needs.validate-version.outputs.version }}"
-          
-          # Update VERSION file
-          echo "$VERSION" > VERSION
-          
-          # Update manifest.json
-          yq eval -i -P ".version=\"$VERSION\"" \
-            ${{ github.workspace }}/custom_components/dessmonitor/manifest.json
+          manifest=$(python3 -c \
+            'import json,sys; print(json.load(open(sys.argv[1]))["version"])' \
+            "$INTEGRATION/manifest.json")
+          if [[ "$manifest" != "$VERSION" ]]; then
+            echo "Error: manifest.json says $manifest, tag says $VERSION"
+            failed=1
+          fi
 
-          # Keep the API client version aligned with the packaged release.
-          sed -i -E \
-            "s/^VERSION: Final = \"[^\"]+\"$/VERSION: Final = \"$VERSION\"/" \
-            ${{ github.workspace }}/custom_components/dessmonitor/const.py
+          if ! grep -Fqx "VERSION: Final = \"$VERSION\"" "$INTEGRATION/const.py"; then
+            echo "Error: const.py does not declare $VERSION"
+            failed=1
+          fi
 
-          grep -Fqx "VERSION: Final = \"$VERSION\"" \
-            ${{ github.workspace }}/custom_components/dessmonitor/const.py
-          
-          echo "Updated version to: $VERSION"
+          if [[ $failed -eq 1 ]]; then
+            echo "Bump VERSION, manifest.json and const.py in the release"
+            echo "commit and tag that commit. An RC tag is never moved or"
+            echo "reused: publish the next rc.N. See docs/RELEASE_CANDIDATES.md."
+            exit 1
+          fi
+          echo "Version files agree with the tag: $VERSION"
 
       - name: "Validate integration structure"
         shell: bash
@@ -183,20 +196,3 @@ jobs:
           prerelease: ${{ needs.validate-version.outputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: "Update version files"
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          VERSION="${{ needs.validate-version.outputs.version }}"
-          
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          git add VERSION custom_components/dessmonitor/manifest.json \
-            custom_components/dessmonitor/const.py
-          git commit -m "Bump version to $VERSION"
-          git push origin main
-          
-          echo "✅ Version files updated successfully"
-          echo "Note: When using manual workflow dispatch, version files are updated automatically"

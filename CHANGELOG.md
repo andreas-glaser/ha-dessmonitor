@@ -19,6 +19,16 @@ key. If you run Local or Hybrid mode, please confirm your inverter is still
 discovered after updating and that your dashboard values still look right.
 
 ### Added
+- Per-leg output sensors for split-phase and dual-output collectors: Output L1/L2
+  Power, Apparent Power, Voltage and Current, plus Load L1/L2 Percentage. Devcodes
+  6514 and 6544 report these next to their summed totals, and both now publish
+  them (#42, #56, thanks to @starpoltava15-netizen and @olegvsh for the reports
+  and to @vyore1980 for the CLI analysis data).
+- `tools/analysis_coverage.py` reports which raw API titles in a CLI analysis
+  resolve to a sensor and which are dropped, flagging unresolved titles that
+  carry a unit. The redacted devcode 6514 analysis is committed under
+  `docs/evidence/devcodes/`, and the test suite fails when a reading with a unit
+  stops resolving.
 - Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
   (cloud devcode 6544), selected by register 184. Hardware snapshots cover
   battery, grid, output, dual-PV, temperatures and energy counters. Existing
@@ -26,6 +36,33 @@ discovered after updating and that your dashboard values still look right.
   (thanks to @jay0x for investigation and testing).
 
 ### Fixed
+- A cloud cycle that fails for one device no longer drops that device. Its last
+  known payload is retained and labelled `Cached Cloud`, so a single slow
+  `queryDeviceLastData` cannot make a whole inverter's entities unavailable, and
+  in hybrid mode fresh local telemetry keeps flowing through the gap instead of
+  going unknown for minutes. The same applies when one collector times out while
+  another answers, which left a second inverter registered but unavailable. A
+  device the API stops listing is still removed (#54, #55, thanks to
+  @banyaigabor-web for the log timeline and code-level analysis and to @infordbf
+  for the two-collector report).
+- A refresh in which no device answered is now reported as a failure instead of
+  succeeding with an empty snapshot. Such a cycle previously overwrote the stored
+  cloud snapshot with nothing, disabling the cached-cloud fallback it had just
+  destroyed, and still counted as a successful cloud revision. An empty collector
+  list is treated the same way while devices are known, rather than as removal.
+- Devcode 6514 publishes the readings it was already receiving: grid power and
+  voltage, summed output power, apparent power and current, load percentage, PV
+  charge power, and both output legs. The profile was added for battery SOC only
+  (#35), so every other title the collector reports stayed unmapped (#56, thanks
+  to @olegvsh for the report).
+- Devcode 6514 labels its output priority and charger priority codes and
+  normalizes the observed `OffgridMode` to `Off-grid Mode`, matching the other
+  ANENJI profiles. These sensors previously showed the raw API codes, so
+  automations comparing against `SBU`, `OSO` or `OffgridMode` need updating.
+- Sensor title resolution collapses runs of whitespace inside a title, so a
+  collector reporting `Grid  Power` resolves to the Grid Power sensor instead of
+  being dropped. The cloud and local paths now share one resolver, which also
+  gives the local path the friendly-name fallback the cloud path already had.
 - Hybrid refresh uses the current local snapshot after an awaited cloud request,
   preserving a collector connection or disconnection that happened during that
   request (thanks to @jay0x for investigation and testing).
