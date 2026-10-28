@@ -1,0 +1,692 @@
+{
+  "timestamp": "2026-09-10 10:49:28",
+  "analysis": {
+    "analysis_version": 3,
+    "devcode": 6514,
+    "device_sn": "",
+    "device_identity": "sha256:7dc7f106a915",
+    "collector_identity": "sha256:1d8235eb0c78",
+    "device_address": 1,
+    "collector_alias": "",
+    "total_sensors": 76,
+    "operating_modes": [
+      "OffgridMode"
+    ],
+    "output_priorities": [
+      "SBU"
+    ],
+    "charger_priorities": [
+      "OSO"
+    ],
+    "sensor_titles": [
+      "AC charging power",
+      "Automatic activation for lithium battery",
+      "Automatic mains output enable",
+      "Automatic restart when over temperature",
+      "Battery Current",
+      "Battery Eq mode enable",
+      "Battery Low Cut Off SOC",
+      "Battery Power",
+      "Battery Type",
+      "Battery Voltage",
+      "Battery overvoltage protection point",
+      "Battery percentage",
+      "Boot method",
+      "Buzzer Mode",
+      "Charger Source Priority",
+      "Constant pressure to float waiting time",
+      "DC Module Termperature",
+      "Eq charging interval",
+      "Eq charging voltage",
+      "Eq timeout exit",
+      "Equipment type",
+      "Floating charge voltage",
+      "Grid  Power",
+      "Grid  Voltage",
+      "Grid Frequency",
+      "INV Module Termperature",
+      "Input Mode",
+      "LCD automatically returns to the homepage",
+      "LCD backlight",
+      "Load L1 Percentage",
+      "Load L2 Percentage",
+      "Low DC Protection SOC In AC Mode",
+      "Low DC Recovery SOC In AC Mode",
+      "Mains mode battery discharge recovery point",
+      "Mains mode battery low voltage protection point",
+      "Maximum charging current",
+      "Maximum charging voltage",
+      "Maximum discharge current protection",
+      "Maximum mains charging current",
+      "OP2 overload alarm setting",
+      "Off-grid mode OP1 battery low voltage protection point",
+      "Off-grid mode battery low voltage protection point",
+      "Operating mode",
+      "Output Frequency Setting",
+      "Output L1 Active Power",
+      "Output L1 Aparent Power",
+      "Output L1 Current",
+      "Output L1 Voltage",
+      "Output L2 Active Power",
+      "Output L2 Aparent Power",
+      "Output L2 Current",
+      "Output L2 Voltage",
+      "Output Priority",
+      "Output Voltage Setting",
+      "Output frequency",
+      "Output mode",
+      "Overload automatic restart",
+      "Overload transfer to bypass enable",
+      "PV Charging Current",
+      "PV Charging Power",
+      "PV Current",
+      "PV Power",
+      "PV Voltage",
+      "PV temperature",
+      "Protocol Number",
+      "Remote switch",
+      "SOC Protection value of OP1  In off-grid mode",
+      "Timestamp",
+      "Total Load Percentage",
+      "Total Output Active Power",
+      "Total Output Aparent Power",
+      "Total Output Current",
+      "Whether the OP2 allows the output",
+      "bat_eq_time",
+      "devise serial number",
+      "id"
+    ],
+    "potential_typos": [
+      {
+        "original": "devise serial number",
+        "suggested": "device serial number"
+      },
+      {
+        "original": "DC Module Termperature",
+        "suggested": "DC Module Temperature"
+      },
+      {
+        "original": "INV Module Termperature",
+        "suggested": "INV Module Temperature"
+      }
+    ],
+    "unit_patterns": {
+      "Overload automatic restart": [
+        "Automatic restart after overload failure"
+      ],
+      "Automatic restart when over temperature": [
+        "Auto restart after over temperature failure"
+      ],
+      "Output Voltage Setting": [
+        "240V"
+      ],
+      "Output Frequency Setting": [
+        "50Hz"
+      ],
+      "Automatic activation for lithium battery": [
+        "Automatic activation"
+      ],
+      "Whether the OP2 allows the output": [
+        "Allow"
+      ]
+    },
+    "sample_data": [
+      {
+        "title": "id",
+        "value": "",
+        "unit": ""
+      },
+      {
+        "title": "Timestamp",
+        "value": "2026-09-10 10:45:47",
+        "unit": ""
+      },
+      {
+        "title": "Equipment type",
+        "value": "30977",
+        "unit": ""
+      },
+      {
+        "title": "Protocol Number",
+        "value": "11",
+        "unit": ""
+      },
+      {
+        "title": "devise serial number",
+        "value": "",
+        "unit": ""
+      },
+      {
+        "title": "Operating mode",
+        "value": "OffgridMode",
+        "unit": ""
+      },
+      {
+        "title": "Grid  Voltage",
+        "value": "241.6",
+        "unit": "V"
+      },
+      {
+        "title": "Grid Frequency",
+        "value": "50.01",
+        "unit": "Hz"
+      },
+      {
+        "title": "Grid  Power",
+        "value": "0",
+        "unit": "W"
+      },
+      {
+        "title": "AC charging power",
+        "value": "0",
+        "unit": "W"
+      },
+      {
+        "title": "Output L1 Voltage",
+        "value": "239.8",
+        "unit": "V"
+      },
+      {
+        "title": "Total Output Current",
+        "value": "0.8",
+        "unit": "A"
+      },
+      {
+        "title": "Output frequency",
+        "value": "50.00",
+        "unit": "Hz"
+      },
+      {
+        "title": "Total Output Active Power",
+        "value": "121",
+        "unit": "W"
+      },
+      {
+        "title": "Total Output Aparent Power",
+        "value": "191",
+        "unit": "VA"
+      },
+      {
+        "title": "Battery Voltage",
+        "value": "53.3",
+        "unit": "V"
+      },
+      {
+        "title": "Battery Power",
+        "value": "-149",
+        "unit": "W"
+      },
+      {
+        "title": "PV Voltage",
+        "value": "15.4",
+        "unit": "V"
+      },
+      {
+        "title": "PV Current",
+        "value": "0.0",
+        "unit": "A"
+      },
+      {
+        "title": "PV Power",
+        "value": "0",
+        "unit": "W"
+      }
+    ],
+    "control_field_count": 41,
+    "control_fields": [
+      {
+        "name": "Automatic activation for lithium battery",
+        "type": "options",
+        "id": "sys_eybond_read_82",
+        "options": {
+          "0": "Disable automatic activation",
+          "1": "Automatic activation"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Automatic mains output enable",
+        "type": "options",
+        "id": "sys_eybond_read_81",
+        "options": {
+          "0": "Do not press the boot will not output",
+          "1": "Do not press the boot will also be output"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Automatic restart when over temperature",
+        "type": "options",
+        "id": "sys_eybond_read_61",
+        "options": {
+          "0": "Over temperature failure will not restart",
+          "1": "Auto restart after over temperature failure"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Battery Eq mode enable",
+        "type": "options",
+        "id": "bat_eybond_read_63",
+        "options": {
+          "0": "Prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Battery Low Cut Off SOC",
+        "type": "value",
+        "id": "bat_eybond_read_86",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Battery Type",
+        "type": "options",
+        "id": "bat_eybond_read_66",
+        "options": {
+          "0": "AGM",
+          "1": "FLD",
+          "2": "USER",
+          "4": "Li2",
+          "6": "Li4",
+          "8": "LiB"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Battery overvoltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_67",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Boot method",
+        "type": "options",
+        "id": "sys_eybond_read_91",
+        "options": {
+          "0": "Can be powered on locally or remotely",
+          "1": "Only boot locally",
+          "2": "Only remote boot"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Buzzer Mode",
+        "type": "options",
+        "id": "sys_eybond_read_57",
+        "options": {
+          "0": "Beeps OFF",
+          "1": "Beeps ON",
+          "2": "Mute when input source changes",
+          "3": "Beeps only in fault mode"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Charger Source Priority",
+        "type": "options",
+        "id": "bat_eybond_read_74",
+        "options": {
+          "1": "CSO",
+          "2": "SNU",
+          "3": "OSO"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Constant pressure to float waiting time",
+        "type": "value",
+        "id": "bat_eybond_read_73",
+        "options": null,
+        "unit": "Min",
+        "hint": null
+      },
+      {
+        "name": "Eq charging interval",
+        "type": "value",
+        "id": "bat_eybond_read_80",
+        "options": null,
+        "unit": "Day",
+        "hint": null
+      },
+      {
+        "name": "Eq charging voltage",
+        "type": "value",
+        "id": "bat_eybond_read_77",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Eq timeout exit",
+        "type": "value",
+        "id": "bat_eybond_read_79",
+        "options": null,
+        "unit": "Min",
+        "hint": null
+      },
+      {
+        "name": "Equalization activated immediately",
+        "type": "options",
+        "id": "bat_eybond_ctrl_93",
+        "options": {
+          "1": "Manually force Eq to charge once"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Exit Fault Mode",
+        "type": "options",
+        "id": "sys_eybond_ctrl_94",
+        "options": {
+          "1": "Exit Fault Lock State (effective only with machine in failure mode)"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Floating charge voltage",
+        "type": "value",
+        "id": "bat_eybond_read_69",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Input Mode",
+        "type": "options",
+        "id": "sys_eybond_read_56",
+        "options": {
+          "0": "APL",
+          "1": "UPS",
+          "2": "GNT"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "LCD automatically returns to the homepage",
+        "type": "options",
+        "id": "sys_eybond_read_59",
+        "options": {
+          "0": "Do not return automatically",
+          "1": "Return automatically after 1 minute"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "LCD backlight",
+        "type": "options",
+        "id": "sys_eybond_read_58",
+        "options": {
+          "0": "Timed off",
+          "1": "Always on"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Low DC Protection SOC In AC Mode",
+        "type": "value",
+        "id": "bat_eybond_read_83",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Low DC Recovery SOC In AC Mode",
+        "type": "value",
+        "id": "bat_eybond_read_84",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Mains mode battery discharge recovery point",
+        "type": "value",
+        "id": "bat_eybond_read_70",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Mains mode battery low voltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_71",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Maximum charging current",
+        "type": "value",
+        "id": "bat_eybond_read_75",
+        "options": null,
+        "unit": "A",
+        "hint": null
+      },
+      {
+        "name": "Maximum charging voltage",
+        "type": "value",
+        "id": "bat_eybond_read_68",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Maximum discharge current protection",
+        "type": "value",
+        "id": "bat_eybond_read_87",
+        "options": null,
+        "unit": "A",
+        "hint": null
+      },
+      {
+        "name": "Maximum mains charging current",
+        "type": "value",
+        "id": "bat_eybond_read_76",
+        "options": null,
+        "unit": "A",
+        "hint": null
+      },
+      {
+        "name": "OP2 overload alarm setting",
+        "type": "value",
+        "id": "bse_eybond_read_89",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Off-grid mode OP1 battery low voltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_88",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Off-grid mode battery low voltage protection point",
+        "type": "value",
+        "id": "bat_eybond_read_72",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Output Frequency Setting",
+        "type": "options",
+        "id": "bse_eybond_read_65",
+        "options": {
+          "5000": "50Hz",
+          "6000": "60Hz"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Output Priority",
+        "type": "options",
+        "id": "bse_eybond_read_55",
+        "options": {
+          "0": "UTI",
+          "1": "SOL",
+          "2": "SBU",
+          "3": "SUB",
+          "4": "SUF"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Output Voltage Setting",
+        "type": "options",
+        "id": "bse_eybond_read_64",
+        "options": {
+          "2200": "220V",
+          "2300": "230V",
+          "2400": "240V"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Output mode",
+        "type": "options",
+        "id": "bse_eybond_read_54",
+        "options": {
+          "0": "Single"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Overload automatic restart",
+        "type": "options",
+        "id": "sys_eybond_read_60",
+        "options": {
+          "0": "Overload failure does not restart",
+          "1": "Automatic restart after overload failure"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Overload transfer to bypass enable",
+        "type": "options",
+        "id": "sys_eybond_read_62",
+        "options": {
+          "0": "Prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Remote switch",
+        "type": "options",
+        "id": "sys_eybond_read_92",
+        "options": {
+          "0": "Remote shutdown",
+          "1": "Remote boot"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "SOC Protection value of OP1  In off-grid mode",
+        "type": "value",
+        "id": "bat_eybond_read_85",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "Whether the OP2 allows the output",
+        "type": "options",
+        "id": "bse_eybond_read_90",
+        "options": {
+          "0": "Prohibit",
+          "1": "Allow"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "bat_eq_time",
+        "type": "value",
+        "id": "bat_eybond_read_78",
+        "options": null,
+        "unit": "Min",
+        "hint": null
+      }
+    ],
+    "parameter_count": 8,
+    "parameters": [
+      {
+        "name": "AC charging current",
+        "value": "0",
+        "unit": "A",
+        "id": "eybond_read_43"
+      },
+      {
+        "name": "Battery Current",
+        "value": "-2.8",
+        "unit": "A",
+        "id": "eybond_read_42"
+      },
+      {
+        "name": "Battery Voltage",
+        "value": "53.3",
+        "unit": "V",
+        "id": "eybond_read_20"
+      },
+      {
+        "name": "Battery percentage",
+        "value": "85",
+        "unit": "%",
+        "id": "bt_battery_capacity"
+      },
+      {
+        "name": "Grid  Voltage",
+        "value": "241.6",
+        "unit": "V",
+        "id": "eybond_read_7"
+      },
+      {
+        "name": "PV Power",
+        "value": "0",
+        "unit": "W",
+        "id": "pv_output_power"
+      },
+      {
+        "name": "Total Load Percentage",
+        "value": "3",
+        "unit": "%",
+        "id": "eybond_read_26"
+      },
+      {
+        "name": "Total Output Active Power",
+        "value": "121",
+        "unit": "W",
+        "id": "load_active_power"
+      }
+    ],
+    "checksum": "a7f95d90347bca9cad67b2dee53c2acd90cc78cecfb9f60e871bd5a9fa4abe96"
+  }
+}

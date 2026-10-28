@@ -34,6 +34,7 @@ from .device_support import (
     get_all_output_priorities,
     is_devcode_supported,
 )
+from .sensor_titles import resolve_sensor_key
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,49 +68,6 @@ def _normalize_devcode(value: Any) -> int | None:
             return int(value)
         except ValueError:
             return None
-    return None
-
-
-def _match_sensor_definition(candidate: str | None) -> str | None:
-    """Return the canonical sensor key for a given candidate title or name."""
-    if not candidate:
-        return None
-
-    sensor_types = cast(dict[str, dict[str, Any]], SENSOR_TYPES)
-
-    if candidate in sensor_types:
-        return candidate
-
-    normalized = candidate.strip().lower()
-    for key, config in sensor_types.items():
-        if key.strip().lower() == normalized:
-            return key
-
-        friendly_name = config.get("name")
-        if (
-            isinstance(friendly_name, str)
-            and friendly_name.strip().lower() == normalized
-        ):
-            return key
-
-    return None
-
-
-def _resolve_sensor_type(
-    original_title: str | None, transformed_title: str | None
-) -> str | None:
-    """Determine which sensor definition to use for a datapoint."""
-    candidates: list[str] = []
-    if transformed_title:
-        candidates.append(transformed_title)
-    if original_title and original_title not in candidates:
-        candidates.append(original_title)
-
-    for candidate in candidates:
-        match = _match_sensor_definition(candidate)
-        if match:
-            return match
-
     return None
 
 
@@ -187,7 +145,7 @@ def _build_sensor_entities(
                     devcode, data_point.copy()
                 ).get("title", transformed_title)
 
-            sensor_type = _resolve_sensor_type(original_title, transformed_title)
+            sensor_type = resolve_sensor_key(transformed_title, original_title)
             if not sensor_type:
                 continue
 

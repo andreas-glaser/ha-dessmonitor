@@ -26,8 +26,8 @@ from ..const import (
     DEFAULT_LOCAL_TCP_PORT,
     DEFAULT_LOCAL_UDP_PORT,
     DOMAIN,
-    SENSOR_TYPES,
 )
+from ..sensor_titles import resolve_sensor_key, sensor_unit
 from .announcer import CollectorAnnouncer
 from .discovery import inverter_addresses
 from .drivers import LocalDevice, ReadOnlyLocalDriver, discover_supported_devices
@@ -266,10 +266,10 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                 {
                     "title": title,
                     "val": value,
-                    "unit": _sensor_unit(title),
+                    "unit": sensor_unit(title),
                 }
                 for title, value in sorted(device.values.items())
-                if _is_supported_sensor_title(title)
+                if resolve_sensor_key(title) is not None
             ]
             points.append({"title": "Timestamp", "val": timestamp, "unit": ""})
             points.append({"title": "Data Source", "val": "Local", "unit": ""})
@@ -295,23 +295,3 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                 "data": points,
             }
         return result
-
-
-def _is_supported_sensor_title(title: str) -> bool:
-    """Return whether an existing entity definition can represent a local value."""
-    if title in SENSOR_TYPES:
-        return True
-    normalized = title.strip().lower()
-    return any(key.strip().lower() == normalized for key in SENSOR_TYPES)
-
-
-def _sensor_unit(title: str) -> str:
-    """Return the existing canonical unit without duplicating HA metadata."""
-    config = SENSOR_TYPES.get(title)
-    if isinstance(config, dict):
-        return str(config.get("unit", ""))
-    normalized = title.strip().lower()
-    for key, candidate in SENSOR_TYPES.items():
-        if key.strip().lower() == normalized and isinstance(candidate, dict):
-            return str(candidate.get("unit", ""))
-    return ""
