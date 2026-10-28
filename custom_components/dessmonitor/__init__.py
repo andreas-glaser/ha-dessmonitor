@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
@@ -295,6 +296,11 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._ctrl_cloud_samples: dict[str, object] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
+        # Every serial whose payload in the current snapshot was fetched by an
+        # earlier cycle rather than this one, whether the refresh failed for
+        # that device alone or for the whole account. The hybrid overlay reads
+        # it so a retained device is never presented as live.
+        self.stale_cloud_serials: frozenset[str] = frozenset()
         self._allow_cached_fallback = allow_cached_fallback
         self._cached_cloud_data: dict[str, Any] = {}
         self._cloud_snapshot_store: Store[dict[str, Any]] | None = (
@@ -347,6 +353,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             "DessMonitor API refresh failed; retaining the cached cloud snapshot: %s",
             err,
         )
+        self.stale_cloud_serials = frozenset(self._cached_cloud_data)
         return snapshot_with_data_source(self._cached_cloud_data, "Cached Cloud")
 
     async def async_get_controls_with_values(
@@ -501,18 +508,23 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         """Update data via library."""
         _LOGGER.debug("Starting data update cycle")
         try:
+            self.stale_cloud_serials = frozenset()
             collectors = await self._fetch_collectors()
             data = await self._gather_all_device_data(collectors)
             await self._merge_summary_data(data, bool(collectors))
 
             _LOGGER.info(
-                "Data update completed successfully: %d devices total", len(data)
+                "Data update completed successfully: %d devices total (%d retained)",
+                len(data),
+                len(self.stale_cloud_serials),
             )
             await self._async_store_cloud_snapshot(data)
             self.cloud_revision += 1
             for sn in self.ctrl_field_cache:
                 self._sync_control_values_from_cloud(sn)
-            return snapshot_with_data_source(data, "Cloud")
+            return snapshot_with_data_source(
+                data, "Cloud", stale=self.stale_cloud_serials
+            )
         except UpdateFailed as err:
             if cached := self._cached_cloud_fallback(err):
                 return cached
@@ -546,9 +558,25 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     async def _gather_all_device_data(
         self, collectors: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Collect last known data for all devices."""
+        """Collect last known data for all devices.
+
+        A device the API fails on this cycle keeps the payload an earlier cycle
+        fetched, so a single slow request cannot make a whole inverter's
+        entities unavailable while the rest of the account refreshes normally
+        (#54, #55). A device the API no longer lists is genuinely gone and is
+        dropped. When nothing fresh arrives at all, the error is raised so the
+        cached-cloud fallback and the hybrid local overlay take over instead of
+        a successful-looking empty snapshot replacing the stored one.
+        """
+        if not collectors and self._cached_cloud_data:
+            raise UpdateFailed(
+                "Collector list came back empty while devices are known; "
+                "treating it as a failed refresh"
+            )
+
         data: dict[str, Any] = {}
         errors: list[str] = []
+        failed_serials: set[str] = set()
 
         for index, collector in enumerate(collectors, start=1):
             collector_id = collector["pn"]
@@ -560,29 +588,74 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
             try:
-                collector_devices = await self._fetch_devices_for_collector(collector)
+                collector_devices, failures = await self._fetch_devices_for_collector(
+                    collector
+                )
             except DessMonitorError as err:
                 _LOGGER.warning("Skipping collector %s: %s", collector_id, err)
                 errors.append(f"{collector_id}: {err}")
+                failed_serials.update(self._cached_serials_for_collector(collector_id))
                 continue
 
             data.update(collector_devices)
+            for device_sn, message in failures.items():
+                errors.append(f"{device_sn}: {message}")
+                failed_serials.add(device_sn)
 
         if not data and errors:
-            raise UpdateFailed(f"All collectors failed: {'; '.join(errors)}")
+            raise UpdateFailed(f"Cloud refresh failed: {'; '.join(errors)}")
+
+        retained = self._retain_failed_devices(failed_serials, data)
+        if retained:
+            self.stale_cloud_serials = frozenset(retained)
+            data.update(retained)
 
         return data
 
+    def _cached_serials_for_collector(self, collector_id: str) -> set[str]:
+        """Return the stored serials that belong to one collector."""
+        return {
+            device_sn
+            for device_sn, payload in self._cached_cloud_data.items()
+            if isinstance(payload, dict)
+            and str(payload.get("collector", {}).get("pn", "")) == collector_id
+        }
+
+    def _retain_failed_devices(
+        self, failed_serials: set[str], fresh: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Return the stored payload for each device that failed this cycle."""
+        retained: dict[str, Any] = {}
+        for device_sn in sorted(failed_serials - set(fresh)):
+            cached = self._cached_cloud_data.get(device_sn)
+            if not isinstance(cached, dict):
+                continue
+            retained[device_sn] = copy.deepcopy(cached)
+
+        if retained:
+            _LOGGER.warning(
+                "Retaining the last known cloud payload for %d device(s) that "
+                "failed this refresh: %s",
+                len(retained),
+                ", ".join(retained),
+            )
+        return retained
+
     async def _fetch_devices_for_collector(
         self, collector: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Fetch data for all devices under a collector."""
+    ) -> tuple[dict[str, Any], dict[str, str]]:
+        """Fetch data for all devices under a collector.
+
+        Returns the devices that answered and the error reported for each
+        device that did not, so the caller can retain its last known payload.
+        """
         collector_id = collector["pn"]
         devices_response = await self.api.get_collector_devices(collector_id)
         device_list = devices_response.get("dev", [])
         _LOGGER.debug("Collector %s has %d devices", collector_id, len(device_list))
 
         device_data: dict[str, Any] = {}
+        failures: dict[str, str] = {}
         for index, device in enumerate(device_list, start=1):
             device_sn = device["sn"]
             devcode = _normalize_devcode(device.get("devcode"))
@@ -599,11 +672,12 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 last_data = await self._fetch_device_data(collector_id, device, devcode)
             except DessMonitorError as err:
                 _LOGGER.warning(
-                    "Skipping device %s (collector %s): %s",
+                    "Device %s (collector %s) did not answer: %s",
                     device_sn,
                     collector_id,
                     err,
                 )
+                failures[device_sn] = str(err)
                 continue
 
             device_data[device_sn] = {
@@ -612,7 +686,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 "data": last_data,
             }
 
-        return device_data
+        return device_data, failures
 
     async def _fetch_device_data(
         self,
