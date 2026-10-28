@@ -7,16 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.6.0-rc.2] - 2026-10-25
+## [2.6.0-rc.3] - 2026-10-28
 
-Second release candidate for 2.6.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+Third release candidate for 2.6.0, including all changes from
+[RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1)
+and [RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.2).
+See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.3/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
 
-**Testing focus:** this candidate adds local telemetry for one ANENJI model, and
-it changes three things that also affect other devices: how SMG local discovery
-treats a register layout it cannot decode, how strictly a legacy SMG snapshot is
-checked, and which cloud field a hybrid sensor displays when two share a mapped
-key. If you run Local or Hybrid mode, please confirm your inverter is still
-discovered after updating and that your dashboard values still look right.
+**Testing focus:** this candidate changes what happens when the cloud API answers
+for some devices and not others, which affects every cloud and hybrid
+installation. A device the API fails on now keeps its last readings instead of
+going unavailable, so please confirm your entities survive an API timeout and
+that the `Data Source` sensor tells you which devices are live. It also adds
+sensors for devcode 6514 and per-leg output sensors for dual-output inverters,
+and it changes devcode 6514's priority and operating-mode sensors from raw API
+codes to readable labels, which affects automations comparing against `SBU`,
+`OSO` or `OffgridMode`.
 
 ### Added
 - Per-leg output sensors for split-phase and dual-output collectors: Output L1/L2
@@ -29,11 +35,6 @@ discovered after updating and that your dashboard values still look right.
   carry a unit. The redacted devcode 6514 analysis is committed under
   `docs/evidence/devcodes/`, and the test suite fails when a reading with a unit
   stops resolving.
-- Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
-  (cloud devcode 6544), selected by register 184. Hardware snapshots cover
-  battery, grid, output, dual-PV, temperatures and energy counters. Existing
-  cloud sensor identities, including SOC, are retained in hybrid mode
-  (thanks to @jay0x for investigation and testing).
 
 ### Fixed
 - A cloud cycle that fails for one device no longer drops that device. Its last
@@ -63,6 +64,26 @@ discovered after updating and that your dashboard values still look right.
   collector reporting `Grid  Power` resolves to the Grid Power sensor instead of
   being dropped. The cloud and local paths now share one resolver, which also
   gives the local path the friendly-name fallback the cloud path already had.
+
+## [2.6.0-rc.2] - 2026-10-25
+
+Second release candidate for 2.6.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate adds local telemetry for one ANENJI model, and
+it changes three things that also affect other devices: how SMG local discovery
+treats a register layout it cannot decode, how strictly a legacy SMG snapshot is
+checked, and which cloud field a hybrid sensor displays when two share a mapped
+key. If you run Local or Hybrid mode, please confirm your inverter is still
+discovered after updating and that your dashboard values still look right.
+
+### Added
+- Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
+  (cloud devcode 6544), selected by register 184. Hardware snapshots cover
+  battery, grid, output, dual-PV, temperatures and energy counters. Existing
+  cloud sensor identities, including SOC, are retained in hybrid mode
+  (thanks to @jay0x for investigation and testing).
+
+### Fixed
 - Hybrid refresh uses the current local snapshot after an awaited cloud request,
   preserving a collector connection or disconnection that happened during that
   request (thanks to @jay0x for investigation and testing).
