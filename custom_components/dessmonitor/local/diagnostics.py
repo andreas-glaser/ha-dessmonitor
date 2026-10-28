@@ -89,6 +89,38 @@ class ProbeDiagnostics:
             "dropped_attempts": self.dropped_attempts,
         }
 
+    @property
+    def attempted(self) -> int:
+        """Return how many probe queries were issued."""
+        return sum(self.outcomes.values())
+
+    @property
+    def answered(self) -> int:
+        """Return how many probe queries the collector replied to in any form.
+
+        An explicit refusal still counts: it proves the tunnel is carrying
+        frames, which a timeout does not.
+        """
+        return self.attempted - self.outcomes.get("timeout", 0)
+
+    @property
+    def silent(self) -> bool:
+        """Return whether the collector answered nothing at all."""
+        return self.attempted > 0 and self.answered == 0
+
+    def protocol_timed_out(self, protocol: str) -> bool:
+        """Return whether every retained attempt for one driver timed out.
+
+        Reported only while no attempt has been dropped, so a bounded report
+        cannot turn a partial view into a confident claim.
+        """
+        if self.dropped_attempts:
+            return False
+        outcomes = {
+            attempt.outcome for attempt in self.attempts if attempt.protocol == protocol
+        }
+        return outcomes == {"timeout"}
+
     def summary(self) -> str:
         """Describe observed outcomes even when all protocol drivers fail."""
         return (

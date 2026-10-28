@@ -37,6 +37,20 @@ codes to readable labels, which affects automations comparing against `SBU`,
   stops resolving.
 
 ### Fixed
+- Local discovery no longer reports a collector that stopped answering as an
+  unsupported protocol. A probe in which nothing was received now says the
+  collector did not answer, and a driver that only timed out is no longer
+  described as having returned an invalid response. The per-driver reason came
+  from `ProtocolError`'s default, which contradicted the query outcomes printed
+  in the same message (#53, thanks to @DastardlyBaker for the report).
+- A collector that reconnects is rediscovered using the driver that last worked
+  for it, and when that driver receives nothing the remaining drivers are not
+  probed, because silence says nothing about which protocol a collector speaks.
+  A flapping collector previously paid for a full blind probe on every
+  reconnect, roughly 48 seconds at the 3 second request timeout, during which
+  there is no local telemetry and hybrid mode shows cloud data. The same probe
+  now costs about 12 seconds. A collector that does answer is still probed in
+  full, so new hardware is still identified.
 - A cloud cycle that fails for one device no longer drops that device. Its last
   known payload is retained and labelled `Cached Cloud`, so a single slow
   `queryDeviceLastData` cannot make a whole inverter's entities unavailable, and
