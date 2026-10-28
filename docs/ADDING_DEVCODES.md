@@ -55,9 +55,11 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 3. Read the analysis and pick mappings
 4. Write devcode_XXXX.py following the sibling pattern
 5. Register in device_registry.py
-6. Update README.md, device_support/README.md, CHANGELOG.md
-7. Run lint/type/format checks
-8. Commit and push; open a PR that references the issue and credits the reporter
+6. Check sensor coverage against the analysis and close the remaining gaps
+7. Commit the redacted analysis under docs/evidence/devcodes/
+8. Update README.md, device_support/README.md, CHANGELOG.md
+9. Run lint/type/format checks
+10. Commit and push; open a PR that references the issue and credits the reporter
 ```
 
 ## 1. Produce the analysis (contributor side)
@@ -208,20 +210,33 @@ Only list modes that are either (a) observed in the analysis, or (b) documented 
 
 ### 4.4 `SENSOR_TITLE_MAPPINGS`
 
-The sensor-resolution pipeline in `sensor.py` already tries:
+The shared resolver in `sensor_titles.py`, used by both the cloud and local
+paths, already tries each candidate title in turn:
 
 1. Exact match against `SENSOR_TYPES` keys
-2. Case-insensitive, whitespace-stripped match against `SENSOR_TYPES` keys
-3. Case-insensitive, whitespace-stripped match against each entry's friendly `name`
+2. Normalised match against `SENSOR_TYPES` keys
+3. Normalised match against each entry's friendly `name`
 
-Only add a mapping when a raw API title would fail all three. Common cases:
+Normalising trims the title, collapses internal runs of whitespace, and ignores
+case, so `"Grid  Power"` and `"grid power"` both reach `"Grid Power"` without a
+mapping. Only add a mapping when a raw API title would fail all three. Common
+cases:
 
 - **Verbose names**: `"Daily PV energy generation"` → `"Energy Today"`
-- **Double spaces / typos that break the normaliser**: `"DCDC  module Termperature"` → `"DC Module Temperature"`
+- **Vendor typos**: `"DCDC  module Termperature"` → `"DC Module Temperature"`, `"Total Output Aparent Power"` → `"Output Apparent Power"`
+- **Different wording for the same reading**: `"Total Output Active Power"` → `"Output Active Power"`
 - **Exposing hidden sensors**: `"Battery SOC"` → `"State of Charge"`, `"Battery Capacity"` → `"State of Charge"`
 - **Duplicate-title dedup for the summary endpoint**: map alternate names (`"energyToday"`, `"Today generation"`) to the same canonical key so the coordinator's dedup logic skips them.
 
-A title that already resolves automatically (e.g. `"PV temperature"` → `"PV Temperature"` via the normaliser) does NOT need a mapping. Keep the dict minimal.
+A title that already resolves automatically (e.g. `"PV temperature"` →
+`"PV Temperature"` via the friendly name) does NOT need a mapping. Keep the dict
+minimal, and let `tools/analysis_coverage.py` tell you which titles still fail.
+
+If a reading has no canonical key at all, add one to `SENSOR_TYPES` in
+`const.py` rather than mapping it onto an unrelated sensor. Split-phase
+collectors, for example, report `Output L1 Active Power` and
+`Output L2 Active Power` next to the summed `Total Output Active Power`; mapping
+both legs onto one key would silently drop the second.
 
 ### 4.5 `VALUE_TRANSFORMATIONS`
 
@@ -293,22 +308,75 @@ _register_devcode(XXXX, config_XXXX)
 
 Match the surrounding style (blank line between each import/register pair).
 
-## 6. Update documentation and changelog
+## 6. Check sensor coverage
+
+A devcode added for one reported symptom tends to leave the rest of the
+collector's telemetry unmapped, because nothing in review shows which titles the
+resolver still rejects. That is how devcode 6514 shipped with SOC support while
+grid power, output power and both output legs stayed invisible (#35, then #56).
+
+Run the coverage report against the analysis:
+
+```bash
+.venv/bin/python tools/analysis_coverage.py path/to/analysis_XXXX.json
+```
+
+It prints every raw title with the canonical key it resolves to, then the
+unresolved ones, marking those the collector labelled with a unit. A unit means
+the title is a reading and should become a sensor; unresolved titles without one
+are settings, identity fields and timestamps, which reach Home Assistant through
+the number, select and button platforms instead. Work through the marked titles
+until none remain, then re-run the report.
+
+## 7. Commit the analysis as evidence
+
+Save the reporter's redacted analysis to `docs/evidence/devcodes/analysis_XXXX.json`
+so the next report against the same devcode can be answered without asking for
+the data again. `tests/test_analysis_coverage.py` reads every analysis committed
+under `docs/evidence/` and fails when a reading that carries a unit no longer
+resolves, which keeps a later `const.py` or mapping edit from silently dropping
+one.
+
+Only commit a report produced with `--redacted`, and confirm `device_sn` and
+`collector_alias` are empty before adding it. If the reporter supplied an
+unredacted file, redact it first:
+
+```bash
+.venv/bin/python - <<'EOF'
+import json, sys
+sys.path.insert(0, "tools/cli")
+from evidence import redact_analysis
+
+with open("analysis_XXXX.json") as handle:
+    report = json.load(handle)
+report["analysis"] = redact_analysis(report["analysis"])
+with open("docs/evidence/devcodes/analysis_XXXX.json", "w") as handle:
+    json.dump(report, handle, indent=2)
+    handle.write("\n")
+EOF
+
+.venv/bin/python tools/cli/dessmonitor_cli.py verify docs/evidence/devcodes/analysis_XXXX.json
+```
+
+Redaction recomputes the checksum, so the committed file still verifies.
+
+## 8. Update documentation and changelog
 
 Three files to edit:
 
-1. `README.md` — add a bullet under `### Current Device Support`:
+1. `README.md` — add the inverter to the `**Known models:**` list under
+   `## Supported Inverters`, keeping it alphabetical.
+2. `custom_components/dessmonitor/device_support/README.md` — add a bullet under `## Currently Supported Collectors`:
    ```markdown
-   - **DevCode XXXX**: Known to pair with Brand Model X
+   - **devcode XXXX**: Known to pair with Brand Model X
    ```
-2. `custom_components/dessmonitor/device_support/README.md` — add the same bullet under `## Currently Supported Collectors`.
 3. `CHANGELOG.md` — add an entry under `## [Unreleased]` → `### Added`:
    ```markdown
    - Support for devcode XXXX (Brand Model X) with <one-line summary of mappings> (#NN, thanks to @contributor for the CLI analysis data).
    ```
    Create the `### Added` section if `[Unreleased]` does not already have one.
 
-## 7. Quality checks
+## 9. Quality checks
 
 ```bash
 python3 -m black custom_components/dessmonitor
@@ -341,7 +409,7 @@ print(reg.map_sensor_title(XXXX, 'Observed Title'))
 
 Replace `XXXX` and the sample inputs with the real devcode and a handful of observed values to confirm that mappings resolve as expected.
 
-## 8. Commit and push
+## 10. Commit and push
 
 Match the existing history (see `git log --oneline --grep=devcode`):
 
@@ -362,7 +430,7 @@ Commit style rules for this project (see `docs/COMMIT_GUIDE.md`):
 - Do NOT add AI attribution trailers.
 - Contributor credit lives in the CHANGELOG entry, not the commit body.
 
-## 9. Reference: canonical `SENSOR_TYPES`
+## 11. Reference: canonical `SENSOR_TYPES`
 
 When deciding what to map a title to, check `custom_components/dessmonitor/const.py` for the canonical key. A non-exhaustive list of keys most devcodes target:
 
@@ -377,20 +445,25 @@ INV Module Termperature, DC Module Termperature, AC radiator temperature,
 DC radiator temperature, Inverter Heat Sink Temperature,
 Load Percent, Operating mode, Output priority, Charger Source Priority,
 Energy Today, Energy Total, Energy Month, Energy Year,
-Second Output Frequency, Second Output Voltage
+Second Output Frequency, Second Output Voltage,
+Output L1 / L2 Active Power, Output L1 / L2 Apparent Power,
+Output L1 / L2 Voltage, Output L1 / L2 Current,
+Load L1 / L2 Percentage
 ```
 
 Note the two typo-preserved temperature keys (`Termperature`): sibling devcodes typically map raw API titles to the corrected form (`"DC Module Temperature"`) because the resolver falls back to the friendly `name` field. Either form works; follow the sibling you copied from.
 
-## 10. Checklist
+## 12. Checklist
 
 Before opening a PR:
 
 - [ ] `devcode_XXXX.py` created and registered
 - [ ] Only observed or documented values in mappings; no cross-devcode leakage
 - [ ] Operating mode targets are in `OPERATING_MODES` or explicitly added via the mapping
-- [ ] `SENSOR_TITLE_MAPPINGS` only contains titles that fail the built-in normaliser
+- [ ] `SENSOR_TITLE_MAPPINGS` only contains titles that fail the shared resolver
 - [ ] `PARAMETER_SENSOR_NAMES` set iff the reporter needs a sensor from the parameters endpoint
+- [ ] `tools/analysis_coverage.py` reports no unresolved title carrying a unit
+- [ ] Redacted analysis committed under `docs/evidence/devcodes/` and `verify` passes
 - [ ] Root `README.md`, `device_support/README.md`, `CHANGELOG.md` all updated
 - [ ] `black` / `isort` / `flake8` / `mypy` clean
 - [ ] Commit subject follows `feat: add devcode XXXX support (#NN)` style
