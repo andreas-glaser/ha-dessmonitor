@@ -23,6 +23,33 @@ error in the log describes whether the collector answered rather than saying no
 protocol was identified.
 
 ### Fixed
+- Device diagnostics no longer invent a battery voltage for a control the API
+  did not report. A missing value was filled in with a fixed estimate from a
+  48 V system, such as `58.4 V (Est.)`, which is wrong on the 24 V hardware now
+  confirmed for devcode 6514 and indistinguishable from a real reading in a
+  diagnostics file. Such a field now reports `Not Set` (#56).
+- An inverter that stops answering no longer costs the collector connection.
+  The collector's own heartbeat now decides whether a reconnect is needed: if
+  it still answers for itself, the session is kept and polling is retried over
+  it for up to three minutes, so a tunnel silence of tens of seconds no longer
+  drops hybrid mode to cloud data for a full UDP callback, reconnection and
+  rediscovery. A collector that stops answering its own heartbeat, or a silence
+  that outlives the retry window, still reconnects for a fresh discovery
+  (#53, #55).
+- Closing the local connection from this side is no longer reported as a
+  transport failure. Three failed poll rounds logged `Local collector
+  connection closed: 0 bytes read on a total of 8 expected bytes`, which is the
+  end-of-stream error our own hang-up produces, and it sent reporters looking
+  at their network for a fault that was in the inverter tunnel. A connection
+  the collector closes is now named as such, with how long the session lasted
+  (#53, thanks to @DastardlyBaker for the logs).
+- A second connection from the configured collector is no longer rejected
+  outright. The held session is asked to prove itself first: one that still
+  answers is kept and the newcomer is refused as before, and one that no longer
+  answers is closed so the collector's next callback gets through. A collector
+  only reconnects once it has abandoned the previous session, which a half-open
+  socket never reveals on this side, so a stale session could otherwise block
+  reconnection until the heartbeat watchdog expired.
 - Local discovery no longer reports a collector that stopped answering as an
   unsupported protocol. A probe in which nothing was received now says the
   collector did not answer, and a driver that only timed out is no longer

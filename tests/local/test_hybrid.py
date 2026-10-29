@@ -389,3 +389,49 @@ def test_hybrid_coordinator_is_attached_to_config_entry(
         config_entry=entry,
     )
     assert coordinator.config_entry is entry
+
+
+async def test_a_local_failure_with_no_cloud_snapshot_stays_a_failure(
+    hass: HomeAssistant,
+) -> None:
+    """An empty push must not clear a cloud failure and claim success.
+
+    A local failure notifies the same listener a local reading does. Before a
+    first cloud snapshot exists there is nothing to merge, and publishing that
+    as a successful update hid an outage of both transports.
+    """
+    coordinator = _hybrid_coordinator(hass)
+    coordinator._initial_refresh_completed = True
+    coordinator.last_update_success = False
+    coordinator.last_exception = UpdateFailed("cloud unavailable")
+    try:
+        coordinator.local.async_set_update_error(UpdateFailed("local unavailable"))
+        await asyncio.sleep(0.15)
+
+        assert coordinator.last_update_success is False
+        assert isinstance(coordinator.last_exception, UpdateFailed)
+        assert not coordinator.data
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_a_local_failure_still_publishes_the_cloud_snapshot(
+    hass: HomeAssistant,
+) -> None:
+    """The guard above must not suppress a push that still carries devices."""
+    coordinator = _hybrid_coordinator(hass)
+    coordinator._initial_refresh_completed = True
+    coordinator._cached_cloud_data = _cloud_payload()
+    coordinator.last_update_success = False
+    try:
+        coordinator.local.async_set_update_error(UpdateFailed("local unavailable"))
+        await asyncio.sleep(0.15)
+
+        assert coordinator.last_update_success is True
+        points = {
+            point["title"]: point["val"]
+            for point in coordinator.data["CLOUD-SERIAL"]["data"]
+        }
+        assert points["Data Source"] == "Cloud"
+    finally:
+        await coordinator.async_shutdown()
