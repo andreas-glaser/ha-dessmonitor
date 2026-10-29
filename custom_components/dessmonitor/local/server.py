@@ -169,8 +169,11 @@ class CollectorConnection:
     peer_ip: str
     connection_id: str = field(default_factory=lambda: uuid4().hex[:12])
     product_number: str = ""
+    started: float = field(default_factory=time.monotonic)
     last_heartbeat: float = field(default_factory=time.monotonic)
+    heartbeat_waiters: list[asyncio.Future[None]] = field(default_factory=list)
     ready_notified: bool = False
+    closed_locally: bool = False
     pending: dict[int, PendingRequest] = field(default_factory=dict)
 
 
@@ -209,6 +212,7 @@ class CollectorServer:
         self._connection_tasks: set[asyncio.Task[None]] = set()
         self._callback_tasks: set[asyncio.Task[None]] = set()
         self._send_lock = asyncio.Lock()
+        self._replace_lock = asyncio.Lock()
         self._transaction_id = 0
         self._stopping = False
 
@@ -314,6 +318,39 @@ class CollectorServer:
         if connection is not None:
             await self._close_connection(connection, notify=not self._stopping)
 
+    async def async_probe_liveness(self, timeout: float | None = None) -> bool:
+        """Return whether the collector itself still answers on this connection.
+
+        A silent inverter tunnel and a half-open TCP session both surface as
+        request timeouts, and treating the two alike costs a reconnect the
+        collector never needed. Its own heartbeat separates them: the collector
+        answers that without involving the inverter.
+        """
+        connection = self._connection
+        if connection is None or not connection.ready_notified:
+            return False
+        # A collector blocked forwarding to its inverter can be slower to
+        # answer for itself than an ordinary request, and a false "dead"
+        # verdict costs the reconnect this probe exists to avoid, so it is
+        # given twice the time one request gets.
+        deadline = self.request_timeout * 2 if timeout is None else timeout
+        frame = build_heartbeat_request(
+            self._next_transaction_id(), max(1, round(self.heartbeat_interval))
+        )
+        answered: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        connection.heartbeat_waiters.append(answered)
+        try:
+            connection.writer.write(frame)
+            await connection.writer.drain()
+            async with asyncio.timeout(deadline):
+                await answered
+        except (ConnectionError, OSError, TimeoutError):
+            return False
+        finally:
+            with contextlib.suppress(ValueError):
+                connection.heartbeat_waiters.remove(answered)
+        return self._connection is connection
+
     def _next_transaction_id(self) -> int:
         """Return a non-zero, wrapping 16-bit transaction identifier."""
         self._transaction_id = self._transaction_id % 0xFFFF + 1
@@ -336,9 +373,31 @@ class CollectorServer:
             )
             await self._close_writer(writer)
             return
-        if self._connection is not None:
-            _LOGGER.warning("Rejected duplicate local collector connection")
+        existing = self._connection
+        if existing is not None:
+            # A second connection usually means the collector abandoned the
+            # first, which a half-open socket never reveals on this side. Ask
+            # the held session to prove itself before dropping it, so a healthy
+            # one is never traded for an unidentified newcomer. One probe at a
+            # time: repeated connection attempts must not each cost a frame.
             await self._close_writer(writer)
+            async with self._replace_lock:
+                if self._connection is not existing:
+                    return
+                if await self.async_probe_liveness():
+                    _LOGGER.warning(
+                        "Rejected a second local collector connection; the session "
+                        "opened %.0f seconds ago still answers",
+                        time.monotonic() - existing.started,
+                    )
+                    return
+                _LOGGER.warning(
+                    "The configured local collector opened a second connection and "
+                    "the session held for %.0f seconds no longer answers; closing it "
+                    "so the collector can call back",
+                    time.monotonic() - existing.started,
+                )
+                await self._close_connection(existing, notify=not self._stopping)
             return
 
         connection = CollectorConnection(
@@ -366,10 +425,31 @@ class CollectorServer:
         except asyncio.CancelledError:
             raise
         except (ConnectionError, ProtocolError, asyncio.IncompleteReadError) as err:
+            lifetime = time.monotonic() - connection.started
             if self._stopping:
                 _LOGGER.debug("Local collector connection closed during shutdown")
+            elif connection.closed_locally:
+                # Closing the socket here raises the same end-of-stream error a
+                # collector would. Reporting our own hang-up as a transport
+                # failure sent reporters looking at their network (#53).
+                _LOGGER.debug(
+                    "Local collector connection closed from this side after "
+                    "%.0f seconds: %s",
+                    lifetime,
+                    err,
+                )
+            elif isinstance(err, asyncio.IncompleteReadError):
+                _LOGGER.warning(
+                    "The local collector closed its connection after %.0f seconds; "
+                    "waiting for it to call back",
+                    lifetime,
+                )
             else:
-                _LOGGER.warning("Local collector connection closed: %s", err)
+                _LOGGER.warning(
+                    "Local collector connection closed after %.0f seconds: %s",
+                    lifetime,
+                    err,
+                )
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected local collector transport error")
         finally:
@@ -409,6 +489,9 @@ class CollectorServer:
             raise ProtocolError("collector product number does not match configuration")
 
         connection.last_heartbeat = time.monotonic()
+        for waiter in connection.heartbeat_waiters:
+            if not waiter.done():
+                waiter.set_result(None)
         connection.product_number = product_number
         if connection.ready_notified:
             return
@@ -522,10 +605,15 @@ class CollectorServer:
         was_active = self._connection is connection
         if was_active:
             self._connection = None
+        connection.closed_locally = True
         for pending in tuple(connection.pending.values()):
             if not pending.future.done():
                 pending.future.set_exception(ConnectionError("collector disconnected"))
         connection.pending.clear()
+        for waiter in tuple(connection.heartbeat_waiters):
+            if not waiter.done():
+                waiter.set_exception(ConnectionError("collector disconnected"))
+        connection.heartbeat_waiters.clear()
         await self._close_writer(connection.writer)
         if (
             notify
