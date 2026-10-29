@@ -58,3 +58,23 @@ async def test_unknown_device_is_reported_not_raised(hass: HomeAssistant) -> Non
     )
 
     assert report == {"error": "Device not found"}
+
+
+def test_an_unread_voltage_control_is_not_invented() -> None:
+    """Diagnostics report what was read, never a guess from a 48 V system.
+
+    A voltage control with no reading used to be filled in with a fixed
+    estimate such as "58.4 V (Est.)". On the 24 V hardware confirmed for
+    devcode 6514 (#56) that number is simply wrong, and a maintainer reading
+    the diagnostics file cannot tell an estimate from a measurement.
+    """
+    from custom_components.dessmonitor import _format_numeric_field
+
+    field = _format_numeric_field(
+        "Bulk Charging Voltage",
+        {"id": "bse_eybond_read_1"},
+        [{"title": "Battery Voltage", "val": "27.4", "unit": "V"}],
+    )
+
+    assert field["value"] == "Not Set"
+    assert field["unit"] == "V"

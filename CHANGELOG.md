@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the central brands repository (thanks to @frenck).
 
 ### Fixed
+- Device diagnostics no longer invent a battery voltage for a control the API
+  did not report. A missing value was filled in with a fixed estimate from a
+  48 V system, such as `58.4 V (Est.)`, which is wrong on the 24 V hardware now
+  confirmed for devcode 6514 and indistinguishable from a real reading in a
+  diagnostics file. Such a field now reports `Not Set` (#56).
 - An inverter that stops answering no longer costs the collector connection.
   The collector's own heartbeat now decides whether a reconnect is needed: if
   it still answers for itself, the session is kept and polling is retried over

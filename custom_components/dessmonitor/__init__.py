@@ -1003,19 +1003,6 @@ PRIORITY_MAPPINGS = {
         "PV ONLY": 3,
     },
 }
-VOLTAGE_FALLBACKS = {
-    "High DC": "58.4 V (Est.)",
-    "Low DC": "44.0 V (Est.)",
-    "Bulk": "57.6 V (Est.)",
-    "Floating": "56.4 V (Est.)",
-}
-VOLTAGE_FIELD_NAMES = {
-    "High DC Protection Voltage",
-    "Bulk Charging Voltage",
-    "Floating Charging Voltage",
-    "Low DC Protection Voltage In Mains Mode",
-    "Low DC Protection Voltage In Off-Grid Mode",
-}
 
 
 def _categorize_device_data(
@@ -1128,11 +1115,8 @@ def _format_numeric_field(
     field_data: dict[str, Any],
     device_data: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Format numeric control fields with sensible fallbacks."""
+    """Format numeric control fields, reporting only what was read."""
     current_value = _extract_sensor_value(device_data, field_name, default="Not Set")
-
-    if field_name in VOLTAGE_FIELD_NAMES and current_value == "Not Set":
-        current_value = _estimate_voltage_value(field_name)
 
     unit = ""
     if "Voltage" in field_name:
@@ -1205,14 +1189,6 @@ def _extract_sensor_value(
         if data_point.get("title") == field_name:
             return data_point.get("val")
     return default
-
-
-def _estimate_voltage_value(field_name: str) -> str:
-    """Return voltage fallback based on field name heuristics."""
-    for key, value in VOLTAGE_FALLBACKS.items():
-        if key in field_name:
-            return value
-    return "Not Set"
 
 
 def _build_diagnostics_summary(
