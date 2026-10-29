@@ -9,6 +9,7 @@ DEVICE_INFO = {
     "known_inverters": [
         "ANENJI 5KW 48V Hybrid Solar Inverter",
         "Aninerel 6.2KW 48V",
+        "Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module)",
     ],
     "supported_features": [
         "real_time_monitoring",
