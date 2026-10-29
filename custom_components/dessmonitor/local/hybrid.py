@@ -182,13 +182,20 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         if self._shutdown:
             return
         local_data = self._current_local_data()
-        self.data = merge_cloud_and_local(
+        merged = merge_cloud_and_local(
             self._cached_cloud_data,
             local_data,
             local_available=bool(local_data),
             cloud_source="Cached Cloud" if self._cloud_stale else "Cloud",
             stale_serials=self.stale_cloud_serials,
         )
+        if not merged:
+            # A local failure also notifies this listener. With no cloud
+            # snapshot to fall back on, publishing an empty one as a success
+            # would clear the cloud failure and claim a working coordinator
+            # while neither transport has ever delivered a device.
+            return
+        self.data = merged
         self.last_exception = None
         self.last_update_success = True
         # DataUpdateCoordinator.async_set_updated_data() resets its refresh

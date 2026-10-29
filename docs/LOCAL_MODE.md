@@ -270,6 +270,18 @@ then start it again; the configured integration reconnects automatically.
   changing the device code without this evidence may not help.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
+- **Telemetry keeps switching between local and cloud:** read the log lines
+  around each switch. `Local inverter stopped answering status requests, while
+  the collector itself still answers` means the collector is connected and the
+  inverter behind it went quiet; polling is retried over the same connection
+  for up to three minutes, and `Local inverter resumed answering` closes the
+  window. `The local collector closed its connection` means the collector
+  itself dropped the session and the integration is waiting for its next
+  callback. The two have different causes: the first points at the link between
+  collector and inverter, the second at the collector or the network. If the
+  first one dominates, raising the local polling interval is worth trying,
+  since the collector shares one serial link between its own cloud uploads and
+  these queries.
 
 Debug logging:
 

@@ -19,6 +19,7 @@ from custom_components.dessmonitor.local.protocol import (
     encode_header,
 )
 from custom_components.dessmonitor.local.server import (
+    CollectorDisconnectCallback,
     CollectorIdentity,
     CollectorServer,
 )
@@ -378,3 +379,120 @@ async def test_servers_share_listener_and_keep_exact_peer_ownership() -> None:
         await second_writer.wait_closed()
         await first.stop()
         await second.stop()
+
+
+class _SimulatedCollectorSide:
+    """The collector's end of one session, able to fall silent on command."""
+
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        self.reader = reader
+        self.writer = writer
+        self.answering = True
+        self.task = asyncio.create_task(self._run())
+
+    async def _run(self) -> None:
+        while True:
+            header, _payload = await _read_frame(self.reader)
+            if not self.answering:
+                continue
+            product_number = b"PN123456789012"
+            self.writer.write(
+                encode_header(
+                    header.transaction_id,
+                    2452,
+                    HEADER_SIZE + len(product_number),
+                    1,
+                    FC_HEARTBEAT,
+                )
+                + product_number
+            )
+            await self.writer.drain()
+
+    async def close(self) -> None:
+        self.task.cancel()
+        await asyncio.gather(self.task, return_exceptions=True)
+        self.writer.close()
+
+
+async def _connected_server(
+    on_disconnect: CollectorDisconnectCallback | None = None,
+) -> tuple[CollectorServer, _SimulatedCollectorSide]:
+    """Return a server with one identified collector session."""
+    ready = asyncio.Event()
+
+    async def on_ready(_identity: CollectorIdentity) -> None:
+        ready.set()
+
+    server = CollectorServer(
+        "127.0.0.1",
+        0,
+        "127.0.0.1",
+        heartbeat_interval=30,
+        request_timeout=0.2,
+        on_ready=on_ready,
+        on_disconnect=on_disconnect,
+    )
+    await server.start()
+    reader, writer = await asyncio.open_connection("127.0.0.1", server.listening_port)
+    collector = _SimulatedCollectorSide(reader, writer)
+    await asyncio.wait_for(ready.wait(), 1)
+    return server, collector
+
+
+async def test_liveness_probe_separates_a_quiet_inverter_from_a_dead_session() -> None:
+    """The collector's own heartbeat decides whether a reconnect is needed."""
+    server, collector = await _connected_server()
+    try:
+        assert await server.async_probe_liveness(timeout=1) is True
+
+        collector.answering = False
+        assert await server.async_probe_liveness(timeout=0.2) is False
+    finally:
+        await collector.close()
+        await server.stop()
+
+
+async def test_a_second_connection_never_displaces_an_answering_session() -> None:
+    """An unidentified newcomer must not cost a session that still answers."""
+    disconnected = asyncio.Event()
+
+    async def on_disconnect() -> None:
+        disconnected.set()
+
+    server, collector = await _connected_server(on_disconnect)
+    try:
+        _reader2, writer2 = await asyncio.open_connection(
+            "127.0.0.1", server.listening_port
+        )
+        await asyncio.sleep(0.2)
+        assert server.connected is True
+        assert disconnected.is_set() is False
+        writer2.close()
+    finally:
+        await collector.close()
+        await server.stop()
+
+
+async def test_a_second_connection_closes_a_session_that_stopped_answering() -> None:
+    """A collector only calls back once it has abandoned its previous session."""
+    disconnected = asyncio.Event()
+
+    async def on_disconnect() -> None:
+        disconnected.set()
+
+    server, collector = await _connected_server(on_disconnect)
+    try:
+        # A half-open socket: this side still holds a session the collector
+        # has already given up on.
+        collector.answering = False
+
+        _reader2, writer2 = await asyncio.open_connection(
+            "127.0.0.1", server.listening_port
+        )
+        await asyncio.wait_for(disconnected.wait(), 5)
+        assert server.connected is False
+        assert await collector.reader.read() == b""
+        writer2.close()
+    finally:
+        await collector.close()
+        await server.stop()
