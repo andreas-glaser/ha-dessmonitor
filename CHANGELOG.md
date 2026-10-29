@@ -7,27 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.6.0-rc.4] - 2026-10-28
+## [2.6.0-rc.5] - 2026-10-30
 
-Fourth release candidate for 2.6.0, including all changes from
+Fifth release candidate for 2.6.0, including all changes from
 [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1),
-[RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.2)
-and [RC3](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.3).
-See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.4/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+[RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.2),
+[RC3](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.3)
+and [RC4](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.4).
+See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.5/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
 
-**Testing focus:** this candidate only changes Local and Hybrid mode discovery,
-so everything RC3 asked you to check still applies. If your collector drops its
-connection and your inverter keeps switching between local and cloud data,
-please confirm it now returns to local telemetry faster, and that any discovery
-error in the log describes whether the collector answered rather than saying no
-protocol was identified.
+**Testing focus:** this candidate changes what Local and Hybrid mode do when an
+inverter stops answering, so everything RC4 asked you to check still applies. If
+your telemetry keeps switching between local and cloud, please confirm whether
+those switches are shorter or gone, and which message the log now shows.
+`Local inverter stopped answering status requests, while the collector itself
+still answers` means the collector is connected and the inverter behind it went
+quiet; `The local collector closed its connection after N seconds` means the
+collector dropped the session. The two have different causes, and RC4 and
+earlier reported both as the second. `Local collector connection closed: 0 bytes
+read on a total of 8 expected bytes` should no longer appear at all.
 
 ### Fixed
-- Device diagnostics no longer invent a battery voltage for a control the API
-  did not report. A missing value was filled in with a fixed estimate from a
-  48 V system, such as `58.4 V (Est.)`, which is wrong on the 24 V hardware now
-  confirmed for devcode 6514 and indistinguishable from a real reading in a
-  diagnostics file. Such a field now reports `Not Set` (#56).
 - An inverter that stops answering no longer costs the collector connection.
   The collector's own heartbeat now decides whether a reconnect is needed: if
   it still answers for itself, the session is kept and polling is retried over
@@ -50,6 +50,28 @@ protocol was identified.
   only reconnects once it has abandoned the previous session, which a half-open
   socket never reveals on this side, so a stale session could otherwise block
   reconnection until the heartbeat watchdog expired.
+- Device diagnostics no longer invent a battery voltage for a control the API
+  did not report. A missing value was filled in with a fixed estimate from a
+  48 V system, such as `58.4 V (Est.)`, which is wrong on the 24 V hardware now
+  confirmed for devcode 6514 and indistinguishable from a real reading in a
+  diagnostics file. Such a field now reports `Not Set` (#56).
+
+## [2.6.0-rc.4] - 2026-10-28
+
+Fourth release candidate for 2.6.0, including all changes from
+[RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1),
+[RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.2)
+and [RC3](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.3).
+See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.4/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate only changes Local and Hybrid mode discovery,
+so everything RC3 asked you to check still applies. If your collector drops its
+connection and your inverter keeps switching between local and cloud data,
+please confirm it now returns to local telemetry faster, and that any discovery
+error in the log describes whether the collector answered rather than saying no
+protocol was identified.
+
+### Fixed
 - Local discovery no longer reports a collector that stopped answering as an
   unsupported protocol. A probe in which nothing was received now says the
   collector did not answer, and a driver that only timed out is no longer
