@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Devcode 6514 labels the `CSO` charger source priority as `Solar First`.
+  2.6.0 left it showing the raw code, because no evidence named it and a wrong
+  charge-source label is worse than an unlabelled one; the reporter's inverter
+  manual settles it as solar-priority charging with utility only when solar is
+  unavailable (#56, thanks to @olegvsh for the manual).
+
 ## [2.6.0] - 2026-10-31
 
 This stable release includes all changes since 2.5.0, including everything

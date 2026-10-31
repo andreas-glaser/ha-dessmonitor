@@ -35,6 +35,10 @@ OUTPUT_PRIORITY_MAPPING: dict[str, str] = {
 CHARGER_PRIORITY_MAPPING: dict[str, str] = {
     "SNU": "Solar and Utility",
     "OSO": "Only Solar",
+    # The vendor manual for the Aninerel 4.2KW 24V names CSO solar-first
+    # charging: solar charges as priority and utility only steps in when solar
+    # is unavailable (#56).
+    "CSO": "Solar First",
 }
 
 OPERATING_MODE_MAPPING: dict[str, str] = {
