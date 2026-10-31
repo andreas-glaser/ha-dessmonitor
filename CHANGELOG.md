@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   factor, an external meter reading, inverter status, grid reconnect waiting
   time and operating time (#58, thanks to @shanidks for both CLI analyses).
   Both redacted analyses are committed under `docs/evidence/devcodes/`.
+- Dual-MPPT PV readings over local PI30 for Axpert MAX inverters, through the
+  read-only `QPIGS2` inquiry: PV2 current, voltage and charging power, the
+  per-string powers under the existing `PV1 Charger Power` and
+  `PV2 Charger Power` names, and their sum as Total PV Power. The inquiry is
+  optional and bounded: an explicit refusal disables it for that inverter, and
+  silence backs off to one probe every twelfth cycle. A failed round withdraws
+  the per-string powers instead of leaving a stale local sum, so hybrid mode
+  falls back to the cloud values. Confirmed on an Axpert MAX 7200 reporting
+  1088 W and 1881 W across its two strings (#59, thanks to @gander88 for the
+  implementation and the hardware evidence).
 - Devcode 6515 lists the Maxsky EM11000 11kW 48V, reported with an Eybond WiFi
   datalogger on firmware 3.6.6.6, beside the ANENJI ANJ-HHS-11KW-48V-WIFI it
   was added for (#57, thanks to @ballhtml for the model and collector details).

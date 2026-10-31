@@ -103,12 +103,19 @@ def test_axpert_max_pv2_reply_decodes_with_trailing_space() -> None:
     }
 
 
-@pytest.mark.parametrize(
-    "payload", [b"(06.6 283.1", b"(06.6 283.1 -1", b"(06.6 283.1 01881 0"]
-)
+@pytest.mark.parametrize("payload", [b"(06.6 283.1", b"(06.6 283.1 -1", b"(06.6"])
 def test_invalid_pv2_reply_is_not_published(payload) -> None:
     with pytest.raises(ProtocolError):
         parse_pi30_response("QPIGS2", wire(payload))
+
+
+def test_vendor_fields_after_the_pv2_block_are_ignored() -> None:
+    """A firmware that appends its own fields still reports PV2 (#50)."""
+    assert parse_pi30_response("QPIGS2", wire(b"(06.6 283.1 01881 0 00")) == {
+        "PV2 Charger Current": 6.6,
+        "PV2 Voltage": 283.1,
+        "PV2 Charger Power": 1881.0,
+    }
 
 
 @pytest.mark.parametrize("data", ["PI18", "PI41", "PI30 ", "ACK", "NAK"])
