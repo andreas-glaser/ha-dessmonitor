@@ -1,6 +1,6 @@
 {
   "domain": "dessmonitor",
-  "name": "DessMonitor",
+  "name": "DessMonitor / ShineMonitor (Local & Cloud)",
   "after_dependencies": [
     "http"
   ],

@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   README records that both platforms are Eybond products: `dessmonitor.com` is
   their SmartESS platform and `shinemonitor.com` their SmartClient platform.
   Entity names, entity ids and the integration domain are unchanged.
+- The HACS listing and the integration are named `DessMonitor / ShineMonitor
+  (Local & Cloud)`, and the README leads with local monitoring. Local mode has
+  been here since 2.3.0 and was invisible to anyone searching HACS or GitHub
+  for a local option. The integration domain, entity ids and entity names are
+  unchanged; only the displayed title changes.
 - The README names the other portals Eybond runs, SmartLamp and SmartValue,
   and states plainly that setup reaches only DessMonitor and ShineMonitor, so
   an account held on another portal cannot be configured.
