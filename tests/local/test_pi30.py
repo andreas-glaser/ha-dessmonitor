@@ -288,6 +288,81 @@ async def test_pv2_timeout_clears_stale_local_power_for_cloud_fallback() -> None
         assert title not in device.values
 
 
+@pytest.mark.parametrize("failure", ["timeout", "malformed"])
+async def test_silent_or_invalid_pv2_uses_bounded_probe_cadence(failure) -> None:
+    """An unsupported optional inquiry cannot delay every status cycle forever."""
+    attempts = []
+    status_polls = []
+
+    async def send(payload, _code, _route):
+        command = payload[:-3].decode()
+        if command == "QPIGS":
+            status_polls.append(command)
+            return wire(b"(" + STATUS.encode())
+        if command == "QPIGS2":
+            attempts.append(cycle)
+            if failure == "timeout":
+                raise TimeoutError
+            return wire(b"(invalid")
+        return wire(b"(B")
+
+    device = _device()
+    driver = Pi30Driver()
+    for cycle in range(1, 26):
+        values = await driver.poll(send, device, cycle=cycle)
+        assert values["PV Charge Power"] == 180
+        assert "PV2 Charger Power" not in values
+        assert "outpower" not in values
+    assert len(status_polls) == 25
+    assert attempts == [1, 2, 3, 12, 24]
+    assert device.optional_query_failures["QPIGS2"] == 3
+    assert "QPIGS2" not in device.disabled_queries
+
+
+async def test_pv2_success_restores_every_cycle_polling_after_backoff() -> None:
+    """A recovered optional inquiry becomes live again without stale readings."""
+    attempts = []
+
+    async def send(payload, _code, _route):
+        command = payload[:-3].decode()
+        if command == "QPIGS2":
+            attempts.append(cycle)
+            if cycle < 12:
+                raise TimeoutError
+            return wire(b"(06.6 283.1 00320 ")
+        return wire(b"(" + (STATUS if command == "QPIGS" else "B").encode())
+
+    device = _device()
+    driver = Pi30Driver()
+    for cycle in range(1, 14):
+        values = await driver.poll(send, device, cycle=cycle)
+        if cycle < 12:
+            assert "outpower" not in values
+        else:
+            assert values["outpower"] == 0.5
+    assert attempts == [1, 2, 3, 12, 13]
+    assert "QPIGS2" not in device.optional_query_failures
+
+
+async def test_pv2_nak_still_disables_all_later_attempts() -> None:
+    """An explicit NAK remains permanent for this discovered device."""
+    attempts = []
+
+    async def send(payload, _code, _route):
+        command = payload[:-3].decode()
+        if command == "QPIGS2":
+            attempts.append(cycle)
+            return wire(b"(NAK")
+        return wire(b"(" + (STATUS if command == "QPIGS" else "B").encode())
+
+    device = _device()
+    driver = Pi30Driver()
+    for cycle in range(1, 26):
+        await driver.poll(send, device, cycle=cycle)
+    assert attempts == [1]
+    assert "QPIGS2" in device.disabled_queries
+
+
 @pytest.mark.parametrize("failure", ["invalid", "timeout", "cancelled"])
 async def test_primary_poll_failure_and_cancellation_are_not_hidden(failure) -> None:
     async def send(payload, _code, _route):

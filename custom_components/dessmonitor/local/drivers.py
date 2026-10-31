@@ -48,6 +48,7 @@ class LocalDevice:
     metadata: dict[str, Any] = field(default_factory=dict)
     values: dict[str, Any] = field(default_factory=dict)
     disabled_queries: set[str] = field(default_factory=set)
+    optional_query_failures: dict[str, int] = field(default_factory=dict)
     address_verified: bool = True
 
 
@@ -304,7 +305,14 @@ class Pi30Driver:
             "outpower",
         ):
             device.values.pop(title, None)
-        if "PV Charge Power" in values and "QPIGS2" not in device.disabled_queries:
+        qpigs2_failures = device.optional_query_failures.get("QPIGS2", 0)
+        # Silence is inconclusive: after three failed attempts, probe every
+        # twelfth cycle so a recovered inverter can regain live PV2 readings.
+        if (
+            "PV Charge Power" in values
+            and "QPIGS2" not in device.disabled_queries
+            and (qpigs2_failures < 3 or cycle % 12 == 0)
+        ):
             try:
                 pv2 = await query_pi30(
                     send,
@@ -316,8 +324,10 @@ class Pi30Driver:
             except CommandNotSupported:
                 device.disabled_queries.add("QPIGS2")
             except (TimeoutError, ProtocolError):
-                pass
+                device.optional_query_failures["QPIGS2"] = min(qpigs2_failures + 1, 3)
             else:
+                device.optional_query_failures.pop("QPIGS2", None)
+                # Keep the generic key for existing single-PV PI30 entities.
                 pv1_power = values["PV Charge Power"]
                 pv2_power = pv2["PV2 Charger Power"]
                 values.update(pv2)
