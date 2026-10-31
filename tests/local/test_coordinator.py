@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 from binascii import crc_hqx
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
@@ -19,7 +20,10 @@ from custom_components.dessmonitor.const import (
     CONF_LOCAL_TCP_PORT,
     CONF_LOCAL_UDP_PORT,
 )
-from custom_components.dessmonitor.local.coordinator import DessMonitorLocalCoordinator
+from custom_components.dessmonitor.local.coordinator import (
+    DessMonitorLocalCoordinator,
+    InverterSilent,
+)
 from custom_components.dessmonitor.local.drivers import LocalDevice, P17Driver
 from custom_components.dessmonitor.local.hybrid import merge_cloud_and_local
 from custom_components.dessmonitor.local.modbus import (
@@ -50,10 +54,16 @@ class SimulatedCollector:
         self.commands: list[str] = []
         self.writer: asyncio.StreamWriter | None = None
         self.task: asyncio.Task[None] | None = None
+        # A collector whose own TCP session stays healthy while the inverter
+        # behind it stops answering, and the reverse.
+        self.mute_inverter = False
+        self.mute_heartbeat = False
+        self.sessions = 0
 
     async def start(self) -> None:
         """Connect to the integration and begin responding."""
         reader, self.writer = await asyncio.open_connection("127.0.0.1", self.port)
+        self.sessions += 1
         self.task = asyncio.create_task(self._run(reader, self.writer))
 
     async def stop(self) -> None:
@@ -78,6 +88,8 @@ class SimulatedCollector:
             header = decode_header(await reader.readexactly(HEADER_SIZE))
             payload = await reader.readexactly(header.payload_length)
             if header.function_code == FC_HEARTBEAT:
+                if self.mute_heartbeat:
+                    continue
                 response = b"PN123456789012"
                 writer.write(
                     encode_header(
@@ -90,6 +102,8 @@ class SimulatedCollector:
                     + response
                 )
             elif header.function_code == FC_FORWARD_TO_DEVICE:
+                if self.mute_inverter:
+                    continue
                 if self.protocol_id == "30":
                     response = b""
                     if (
@@ -455,10 +469,15 @@ async def test_partial_inverter_outage_does_not_publish_stale_local_values(
         assert recovered["SECOND"]["device"]["sn"] == "SECOND"
 
 
-async def test_failed_poll_cycles_force_targeted_reconnect(
+async def test_failed_poll_cycles_report_a_silent_inverter(
     hass: HomeAssistant,
 ) -> None:
-    """A half-open inverter tunnel is closed after three failed poll cycles."""
+    """Three failed poll cycles report the inverter, not the connection.
+
+    Whether the collector is also gone is decided by its own heartbeat in
+    ``_handle_silent_tunnel``; this loop only observes that the inverter
+    stopped answering.
+    """
     coordinator = DessMonitorLocalCoordinator(
         hass,
         {
@@ -483,11 +502,10 @@ async def test_failed_poll_cycles_force_targeted_reconnect(
             coordinator, "_poll_once", new=AsyncMock(return_value=False)
         ) as poll_once,
     ):
-        with pytest.raises(ConnectionError, match="tunnel became unresponsive"):
+        with pytest.raises(InverterSilent, match="stopped answering status requests"):
             await coordinator._poll_loop()
 
     assert poll_once.await_count == 3
-    assert coordinator.last_update_success is False
 
 
 async def test_poll_loop_uses_configured_telemetry_interval(
@@ -532,3 +550,113 @@ async def test_poll_loop_uses_configured_telemetry_interval(
     assert coordinator._announcer.interval == 5.0
     assert poll_once.await_count == 2
     assert sleep.await_args_list == [call(29.0), call(29.0)]
+
+
+def _silent_tunnel_coordinator(hass: HomeAssistant) -> DessMonitorLocalCoordinator:
+    """Return a coordinator polling fast enough for a bounded test."""
+    coordinator = DessMonitorLocalCoordinator(
+        hass,
+        {
+            CONF_LOCAL_LISTEN_IP: "127.0.0.1",
+            CONF_LOCAL_COLLECTOR_IP: "127.0.0.1",
+            CONF_LOCAL_TCP_PORT: 0,
+            CONF_LOCAL_UDP_PORT: 9,
+            CONF_LOCAL_DEVICE_CODE: 0,
+            CONF_LOCAL_DEVICE_ADDRESS: 1,
+            CONF_LOCAL_POLL_INTERVAL: 1,
+        },
+    )
+    coordinator._poll_interval = 0.05
+    coordinator._server.request_timeout = 0.2
+    return coordinator
+
+
+async def test_silent_inverter_keeps_a_live_collector_connected(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An inverter that goes quiet must not cost the collector connection.
+
+    The collector answers its own heartbeat throughout, so the tunnel is the
+    only thing that stopped. Reconnecting for that leaves hybrid mode on cloud
+    data for a full callback and rediscovery (#53).
+    """
+    caplog.set_level(logging.WARNING, "custom_components.dessmonitor")
+    coordinator = _silent_tunnel_coordinator(hass)
+    await coordinator.async_setup()
+    collector = SimulatedCollector(coordinator._server.listening_port)
+    try:
+        await collector.start()
+        await _wait_until(lambda: bool(coordinator.data))
+
+        collector.mute_inverter = True
+        await _wait_until(lambda: not coordinator.last_update_success, timeout=10)
+        assert coordinator._server.connected
+        assert collector.sessions == 1
+
+        collector.mute_inverter = False
+        await _wait_until(lambda: coordinator.last_update_success, timeout=10)
+        assert collector.sessions == 1
+        assert coordinator.data["ABCD1234"]["data"]
+    finally:
+        await collector.stop()
+        await coordinator.async_shutdown()
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("while the collector itself still answers" in m for m in messages)
+    # Our own hang-up used to be reported as a transport failure, which is what
+    # sent the reporter of #53 looking at the network.
+    assert not any("connection closed" in m for m in messages)
+
+
+async def test_a_collector_that_stops_answering_is_reconnected(
+    hass: HomeAssistant,
+) -> None:
+    """A tunnel silence with no heartbeat is a dead session, so it is closed."""
+    coordinator = _silent_tunnel_coordinator(hass)
+    await coordinator.async_setup()
+    collector = SimulatedCollector(coordinator._server.listening_port)
+    try:
+        await collector.start()
+        await _wait_until(lambda: bool(coordinator.data))
+
+        collector.mute_inverter = True
+        collector.mute_heartbeat = True
+        await _wait_until(lambda: not coordinator._server.connected, timeout=10)
+        assert coordinator.last_update_success is False
+    finally:
+        await collector.stop()
+        await coordinator.async_shutdown()
+
+
+async def test_a_silence_outliving_its_grace_forces_a_fresh_discovery(
+    hass: HomeAssistant,
+) -> None:
+    """A silence the retries cannot outlast still ends in a reconnect.
+
+    The session that follows starts its own silence window, so a later
+    silence is measured against its own grace rather than this one.
+    """
+    coordinator = _silent_tunnel_coordinator(hass)
+    await coordinator.async_setup()
+    first = SimulatedCollector(coordinator._server.listening_port)
+    second = SimulatedCollector(coordinator._server.listening_port)
+    try:
+        await first.start()
+        await _wait_until(lambda: bool(coordinator.data))
+
+        first.mute_inverter = True
+        with patch(
+            "custom_components.dessmonitor.local.coordinator._SILENT_TUNNEL_GRACE",
+            0.3,
+        ):
+            await _wait_until(lambda: not coordinator._server.connected, timeout=10)
+        assert coordinator._silence_started is not None
+
+        await first.stop()
+        await second.start()
+        await _wait_until(lambda: coordinator.last_update_success, timeout=10)
+        assert coordinator._silence_started is None
+    finally:
+        await first.stop()
+        await second.stop()
+        await coordinator.async_shutdown()

@@ -6,7 +6,7 @@ DEVICE_INFO = {
     "name": "DessMonitor Data Collector (devcode 6544)",
     "description": "DessMonitor data collector/gateway for split-phase inverters",
     "manufacturer": "DessMonitor",
-    "known_inverters": ["ANENJI ANJ-HHS-11KW-48V"],
+    "known_inverters": ["ANENJI ANJ-HHS-11KW-48V", "ANENJI ANJ-11KW-48V-W-P"],
     "supported_features": [
         "real_time_monitoring",
         "energy_tracking",
@@ -36,6 +36,7 @@ OPERATING_MODE_MAPPING: dict[str, str] = {
     "Mains Mode": "Grid Mode",
     "Battery Mode": "Battery Mode",
     "Inverter Mode": "Off-grid Mode",
+    "OffgridMode": "Off-grid Mode",
     "Standby": "Standby",
     "Fault": "Fault",
 }

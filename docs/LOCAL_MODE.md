@@ -87,10 +87,35 @@ Cloud keeps its existing 5-minute default for metadata, controls, cloud-only
 fields, and fallback data. Local telemetry defaults to the recommended
 5 seconds. A local update never triggers an extra API refresh.
 
+In hybrid mode, settings still use the cloud. Their options and current values
+can finish loading after local telemetry starts. The integration uses settings
+already present in the normal cloud payload and retries missing control values
+at most once per successful cloud refresh, without retrying on every local push.
+Explicit value reads stop after three consecutive rounds recover nothing; a
+round with partial recovery resets that budget. Ordinary cloud telemetry can
+still fill values afterward. Reloading the integration starts a new budget.
+`unknown` means no usable current value has been read; it is not an inverter
+setting and is never written as a default. Previously known values are retained
+through read failures. Select/number attributes show `control_transport: cloud`
+and `value_status: not_loaded` or `last_known`. A known value or an enabled
+control does not guarantee that the next cloud write will succeed.
+Numeric controls reporting a non-numeric format (for example a time or date)
+show `value_status: unsupported_format`; retrying the connection cannot turn
+such a value into a numeric setting.
+
 The `Data Source` sensor shows `Local`, `Cloud`, or `Cached Cloud`. Hybrid only
 overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
 returns the same entities to API telemetry.
+
+Each device carries its own `Data Source`. When the cloud answers for some
+devices and times out for others, the ones that failed keep the readings of the
+last cycle that reached them and report `Cached Cloud`, while their neighbours
+report `Cloud`. In hybrid mode a healthy local route still makes such a device
+`Local`. A device the API stops listing is removed instead of retained, so this
+retention never keeps hardware alive that was taken off the account. Readings
+labelled `Cached Cloud` can be arbitrarily old; the device's `Timestamp` sensor
+shows when the cloud last answered for it.
 
 If one inverter's status poll fails while another on the same collector succeeds,
 only the responding inverter contributes to the new local snapshot. Hybrid uses
@@ -122,6 +147,14 @@ entries without the setting retain automatic discovery.
   energy totals and local controls are not implemented for PI30.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
+
+- Modbus protocol-number `4` (register `184`), verified with read-only samples
+  from an ANENJI ANJ-11KW-48V-W-P (cloud devcode `6544`). This layout uses
+  separate output, battery, grid, dual-PV and energy blocks; it must not use
+  the standard SMG `201..234` field positions. Detection selects the layout
+  per inverter address and retains it for subsequent polling. Local controls
+  are not provided. Sustained polling and reconnects still require hardware
+  verification after installing this change.
 
 PI18 uses its 28-field `GS` response for battery charging current and both PV
 inputs, including PV2 voltage. It does not poll P17-only `GMN` or `GS2` commands.
@@ -235,8 +268,24 @@ then start it again; the configured integration reconnects automatically.
   the payload's CRC and field layout.
   An unmatched reply remains rejected. A rejected reply is different from a timeout;
   changing the device code without this evidence may not help.
+  A collector that reconnects is probed with the driver that last worked for
+  it, and probing stops when that driver receives nothing at all, because
+  silence says nothing about which protocol a collector speaks. A collector
+  that answers is still probed in full, so new hardware is still identified.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
+- **Telemetry keeps switching between local and cloud:** read the log lines
+  around each switch. `Local inverter stopped answering status requests, while
+  the collector itself still answers` means the collector is connected and the
+  inverter behind it went quiet; polling is retried over the same connection
+  for up to three minutes, and `Local inverter resumed answering` closes the
+  window. `The local collector closed its connection` means the collector
+  itself dropped the session and the integration is waiting for its next
+  callback. The two have different causes: the first points at the link between
+  collector and inverter, the second at the collector or the network. If the
+  first one dominates, raising the local polling interval is worth trying,
+  since the collector shares one serial link between its own cloud uploads and
+  these queries.
 
 Debug logging:
 

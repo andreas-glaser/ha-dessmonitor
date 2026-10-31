@@ -13,15 +13,33 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import CHARGER_PRIORITIES, DOMAIN, OUTPUT_PRIORITIES
 from .device_support import map_charger_priority, map_output_priority
+from .sensor_titles import normalize_sensor_title
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_get_device_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry, device: DeviceEntry
+) -> dict[str, Any]:
+    """Expose the device diagnostics builder on the module Home Assistant loads.
+
+    Home Assistant reads these functions off the integration's ``diagnostics``
+    platform, so the implementation in ``__init__`` was never reachable and the
+    download button did nothing. The import is deferred to keep this module
+    free of an import cycle at load time.
+    """
+    from . import async_get_device_diagnostics as build_device_diagnostics
+
+    return await build_device_diagnostics(hass, entry, device)
+
 
 # Diagnostic sensors that get their data from the regular API (queryDeviceLastData)
 # These sensors show device configuration/status that's already included in the regular data feed
@@ -59,13 +77,13 @@ async def async_setup_entry(
         device_meta = device_info.get("device", {})
         collector_meta = device_info.get("collector", {})
         existing_titles = {
-            str(data_point.get("title")).strip().lower()
+            normalize_sensor_title(str(data_point.get("title")))
             for data_point in device_info.get("data", [])
             if data_point.get("title")
         }
 
         for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items():
-            if sensor_key.lower() in existing_titles:
+            if normalize_sensor_title(sensor_key) in existing_titles:
                 _LOGGER.debug(
                     "Skipping diagnostic sensor %s for device %s because primary sensor "
                     "exists",

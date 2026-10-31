@@ -211,6 +211,49 @@ async def test_local_data_arriving_during_cloud_timeout_is_used(
         await coordinator.async_shutdown()
 
 
+async def test_local_arriving_during_successful_cloud_refresh_is_used(hass):
+    coordinator = _hybrid_coordinator(hass)
+
+    async def cloud_result():
+        coordinator.local.async_set_updated_data(_local_payload())
+        return _cloud_payload()
+
+    try:
+        with patch.object(
+            DessMonitorDataUpdateCoordinator,
+            "_async_update_data",
+            AsyncMock(side_effect=cloud_result),
+        ):
+            result = await coordinator._async_update_data()
+        points = {p["title"]: p["val"] for p in result["CLOUD-SERIAL"]["data"]}
+        assert points["Data Source"] == "Local"
+        assert points["Output Active Power"] == 900
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_disconnect_during_successful_cloud_refresh_does_not_restore_local(hass):
+    coordinator = _hybrid_coordinator(hass)
+    coordinator.local.async_set_updated_data(_local_payload())
+
+    async def cloud_result():
+        coordinator.local.async_set_update_error(UpdateFailed("disconnected"))
+        return _cloud_payload()
+
+    try:
+        with patch.object(
+            DessMonitorDataUpdateCoordinator,
+            "_async_update_data",
+            AsyncMock(side_effect=cloud_result),
+        ):
+            result = await coordinator._async_update_data()
+        points = {p["title"]: p["val"] for p in result["CLOUD-SERIAL"]["data"]}
+        assert points["Data Source"] == "Cloud"
+        assert points["AC output active power"] == 700
+    finally:
+        await coordinator.async_shutdown()
+
+
 async def test_both_outages_keep_last_cloud_snapshot(hass: HomeAssistant) -> None:
     """A transient double outage preserves history with an explicit stale source."""
     coordinator = _hybrid_coordinator(hass)
@@ -346,3 +389,49 @@ def test_hybrid_coordinator_is_attached_to_config_entry(
         config_entry=entry,
     )
     assert coordinator.config_entry is entry
+
+
+async def test_a_local_failure_with_no_cloud_snapshot_stays_a_failure(
+    hass: HomeAssistant,
+) -> None:
+    """An empty push must not clear a cloud failure and claim success.
+
+    A local failure notifies the same listener a local reading does. Before a
+    first cloud snapshot exists there is nothing to merge, and publishing that
+    as a successful update hid an outage of both transports.
+    """
+    coordinator = _hybrid_coordinator(hass)
+    coordinator._initial_refresh_completed = True
+    coordinator.last_update_success = False
+    coordinator.last_exception = UpdateFailed("cloud unavailable")
+    try:
+        coordinator.local.async_set_update_error(UpdateFailed("local unavailable"))
+        await asyncio.sleep(0.15)
+
+        assert coordinator.last_update_success is False
+        assert isinstance(coordinator.last_exception, UpdateFailed)
+        assert not coordinator.data
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_a_local_failure_still_publishes_the_cloud_snapshot(
+    hass: HomeAssistant,
+) -> None:
+    """The guard above must not suppress a push that still carries devices."""
+    coordinator = _hybrid_coordinator(hass)
+    coordinator._initial_refresh_completed = True
+    coordinator._cached_cloud_data = _cloud_payload()
+    coordinator.last_update_success = False
+    try:
+        coordinator.local.async_set_update_error(UpdateFailed("local unavailable"))
+        await asyncio.sleep(0.15)
+
+        assert coordinator.last_update_success is True
+        points = {
+            point["title"]: point["val"]
+            for point in coordinator.data["CLOUD-SERIAL"]["data"]
+        }
+        assert points["Data Source"] == "Cloud"
+    finally:
+        await coordinator.async_shutdown()

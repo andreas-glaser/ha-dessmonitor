@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -11,6 +15,9 @@ jobs:
     steps:
       - name: "Checkout the repository"
         uses: "actions/checkout@v7"
+        with:
+          # Released changelog sections are compared against their own tags.
+          fetch-depth: 0
 
       - name: "Set up Python"
         uses: actions/setup-python@v7
@@ -39,7 +46,20 @@ jobs:
 
       - name: "Type checking with mypy"
         run: |
-          mypy custom_components/dessmonitor --ignore-missing-imports || echo "MyPy checks completed with warnings"
+          # Exit 1 is a type warning and stays non-blocking. Anything else
+          # means mypy did not run, which must not be reported as a pass.
+          mypy custom_components/dessmonitor --ignore-missing-imports; status=$?
+          if [ $status -gt 1 ]; then
+            echo "mypy did not run (exit $status)"
+            exit 1
+          fi
+
+      - name: "Check released changelog sections"
+        run: |
+          # Preparing a release leaves the published section where dev keeps
+          # appending, so a later merge can file new entries under a shipped
+          # tag without conflicting. Catch that before it reaches a release.
+          python tools/check_changelog.py
 
       - name: "Installation check"
         run: |

@@ -1,0 +1,346 @@
+{
+  "report_version": 1,
+  "safety": "read_only",
+  "status": "success",
+  "stage": "complete",
+  "collector": {
+    "product_number": "sha256:f5bbd1fcb62f",
+    "ip": "sha256:9081728b6a21",
+    "reported_device_code": 258
+  },
+  "probe": {
+    "configured_device_code": 0,
+    "device_address": 1,
+    "request_timeout_seconds": 3.0,
+    "probe_timeout_seconds": 120.0,
+    "max_address": 16
+  },
+  "inverters": [
+    {
+      "address": 1,
+      "address_verified": true,
+      "serial": "sha256:0a5c6c64f493",
+      "model": "SMG / Modbus protocol 4 (model 32771)",
+      "firmware": "",
+      "sensor_count": 35,
+      "sensors": {
+        "AC charging power": 3375,
+        "Battery Charging Current": 60.9,
+        "Battery Current": 60.9,
+        "Battery Discharge Current": 0,
+        "Battery Power": 3282,
+        "Battery Voltage": 53.9,
+        "DC Module Termperature": 40,
+        "Energy Today": 10.85,
+        "Energy Total": 341.04,
+        "Grid Frequency": 50.03,
+        "Grid Power": 4801,
+        "Grid Voltage": 230.5,
+        "INV Module Termperature": 55,
+        "Inverter Current": 15.2,
+        "Inverter Voltage": 229.7,
+        "Inverter frequency": 50.02,
+        "Load Percent": 11,
+        "Operating mode": "Grid Mode",
+        "Output Active Power": 1224,
+        "Output Apparent Power": 1359,
+        "Output Current": 5.9,
+        "Output Frequency": 50.03,
+        "Output Voltage": 230.4,
+        "PV Power": 0,
+        "PV Temperature": 36,
+        "PV Total Charger Power": 0,
+        "PV charging current": 0.0,
+        "PV1 Charger Current": 0.0,
+        "PV1 Charger Power": 0,
+        "PV1 Voltage": 150.2,
+        "PV2 Charger Current": 0.0,
+        "PV2 Charger Power": 0,
+        "PV2 Voltage": 95.1,
+        "SOC": 60,
+        "Second Output Voltage": 230.3
+      }
+    }
+  ],
+  "detected": {
+    "profile": "smg_modbus",
+    "tunnel_device_code": 1,
+    "collector_address": 255,
+    "inverter_count": 1
+  },
+  "diagnostics": {
+    "probe_id": "b8ca73977b52",
+    "attempts": [
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 7,
+        "elapsed_ms": 215,
+        "outcome": "success",
+        "details": {
+          "start_register": 184,
+          "register_count": 1
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 19,
+        "elapsed_ms": 186,
+        "outcome": "success",
+        "details": {
+          "start_register": 201,
+          "register_count": 7
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 15,
+        "elapsed_ms": 191,
+        "outcome": "success",
+        "details": {
+          "start_register": 227,
+          "register_count": 5
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 15,
+        "elapsed_ms": 165,
+        "outcome": "success",
+        "details": {
+          "start_register": 252,
+          "register_count": 5
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 15,
+        "elapsed_ms": 197,
+        "outcome": "success",
+        "details": {
+          "start_register": 277,
+          "register_count": 5
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 13,
+        "elapsed_ms": 313,
+        "outcome": "success",
+        "details": {
+          "start_register": 302,
+          "register_count": 4
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 37,
+        "elapsed_ms": 215,
+        "outcome": "success",
+        "details": {
+          "start_register": 338,
+          "register_count": 16
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 21,
+        "elapsed_ms": 2492,
+        "outcome": "success",
+        "details": {
+          "start_register": 384,
+          "register_count": 8
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 11,
+        "elapsed_ms": 182,
+        "outcome": "success",
+        "details": {
+          "start_register": 702,
+          "register_count": 3
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 29,
+        "elapsed_ms": 235,
+        "outcome": "success",
+        "details": {
+          "start_register": 186,
+          "register_count": 12
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 7,
+        "elapsed_ms": 145,
+        "outcome": "success",
+        "details": {
+          "start_register": 171,
+          "register_count": 1
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 19,
+        "elapsed_ms": 233,
+        "outcome": "success",
+        "details": {
+          "start_register": 201,
+          "register_count": 7
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 15,
+        "elapsed_ms": 187,
+        "outcome": "success",
+        "details": {
+          "start_register": 227,
+          "register_count": 5
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 15,
+        "elapsed_ms": 208,
+        "outcome": "success",
+        "details": {
+          "start_register": 252,
+          "register_count": 5
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 15,
+        "elapsed_ms": 229,
+        "outcome": "success",
+        "details": {
+          "start_register": 277,
+          "register_count": 5
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 13,
+        "elapsed_ms": 156,
+        "outcome": "success",
+        "details": {
+          "start_register": 302,
+          "register_count": 4
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 37,
+        "elapsed_ms": 261,
+        "outcome": "success",
+        "details": {
+          "start_register": 338,
+          "register_count": 16
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 21,
+        "elapsed_ms": 197,
+        "outcome": "success",
+        "details": {
+          "start_register": 384,
+          "register_count": 8
+        }
+      },
+      {
+        "protocol": "smg_modbus",
+        "command": "read_holding_registers",
+        "device_code": 1,
+        "collector_address": 255,
+        "device_address": 1,
+        "response_bytes": 11,
+        "elapsed_ms": 176,
+        "outcome": "success",
+        "details": {
+          "start_register": 702,
+          "register_count": 3
+        }
+      }
+    ],
+    "outcomes": {
+      "success": 19
+    },
+    "dropped_attempts": 0
+  }
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
@@ -30,6 +31,12 @@ from .const import (
     UNITS,
     resolve_api_profile,
 )
+from .control_values import (
+    cloud_control_snapshot,
+    control_value,
+    find_control_value,
+    setting_value,
+)
 from .data_sources import snapshot_with_data_source
 from .device_support import (
     get_parameter_sensor_names,
@@ -46,6 +53,11 @@ PLATFORMS: list[Platform] = [
     Platform.SELECT,
 ]
 LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+
+# Consecutive cloud revisions that may re-read a control value which never
+# resolves. Without a bound, a permanently unreadable field would cost one API
+# request every refresh for as long as the entry stays loaded.
+MAX_CONTROL_VALUE_RETRIES = 3
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -278,8 +290,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.ctrl_field_cache: dict[str, dict[str, Any]] = {}
         self.ctrl_value_cache: dict[str, dict[str, str]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
+        self._ctrl_field_attempts: dict[str, int] = {}
+        self._ctrl_value_attempts: dict[str, int] = {}
+        self._ctrl_value_retries: dict[str, int] = {}
+        self._ctrl_cloud_samples: dict[str, object] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
+        # Every serial whose payload in the current snapshot was fetched by an
+        # earlier cycle rather than this one, whether the refresh failed for
+        # that device alone or for the whole account. The hybrid overlay reads
+        # it so a retained device is never presented as live.
+        self.stale_cloud_serials: frozenset[str] = frozenset()
         self._allow_cached_fallback = allow_cached_fallback
         self._cached_cloud_data: dict[str, Any] = {}
         self._cloud_snapshot_store: Store[dict[str, Any]] | None = (
@@ -332,6 +353,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             "DessMonitor API refresh failed; retaining the cached cloud snapshot: %s",
             err,
         )
+        self.stale_cloud_serials = frozenset(self._cached_cloud_data)
         return snapshot_with_data_source(self._cached_cloud_data, "Cached Cloud")
 
     async def async_get_controls_with_values(
@@ -339,17 +361,20 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> tuple[dict[str, Any], dict[str, str]]:
         """Get control field definitions and their current values.
 
-        Returns (controls, current_values) where current_values maps
-        field_id -> current value string.  Both are cached so repeated
-        calls (select.py + number.py) don't re-fetch.  A per-device
-        lock prevents the duplicate fetch that would otherwise occur
-        when both platforms start concurrently.
+        Seed values from the ordinary cloud payload and retry only missing
+        values once per cloud revision, until three rounds recover nothing.
+        Ordinary telemetry can still recover values after that budget is spent.
+        Local pushes cannot trigger retries.
+        The per-device lock shares work between select/number/button loaders.
         """
         if sn not in self._ctrl_locks:
             self._ctrl_locks[sn] = asyncio.Lock()
 
         async with self._ctrl_locks[sn]:
-            if sn not in self.ctrl_field_cache:
+            if not self.ctrl_field_cache.get(sn):
+                if self._ctrl_field_attempts.get(sn) == self.cloud_revision:
+                    return {}, self.ctrl_value_cache.get(sn, {})
+                self._ctrl_field_attempts[sn] = self.cloud_revision
                 try:
                     controls = await self.api.get_device_control_fields(
                         pn, devcode, devaddr, sn
@@ -364,14 +389,79 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 self.ctrl_field_cache[sn] = controls
 
             controls = self.ctrl_field_cache[sn]
-
-            if sn not in self.ctrl_value_cache:
-                field_ids = [cfg["id"] for cfg in controls.values() if cfg.get("id")]
-                self.ctrl_value_cache[sn] = await self._fetch_all_control_values(
-                    pn, devcode, devaddr, sn, field_ids
+            values = self.ctrl_value_cache.setdefault(sn, {})
+            before = dict(values)
+            self._sync_control_values_from_cloud(sn)
+            by_id = {cfg["id"]: cfg for cfg in controls.values() if cfg.get("id")}
+            missing = [
+                cfg["id"]
+                for cfg in controls.values()
+                if cfg.get("id")
+                and setting_value(cfg, values.get(cfg["id"])) is None
+                and not (
+                    cfg.get("type") == "options" and len(cfg.get("options", {})) == 1
                 )
+            ]
+            retries = self._ctrl_value_retries.get(sn, 0)
+            if (
+                missing
+                and retries < MAX_CONTROL_VALUE_RETRIES
+                and self._ctrl_value_attempts.get(sn) != self.cloud_revision
+            ):
+                self._ctrl_value_attempts[sn] = self.cloud_revision
+                fetched = await self._fetch_all_control_values(
+                    pn, devcode, devaddr, sn, missing
+                )
+                # A cloud refresh or accepted write may have filled a value
+                # while these reads were in flight. Do not overwrite it.
+                for field_id, value in fetched.items():
+                    normalized = setting_value(by_id[field_id], value)
+                    if (
+                        normalized is not None
+                        and setting_value(by_id[field_id], values.get(field_id)) is None
+                    ):
+                        values[field_id] = normalized
+                self._sync_control_values_from_cloud(sn)
+                # Spend the budget only on rounds that recovered nothing, so a
+                # device still making progress keeps retrying the remainder.
+                if any(
+                    setting_value(by_id[field_id], values.get(field_id)) is not None
+                    for field_id in missing
+                ):
+                    self._ctrl_value_retries[sn] = 0
+                else:
+                    self._ctrl_value_retries[sn] = retries + 1
+                    if self._ctrl_value_retries[sn] == MAX_CONTROL_VALUE_RETRIES:
+                        _LOGGER.info(
+                            "Giving up on %d unreadable control value(s) for device "
+                            "%s after %d attempts; ordinary cloud telemetry still "
+                            "updates them, and reloading the entry retries",
+                            len(missing),
+                            sn,
+                            MAX_CONTROL_VALUE_RETRIES,
+                        )
+            changed = values != before
+        if changed:
+            # Existing entities also need to see late read recovery. Preserve
+            # the independent cloud refresh timer and revision counter.
+            self.async_update_listeners()
+        return controls, values
 
-        return controls, self.ctrl_value_cache[sn]
+    def _sync_control_values_from_cloud(self, sn: str) -> None:
+        """Refresh exact settings only when a new cloud sample arrives."""
+        stamp, points = cloud_control_snapshot(self, sn)
+        if self._ctrl_cloud_samples.get(sn) == stamp:
+            return
+        controls = self.ctrl_field_cache.get(sn, {})
+        if not controls:
+            return
+        self._ctrl_cloud_samples[sn] = stamp
+        values = self.ctrl_value_cache.setdefault(sn, {})
+        for name, config in controls.items():
+            field_id = config.get("id")
+            value = setting_value(config, find_control_value(points, name))
+            if field_id and value is not None:
+                values[field_id] = value
 
     async def _fetch_all_control_values(
         self,
@@ -393,7 +483,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     result = await self.api.get_device_control_value(
                         pn, devcode, devaddr, sn, field_id
                     )
-                    return field_id, result.get("val")
+                    return field_id, control_value(result.get("val"))
                 except Exception as err:
                     _LOGGER.debug(
                         "Failed to read control value %s for %s: %s",
@@ -418,16 +508,23 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         """Update data via library."""
         _LOGGER.debug("Starting data update cycle")
         try:
+            self.stale_cloud_serials = frozenset()
             collectors = await self._fetch_collectors()
             data = await self._gather_all_device_data(collectors)
             await self._merge_summary_data(data, bool(collectors))
 
             _LOGGER.info(
-                "Data update completed successfully: %d devices total", len(data)
+                "Data update completed successfully: %d devices total (%d retained)",
+                len(data),
+                len(self.stale_cloud_serials),
             )
             await self._async_store_cloud_snapshot(data)
             self.cloud_revision += 1
-            return snapshot_with_data_source(data, "Cloud")
+            for sn in self.ctrl_field_cache:
+                self._sync_control_values_from_cloud(sn)
+            return snapshot_with_data_source(
+                data, "Cloud", stale=self.stale_cloud_serials
+            )
         except UpdateFailed as err:
             if cached := self._cached_cloud_fallback(err):
                 return cached
@@ -445,18 +542,41 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             raise update_error from err
 
     async def _fetch_collectors(self) -> list[dict[str, Any]]:
-        """Fetch list of collectors from the API."""
+        """Fetch each physical collector once even if it belongs to two projects."""
         _LOGGER.debug("Fetching collectors list")
         collectors, _projects = await self.api.get_collectors()
-        _LOGGER.debug("Found %d collectors to process", len(collectors))
-        return collectors
+        # Device queries use PN, not project ID. Keep the last occurrence's
+        # metadata, as the previous per-project data.update() loop did.
+        unique = {collector["pn"]: collector for collector in collectors}
+        _LOGGER.debug(
+            "Found %d unique collectors to process from %d API rows",
+            len(unique),
+            len(collectors),
+        )
+        return list(unique.values())
 
     async def _gather_all_device_data(
         self, collectors: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Collect last known data for all devices."""
+        """Collect last known data for all devices.
+
+        A device the API fails on this cycle keeps the payload an earlier cycle
+        fetched, so a single slow request cannot make a whole inverter's
+        entities unavailable while the rest of the account refreshes normally
+        (#54, #55). A device the API no longer lists is genuinely gone and is
+        dropped. When nothing fresh arrives at all, the error is raised so the
+        cached-cloud fallback and the hybrid local overlay take over instead of
+        a successful-looking empty snapshot replacing the stored one.
+        """
+        if not collectors and self._cached_cloud_data:
+            raise UpdateFailed(
+                "Collector list came back empty while devices are known; "
+                "treating it as a failed refresh"
+            )
+
         data: dict[str, Any] = {}
         errors: list[str] = []
+        failed_serials: set[str] = set()
 
         for index, collector in enumerate(collectors, start=1):
             collector_id = collector["pn"]
@@ -468,29 +588,74 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
             try:
-                collector_devices = await self._fetch_devices_for_collector(collector)
+                collector_devices, failures = await self._fetch_devices_for_collector(
+                    collector
+                )
             except DessMonitorError as err:
                 _LOGGER.warning("Skipping collector %s: %s", collector_id, err)
                 errors.append(f"{collector_id}: {err}")
+                failed_serials.update(self._cached_serials_for_collector(collector_id))
                 continue
 
             data.update(collector_devices)
+            for device_sn, message in failures.items():
+                errors.append(f"{device_sn}: {message}")
+                failed_serials.add(device_sn)
 
         if not data and errors:
-            raise UpdateFailed(f"All collectors failed: {'; '.join(errors)}")
+            raise UpdateFailed(f"Cloud refresh failed: {'; '.join(errors)}")
+
+        retained = self._retain_failed_devices(failed_serials, data)
+        if retained:
+            self.stale_cloud_serials = frozenset(retained)
+            data.update(retained)
 
         return data
 
+    def _cached_serials_for_collector(self, collector_id: str) -> set[str]:
+        """Return the stored serials that belong to one collector."""
+        return {
+            device_sn
+            for device_sn, payload in self._cached_cloud_data.items()
+            if isinstance(payload, dict)
+            and str(payload.get("collector", {}).get("pn", "")) == collector_id
+        }
+
+    def _retain_failed_devices(
+        self, failed_serials: set[str], fresh: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Return the stored payload for each device that failed this cycle."""
+        retained: dict[str, Any] = {}
+        for device_sn in sorted(failed_serials - set(fresh)):
+            cached = self._cached_cloud_data.get(device_sn)
+            if not isinstance(cached, dict):
+                continue
+            retained[device_sn] = copy.deepcopy(cached)
+
+        if retained:
+            _LOGGER.warning(
+                "Retaining the last known cloud payload for %d device(s) that "
+                "failed this refresh: %s",
+                len(retained),
+                ", ".join(retained),
+            )
+        return retained
+
     async def _fetch_devices_for_collector(
         self, collector: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Fetch data for all devices under a collector."""
+    ) -> tuple[dict[str, Any], dict[str, str]]:
+        """Fetch data for all devices under a collector.
+
+        Returns the devices that answered and the error reported for each
+        device that did not, so the caller can retain its last known payload.
+        """
         collector_id = collector["pn"]
         devices_response = await self.api.get_collector_devices(collector_id)
         device_list = devices_response.get("dev", [])
         _LOGGER.debug("Collector %s has %d devices", collector_id, len(device_list))
 
         device_data: dict[str, Any] = {}
+        failures: dict[str, str] = {}
         for index, device in enumerate(device_list, start=1):
             device_sn = device["sn"]
             devcode = _normalize_devcode(device.get("devcode"))
@@ -507,11 +672,12 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 last_data = await self._fetch_device_data(collector_id, device, devcode)
             except DessMonitorError as err:
                 _LOGGER.warning(
-                    "Skipping device %s (collector %s): %s",
+                    "Device %s (collector %s) did not answer: %s",
                     device_sn,
                     collector_id,
                     err,
                 )
+                failures[device_sn] = str(err)
                 continue
 
             device_data[device_sn] = {
@@ -520,7 +686,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 "data": last_data,
             }
 
-        return device_data
+        return device_data, failures
 
     async def _fetch_device_data(
         self,
@@ -837,19 +1003,6 @@ PRIORITY_MAPPINGS = {
         "PV ONLY": 3,
     },
 }
-VOLTAGE_FALLBACKS = {
-    "High DC": "58.4 V (Est.)",
-    "Low DC": "44.0 V (Est.)",
-    "Bulk": "57.6 V (Est.)",
-    "Floating": "56.4 V (Est.)",
-}
-VOLTAGE_FIELD_NAMES = {
-    "High DC Protection Voltage",
-    "Bulk Charging Voltage",
-    "Floating Charging Voltage",
-    "Low DC Protection Voltage In Mains Mode",
-    "Low DC Protection Voltage In Off-Grid Mode",
-}
 
 
 def _categorize_device_data(
@@ -962,11 +1115,8 @@ def _format_numeric_field(
     field_data: dict[str, Any],
     device_data: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Format numeric control fields with sensible fallbacks."""
+    """Format numeric control fields, reporting only what was read."""
     current_value = _extract_sensor_value(device_data, field_name, default="Not Set")
-
-    if field_name in VOLTAGE_FIELD_NAMES and current_value == "Not Set":
-        current_value = _estimate_voltage_value(field_name)
 
     unit = ""
     if "Voltage" in field_name:
@@ -1039,14 +1189,6 @@ def _extract_sensor_value(
         if data_point.get("title") == field_name:
             return data_point.get("val")
     return default
-
-
-def _estimate_voltage_value(field_name: str) -> str:
-    """Return voltage fallback based on field name heuristics."""
-    for key, value in VOLTAGE_FALLBACKS.items():
-        if key in field_name:
-            return value
-    return "Not Set"
 
 
 def _build_diagnostics_summary(

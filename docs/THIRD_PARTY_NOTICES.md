@@ -43,3 +43,10 @@ shared in issue #17. Raw XMODEM CRC interoperability was cross-checked against
 [Dess Monitor Local's PI18 codec](https://github.com/Antoxa1081/home-assistant-dess-monitor-local/blob/main/custom_components/dess_monitor_local/api/decoders/pi18.py).
 No source code from that codec is included here; regression frames use synthetic
 data and Python's independent standard-library CRC implementation.
+
+The Modbus protocol-number 4 layout uses register addresses, data types, and
+scales from `Communication.Protocol.No.3-10.docx`, published in
+[PreK/esphome-anenji-11kw-native-modbus](https://github.com/PreK/esphome-anenji-11kw-native-modbus/blob/55a330585846d57b4f24e6467201d8dde8985ee7/Communication.Protocol.No.3-10.docx).
+The decoder is independently implemented; the document and that project's
+ESPHome configuration are not redistributed here. Regression data consists of
+read-only hardware register samples with identifying information removed.

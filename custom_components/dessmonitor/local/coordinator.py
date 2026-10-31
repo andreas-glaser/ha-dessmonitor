@@ -26,8 +26,8 @@ from ..const import (
     DEFAULT_LOCAL_TCP_PORT,
     DEFAULT_LOCAL_UDP_PORT,
     DOMAIN,
-    SENSOR_TYPES,
 )
+from ..sensor_titles import resolve_sensor_key, sensor_unit
 from .announcer import CollectorAnnouncer
 from .discovery import inverter_addresses
 from .drivers import LocalDevice, ReadOnlyLocalDriver, discover_supported_devices
@@ -37,6 +37,16 @@ from .server import CollectorIdentity, CollectorServer
 _LOGGER = logging.getLogger(__name__)
 
 _MAX_DEVICE_ADDRESS = 16
+# How long a collector that still answers for itself may keep a silent inverter
+# tunnel before the session is restarted. Observed silences last tens of
+# seconds (#53, #55), so a reconnect inside that window costs local telemetry
+# for no gain; one that outlives it may need a fresh discovery.
+_SILENT_TUNNEL_GRACE = 180.0
+_MAX_RETRY_INTERVAL = 30.0
+
+
+class InverterSilent(Exception):
+    """The collector connection is healthy but the inverter answered nothing."""
 
 
 class DessMonitorLocalCoordinator(DataUpdateCoordinator):
@@ -79,6 +89,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         self._driver: ReadOnlyLocalDriver | None = None
         self._devices: dict[str, LocalDevice] = {}
         self._polled_serials: set[str] = set()
+        self._silence_started: float | None = None
 
     @property
     def connected(self) -> bool:
@@ -155,29 +166,105 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
     async def _run_session(self, identity: CollectorIdentity) -> None:
         """Discover a supported read-only driver and poll until disconnected."""
         try:
-            await self._discover(identity)
-            await self._poll_loop()
+            await self._serve_collector(identity)
         except asyncio.CancelledError:
             raise
-        except ConnectionError:
+        except ConnectionError as err:
+            _LOGGER.warning("Restarting the local collector session: %s", err)
             await self._server.disconnect()
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error("Local inverter session failed: %s", err)
             self.async_set_update_error(UpdateFailed(str(err)))
             await self._server.disconnect()
 
-    async def _discover(self, identity: CollectorIdentity) -> None:
-        """Probe registered read-only drivers and discover unique devices."""
-        driver, devices = await discover_supported_devices(
-            self._send_command,
-            collector_product_number=identity.product_number,
-            configured_device_code=int(
-                self._entry_data.get(CONF_LOCAL_DEVICE_CODE, DEFAULT_LOCAL_DEVICE_CODE)
-            ),
-            reported_device_code=identity.reported_device_code,
-            max_address=_MAX_DEVICE_ADDRESS,
-            device_address=self._device_address,
+    async def _serve_collector(self, identity: CollectorIdentity) -> None:
+        """Discover once, then poll, retrying while the collector answers.
+
+        An inverter that stops answering is not a collector that has gone
+        away. Dropping the tunnel for a silence the collector can prove it is
+        not responsible for costs a full UDP callback, reconnection and
+        rediscovery, and local telemetry is unavailable for all of it (#53).
+        """
+        self._silence_started = None
+        discovered = False
+        while True:
+            try:
+                if not discovered:
+                    await self._discover(identity)
+                    discovered = True
+                await self._poll_loop()
+                return
+            except InverterSilent as err:
+                retry_in = await self._handle_silent_tunnel(err)
+                await asyncio.sleep(retry_in)
+
+    async def _handle_silent_tunnel(self, err: Exception) -> float:
+        """Keep a proven-alive collector, and return how long to wait.
+
+        Raises ``ConnectionError`` when the collector cannot answer for itself
+        or the silence outlives its grace, which restarts the session the way
+        every earlier release did.
+        """
+        if not await self._server.async_probe_liveness():
+            raise ConnectionError(
+                "the local collector stopped answering its own heartbeat"
+            ) from err
+        now = asyncio.get_running_loop().time()
+        if self._silence_started is None:
+            self._silence_started = now
+            _LOGGER.warning(
+                "%s, while the collector itself still answers. Retrying over the "
+                "existing connection for up to %.0f seconds before reconnecting",
+                err,
+                _SILENT_TUNNEL_GRACE,
+            )
+        silent_for = now - self._silence_started
+        if silent_for >= _SILENT_TUNNEL_GRACE:
+            raise ConnectionError(
+                f"the inverter answered nothing for {silent_for:.0f} seconds; "
+                "reconnecting for a fresh discovery"
+            ) from err
+        self.async_set_update_error(UpdateFailed(str(err)))
+        # Back off with the length of this silence rather than from a counter,
+        # so each new silence starts at the configured interval again.
+        return min(
+            max(1.0, float(self._poll_interval), silent_for), _MAX_RETRY_INTERVAL
         )
+
+    def _note_inverter_answered(self) -> None:
+        """Close an open silence window, so the next one starts its own grace."""
+        if self._silence_started is None:
+            return
+        _LOGGER.info(
+            "Local inverter resumed answering after %.0f seconds",
+            asyncio.get_running_loop().time() - self._silence_started,
+        )
+        self._silence_started = None
+
+    async def _discover(self, identity: CollectorIdentity) -> None:
+        """Probe registered read-only drivers and discover unique devices.
+
+        A collector that drops its tunnel reconnects and rediscovers. Naming
+        the driver that last worked keeps a flapping collector from paying for
+        a full blind probe on every reconnect, which is time spent with no
+        local telemetry at all.
+        """
+        try:
+            driver, devices = await discover_supported_devices(
+                self._send_command,
+                collector_product_number=identity.product_number,
+                configured_device_code=int(
+                    self._entry_data.get(
+                        CONF_LOCAL_DEVICE_CODE, DEFAULT_LOCAL_DEVICE_CODE
+                    )
+                ),
+                reported_device_code=identity.reported_device_code,
+                max_address=_MAX_DEVICE_ADDRESS,
+                device_address=self._device_address,
+                preferred_driver_key=self._driver.key if self._driver else None,
+            )
+        except (TimeoutError, ProtocolError) as err:
+            raise InverterSilent(str(err)) from err
         self._driver = driver
         self._devices = {device.serial: device for device in devices}
         self._device_code = devices[0].transport_device_code
@@ -190,7 +277,10 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
 
         successful = await self._poll_once(cycle=0)
         if not successful:
-            raise UpdateFailed("Inverter discovery succeeded but status polling failed")
+            raise InverterSilent(
+                "Inverter discovery succeeded but status polling failed"
+            )
+        self._note_inverter_answered()
         self.async_set_updated_data(self._coordinator_data())
 
     async def _poll_loop(self) -> None:
@@ -203,19 +293,16 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
 
             if successful:
                 failures = 0
+                self._note_inverter_answered()
                 self.async_set_updated_data(self._coordinator_data())
             else:
                 failures += 1
                 if failures >= 3:
-                    self.async_set_update_error(
-                        UpdateFailed("Local inverter stopped answering status requests")
+                    # Whether the collector is also gone is decided by its own
+                    # heartbeat, not by this silence.
+                    raise InverterSilent(
+                        "Local inverter stopped answering status requests"
                     )
-                    # A collector can keep its TCP socket half-open after its
-                    # inverter tunnel has stopped forwarding. Waiting for the
-                    # slower heartbeat watchdog needlessly extends the outage.
-                    # Close this exact, peer-pinned route so the disconnect
-                    # callback immediately resumes targeted callback requests.
-                    raise ConnectionError("local inverter tunnel became unresponsive")
 
             cycle += 1
             elapsed = asyncio.get_running_loop().time() - started
@@ -266,10 +353,10 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                 {
                     "title": title,
                     "val": value,
-                    "unit": _sensor_unit(title),
+                    "unit": sensor_unit(title),
                 }
                 for title, value in sorted(device.values.items())
-                if _is_supported_sensor_title(title)
+                if resolve_sensor_key(title) is not None
             ]
             points.append({"title": "Timestamp", "val": timestamp, "unit": ""})
             points.append({"title": "Data Source", "val": "Local", "unit": ""})
@@ -295,23 +382,3 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                 "data": points,
             }
         return result
-
-
-def _is_supported_sensor_title(title: str) -> bool:
-    """Return whether an existing entity definition can represent a local value."""
-    if title in SENSOR_TYPES:
-        return True
-    normalized = title.strip().lower()
-    return any(key.strip().lower() == normalized for key in SENSOR_TYPES)
-
-
-def _sensor_unit(title: str) -> str:
-    """Return the existing canonical unit without duplicating HA metadata."""
-    config = SENSOR_TYPES.get(title)
-    if isinstance(config, dict):
-        return str(config.get("unit", ""))
-    normalized = title.strip().lower()
-    for key, candidate in SENSOR_TYPES.items():
-        if key.strip().lower() == normalized and isinstance(candidate, dict):
-            return str(candidate.get("unit", ""))
-    return ""
