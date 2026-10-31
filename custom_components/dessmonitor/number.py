@@ -20,7 +20,11 @@ from .control_values import cloud_control_snapshot, control_value, find_control_
 from .device_support.device_registry import map_control_field
 from .entity_loader import async_setup_dynamic_entities
 from .number_range import compute_range_and_step, is_hint_range_usable
-from .utils import create_device_info
+from .utils import (
+    async_migrate_control_unique_ids,
+    control_entity_suffix,
+    create_device_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +49,9 @@ async def async_setup_entry(
     known_entities: set[str] = set()
 
     async def _build() -> list[NumberEntity]:
-        return await _async_build_number_entities(coordinator, known_entities)
+        entities = await _async_build_number_entities(coordinator, known_entities)
+        async_migrate_control_unique_ids(hass, config_entry, "number", entities)
+        return entities
 
     await async_setup_dynamic_entities(
         hass,
@@ -170,8 +176,8 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         # Initialize identity
         device_alias = device_meta.get("alias", "DessMonitor")
         self._attr_name = f"{device_alias} {name}"
-        unique_suffix = name.lower().replace(" ", "_").replace("-", "_")
-        self._attr_unique_id = f"{device_sn}_{unique_suffix}"
+        self._attr_unique_id = f"{device_sn}_{control_entity_suffix(name)}"
+        self._legacy_unique_id = f"{device_sn}_{control_entity_suffix(api_name)}"
         self._attr_device_info = create_device_info(
             device_sn, device_meta, collector_meta
         )
@@ -194,6 +200,11 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
             )
 
         self._apply_range_and_step(hint, current_value)
+
+    @property
+    def legacy_unique_id(self) -> str:
+        """Return the unique id this control carried before its name changed."""
+        return self._legacy_unique_id
 
     @property
     def extra_state_attributes(self) -> dict[str, str]:

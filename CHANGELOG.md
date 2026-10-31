@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   factor, an external meter reading, inverter status, grid reconnect waiting
   time and operating time (#58, thanks to @shanidks for both CLI analyses).
   Both redacted analyses are committed under `docs/evidence/devcodes/`.
+- Devcode 6515 lists the Maxsky EM11000 11kW 48V, reported with an Eybond WiFi
+  datalogger on firmware 3.6.6.6, beside the ANENJI ANJ-HHS-11KW-48V-WIFI it
+  was added for (#57, thanks to @ballhtml for the model and collector details).
+- A devcode can name a control field through `control_field_mappings`, which
+  the registry accepted but no profile used. Renaming a control changes its
+  entity identity, so the existing registry entry is carried over rather than
+  stranded beside a second entity.
 
 ### Fixed
 - Devcode 6514 labels the `CSO` charger source priority as `Solar First`.
@@ -29,6 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Devcode 4743's `Total PV power` is published in watts. The raw title resolves
   by friendly name onto the kilowatt `Total PV Power` sensor, so a 1552 W
   reading would have been shown as 1552 kW.
+- Control field names are trimmed and their internal whitespace collapsed
+  before they reach an entity. Devcode 6515 reports `" Inverter Time"` with a
+  leading space, which published an entity with a doubled space in its name and
+  a doubled underscore in its id (#57).
+- Devcode 6515 names its equalization charge time, which the collector reports
+  under the internal identifier `bat_eq_time` (#57).
+- A control field the API sends without a name or an id is skipped and logged
+  instead of becoming an entity named after its device alone.
 - A reading whose value is free-form text, such as the grid-tie inverter status
   on devcode 632, reaches Home Assistant as text instead of being dropped by
   numeric coercion.

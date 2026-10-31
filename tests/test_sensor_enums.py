@@ -83,6 +83,7 @@ async def test_replaced_one_option_select_is_disabled_not_deleted(
     )
     button = MagicMock()
     button.unique_id = unique_id
+    button.legacy_unique_id = "TEST-SERIAL_reset_user_settings_legacy"
 
     _disable_replaced_selects(hass, config_entry, [button])
 

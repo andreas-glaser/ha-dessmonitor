@@ -17,7 +17,11 @@ from .const import DOMAIN
 from .control_values import cloud_control_snapshot, control_value, find_control_value
 from .device_support.device_registry import filter_control_options, map_control_field
 from .entity_loader import async_setup_dynamic_entities
-from .utils import create_device_info
+from .utils import (
+    async_migrate_control_unique_ids,
+    control_entity_suffix,
+    create_device_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +42,9 @@ async def async_setup_entry(
     known_entities: set[str] = set()
 
     async def _build() -> list[SelectEntity]:
-        return await _async_build_select_entities(coordinator, known_entities)
+        entities = await _async_build_select_entities(coordinator, known_entities)
+        async_migrate_control_unique_ids(hass, config_entry, "select", entities)
+        return entities
 
     await async_setup_dynamic_entities(
         hass,
@@ -148,14 +154,19 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         # Initialize identity
         device_alias = device_meta.get("alias", "DessMonitor")
         self._attr_name = f"{device_alias} {name}"
-        unique_suffix = name.lower().replace(" ", "_").replace("-", "_")
-        self._attr_unique_id = f"{device_sn}_{unique_suffix}"
+        self._attr_unique_id = f"{device_sn}_{control_entity_suffix(name)}"
+        self._legacy_unique_id = f"{device_sn}_{control_entity_suffix(self._api_name)}"
         self._attr_device_info = create_device_info(
             device_sn, device_meta, collector_meta
         )
         self._attr_entity_category = EntityCategory.CONFIG
 
         self._refresh_options()
+
+    @property
+    def legacy_unique_id(self) -> str:
+        """Return the unique id this control carried before its name changed."""
+        return self._legacy_unique_id
 
     @property
     def available(self) -> bool:
