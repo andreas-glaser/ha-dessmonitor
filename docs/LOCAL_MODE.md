@@ -283,9 +283,15 @@ then start it again; the configured integration reconnects automatically.
   itself dropped the session and the integration is waiting for its next
   callback. The two have different causes: the first points at the link between
   collector and inverter, the second at the collector or the network. If the
-  first one dominates, raising the local polling interval is worth trying,
-  since the collector shares one serial link between its own cloud uploads and
-  these queries.
+  first one dominates, raising the local polling interval is worth trying.
+  A collector answers a query the inverter ignores several seconds after the
+  integration has stopped waiting for it, and its link to the inverter carries
+  one transaction at a time: on a PI18 collector measured in #53, replies to
+  unanswered queries arrived 8 to 11 seconds after the request against a 3
+  second request timeout. The next query is now held back until that reply
+  lands, so a single unanswered poll no longer takes the rounds behind it with
+  it, but a longer interval still leaves the collector more room for its own
+  cloud uploads.
 
 Debug logging:
 
