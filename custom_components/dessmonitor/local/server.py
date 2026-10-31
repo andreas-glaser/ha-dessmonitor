@@ -1,4 +1,4 @@
-"""Secure, bounded asyncio server for EyeBond Wi-Fi collectors."""
+"""Secure, bounded asyncio server for Eybond Wi-Fi collectors."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from .protocol import (
     FC_FORWARD_TO_DEVICE,
     FC_HEARTBEAT,
     HEADER_SIZE,
-    EyeBondHeader,
+    EybondHeader,
     ProtocolError,
     build_forward_request,
     build_heartbeat_request,
@@ -185,7 +185,7 @@ class CollectorConnection:
 
 
 class CollectorServer:
-    """Manage one pinned EyeBond collector and serialized RS485 requests."""
+    """Manage one pinned Eybond collector and serialized RS485 requests."""
 
     def __init__(
         self,
@@ -511,7 +511,7 @@ class CollectorServer:
     async def _handle_heartbeat(
         self,
         connection: CollectorConnection,
-        header: EyeBondHeader,
+        header: EybondHeader,
         payload: bytes,
     ) -> None:
         """Identify and optionally pin the collector product number."""
@@ -546,7 +546,7 @@ class CollectorServer:
     @staticmethod
     def _handle_forward_response(
         connection: CollectorConnection,
-        header: EyeBondHeader,
+        header: EybondHeader,
         payload: bytes,
     ) -> None:
         """Resolve only a response that matches the pending request metadata."""

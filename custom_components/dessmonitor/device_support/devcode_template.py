@@ -1,4 +1,4 @@
-"""Device support template for DessMonitor devcode XXXX.
+"""Device support template for Eybond devcode XXXX.
 
 COPY THIS FILE TO CREATE SUPPORT FOR A NEW DEVCODE:
 1. Copy this file to devcode_XXXX.py (replace XXXX with your devcode number)
@@ -18,7 +18,7 @@ from __future__ import annotations
 DEVICE_INFO = {
     "name": "Your Data Collector Model (devcode XXXX)",
     "description": "Description of your data collector/gateway device",
-    "manufacturer": "DessMonitor",  # or actual manufacturer
+    "manufacturer": "Eybond",  # the collector maker, not the monitoring portal
     "known_inverters": [
         # Optional: list confirmed inverter models this devcode has been tested with
         # "Example Inverter Model 1",

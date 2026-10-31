@@ -1,4 +1,4 @@
-"""Async transport tests with a simulated EyeBond collector."""
+"""Async transport tests with a simulated Eybond collector."""
 
 from __future__ import annotations
 
