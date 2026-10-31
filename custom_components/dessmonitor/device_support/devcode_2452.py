@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 2452)"""
+"""Eybond Data Collector (devcode 2452)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 2452)",
-    "description": "DessMonitor data collector/gateway",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 2452)",
+    "description": "Eybond data collector/gateway",
+    "manufacturer": "Eybond",
     "known_inverters": ["Axpert (PI18 protocol, rebranded)"],
     "supported_features": [
         "real_time_monitoring",

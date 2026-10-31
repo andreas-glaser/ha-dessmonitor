@@ -42,6 +42,10 @@ Choose **DessMonitor (default)** or **ShineMonitor** as the account platform dur
 
 SmartClient for Solar is listed as **SmartClient** on Google Play.
 
+**One vendor, two portals:** both platforms are run by Shenzhen Eybond, which also makes the Wi-Fi and GPRS collectors. [dessmonitor.com](https://www.dessmonitor.com/) is their SmartESS platform and [shinemonitor.com](https://www.shinemonitor.com/) their SmartClient platform, and the integration speaks one API against two hostnames. Your choice here selects which platform holds your account, not a different protocol or feature set.
+
+**Other Eybond platforms:** Eybond runs portals for other product lines too, such as SmartLamp (`lampmonitor.com`) for lighting and SmartValue (`valueclouds.com`) for brand-operated deployments. Only DessMonitor and ShineMonitor carry solar and storage accounts, and setup can reach only those two hostnames, so an account held anywhere else cannot be configured. If your app signs you in at some other website, please open an issue naming that site rather than assuming one of these two platforms.
+
 **Rebranded app compatibility:** For WatchPower (Wi-Fi), Energy-Mate, and Fronus Solar, first check that your account signs in at [dessmonitor.com](https://www.dessmonitor.com/) and shows your collector. If it does, choose DessMonitor in setup. The app name alone does not confirm compatibility. The WatchPower links above are for Wi-Fi monitoring, not the separate WatchPower BLE app.
 
 <a id="current-device-support"></a>

@@ -45,7 +45,7 @@ pytestmark = pytest.mark.usefixtures("socket_enabled")
 
 
 class SimulatedCollector:
-    """Minimal EyeBond collector exposing one PI17, PI18 or PI30 inverter."""
+    """Minimal Eybond collector exposing one PI17, PI18 or PI30 inverter."""
 
     def __init__(self, port: int, protocol_id: str = "17", address: int = 1) -> None:
         self.port = port
@@ -170,7 +170,7 @@ class SimulatedCollector:
 
 
 class SimulatedSmgCollector:
-    """EyeBond collector exposing one SMG/Modbus inverter."""
+    """Eybond collector exposing one SMG/Modbus inverter."""
 
     def __init__(self, port: int) -> None:
         self.port = port

@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 6515)"""
+"""Eybond Data Collector (devcode 6515)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 6515)",
-    "description": "DessMonitor data collector/gateway for single-phase inverters (WiFi)",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 6515)",
+    "description": "Eybond data collector/gateway for single-phase inverters (WiFi)",
+    "manufacturer": "Eybond",
     "known_inverters": [
         "ANENJI ANJ-HHS-11KW-48V-WIFI",
         "Maxsky EM11000 11kW 48V",

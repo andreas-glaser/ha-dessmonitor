@@ -23,6 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entity identity, so the existing registry entry is carried over rather than
   stranded beside a second entity.
 
+### Changed
+- One spelling and one vocabulary throughout: the collector vendor is Eybond,
+  which the code spelled `EyeBond` in 55 places against the company's own 6.
+  Each devcode profile now names Eybond as the manufacturer of the collector it
+  describes, where 13 of 18 named the DessMonitor portal instead, and the
+  README records that both platforms are Eybond products: `dessmonitor.com` is
+  their SmartESS platform and `shinemonitor.com` their SmartClient platform.
+  Entity names, entity ids and the integration domain are unchanged.
+- The README names the other portals Eybond runs, SmartLamp and SmartValue,
+  and states plainly that setup reaches only DessMonitor and ShineMonitor, so
+  an account held on another portal cannot be configured.
+
 ### Fixed
 - Devcode 6514 labels the `CSO` charger source priority as `Solar First`.
   2.6.0 left it showing the raw code, because no evidence named it and a wrong
@@ -673,7 +685,7 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 ## [2.3.0] - 2026-08-31
 
 ### Added
-- Optional read-only local telemetry for EyeBond-compatible collectors, with cloud-only, local-only, and preferred-local hybrid modes. Hybrid mode keeps the DessMonitor API as the canonical source for identity, metadata, controls, and fallback data while overlaying faster local readings from one or more explicitly pinned private addresses (#27, thanks to @albertdb for proposing local and hybrid support).
+- Optional read-only local telemetry for Eybond-compatible collectors, with cloud-only, local-only, and preferred-local hybrid modes. Hybrid mode keeps the DessMonitor API as the canonical source for identity, metadata, controls, and fallback data while overlaying faster local readings from one or more explicitly pinned private addresses (#27, thanks to @albertdb for proposing local and hybrid support).
 - Guided local configuration, independent cloud/local polling intervals, source diagnostics, persisted cloud snapshots, automatic local reconnect and cloud fallback, and CLI discovery/probing tools with redacted evidence output.
 
 ### Changed

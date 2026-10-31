@@ -2,7 +2,7 @@
 
 The integration can monitor inverter readings and change supported settings
 through DessMonitor or ShineMonitor. Local telemetry adds a read-only path from
-an EyeBond-compatible Wi-Fi collector to Home Assistant. It does not require
+an Eybond-compatible Wi-Fi collector to Home Assistant. It does not require
 inverter firmware changes. Settings changes continue to use the cloud API.
 
 ## Choose a mode

@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 2507)"""
+"""Eybond Data Collector (devcode 2507)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 2507)",
-    "description": "DessMonitor data collector/gateway (WiFi)",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 2507)",
+    "description": "Eybond data collector/gateway (WiFi)",
+    "manufacturer": "Eybond",
     "known_inverters": ["ANENJI ANJ-6200W-48PL-WIFI"],
     "supported_features": [
         "real_time_monitoring",

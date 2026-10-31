@@ -1,4 +1,4 @@
-"""ShineMonitor Data Collector (devcode 632).
+"""Eybond Data Collector (devcode 632).
 
 Mappings come from the redacted analysis in
 ``docs/evidence/devcodes/analysis_632.json`` (#58). Like devcode 4743 this is a
@@ -22,7 +22,7 @@ does not record, and a sensor with a guessed unit is worse than none.
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "ShineMonitor Data Collector (devcode 632)",
+    "name": "Eybond Data Collector (devcode 632)",
     "description": (
         "Data collector/gateway for grid-connected PV inverters with up to "
         "three strings and an optional export meter, reported through "
