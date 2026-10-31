@@ -238,7 +238,7 @@ def build_p17_poll(command: str, *, escape_crc: bool = True) -> bytes:
 
 def build_pi30_poll(command: str) -> bytes:
     """Encode only the PI30 inquiries implemented by the read-only driver."""
-    if command not in {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QMOD"}:
+    if command not in {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QPIGS2", "QMOD"}:
         raise ProtocolError("unsupported PI30 read-only command")
     content = command.encode("ascii")
     return content + _encode_crc(content) + b"\r"

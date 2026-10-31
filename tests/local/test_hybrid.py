@@ -90,6 +90,41 @@ def test_local_outage_falls_back_to_cloud_values() -> None:
     assert points["Data Source"] == "Cloud"
 
 
+def test_dual_pv_local_overlay_and_cloud_fallback_keep_existing_titles() -> None:
+    """Local PV powers replace cloud values only while their query succeeds."""
+    cloud = {
+        "AXPERT": {
+            "collector": {"pn": "COLLECTOR-1"},
+            "device": {"devcode": 2449, "devaddr": 0},
+            "data": [
+                {"title": "PV1 Charging Power", "val": 100, "unit": "W"},
+                {"title": "PV2 Charging power", "val": 200, "unit": "W"},
+                {"title": "outpower", "val": 0.3, "unit": "kW"},
+            ],
+        }
+    }
+    local = {
+        "AXPERT": {
+            "collector": {"pn": "COLLECTOR-1"},
+            "device": {"devaddr": 0},
+            "data": [
+                {"title": "PV1 Charger Power", "val": 1088, "unit": "W"},
+                {"title": "PV2 Charger Power", "val": 1881, "unit": "W"},
+                {"title": "outpower", "val": 2.969, "unit": "kW"},
+            ],
+        }
+    }
+    overlay = merge_cloud_and_local(cloud, local, local_available=True)
+    active = {p["title"]: p["val"] for p in overlay["AXPERT"]["data"]}
+    assert (active["PV1 Charger Power"], active["PV2 Charger Power"]) == (1088, 1881)
+    assert active["outpower"] == 2.969
+
+    fallback = merge_cloud_and_local(cloud, {}, local_available=False)
+    stale = {p["title"]: p["val"] for p in fallback["AXPERT"]["data"]}
+    assert (stale["PV1 Charging Power"], stale["PV2 Charging power"]) == (100, 200)
+    assert stale["outpower"] == 0.3
+
+
 def test_unrelated_collector_is_not_overlaid() -> None:
     """An unrelated local device cannot create a second hybrid identity."""
     local = _local_payload()

@@ -70,7 +70,7 @@ async def test_discovery_and_polling_identify_pi30_on_known_routes(route) -> Non
     assert values["PV Charge Power"] == 180
     assert values["Output Active Power"] == 987
     assert values["Operating mode"] == "Battery"
-    assert set(commands) <= {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QMOD"}
+    assert set(commands) <= {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QPIGS2", "QMOD"}
 
 
 @pytest.mark.parametrize("command", ["POP02", "PBDV10.5", "QPI\rPOP02", "", "QUNKNOWN"])
@@ -91,6 +91,24 @@ def test_pi30_wire_format_and_standard_status_prefix() -> None:
     values = parse_pi30_response("QPIGS", wire(b"(" + base.encode()))
     assert values["Battery Voltage"] == 12.8
     assert "PV Charge Power" not in values
+
+
+def test_axpert_max_pv2_reply_decodes_with_trailing_space() -> None:
+    """The hardware reply carries PV2 current, voltage, and power in that order."""
+    frame = wire(b"(06.6 283.1 01881 ")
+    assert parse_pi30_response("QPIGS2", frame) == {
+        "PV2 Charger Current": 6.6,
+        "PV2 Voltage": 283.1,
+        "PV2 Charger Power": 1881.0,
+    }
+
+
+@pytest.mark.parametrize(
+    "payload", [b"(06.6 283.1", b"(06.6 283.1 -1", b"(06.6 283.1 01881 0"]
+)
+def test_invalid_pv2_reply_is_not_published(payload) -> None:
+    with pytest.raises(ProtocolError):
+        parse_pi30_response("QPIGS2", wire(payload))
 
 
 @pytest.mark.parametrize("data", ["PI18", "PI41", "PI30 ", "ACK", "NAK"])
@@ -227,7 +245,47 @@ async def test_unsupported_optional_mode_does_not_disable_status_polling() -> No
         values = await Pi30Driver().poll(send, device, cycle=cycle)
         assert values["Battery Voltage"] == 12.8
         assert "Operating mode" not in values
-    assert commands == ["QPIGS", "QMOD", "QPIGS"]
+    assert commands == ["QPIGS", "QPIGS2", "QMOD", "QPIGS"]
+
+
+async def test_dual_pv_power_is_local_and_sums_in_kw() -> None:
+    """Existing power titles and the cloud summary key keep their units."""
+
+    async def send(payload, _code, _route):
+        command = payload[:-3].decode()
+        replies = {"QPIGS": STATUS, "QPIGS2": "06.6 283.1 00320 ", "QMOD": "B"}
+        return wire(b"(" + replies[command].encode())
+
+    values = await Pi30Driver().poll(send, _device(), cycle=1)
+    assert values["PV1 Charger Power"] == 180
+    assert values["PV2 Charger Power"] == 320
+    assert values["outpower"] == 0.5
+    assert values["Operating mode"] == "Battery"
+
+
+async def test_pv2_timeout_clears_stale_local_power_for_cloud_fallback() -> None:
+    """A failed optional poll must not leave the previous local PV sum in cache."""
+    unavailable = False
+
+    async def send(payload, _code, _route):
+        command = payload[:-3].decode()
+        if command == "QPIGS2" and unavailable:
+            raise TimeoutError
+        replies = {"QPIGS": STATUS, "QPIGS2": "06.6 283.1 00320 ", "QMOD": "B"}
+        return wire(b"(" + replies[command].encode())
+
+    device = _device()
+    driver = Pi30Driver()
+    first = await driver.poll(send, device, cycle=1)
+    device.values.update(first)
+    assert device.values["outpower"] == 0.5
+
+    unavailable = True
+    second = await driver.poll(send, device, cycle=2)
+    assert second["PV Charge Power"] == 180
+    for title in ("PV1 Charger Power", "PV2 Charger Power", "outpower"):
+        assert title not in second
+        assert title not in device.values
 
 
 @pytest.mark.parametrize("failure", ["invalid", "timeout", "cancelled"])

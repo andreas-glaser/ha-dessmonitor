@@ -293,6 +293,36 @@ class Pi30Driver:
             device.device_address,
             "QPIGS",
         )
+        # Extended 21-field QPIGS contains PV1 power on this protocol variant.
+        # Only publish the separate PV powers when the PV2 inquiry succeeds;
+        # otherwise leave the cloud measurements available for hybrid fallback.
+        for title in (
+            "PV1 Charger Power",
+            "PV2 Charger Power",
+            "PV2 Charger Current",
+            "PV2 Voltage",
+            "outpower",
+        ):
+            device.values.pop(title, None)
+        if "PV Charge Power" in values and "QPIGS2" not in device.disabled_queries:
+            try:
+                pv2 = await query_pi30(
+                    send,
+                    device.transport_device_code,
+                    device.collector_address,
+                    device.device_address,
+                    "QPIGS2",
+                )
+            except CommandNotSupported:
+                device.disabled_queries.add("QPIGS2")
+            except (TimeoutError, ProtocolError):
+                pass
+            else:
+                pv1_power = values["PV Charge Power"]
+                pv2_power = pv2["PV2 Charger Power"]
+                values.update(pv2)
+                values["PV1 Charger Power"] = pv1_power
+                values["outpower"] = round((pv1_power + pv2_power) / 1000, 3)
         if "QMOD" not in device.disabled_queries:
             try:
                 values.update(
