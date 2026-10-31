@@ -9,6 +9,7 @@ labels with a unit cannot reach Home Assistant as a sensor.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -25,6 +26,30 @@ ANALYSIS_FILES = sorted(
     .parent.parent.joinpath("docs/evidence")
     .rglob("analysis_*.json")
 )
+
+_CLI = Path(__file__).resolve().parent.parent / "tools" / "cli"
+if str(_CLI) not in sys.path:
+    sys.path.insert(0, str(_CLI))
+
+from evidence import analysis_checksum  # noqa: E402
+
+
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_committed_analysis_is_intact(path: Path) -> None:
+    """A committed analysis is the authority for a devcode's mappings.
+
+    The CLI signs each report over its redacted contents, so a file edited
+    after the fact no longer matches. Without this the mappings could be
+    justified by evidence nobody can check.
+    """
+    analysis = _load(path)
+    stored = analysis.get("checksum")
+
+    assert stored, f"{path.name} carries no checksum"
+    assert stored == analysis_checksum(analysis), (
+        f"{path.name} does not match its own checksum; regenerate it with the "
+        "CLI rather than editing it by hand"
+    )
 
 
 def _load(path: Path) -> dict[str, Any]:

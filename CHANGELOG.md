@@ -7,12 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Device support for devcodes 4743 and 632, both grid-connected PV inverters
+  reported through ShineMonitor. Between them this adds per-string PV voltage,
+  current and power for three strings, DC bus voltages, AC grid voltage,
+  current, frequency and power, output apparent and reactive power, power
+  factor, an external meter reading, inverter status, grid reconnect waiting
+  time and operating time (#58, thanks to @shanidks for both CLI analyses).
+  Both redacted analyses are committed under `docs/evidence/devcodes/`.
+
 ### Fixed
 - Devcode 6514 labels the `CSO` charger source priority as `Solar First`.
   2.6.0 left it showing the raw code, because no evidence named it and a wrong
   charge-source label is worse than an unlabelled one; the reporter's inverter
   manual settles it as solar-priority charging with utility only when solar is
   unavailable (#56, thanks to @olegvsh for the manual).
+- Devcode 4743 reports its energy counters as `PV power generation today` and
+  `Total photovoltaic power generation`, and devcode 632 reports its lifetime
+  total as `energy_total`. None of the three resolved to a sensor, so both
+  inverters showed 0.00 kWh while their app showed the real figures (#58).
+- Devcode 4743's `Total PV power` is published in watts. The raw title resolves
+  by friendly name onto the kilowatt `Total PV Power` sensor, so a 1552 W
+  reading would have been shown as 1552 kW.
+- A reading whose value is free-form text, such as the grid-tie inverter status
+  on devcode 632, reaches Home Assistant as text instead of being dropped by
+  numeric coercion.
 
 ## [2.6.0] - 2026-10-31
 

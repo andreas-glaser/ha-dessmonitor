@@ -21,7 +21,7 @@ For Android and iOS downloads, see the [platforms and mobile apps table](../../R
 - Optional read-only local telemetry and preferred-local cloud fallback.
 - Sensors for power, voltages, currents, frequency, temperature, load %, operating mode.
 - Energy Dashboard support where suitable energy sensors are available; see the [energy and power sensor guidance](../../README.md#energy-dashboard).
-- Supported devcodes: 518, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2477, 2507, 6416, 6422, 6514, 6515, 6544.
+- Supported devcodes: 518, 632, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2477, 2507, 4743, 6416, 6422, 6514, 6515, 6544.
 - Diagnostic sensors available but disabled by default to avoid clutter.
 
 ## Device Configuration

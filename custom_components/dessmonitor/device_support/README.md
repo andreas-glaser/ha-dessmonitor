@@ -7,6 +7,8 @@ This directory contains device profiles for inverters connected through DessMoni
 ## Currently Supported Collectors
 
 - **devcode 518**: Known to pair with BYD BYD-S-1P5K-2M through Q0025-series collectors on ShineMonitor; local protocol and writes are not verified.
+- **devcode 632**: Grid-connected PV inverter with up to three strings and an optional export meter, on ShineMonitor; inverter brand and model not yet confirmed. No battery, charger or priority readings. `DCI`, `GFCI` and `ISO` stay unmapped because the analysis records no unit for them.
+- **devcode 4743**: Single-phase grid-connected PV inverter with up to three strings, on ShineMonitor; inverter brand and model not yet confirmed. No battery readings. The R phase is mapped to the grid sensors; the S and T phases and the line voltages stay unmapped until a three-phase unit is reported.
 
 - **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
