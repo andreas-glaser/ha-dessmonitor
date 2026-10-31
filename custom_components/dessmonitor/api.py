@@ -698,6 +698,15 @@ class DessMonitorAPI:
             field_name = field.get("name", "")
             field_id = field.get("id", "")
 
+            if not field_name or not field_id:
+                _LOGGER.warning(
+                    "Skipping control field for device %s: name %r, id %r",
+                    sn,
+                    field_name,
+                    field_id,
+                )
+                continue
+
             # Determine field type based on presence of options
             if "item" in field and field["item"]:
                 options = {}

@@ -17,7 +17,11 @@ from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
 from .device_support.device_registry import map_control_field
 from .entity_loader import async_setup_dynamic_entities
-from .utils import create_device_info
+from .utils import (
+    async_migrate_control_unique_ids,
+    control_entity_suffix,
+    create_device_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,8 +39,9 @@ async def async_setup_entry(
 
     async def _build() -> list[ButtonEntity]:
         entities = await _async_build_button_entities(coordinator, known_entities)
+        async_migrate_control_unique_ids(hass, config_entry, "button", entities)
         _disable_replaced_selects(hass, config_entry, entities)
-        return entities
+        return list(entities)
 
     await async_setup_dynamic_entities(
         hass,
@@ -54,37 +59,40 @@ async def async_setup_entry(
 def _disable_replaced_selects(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    buttons: list[ButtonEntity],
+    buttons: list[DessMonitorButton],
 ) -> None:
     """Hide legacy one-option selects now represented by action buttons."""
     registry = er.async_get(hass)
     for button in buttons:
-        if not button.unique_id:
-            continue
-        entity_id = registry.async_get_entity_id("select", DOMAIN, button.unique_id)
-        if entity_id is None:
-            continue
-        entry = registry.async_get(entity_id)
-        if entry is None or entry.config_entry_id != config_entry.entry_id:
-            continue
-        if entry.disabled_by is None:
-            registry.async_update_entity(
-                entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION
-            )
-            _LOGGER.info("Disabled replaced legacy entity %s", entity_id)
+        # A select registered before the action became a button may sit under
+        # either identity, depending on whether the field has since been renamed.
+        for unique_id in (button.unique_id, button.legacy_unique_id):
+            if not unique_id:
+                continue
+            entity_id = registry.async_get_entity_id("select", DOMAIN, unique_id)
+            if entity_id is None:
+                continue
+            entry = registry.async_get(entity_id)
+            if entry is None or entry.config_entry_id != config_entry.entry_id:
+                continue
+            if entry.disabled_by is None:
+                registry.async_update_entity(
+                    entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION
+                )
+                _LOGGER.info("Disabled replaced legacy entity %s", entity_id)
 
 
 async def _async_build_button_entities(
     coordinator: DessMonitorDataUpdateCoordinator,
     known_entities: set[str],
-) -> list[ButtonEntity]:
+) -> list[DessMonitorButton]:
     """Build cloud-backed action buttons not already registered."""
 
     if not coordinator.data:
         return []
 
     coordinator_data = cast(dict[str, dict[str, Any]], coordinator.data)
-    entities: list[ButtonEntity] = []
+    entities: list[DessMonitorButton] = []
 
     for device_sn, raw_device_info in coordinator_data.items():
         device_info = cast(dict[str, Any], raw_device_info)
@@ -126,6 +134,7 @@ async def _async_build_button_entities(
                     device_meta,
                     collector_meta,
                     friendly_name,
+                    name,
                     param_id,
                     api_value,
                 )
@@ -147,6 +156,7 @@ class DessMonitorButton(CoordinatorEntity, ButtonEntity):
         device_meta: dict[str, Any],
         collector_meta: dict[str, Any],
         name: str,
+        api_name: str,
         param_id: str,
         api_value: str,
     ) -> None:
@@ -158,12 +168,17 @@ class DessMonitorButton(CoordinatorEntity, ButtonEntity):
 
         device_alias = device_meta.get("alias", "DessMonitor")
         self._attr_name = f"{device_alias} {name}"
-        unique_suffix = name.lower().replace(" ", "_").replace("-", "_")
-        self._attr_unique_id = f"{device_sn}_{unique_suffix}"
+        self._attr_unique_id = f"{device_sn}_{control_entity_suffix(name)}"
+        self._legacy_unique_id = f"{device_sn}_{control_entity_suffix(api_name)}"
         self._attr_device_info = create_device_info(
             device_sn, device_meta, collector_meta
         )
         self._attr_entity_category = EntityCategory.CONFIG
+
+    @property
+    def legacy_unique_id(self) -> str:
+        """Return the unique id this control carried before its name changed."""
+        return self._legacy_unique_id
 
     async def async_press(self) -> None:
         """Handle the button press."""

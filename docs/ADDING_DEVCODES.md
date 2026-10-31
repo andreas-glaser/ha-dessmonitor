@@ -238,7 +238,27 @@ collectors, for example, report `Output L1 Active Power` and
 `Output L2 Active Power` next to the summed `Total Output Active Power`; mapping
 both legs onto one key would silently drop the second.
 
-### 4.5 `VALUE_TRANSFORMATIONS`
+### 4.5 `CONTROL_FIELD_MAPPINGS`
+
+Control field names come from the `control_fields` section of the analysis and
+are used verbatim as the entity name. Add a mapping only where the collector
+reports a setting under an internal identifier, as devcode 6515 does with
+`bat_eq_time`, or where the name is misspelled. Leading, trailing and doubled
+whitespace is trimmed for every devcode, so a name such as `" Inverter Time"`
+needs no mapping.
+
+```python
+CONTROL_FIELD_MAPPINGS: dict[str, str] = {
+    "bat_eq_time": "Eq charging time",
+}
+```
+
+A control entity's unique id is derived from its display name, so a mapping
+changes that identity. `async_migrate_control_unique_ids` carries the existing
+registry entry over, which keeps automations working, but it runs once: choose
+the final name rather than renaming across releases.
+
+### 4.6 `VALUE_TRANSFORMATIONS`
 
 Use when the API delivers a value in the wrong unit or with wrong scaling. Keys are the *post-title-mapping* title (the canonical name), values are callables.
 
@@ -260,7 +280,7 @@ VALUE_TRANSFORMATIONS: dict = {
 
 Callables must be tolerant of unparseable input and return something the sensor can display (the original value is a safe fallback).
 
-### 4.6 `PARAMETER_SENSOR_NAMES`
+### 4.7 `PARAMETER_SENSOR_NAMES`
 
 Most sensors arrive via `queryDeviceLastData`. A minority (notably SOC on devcode 2376) only appear under `queryDeviceParsEs`. The analysis lists these in the `parameters` section.
 
@@ -272,7 +292,7 @@ PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
 The coordinator will fetch `queryDeviceParsEs` in parallel and merge the parameters into the device data (deduplicated). Leave empty otherwise.
 
-### 4.7 Configuration
+### 4.8 Configuration
 
 ```python
 DEVCODE_CONFIG = {
@@ -281,6 +301,7 @@ DEVCODE_CONFIG = {
     "charger_priority_mapping": CHARGER_PRIORITY_MAPPING,
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
+    "control_field_mappings": CONTROL_FIELD_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

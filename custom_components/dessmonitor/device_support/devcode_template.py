@@ -79,6 +79,17 @@ SENSOR_TITLE_MAPPINGS: dict = {
     # "energyToday": "Daily Energy",  # More readable
 }
 
+# Control Field Mappings
+# Map API control field names to cleaner display names. Use this only where the
+# collector reports a setting under an internal identifier such as
+# "bat_eq_time", or where its name is misspelled. Padding and doubled spaces are
+# trimmed for every devcode, so they never need a mapping.
+# Renaming a control changes its entity identity; the integration migrates the
+# existing registry entry, so pick the final name rather than iterating.
+CONTROL_FIELD_MAPPINGS: dict = {
+    # "bat_eq_time": "Eq charging time",
+}
+
 # Sensor Value Transformations
 # Define functions to transform sensor values if needed
 # This is for more complex transformations than simple mappings
@@ -105,6 +116,7 @@ DEVCODE_CONFIG = {
     "charger_priority_mapping": CHARGER_PRIORITY_MAPPING,
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
+    "control_field_mappings": CONTROL_FIELD_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

@@ -6,7 +6,10 @@ DEVICE_INFO = {
     "name": "DessMonitor Data Collector (devcode 6515)",
     "description": "DessMonitor data collector/gateway for single-phase inverters (WiFi)",
     "manufacturer": "DessMonitor",
-    "known_inverters": ["ANENJI ANJ-HHS-11KW-48V-WIFI"],
+    "known_inverters": [
+        "ANENJI ANJ-HHS-11KW-48V-WIFI",
+        "Maxsky EM11000 11kW 48V",
+    ],
     "supported_features": [
         "real_time_monitoring",
         "energy_tracking",
@@ -66,6 +69,12 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "Current charging priority": "Charger Source Priority",
 }
 
+CONTROL_FIELD_MAPPINGS: dict[str, str] = {
+    # The collector reports this setting under its internal identifier. Name it
+    # after the equalization settings it sits between.
+    "bat_eq_time": "Eq charging time",
+}
+
 VALUE_TRANSFORMATIONS: dict = {}
 
 PARAMETER_SENSOR_NAMES: set[str] = set()
@@ -76,6 +85,7 @@ DEVCODE_CONFIG = {
     "charger_priority_mapping": CHARGER_PRIORITY_MAPPING,
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
+    "control_field_mappings": CONTROL_FIELD_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }
