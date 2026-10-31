@@ -1,5 +1,7 @@
 # DessMonitor / ShineMonitor for Home Assistant
 
+**Local or cloud monitoring for Eybond-collector solar inverters.**
+
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
@@ -12,7 +14,7 @@ Monitor your solar inverter and configure supported settings in Home Assistant t
 - Track solar production, battery status, grid use, and inverter health across multiple devices.
 - Adjust supported charging priorities, battery settings, and current limits from dashboards and automations.
 - Discover devices on your cloud account and set up the integration through the UI.
-- Optionally use faster, read-only local monitoring on compatible hardware, with cloud fallback in hybrid mode.
+- Read telemetry **locally** off the collector on your own network, every few seconds, with no cloud round trip. Local monitoring is read-only and available on compatible hardware; hybrid mode keeps the cloud as a fallback and for settings.
 
 ## Contents
 
@@ -72,7 +74,7 @@ With [HACS](https://www.hacs.xyz/) installed, use this button to open the reposi
 
 Alternatively, add `https://github.com/andreas-glaser/ha-dessmonitor` as a custom repository in HACS with category **Integration**.
 
-1. Find **DessMonitor / ShineMonitor** in HACS and download the latest stable release.
+1. Find **DessMonitor / ShineMonitor (Local & Cloud)** in HACS and download the latest stable release.
 2. Restart Home Assistant.
 3. Continue with [Configuration](#configuration).
 
