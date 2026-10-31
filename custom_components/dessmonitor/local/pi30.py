@@ -100,9 +100,12 @@ def parse_pi30_response(command: str, frame: bytes) -> dict[str, Any]:
         return values
     if command == "QPIGS2":
         # Axpert MAX PI30: PV2 input current (A), voltage (V), charging power (W).
-        # The tested logger appends a trailing space to this response.
+        # The tested logger appends a trailing space to this response. Vendor
+        # fields after those three are ignored rather than rejected, as they
+        # are for QPIGS: rejecting them would park the inquiry in its failure
+        # backoff and publish no PV2 reading at all (#50).
         fields = data.split()
-        if len(fields) != 3:
+        if len(fields) < 3:
             raise ProtocolError("unsupported PI30 PV2 status field count")
         return {
             "PV2 Charger Current": _number(fields[0], 1000),
