@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+from collections.abc import Container
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -13,6 +14,7 @@ from homeassistant.core import HomeAssistant
 from .. import DessMonitorDataUpdateCoordinator
 from ..api import DessMonitorAPI
 from ..const import CONF_LOCAL_COLLECTOR_IP, CONF_LOCAL_COLLECTOR_IPS
+from ..data_sources import with_data_source
 from ..device_support import map_sensor_title
 from .coordinator import DessMonitorLocalCoordinator
 
@@ -102,8 +104,6 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Refresh cloud state, then overlay healthy local measurements."""
-        local_data = self._current_local_data()
-        local_available = bool(local_data)
         try:
             if not self.api.token or not self.api.secret:
                 if not await self.api.load_saved_token():
@@ -111,6 +111,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
             cloud_data = await super()._async_update_data()
         except Exception as err:  # pylint: disable=broad-except
             self._cloud_stale = True
+            self.stale_cloud_serials = frozenset(self._cached_cloud_data)
             # A collector may finish its callback/discovery while a slow cloud
             # request is in flight. Re-read here so that failure handling uses
             # the freshest local state instead of the pre-request snapshot.
@@ -153,10 +154,14 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
 
         self._cloud_stale = False
         self._initial_refresh_completed = True
+        # Discovery/disconnection can finish while the cloud request awaits IO.
+        # Do not overwrite a newer local push with the pre-request snapshot.
+        local_data = self._current_local_data()
         return merge_cloud_and_local(
             cloud_data,
             local_data,
-            local_available=local_available,
+            local_available=bool(local_data),
+            stale_serials=self.stale_cloud_serials,
         )
 
     def _handle_local_update(self) -> None:
@@ -177,12 +182,20 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         if self._shutdown:
             return
         local_data = self._current_local_data()
-        self.data = merge_cloud_and_local(
+        merged = merge_cloud_and_local(
             self._cached_cloud_data,
             local_data,
             local_available=bool(local_data),
             cloud_source="Cached Cloud" if self._cloud_stale else "Cloud",
+            stale_serials=self.stale_cloud_serials,
         )
+        if not merged:
+            # A local failure also notifies this listener. With no cloud
+            # snapshot to fall back on, publishing an empty one as a success
+            # would clear the cloud failure and claim a working coordinator
+            # while neither transport has ever delivered a device.
+            return
+        self.data = merged
         self.last_exception = None
         self.last_update_success = True
         # DataUpdateCoordinator.async_set_updated_data() resets its refresh
@@ -229,11 +242,21 @@ def merge_cloud_and_local(
     *,
     local_available: bool,
     cloud_source: str = "Cloud",
+    stale_serials: Container[str] = (),
 ) -> dict[str, Any]:
-    """Overlay local values onto the matching cloud device without mutating inputs."""
+    """Overlay local values onto the matching cloud device without mutating inputs.
+
+    ``stale_serials`` names the devices whose cloud payload the coordinator
+    retained from an earlier cycle. A local overlay still makes such a device
+    live, but without one it keeps the cached label rather than claiming the
+    cloud answered for it.
+    """
     merged = copy.deepcopy(cloud_data or {})
     local_devices = local_data or {}
     matched_local: set[str] = set()
+
+    def source_for(cloud_serial: str) -> str:
+        return "Cached Cloud" if cloud_serial in stale_serials else cloud_source
 
     if local_available:
         for cloud_serial, cloud_payload in merged.items():
@@ -241,8 +264,8 @@ def merge_cloud_and_local(
                 cloud_serial, cloud_payload, local_devices, matched_local
             )
             if local_match is None:
-                cloud_payload["data"] = _with_data_source(
-                    cloud_payload.get("data", []), cloud_source
+                cloud_payload["data"] = with_data_source(
+                    cloud_payload.get("data", []), source_for(cloud_serial)
                 )
                 continue
             local_serial, local_payload = local_match
@@ -254,9 +277,9 @@ def merge_cloud_and_local(
             )
 
     else:
-        for cloud_payload in merged.values():
-            cloud_payload["data"] = _with_data_source(
-                cloud_payload.get("data", []), cloud_source
+        for cloud_serial, cloud_payload in merged.items():
+            cloud_payload["data"] = with_data_source(
+                cloud_payload.get("data", []), source_for(cloud_serial)
             )
 
     return merged
@@ -302,37 +325,34 @@ def _merge_data_points(
     except (TypeError, ValueError):
         device_code = 0
 
-    indexed: dict[str, dict[str, Any]] = {}
-    order: list[str] = []
-    for point in cloud_points:
-        raw_title = str(point.get("title", "")).strip()
-        if not raw_title:
-            continue
-        title = map_sensor_title(device_code, raw_title) if device_code else raw_title
-        if title not in indexed:
-            order.append(title)
-        indexed[title] = copy.deepcopy(point)
-
-    for point in local_points:
+    def key_for(point: dict[str, Any]) -> str:
         title = str(point.get("title", "")).strip()
-        if not title or title == "Data Source":
+        return (
+            map_sensor_title(device_code, title) if device_code else title
+        ).casefold()
+
+    local_by_key: dict[str, dict[str, Any]] = {}
+    for point in local_points:
+        key = key_for(point)
+        if key and key != "data source":
+            local_by_key[key] = point
+
+    result: list[dict[str, Any]] = []
+    overlaid: set[str] = set()
+    for point in cloud_points:
+        key = key_for(point)
+        if not key or key == "data source":
             continue
-        if title not in indexed:
-            order.append(title)
-        indexed[title] = copy.deepcopy(point)
-
-    order = [title for title in order if title != "Data Source"]
-    return [indexed[title] for title in order] + [
-        {"title": "Data Source", "val": "Local", "unit": ""}
-    ]
-
-
-def _with_data_source(
-    points: list[dict[str, Any]], source: str
-) -> list[dict[str, Any]]:
-    """Replace the synthetic data-source point while retaining all measurements."""
-    result = [
-        copy.deepcopy(point) for point in points if point.get("title") != "Data Source"
-    ]
-    result.append({"title": "Data Source", "val": source, "unit": ""})
-    return result
+        if key not in local_by_key:
+            # Main and Current priority can map to the same sensor key but
+            # are distinct cloud controls. Retain both raw fields and order.
+            result.append(copy.deepcopy(point))
+        elif key not in overlaid:
+            result.append(copy.deepcopy(local_by_key[key]))
+            overlaid.add(key)
+    result.extend(
+        copy.deepcopy(point)
+        for key, point in local_by_key.items()
+        if key not in overlaid
+    )
+    return result + [{"title": "Data Source", "val": "Local", "unit": ""}]

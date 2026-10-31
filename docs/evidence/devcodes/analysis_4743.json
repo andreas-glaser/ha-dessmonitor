@@ -1,0 +1,651 @@
+{
+  "timestamp": "2026-10-31 15:28:20",
+  "analysis": {
+    "api_profile": "shinemonitor_solar",
+    "analysis_version": 3,
+    "devcode": 4743,
+    "device_sn": "",
+    "device_identity": "sha256:9d9d4bdef03a",
+    "collector_identity": "sha256:57d43f1499fc",
+    "device_address": 1,
+    "collector_alias": "",
+    "total_sensors": 47,
+    "operating_modes": [],
+    "output_priorities": [],
+    "charger_priorities": [],
+    "sensor_titles": [
+      "485Protocol_Version",
+      "DC Temp",
+      "FirmWare_Version",
+      "HardWare_Version",
+      "Inverter R-phase current",
+      "Inverter R-phase frequency",
+      "Inverter R-phase power H",
+      "Inverter R-phase voltage",
+      "Inverter S-phase current",
+      "Inverter S-phase frequency",
+      "Inverter S-phase power H",
+      "Inverter S-phase voltage",
+      "Inverter T-phase current",
+      "Inverter T-phase frequency",
+      "Inverter T-phase power H",
+      "Inverter T-phase voltage",
+      "Inverter power factor",
+      "Inverter serial number",
+      "Inverter three-phase power H",
+      "Inverter three-phase reactive power H",
+      "InverterTemp",
+      "InverterType",
+      "Load R-phase voltage",
+      "Load S-phase voltage",
+      "Load T-phase voltage",
+      "Negative bus voltage",
+      "PV power generation today",
+      "PV1 current",
+      "PV1 power",
+      "PV1 voltage",
+      "PV2 current",
+      "PV2 power",
+      "PV2 voltage",
+      "PV3 current",
+      "PV3 power",
+      "PV3 voltage",
+      "Positive bus voltage",
+      "R-phase load power H",
+      "Reserve",
+      "S-phase load power H",
+      "T-phase load power H",
+      "Three-phase total load power H",
+      "Timestamp",
+      "Total PV power",
+      "Total photovoltaic power generation",
+      "bus voltage",
+      "id"
+    ],
+    "potential_typos": [],
+    "unit_patterns": {},
+    "sample_data": [
+      {
+        "title": "id",
+        "value": "",
+        "unit": ""
+      },
+      {
+        "title": "Timestamp",
+        "value": "2026-10-31 15:25:37",
+        "unit": ""
+      },
+      {
+        "title": "HardWare_Version",
+        "value": "101",
+        "unit": ""
+      },
+      {
+        "title": "FirmWare_Version",
+        "value": "101",
+        "unit": ""
+      },
+      {
+        "title": "485Protocol_Version",
+        "value": "101",
+        "unit": ""
+      },
+      {
+        "title": "InverterType",
+        "value": "Single-phase Grid-Connected Inverter",
+        "unit": ""
+      },
+      {
+        "title": "Reserve",
+        "value": "grid-connected",
+        "unit": ""
+      },
+      {
+        "title": "InverterTemp",
+        "value": "80.0",
+        "unit": "\u00b0C"
+      },
+      {
+        "title": "DC Temp",
+        "value": "80.0",
+        "unit": "\u00b0C"
+      },
+      {
+        "title": "PV1 voltage",
+        "value": "220.5",
+        "unit": "V"
+      },
+      {
+        "title": "PV1 current",
+        "value": "7.3",
+        "unit": "A"
+      },
+      {
+        "title": "PV2 voltage",
+        "value": "0.0",
+        "unit": "V"
+      },
+      {
+        "title": "PV2 current",
+        "value": "0.0",
+        "unit": "A"
+      },
+      {
+        "title": "PV3 voltage",
+        "value": "0.0",
+        "unit": "V"
+      },
+      {
+        "title": "PV3 current",
+        "value": "0.0",
+        "unit": "A"
+      },
+      {
+        "title": "PV1 power",
+        "value": "0",
+        "unit": "W"
+      },
+      {
+        "title": "PV2 power",
+        "value": "0",
+        "unit": "W"
+      },
+      {
+        "title": "PV3 power",
+        "value": "0",
+        "unit": "W"
+      },
+      {
+        "title": "Total PV power",
+        "value": "1552",
+        "unit": "W"
+      },
+      {
+        "title": "Positive bus voltage",
+        "value": "0.0",
+        "unit": "V"
+      }
+    ],
+    "control_field_count": 50,
+    "control_fields": [
+      {
+        "name": "10min grid equalization and overvoltage value",
+        "type": "value",
+        "id": "eybond_ctrl_65",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "10min grid voltage equalization enable",
+        "type": "options",
+        "id": "eybond_ctrl_66",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "24-hour monitoring function settings",
+        "type": "options",
+        "id": "eybond_ctrl_58",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Active Islanding enabled",
+        "type": "options",
+        "id": "eybond_ctrl_89",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Anti-backflow function",
+        "type": "options",
+        "id": "eybond_ctrl_51",
+        "options": {
+          "0": "Disable",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Boot loading rate",
+        "type": "value",
+        "id": "eybond_ctrl_94",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "CT orientation adaptation",
+        "type": "value",
+        "id": "eybond_ctrl_100",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Clear all operating data of the inverter",
+        "type": "options",
+        "id": "eybond_ctrl_98",
+        "options": {
+          "1": "execute clear command"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "DRM function",
+        "type": "options",
+        "id": "eybond_ctrl_96",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Grid Code",
+        "type": "options",
+        "id": "eybond_ctrl_59",
+        "options": {
+          "0": "50Hz Standard Grid",
+          "1": "60Hz Standard Grid",
+          "2": "Germany",
+          "3": "Australia",
+          "4": "United Kingdom",
+          "5": "China",
+          "6": "Italy",
+          "7": "France",
+          "8": "South Africa",
+          "9": "Czech Republic",
+          "10": "Austria",
+          "11": "Belgium",
+          "12": "Switzerland",
+          "13": "Philippines",
+          "14": "Denmark",
+          "15": "Thailand",
+          "16": "Greece",
+          "17": "Netherland",
+          "18": "India",
+          "19": "New Zealand",
+          "20": "Ireland",
+          "21": "Poland",
+          "22": "Spain"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Grid high voltage automatic power reduction function",
+        "type": "options",
+        "id": "eybond_ctrl_54",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Grid overfrequency time 1",
+        "type": "value",
+        "id": "eybond_ctrl_79",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid overfrequency time 2",
+        "type": "value",
+        "id": "eybond_ctrl_80",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid overfrequency value 1",
+        "type": "value",
+        "id": "eybond_ctrl_63",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Grid overfrequency value 2",
+        "type": "value",
+        "id": "eybond_ctrl_71",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Grid overvoltage time 1",
+        "type": "value",
+        "id": "eybond_ctrl_73",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid overvoltage time 2",
+        "type": "value",
+        "id": "eybond_ctrl_74",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid overvoltage time 3",
+        "type": "value",
+        "id": "eybond_ctrl_75",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid overvoltage value 1",
+        "type": "value",
+        "id": "eybond_ctrl_61",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Grid overvoltage value 2",
+        "type": "value",
+        "id": "eybond_ctrl_67",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Grid overvoltage value 3",
+        "type": "value",
+        "id": "eybond_ctrl_68",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Grid underfrequency time 1",
+        "type": "value",
+        "id": "eybond_ctrl_81",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid underfrequency time 2",
+        "type": "value",
+        "id": "eybond_ctrl_82",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid underfrequency value 1",
+        "type": "value",
+        "id": "eybond_ctrl_64",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Grid underfrequency value 2",
+        "type": "value",
+        "id": "eybond_ctrl_72",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Grid undervoltage time 1",
+        "type": "value",
+        "id": "eybond_ctrl_76",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid undervoltage time 2",
+        "type": "value",
+        "id": "eybond_ctrl_77",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid undervoltage time 3",
+        "type": "value",
+        "id": "eybond_ctrl_78",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Grid undervoltage value 1",
+        "type": "value",
+        "id": "eybond_ctrl_62",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Grid undervoltage value 2",
+        "type": "value",
+        "id": "eybond_ctrl_69",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Grid undervoltage value 3",
+        "type": "value",
+        "id": "eybond_ctrl_70",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Grid-connected power cap",
+        "type": "value",
+        "id": "eybond_ctrl_52",
+        "options": null,
+        "unit": "%",
+        "hint": null
+      },
+      {
+        "name": "HVRT enable",
+        "type": "options",
+        "id": "eybond_ctrl_87",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "HVRT voltage",
+        "type": "value",
+        "id": "eybond_ctrl_88",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Insulation resistance function settings",
+        "type": "options",
+        "id": "eybond_ctrl_57",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Inverter role",
+        "type": "options",
+        "id": "eybond_ctrl_50",
+        "options": {
+          "0": "host",
+          "1": "Slave"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "LVRT enable",
+        "type": "options",
+        "id": "eybond_ctrl_85",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "LVRT voltage",
+        "type": "value",
+        "id": "eybond_ctrl_86",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Meter Agreement",
+        "type": "options",
+        "id": "eybond_ctrl_53",
+        "options": {
+          "0": "No Meter",
+          "1": "Thinkpower Three phase meter",
+          "2": "Thinkpower Single phase meter",
+          "3": "Acrel Three phase meter",
+          "4": "Acrel Single phase meter",
+          "5": "EastRon Three phase meter",
+          "6": "EastRon Single phase meter"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Over frequency power reduction end frequency",
+        "type": "value",
+        "id": "eybond_ctrl_92",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Over frequency power reduction ratio",
+        "type": "value",
+        "id": "eybond_ctrl_93",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Overfrequency reduction start frequency",
+        "type": "value",
+        "id": "eybond_ctrl_91",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "RTC Counter valueH",
+        "type": "value",
+        "id": "system_time",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Reconnect loading rate",
+        "type": "value",
+        "id": "eybond_ctrl_95",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Restore all parameters of the inverter to factory parameters",
+        "type": "options",
+        "id": "eybond_ctrl_99",
+        "options": {
+          "1": "execute restore command"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Rocof Value",
+        "type": "value",
+        "id": "eybond_ctrl_84",
+        "options": null,
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Rocof enable",
+        "type": "options",
+        "id": "eybond_ctrl_83",
+        "options": {
+          "0": "Prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Shadow occlusion function settings",
+        "type": "options",
+        "id": "eybond_ctrl_56",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Whether to enable active control",
+        "type": "options",
+        "id": "eybond_ctrl_90",
+        "options": {
+          "0": "prohibit",
+          "1": "Enable"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "reconnect time",
+        "type": "value",
+        "id": "eybond_ctrl_60",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      }
+    ],
+    "parameter_count": 0,
+    "parameters": [],
+    "checksum": "f414de4cf822a457056329bc62ef8c194852ce2495227c30ed75ae440824c669"
+  }
+}

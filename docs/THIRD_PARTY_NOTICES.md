@@ -51,3 +51,10 @@ observed on 2026-10-15 in
 Only interface behavior was used; no vendor JavaScript is included. Read formats
 for the five devcode 6544 fields were independently observed in hardware logs.
 This establishes client serialization, not successful on-device write validation.
+
+The Modbus protocol-number 4 layout uses register addresses, data types, and
+scales from `Communication.Protocol.No.3-10.docx`, published in
+[PreK/esphome-anenji-11kw-native-modbus](https://github.com/PreK/esphome-anenji-11kw-native-modbus/blob/55a330585846d57b4f24e6467201d8dde8985ee7/Communication.Protocol.No.3-10.docx).
+The decoder is independently implemented; the document and that project's
+ESPHome configuration are not redistributed here. Regression data consists of
+read-only hardware register samples with identifying information removed.

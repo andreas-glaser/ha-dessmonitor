@@ -29,9 +29,11 @@ htmlcov/
 
 # Local development files
 auth_tokens.json
-*.logformat_env/
+*.log
+format_env/
 CLAUDE.md
 AGENT.md
+AGENTS.md
 .codex
 
 # CLI tool config

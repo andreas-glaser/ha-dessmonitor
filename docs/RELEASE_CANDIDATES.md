@@ -57,6 +57,30 @@ and publishes a GitHub prerelease. Confirm that:
 Do not merge the RC-only version commit into `main`. Continue fixes on the
 release branch.
 
+## Prepare a further candidate
+
+A second or later candidate usually brings work that has landed on `dev` since
+the previous one:
+
+```bash
+git switch release/2.3.0
+git merge --no-ff dev
+```
+
+**The merge will file the new entries under the previous candidate's heading.**
+Preparing an RC inserts the version heading above the entries that were under
+`## [Unreleased]`, so the published section now occupies the lines `dev` keeps
+appending to. Git reports no conflict, and the result claims that the earlier
+tag shipped work it never contained.
+
+So after merging, move the new entries into a fresh `## [X.Y.Z-rc.N]` section
+and leave the earlier candidate's section listing only what that tag shipped.
+`git show vX.Y.Z-rc.N-1:CHANGELOG.md` is the authority for the latter. Then
+bump the three version files and run the checks as above: `make check` fails
+when a released section no longer matches its tag.
+
+The same applies when consolidating the final stable section.
+
 ## How HACS handles the RC
 
 HACS uses GitHub releases for this repository because `hacs.json` enables ZIP

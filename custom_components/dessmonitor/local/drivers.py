@@ -25,6 +25,7 @@ from .smg import (
     discover_smg,
     poll_smg,
 )
+from .smg_protocol4 import PROTOCOL4_CLOUD_DEVICE_CODE
 
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
 
@@ -195,13 +196,23 @@ class SmgModbusDriver:
             max_address=max_address,
             device_address=device_address,
         )
+        for item in discovered:
+            _LOGGER.info(
+                "Local Modbus register layout %d selected at inverter address %d",
+                item.route.protocol_number,
+                item.route.slave_address,
+            )
         return tuple(
             LocalDevice(
                 driver_key=self.key,
                 transport_device_code=item.route.device_code,
                 collector_address=item.route.collector_address,
                 device_address=item.route.slave_address,
-                entity_device_code=SMG_CLOUD_DEVICE_CODE,
+                entity_device_code=(
+                    PROTOCOL4_CLOUD_DEVICE_CODE
+                    if item.route.protocol_number == 4
+                    else SMG_CLOUD_DEVICE_CODE
+                ),
                 serial=item.serial,
                 model=item.model,
                 firmware=item.firmware,
@@ -220,6 +231,7 @@ class SmgModbusDriver:
                 device.transport_device_code,
                 device.collector_address,
                 device.device_address,
+                int(device.metadata.get("layout_code", 0)),
             ),
             include_status=cycle % 6 == 0,
         )
@@ -315,8 +327,17 @@ async def discover_supported_devices(
     max_address: int = 16,
     device_address: int = 0,
     diagnostics: ProbeDiagnostics | None = None,
+    preferred_driver_key: str | None = None,
 ) -> tuple[ReadOnlyLocalDriver, tuple[LocalDevice, ...]]:
-    """Try a bounded driver order and return the first verified protocol."""
+    """Try a bounded driver order and return the first verified protocol.
+
+    ``preferred_driver_key`` names a driver that already worked for this
+    collector. That is positive evidence about its protocol, so it is tried
+    first, and if the collector then answers nothing at all the remaining
+    drivers are not probed: silence says nothing about which protocol the
+    collector speaks, and every further query costs another request timeout
+    while local telemetry is unavailable.
+    """
     drivers = list(DRIVERS)
     diagnostics = diagnostics if diagnostics is not None else ProbeDiagnostics()
     if configured_device_code in (1, SMG_CLOUD_DEVICE_CODE) or (
@@ -324,6 +345,8 @@ async def discover_supported_devices(
         and reported_device_code in SMG_REPORTED_COLLECTOR_CODES
     ):
         drivers[0], drivers[1] = drivers[1], drivers[0]
+    if preferred_driver_key is not None:
+        drivers.sort(key=lambda driver: driver.key != preferred_driver_key)
 
     failures: list[str] = []
     _LOGGER.debug(
@@ -345,15 +368,59 @@ async def discover_supported_devices(
                     device_address=device_address,
                 )
         except (TimeoutError, ProtocolError, DiscoveryError) as err:
-            failures.append(f"{driver.key}: {failure_reason(err)}")
+            failures.append(
+                f"{driver.key}: {_driver_failure(diagnostics, driver, err)}"
+            )
+            if driver.key == preferred_driver_key and diagnostics.silent:
+                _LOGGER.debug(
+                    "Local discovery [%s]: %s answered nothing; not probing the "
+                    "remaining drivers",
+                    diagnostics.probe_id,
+                    driver.key,
+                )
+                break
             continue
         if devices:
             return driver, devices
-    raise DiscoveryError(
+
+    message, reason = _discovery_failure(diagnostics, failures)
+    raise DiscoveryError(message, reason=reason)
+
+
+def _driver_failure(
+    diagnostics: ProbeDiagnostics, driver: ReadOnlyLocalDriver, err: BaseException
+) -> str:
+    """Describe why one driver failed, preferring what the probe observed.
+
+    ``ProtocolError`` defaults its reason to ``invalid_response``, so a driver
+    that never received a frame used to report a malformed one.
+    """
+    if diagnostics.protocol_timed_out(driver.key):
+        return "timeout"
+    return failure_reason(err)
+
+
+def _discovery_failure(
+    diagnostics: ProbeDiagnostics, failures: list[str]
+) -> tuple[str, str]:
+    """Return the failure message and reason that the probe actually supports."""
+    detail = (
+        f"); query outcomes: {diagnostics.summary()}. Enable debug logging for "
+        f"per-query diagnostics (probe {diagnostics.probe_id})"
+    )
+    if diagnostics.silent:
+        return (
+            f"the collector did not answer any of {diagnostics.attempted} probe "
+            "queries, so no read-only local protocol could be identified ("
+            + "; ".join(failures)
+            + detail,
+            "collector_silent",
+        )
+    return (
         "no supported read-only local protocol was identified ("
         + "; ".join(failures)
-        + "); query outcomes: "
-        + diagnostics.summary()
-        + f". Enable debug logging for per-query diagnostics (probe {diagnostics.probe_id})",
-        reason="discovery_failed",
+        + detail
+        + f". The collector answered {diagnostics.answered} of "
+        f"{diagnostics.attempted} probe queries",
+        "discovery_failed",
     )

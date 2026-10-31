@@ -9,12 +9,15 @@
    git diff --staged
    ```
 
-2. **Run code quality**
+2. **Run the project's checks**
    ```bash
-   black custom_components/dessmonitor
-   isort custom_components/dessmonitor
-   flake8 custom_components/dessmonitor --max-line-length=127
+   make format
+   make test
+   make check
    ```
+   These are the declared commands. `make check` runs Black, isort, flake8,
+   mypy and the changelog guard, so a hand-written variant can miss a check
+   that CI will not.
 
 ## Commit Process
 

@@ -1,5 +1,10 @@
 # Partial cloud schedule write/readback evidence
 
+**October31 update:** [one schedule field was confirmed on the inverter display
+and by delayed independent cloud read](HARDWARE_20261031.md), with explicit
+restoration evidence. Calendar writes remain unverified. The October17 record
+below is retained separately and must not be presented as the newer experiment.
+
 [cloud_schedule_readback.json](cloud_schedule_readback.json) contains allowlisted
 October17 observations from the later combined DessMonitor build. It excludes
 account/device identifiers, URLs, authentication, HA entity IDs and peer addresses.

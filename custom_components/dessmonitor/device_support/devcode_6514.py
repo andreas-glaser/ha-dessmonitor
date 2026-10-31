@@ -4,24 +4,59 @@ from __future__ import annotations
 
 DEVICE_INFO = {
     "name": "DessMonitor Data Collector (devcode 6514)",
-    "description": "DessMonitor data collector/gateway",
+    "description": "DessMonitor data collector/gateway for dual-output inverters",
     "manufacturer": "DessMonitor",
-    "known_inverters": ["ANENJI 5KW 48V Hybrid Solar Inverter"],
+    "known_inverters": [
+        "ANENJI 5KW 48V Hybrid Solar Inverter",
+        "Aninerel 6.2KW 48V",
+        "Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module)",
+    ],
     "supported_features": [
         "real_time_monitoring",
         "battery_management",
         "solar_tracking",
         "parameter_control",
+        "split_phase_output",
     ],
 }
 
-OUTPUT_PRIORITY_MAPPING: dict[str, str] = {}
+# Codes from the API control enums bse_eybond_read_55 and bat_eybond_read_74.
+OUTPUT_PRIORITY_MAPPING: dict[str, str] = {
+    "UTI": "Utility First",
+    "SOL": "Solar First",
+    "SBU": "Solar → Battery → Utility",
+    "SUB": "Solar → Utility → Battery",
+    "SUF": "Solar → Utility First",
+}
 
-CHARGER_PRIORITY_MAPPING: dict[str, str] = {}
+# "CSO" is the third code this collector offers and is left unlabelled: its
+# meaning is not established by the API, the manual, or an observed reading, and
+# a wrong charge-source label would be worse than the raw code.
+CHARGER_PRIORITY_MAPPING: dict[str, str] = {
+    "SNU": "Solar and Utility",
+    "OSO": "Only Solar",
+    # The vendor manual for the Aninerel 4.2KW 24V names CSO solar-first
+    # charging: solar charges as priority and utility only steps in when solar
+    # is unavailable (#56).
+    "CSO": "Solar First",
+}
 
-OPERATING_MODE_MAPPING: dict[str, str] = {}
+OPERATING_MODE_MAPPING: dict[str, str] = {
+    "OffgridMode": "Off-grid Mode",
+}
 
 SENSOR_TITLE_MAPPINGS: dict[str, str] = {
+    # Fix typos
+    "Total Output Aparent Power": "Output Apparent Power",
+    "Output L1 Aparent Power": "Output L1 Apparent Power",
+    "Output L2 Aparent Power": "Output L2 Apparent Power",
+    # This collector reports only per-leg and summed output, no single "Output" set
+    "Total Output Active Power": "Output Active Power",
+    "Total Output Current": "Output Current",
+    "Total Load Percentage": "Load Percent",
+    # PV sensors
+    "PV Charging Power": "PV Charge Power",
+    # Firmware 8.50.12.3 reports SOC under this name
     "Battery percentage": "State of Charge",
 }
 

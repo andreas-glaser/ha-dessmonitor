@@ -1,8 +1,10 @@
 # Schedule and inverter-clock controls: client research and migration
 
-This contribution depends on cloud control-value recovery, including its bounded
-retry follow-up. It remains a draft: cloud write/readback evidence is partial,
-as detailed below, and does not cover all five paths on this exact PR build.
+Cloud control-value recovery and its bounded-retry follow-up have merged into
+upstream and shipped in 2.6.0. This remains a draft: hardware coverage is partial.
+An October31 candidate write to the charging-start field was confirmed on the
+inverter display and by delayed independent cloud read. Calendar writes and the
+other three schedule IDs are not qualified by that experiment.
 
 | API field (devcode 6544) | Observed read | Proposed entity |
 |---|---|---|
@@ -103,3 +105,43 @@ No automatic clock synchronization or local writes are added by this PR.
 
 Existing read-only telemetry work is independent of this candidate. API success
 alone is not device confirmation, and remaining cloud paths keep this a draft.
+
+## October 31 integration with current upstream
+
+The candidate now integrates dev `adec143dba60c670b7d0c1cca3f65c02879336b2`,
+including per-device cloud retention and failure handling shipped in 2.6.0.
+It is a dev-plus-feature candidate, not the unchanged official stable release.
+Migration notes stay under Unreleased; published release sections are preserved.
+
+`tests/test_temporal_cloud_outage.py` exercises the real coordinator gather,
+retention, cache synchronization and publication paths with a synthetic API:
+
+- Repeated total device-read failures keep the cached snapshot, do not advance
+  cloud_revision, and do not spend the temporal missing-value retry budget.
+  A subsequent successful cycle restores the existing time/text control.
+- When another device succeeds, a retained device is labelled Cached Cloud and
+  keeps its old timestamp. That sample does not revert an accepted temporal
+  value; a genuinely fresh later sample can update it normally.
+
+These tests cover both schedule and calendar representations. Their write calls
+are mocks, not hardware evidence; the separate physical follow-up is below.
+
+## October 31 hardware follow-up
+
+After the offline integration checks, the local candidate was installed for a
+Cloud-only trial. One `time.set_value` call changed secondary charging start from
+16:00 to16:01 while the secondary priority wasOFF. The owner confirmed16:01 on
+the inverter display; an independent cloud read returned16:01 more than three
+minutes later. The first independent read had timed out and was not treated as
+evidence that the write failed.
+
+One restoration call returned APIerror1/`ERR_FAIL(send failed)`, but an independent
+read and the owner's display confirmation established16:00. Fresh native bridge
+observations after returning ownership also showed the restored baseline. No
+write was blindly retried. The HA editor retained its previous accepted16:01 at
+one post-error observation, so its state was not used as proof of restoration.
+
+The owner reported that the clock was already correct; no calendar write was
+performed merely to create a test result. This confirms one cloud schedule
+write path, not all five controls or actual scheduled power-source switching.
+See [the exact timeline, limitations and compact record](../evidence/temporal_controls/HARDWARE_20261031.md).

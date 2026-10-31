@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "model": "ANENJI ANJ-11KW-48V-W-P",
+  "devcode": 6544,
+  "field_id": "bat_eybond_read_43988",
+  "field_name": "Secondary Charging Priority Start Time",
+  "path": "HA time.set_value -> candidate cloud API -> inverter",
+  "deployed_version": "2.6.0+pr48.20261031",
+  "candidate": {
+    "upstream_base": "adec143dba60c670b7d0c1cca3f65c02879336b2",
+    "published_feature_head_before_sync": "40a56f9035f51e234eb4fde36eb1c7223436dd40",
+    "verified_deployed_files": 65,
+    "note": "Local merge candidate; only version metadata differs from the tested production sources."
+  },
+  "baseline_display": {
+    "recorded_at": "2026-10-31T20:21:55.472417+00:00",
+    "priority": "OFF",
+    "start": "16:00",
+    "source": "user_reported_inverter_display"
+  },
+  "test_write": {
+    "intent_at": "2026-10-31T20:26:56.275610+00:00",
+    "result_at": "2026-10-31T20:26:57.756441+00:00",
+    "requested_ha_value": "16:01:00",
+    "service_calls": 1,
+    "service_accepted": true
+  },
+  "changed_display": {
+    "recorded_at": "2026-10-31T20:30:41.931695+00:00",
+    "priority": "OFF",
+    "start": "16:01",
+    "source": "user_reported_inverter_display",
+    "manual_change_reported": false
+  },
+  "independent_reads": [
+    {
+      "field": "start",
+      "at": "2026-10-31T20:27:28Z",
+      "status": "transport_error",
+      "curl_exit": 28,
+      "transport": {
+        "http_code": 0,
+        "elapsed_seconds": 30.00225
+      }
+    },
+    {
+      "field": "start",
+      "at": "2026-10-31T20:30:46Z",
+      "status": "read",
+      "transport": {
+        "http_code": 200,
+        "elapsed_seconds": 1.960762
+      },
+      "api_error": 0,
+      "value": "16:01"
+    },
+    {
+      "field": "start",
+      "at": "2026-10-31T20:31:23Z",
+      "status": "read",
+      "transport": {
+        "http_code": 200,
+        "elapsed_seconds": 1.687484
+      },
+      "api_error": 0,
+      "value": "16:00"
+    },
+    {
+      "field": "clock",
+      "at": "2026-10-31T20:32:19Z",
+      "status": "read",
+      "transport": {
+        "http_code": 200,
+        "elapsed_seconds": 2.76152
+      },
+      "api_error": 0,
+      "value": "2026-10-31 23:32:21"
+    }
+  ],
+  "restoration_write": {
+    "intent_at": "2026-10-31T20:31:08.783570+00:00",
+    "result_at": "2026-10-31T20:31:20.823399+00:00",
+    "requested_ha_value": "16:00:00",
+    "service_calls": 1,
+    "service_accepted": false,
+    "api_error": 1,
+    "api_message": "ERR_FAIL(send failed)"
+  },
+  "restored_display": {
+    "recorded_at": "2026-10-31T20:38:14.824692+00:00",
+    "priority": "OFF",
+    "start": "16:00",
+    "source": "user_reported_inverter_display"
+  },
+  "native_confirmation_after_return": {
+    "recorded_at": "2026-10-31T20:56:23.607488+00:00",
+    "observed_at": "2026-10-31T20:56:17.853161+00:00",
+    "available": true,
+    "telemetry_age_seconds_at_read": 5.72,
+    "settings_age_seconds_at_read": 5.407787037023809,
+    "values": {
+      "secondary_charging_priority": "off",
+      "secondary_charging_start": "16:00:00",
+      "secondary_charging_stop": "18:30:00"
+    },
+    "path": "existing bridge native Modbus observations after ownership was returned"
+  },
+  "candidate_clock_write_attempts": 0,
+  "clock_decision": "User confirmed correct local time; no artificial clock shift was made.",
+  "limitations": [
+    "One schedule field is physically confirmed; the other three schedule IDs and calendar write are not qualified by this session.",
+    "Display evidence is the user's direct report, not a captured photograph or automated display measurement; recorded_at is the record time.",
+    "No scheduled power-source transition was exercised; the secondary priority remained OFF.",
+    "After the failed restoration response, HA still showed its previous accepted16:01 at one observation. Restoration was established by separate API/display/native reads, not the HA editor state.",
+    "Native observations corroborate restoration only; they do not replace the tested cloud-write path.",
+    "The first independent read timed out; the successful changed-value read followed more than three minutes after the accepted write.",
+    "No write was blindly retried. Two service calls comprise one change and one distinct restoration."
+  ],
+  "private_source_sha256": {
+    "user-confirmation.json": "a96509b635d0c5dd657c4f86e0dd08d7fed127b731e54c3f72b95567f04fd305",
+    "write-start-intent.json": "11233c1ef9039d5a1921cf2c0d9784f726d022e71ee7b8215eb8b4dbc6caffd0",
+    "write-start-result.json": "08c0f3b5de30e0d9567eb2580f911042b54086ee18a33b188ae0b74a8b8fc80a",
+    "test-value-confirmed.json": "6c696e01cf2102309c38655fc726fe496b2f60fedfa530b23fbeae527a1c5659",
+    "restore-start-intent.json": "a218b3afa8e2909d1bc92d6212ecea1f47dba8b625556197deb9a359b3685786",
+    "restore-start-result.json": "024525ad89ebf017dd1730e0869d7580845b172cd2830149988046ab209e919f",
+    "schedule-restored-confirmed.json": "82130870d00779fb20930854599d34928b89ed291af747fa34625042c5142f34",
+    "restore-api-error-observation.json": "b26575e9cd07cb6727664d5d5371bd95ec44636e9e444573e4494aa1ffeed895",
+    "clock-assessment.json": "1e29196cf8ca382905e971f91d16c33cfa4a477103f22653f01ab609a3e1e358",
+    "install-result.json": "9b6d22e9e8f6b8ced8929b5d10413616a4d7ed6a1f9010eb24632f1bb65c5618",
+    "final-return-verification.json": "c8f3ec914dc646046e8076e8b7fcbe399c7bf3dad7b644d5da52bd55a53a206c",
+    "read-202802348336.json": "b8e3ad941beda793a72827837002673535cb96f4d3e3d6b3b63a55bb89604171",
+    "read-203052517749.json": "cdcad62595749505e229a095f3d7ff59c33b4e9807dd34fc7e2bd585bc02030d",
+    "read-203129072215.json": "9a480dbcdf909d13747af1435848c7040548337becbfbd72a29651448f358cbb",
+    "read-203226138346.json": "b7fb9efd497a86935277182f6d6f6e9a7ec9e787cae206c40acbc5b9e6f244b2"
+  }
+}

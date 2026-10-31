@@ -34,6 +34,7 @@ from .device_support import (
     get_all_output_priorities,
     is_devcode_supported,
 )
+from .sensor_titles import resolve_sensor_key
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,6 +46,13 @@ ENUM_SENSOR_TITLES = {
     "Charger Source Priority",
     "work state",
     "charger work enable",
+}
+
+# Readings whose value is free-form text rather than one of a fixed set of
+# states. Coercing these to a float would publish nothing at all, and giving
+# them the enum device class would reject any word not in an option list.
+TEXT_SENSOR_TITLES = {
+    "Inverter Status",
 }
 
 DIAGNOSTIC_SENSOR_TITLES = {
@@ -67,49 +75,6 @@ def _normalize_devcode(value: Any) -> int | None:
             return int(value)
         except ValueError:
             return None
-    return None
-
-
-def _match_sensor_definition(candidate: str | None) -> str | None:
-    """Return the canonical sensor key for a given candidate title or name."""
-    if not candidate:
-        return None
-
-    sensor_types = cast(dict[str, dict[str, Any]], SENSOR_TYPES)
-
-    if candidate in sensor_types:
-        return candidate
-
-    normalized = candidate.strip().lower()
-    for key, config in sensor_types.items():
-        if key.strip().lower() == normalized:
-            return key
-
-        friendly_name = config.get("name")
-        if (
-            isinstance(friendly_name, str)
-            and friendly_name.strip().lower() == normalized
-        ):
-            return key
-
-    return None
-
-
-def _resolve_sensor_type(
-    original_title: str | None, transformed_title: str | None
-) -> str | None:
-    """Determine which sensor definition to use for a datapoint."""
-    candidates: list[str] = []
-    if transformed_title:
-        candidates.append(transformed_title)
-    if original_title and original_title not in candidates:
-        candidates.append(original_title)
-
-    for candidate in candidates:
-        match = _match_sensor_definition(candidate)
-        if match:
-            return match
-
     return None
 
 
@@ -187,7 +152,7 @@ def _build_sensor_entities(
                     devcode, data_point.copy()
                 ).get("title", transformed_title)
 
-            sensor_type = _resolve_sensor_type(original_title, transformed_title)
+            sensor_type = resolve_sensor_key(transformed_title, original_title)
             if not sensor_type:
                 continue
 
@@ -469,6 +434,8 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         """Coerce API value into Home Assistant native value format."""
         if self._sensor_type in ENUM_SENSOR_TITLES:
             return self._coerce_enum_value(value)
+        if self._sensor_type in TEXT_SENSOR_TITLES:
+            return self._coerce_text_value(value)
         return self._coerce_numeric_value(value)
 
     def _coerce_enum_value(self, value: Any) -> str:
@@ -477,6 +444,13 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             return str(value)
         return "Unknown"
 
+    @staticmethod
+    def _coerce_text_value(value: Any) -> str | None:
+        """Return a free-form reading as text, or None when it is absent."""
+        if value is None or value == "":
+            return None
+        return str(value)
+
     def _coerce_numeric_value(self, value: Any) -> float | str | None:
         """Attempt to coerce sensor value into a float when possible."""
         if value in (None, ""):
@@ -484,6 +458,12 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         if isinstance(value, str):
             stripped_value = value.strip()
+
+            if (
+                self._sensor_type == "Output Voltage Setting"
+                and stripped_value.endswith("V")
+            ):
+                stripped_value = stripped_value[:-1].strip()
 
             # DessMonitor sometimes returns "-" (or similar placeholders) when a value is
             # not available. Treat these as unknown to avoid HA numeric parsing errors.

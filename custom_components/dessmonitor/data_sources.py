@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Container
 from typing import Any
 
 
@@ -15,12 +16,26 @@ def with_data_source(points: list[dict[str, Any]], source: str) -> list[dict[str
     return result
 
 
-def snapshot_with_data_source(data: dict[str, Any], source: str) -> dict[str, Any]:
-    """Copy a coordinator snapshot and label each device's provenance."""
+def snapshot_with_data_source(
+    data: dict[str, Any],
+    source: str,
+    *,
+    stale: Container[str] = (),
+    stale_source: str = "Cached Cloud",
+) -> dict[str, Any]:
+    """Copy a coordinator snapshot and label each device's provenance.
+
+    A cloud cycle can succeed for some devices and fail for others, so the
+    serials listed in ``stale`` keep the payload a previous cycle fetched and
+    are labelled accordingly instead of claiming to be live.
+    """
     result = copy.deepcopy(data)
-    for payload in result.values():
-        if isinstance(payload, dict):
-            points = payload.get("data", [])
-            if isinstance(points, list):
-                payload["data"] = with_data_source(points, source)
+    for serial, payload in result.items():
+        if not isinstance(payload, dict):
+            continue
+        points = payload.get("data", [])
+        if isinstance(points, list):
+            payload["data"] = with_data_source(
+                points, stale_source if serial in stale else source
+            )
     return result

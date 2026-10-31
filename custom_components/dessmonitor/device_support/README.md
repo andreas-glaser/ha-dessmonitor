@@ -7,6 +7,8 @@ This directory contains device profiles for inverters connected through DessMoni
 ## Currently Supported Collectors
 
 - **devcode 518**: Known to pair with BYD BYD-S-1P5K-2M through Q0025-series collectors on ShineMonitor; local protocol and writes are not verified.
+- **devcode 632**: Grid-connected PV inverter with up to three strings and an optional export meter, on ShineMonitor; inverter brand and model not yet confirmed. No battery, charger or priority readings. `DCI`, `GFCI` and `ISO` stay unmapped because the analysis records no unit for them.
+- **devcode 4743**: Single-phase grid-connected PV inverter with up to three strings, on ShineMonitor; inverter brand and model not yet confirmed. No battery readings. The R phase is mapped to the grid sensors; the S and T phases and the line voltages stay unmapped until a three-phase unit is reported.
 
 - **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
@@ -18,9 +20,9 @@ This directory contains device profiles for inverters connected through DessMoni
 - **devcode 2477**: Contributor-reported 48 V / 5 kW unit; inverter brand/model not yet confirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating.
 - **devcode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
-- **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter
+- **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter, Aninerel 6.2KW 48V, and Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module). Reports each output leg (L1/L2) alongside the summed output.
 - **devcode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
-- **devcode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V
+- **devcode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V and ANENJI ANJ-11KW-48V-W-P. Read-only Modbus protocol-number 4 samples are verified for the latter; see the [local guide](../../../docs/LOCAL_MODE.md).
 - **devcode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
 
 ### Device Metadata
