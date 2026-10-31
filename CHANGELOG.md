@@ -32,6 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A reading whose value is free-form text, such as the grid-tie inverter status
   on devcode 632, reaches Home Assistant as text instead of being dropped by
   numeric coercion.
+- The plant summary no longer publishes a second entity with the same name as
+  a reading the device already reports. `energyToday` and `Energy Today` are
+  separate sensor keys that both appear as "Energy Today", so a devcode mapping
+  its own counter onto one of them left two entities with one name, and on an
+  account where the vendor leaves the summary field unset the duplicate read
+  0 kWh. The summary merge now compares the entity name a reading publishes,
+  not the raw title (#58, thanks to @shanidks for spotting the duplicates).
+- Devcode 4743 no longer publishes per-string PV power. The collector reports
+  `PV1 power`, `PV2 power` and `PV3 power` as 0 while the string is producing:
+  the committed analysis shows 220.5 V and 7.3 A on string 1 against a 1552 W
+  total, and live hardware showed 265 V and 1.6 A against 424 W of export, both
+  with a per-string power of 0. `Total PV power` carries the real figure (#58).
 
 ## [2.6.0] - 2026-10-31
 

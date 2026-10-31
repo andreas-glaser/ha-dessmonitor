@@ -44,6 +44,7 @@ from .device_support import (
     map_sensor_title,
     needs_parameter_fetch,
 )
+from .sensor_titles import sensor_display_name
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -848,11 +849,28 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 }
             existing_titles.update({title for title in mapped_titles if title})
 
+            # Comparing titles alone is not enough: a summary field and a mapped
+            # reading can be separate sensor keys that publish the same entity
+            # name, such as "energyToday" beside "Energy Today". A device that
+            # reports both then gets two entities with one name, and the one the
+            # summary feeds reads zero wherever the vendor leaves that field
+            # unset (#58).
+            existing_names = {
+                name
+                for name in (
+                    sensor_display_name(str(title))
+                    for title in existing_titles
+                    if title
+                )
+                if name
+            }
+
             unique_summary_points = [
                 point
                 for point in summary_points
                 if point.get("title")
                 and point.get("title") not in existing_titles
+                and sensor_display_name(str(point.get("title"))) not in existing_names
                 and (
                     not devcode_supported
                     or devcode is None

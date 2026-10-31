@@ -62,6 +62,23 @@ def resolve_sensor_key(*candidates: str | None) -> str | None:
     return None
 
 
+def sensor_display_name(title: str) -> str:
+    """Return the normalised entity name a title publishes, or "" for none.
+
+    Two definitions can carry the same friendly name while being separate keys:
+    ``energyToday`` and ``Energy Today`` are both shown as "Energy Today".
+    Comparing keys treats them as different sensors, so a device that reports
+    one of each publishes two entities with one name, which is a duplicate to
+    the person reading it.
+    """
+    key = resolve_sensor_key(title)
+    if key is None:
+        return ""
+    config = cast(dict[str, Any], SENSOR_TYPES[key])
+    name = config.get("name")
+    return normalize_sensor_title(str(name) if isinstance(name, str) else key)
+
+
 def sensor_unit(title: str) -> str:
     """Return the canonical unit configured for a title, or an empty string."""
     key = resolve_sensor_key(title)

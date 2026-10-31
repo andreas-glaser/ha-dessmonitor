@@ -16,10 +16,9 @@ single-phase unit they are idle, and mapping them before a confirmed
 three-phase report would publish sensors that read zero forever.
 
 The analysis records a unit for its first twenty readings only, which is all
-the CLI captures. Every power reading it does carry is in watts, so the
-``power H`` titles are mapped as watts; the reporter is asked to confirm the
-three AC power sensors against the app, since a factor-of-1000 error is the
-failure mode to watch for.
+the CLI captures, so the ``power H`` titles were mapped as watts because every
+power reading it does carry is in watts. The reporter's own figures confirmed
+that scale: 265 V and 1.6 A on string 1 against 424 W of grid power.
 """
 
 from __future__ import annotations
@@ -69,9 +68,12 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "PV1 current": "PV1 Current",
     "PV2 current": "PV2 Current",
     "PV3 current": "PV3 Current",
-    "PV1 power": "PV1 Power",
-    "PV2 power": "PV2 Power",
-    "PV3 power": "PV3 Power",
+    # "PV1 power", "PV2 power" and "PV3 power" are deliberately not mapped.
+    # This collector leaves them at 0 while the string is producing: the
+    # committed analysis reports 220.5 V and 7.3 A on string 1 with a total of
+    # 1552 W and a per-string power of 0, and the reporter confirmed 265 V and
+    # 1.6 A against 424 W of export with the same 0 (#58). "Total PV power"
+    # carries the real figure.
     # DC bus.
     "bus voltage": "Bus Voltage",
     "Positive bus voltage": "Positive Bus Voltage",

@@ -682,27 +682,6 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:solar-power",
     },
-    "PV1 Power": {
-        "name": "PV1 Power",
-        "unit": UNITS["POWER"],
-        "device_class": "power",
-        "state_class": "measurement",
-        "icon": "mdi:solar-power",
-    },
-    "PV2 Power": {
-        "name": "PV2 Power",
-        "unit": UNITS["POWER"],
-        "device_class": "power",
-        "state_class": "measurement",
-        "icon": "mdi:solar-power",
-    },
-    "PV3 Power": {
-        "name": "PV3 Power",
-        "unit": UNITS["POWER"],
-        "device_class": "power",
-        "state_class": "measurement",
-        "icon": "mdi:solar-power",
-    },
     "PGrid": {
         "name": "Grid Active Power",
         "unit": UNITS["POWER"],
