@@ -48,7 +48,6 @@ def _resolved_key(title: str) -> str | None:
         ("PV1 voltage", "PV1 Voltage"),
         ("PV3 voltage", "PV3 Voltage"),
         ("PV1 current", "PV1 Current"),
-        ("PV3 power", "PV3 Power"),
         ("bus voltage", "Bus Voltage"),
         ("Positive bus voltage", "Positive Bus Voltage"),
         ("Negative bus voltage", "Negative Bus Voltage"),
@@ -59,6 +58,18 @@ def _resolved_key(title: str) -> str | None:
 )
 def test_titles_resolve_to_their_sensor(title: str, expected_key: str) -> None:
     assert _resolved_key(title) == expected_key
+
+
+@pytest.mark.parametrize("title", ["PV1 power", "PV2 power", "PV3 power"])
+def test_per_string_power_is_not_published(title: str) -> None:
+    """This collector sends 0 for these while the string is producing.
+
+    The committed analysis reports 220.5 V and 7.3 A on string 1 with a total
+    of 1552 W and a per-string power of 0, and the reporter confirmed the same
+    contradiction on live hardware (#58). Publishing them would give three
+    sensors that read zero in daylight.
+    """
+    assert _resolved_key(title) is None
 
 
 def test_total_pv_power_stays_in_watts() -> None:
