@@ -7,32 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-10-31
+
+This stable release includes all changes since 2.5.0, including everything
+shipped in 2.6.0-rc.1 through 2.6.0-rc.5.
+
 ### Added
-- Per-leg output sensors for split-phase and dual-output collectors: Output L1/L2
-  Power, Apparent Power, Voltage and Current, plus Load L1/L2 Percentage. Devcodes
-  6514 and 6544 report these next to their summed totals, and both now publish
-  them (#42, #56, thanks to @starpoltava15-netizen and @olegvsh for the reports
-  and to @vyore1980 for the CLI analysis data).
-- `tools/analysis_coverage.py` reports which raw API titles in a CLI analysis
-  resolve to a sensor and which are dropped, flagging unresolved titles that
-  carry a unit. The redacted devcode 6514 analysis is committed under
-  `docs/evidence/devcodes/`, and the test suite fails when a reading with a unit
-  stops resolving.
 - Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
   (cloud devcode 6544), selected by register 184. Hardware snapshots cover
   battery, grid, output, dual-PV, temperatures and energy counters. Existing
   cloud sensor identities, including SOC, are retained in hybrid mode
   (thanks to @jay0x for investigation and testing).
+- Per-leg output sensors for split-phase and dual-output collectors: Output L1/L2
+  Power, Apparent Power, Voltage and Current, plus Load L1/L2 Percentage. Devcodes
+  6514 and 6544 report these next to their summed totals, and both now publish
+  them (#42, #56, thanks to @starpoltava15-netizen and @olegvsh for the reports
+  and to @vyore1980 for the CLI analysis data).
 - Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
   so Home Assistant 2026.3 and newer load the icon and logo locally instead of
   from the central brands repository (thanks to @frenck).
+- `tools/analysis_coverage.py` reports which raw API titles in a CLI analysis
+  resolve to a sensor and which are dropped, flagging unresolved titles that
+  carry a unit. The redacted devcode 6514 analysis is committed under
+  `docs/evidence/devcodes/`, and the test suite fails when a reading with a unit
+  stops resolving.
 
 ### Fixed
-- Device diagnostics no longer invent a battery voltage for a control the API
-  did not report. A missing value was filled in with a fixed estimate from a
-  48 V system, such as `58.4 V (Est.)`, which is wrong on the 24 V hardware now
-  confirmed for devcode 6514 and indistinguishable from a real reading in a
-  diagnostics file. Such a field now reports `Not Set` (#56).
+- Numeric controls are written without a trailing `.0`. Home Assistant always
+  hands a number entity a float, so an integral setting was sent as `30.0`
+  where the official clients send `30`. Integer-typed fields such as the SOC
+  percentages reject that form: the write returns without an error, the cloud
+  keeps its previous value, and the next refresh restores it. Fractional values
+  are unaffected. Reported and the fix confirmed on a devcode 6514 inverter by
+  @olegvsh (#49).
+- A cloud cycle that fails for one device no longer drops that device. Its last
+  known payload is retained and labelled `Cached Cloud`, so a single slow
+  `queryDeviceLastData` cannot make a whole inverter's entities unavailable, and
+  in hybrid mode fresh local telemetry keeps flowing through the gap instead of
+  going unknown for minutes. The same applies when one collector times out while
+  another answers, which left a second inverter registered but unavailable. A
+  device the API stops listing is still removed (#54, #55, thanks to
+  @banyaigabor-web for the log timeline and code-level analysis and to @infordbf
+  for the two-collector report).
+- A refresh in which no device answered is now reported as a failure instead of
+  succeeding with an empty snapshot. Such a cycle previously overwrote the stored
+  cloud snapshot with nothing, disabling the cached-cloud fallback it had just
+  destroyed, and still counted as a successful cloud revision. An empty collector
+  list is treated the same way while devices are known, rather than as removal.
+- Devcode 6514 publishes the readings it was already receiving: grid power and
+  voltage, summed output power, apparent power and current, load percentage, PV
+  charge power, and both output legs. The profile was added for battery SOC only
+  (#35), so every other title the collector reports stayed unmapped (#56, thanks
+  to @olegvsh for the report).
+- Devcode 6514 labels its output priority and charger priority codes and
+  normalizes the observed `OffgridMode` to `Off-grid Mode`, matching the other
+  ANENJI profiles. These sensors previously showed the raw API codes, so
+  automations comparing against `SBU`, `OSO` or `OffgridMode` need updating.
+- Sensor title resolution collapses runs of whitespace inside a title, so a
+  collector reporting `Grid  Power` resolves to the Grid Power sensor instead of
+  being dropped. The cloud and local paths now share one resolver, which also
+  gives the local path the friendly-name fallback the cloud path already had.
 - An inverter that stops answering no longer costs the collector connection.
   The collector's own heartbeat now decides whether a reconnect is needed: if
   it still answers for itself, the session is kept and polling is retried over
@@ -69,6 +103,204 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there is no local telemetry and hybrid mode shows cloud data. The same probe
   now costs about 12 seconds. A collector that does answer is still probed in
   full, so new hardware is still identified.
+- Cloud-backed controls seed their current values from ordinary cloud telemetry
+  and retry missing reads at most once per successful cloud revision, stopping
+  after three consecutive rounds without recovery. Partial recovery resets the
+  budget; ordinary telemetry still updates values after retries stop. Reloading
+  the integration starts a new budget. Late results update existing select/number
+  entities and placeholders do not erase known settings. Local pushes and repeated
+  cloud timestamps no longer undo accepted changes (thanks to @jay0x for
+  investigation/testing and @andreas-glaser for the bounded-retry fix).
+- Hybrid refresh uses the current local snapshot after an awaited cloud request,
+  preserving a collector connection or disconnection that happened during that
+  request (thanks to @jay0x for investigation and testing).
+- Local SMG detection no longer treats protocol-4 power and flag registers as
+  current and frequency, or reserved registers as battery/output telemetry.
+  Protocol layouts are retained per inverter; an incomplete protocol-4 poll
+  fails instead of publishing a partial fresh snapshot (thanks to @jay0x for
+  investigation and testing).
+- PI30 local mode accepts a `QPIGS` reply that appends vendor fields after the
+  standard 21, instead of rejecting the inverter with "no supported read-only
+  local protocol". The extra fields are ignored and the standard readings are
+  unchanged; a truncated 18 to 20 field reply is still refused. Reported with a
+  captured frame and a working patch by @respira-crece-lidera (#50).
+- The device **Download diagnostics** button works. Home Assistant reads these
+  hooks from an integration's `diagnostics` module, and the implementation only
+  existed in `__init__`, so the download was never wired up and the report code
+  was unreachable.
+- Device diagnostics no longer invent a battery voltage for a control the API
+  did not report. A missing value was filled in with a fixed estimate from a
+  48 V system, such as `58.4 V (Est.)`, which is wrong on the 24 V hardware now
+  confirmed for devcode 6514 and indistinguishable from a real reading in a
+  diagnostics file. Such a field now reports `Not Set` (#56).
+- The diagnostic Output Voltage Setting sensor accepts values such as `230V`
+  (thanks to @jay0x for investigation and testing).
+- Devcode 6544 normalizes the observed cloud mode `OffgridMode` to
+  `Off-grid Mode`, matching local telemetry and the existing inverter-mode
+  alias (thanks to @jay0x for investigation and testing).
+- Collector pagination no longer stops after the first page when the API omits
+  a `total`, which truncated accounts holding more than one page of collectors.
+  The loop is also capped so it terminates even if the API keeps returning full
+  pages without ever reporting a total.
+- A collector listed in multiple cloud projects is polled once per refresh,
+  avoiding duplicate device-discovery and telemetry API calls while retaining
+  the same final collector metadata (thanks to @jay0x for investigation and testing).
+
+### Changed
+- SMG discovery rejects a successfully read register-184 layout other than 0, 1
+  or 4 rather than guessing the legacy map. A failed selector read retains the
+  legacy compatibility fallback. An unsupported slave can also end automatic
+  discovery after an earlier slave has matched.
+- Legacy SMG snapshots require at least one strictly positive Output, Battery,
+  PV or Grid voltage; merely present zero-valued voltage fields no longer pass.
+- Hybrid overlay retains distinct Main/Current cloud priority fields without a
+  local replacement. A sensor sharing their mapped key now displays the first
+  matching cloud field instead of the last; dashboards and automations observing
+  that sensor can therefore see a different value. Cloud-only and devices with
+  no local match retain their existing behavior. Field matching is case-insensitive
+  (thanks to @jay0x for investigation and testing).
+
+### Upgrade notes and known limitations
+- Restart Home Assistant after updating. Existing entries retain their account
+  platform, their mode and their entity identities. Nothing in this release
+  renames or removes an entity.
+- **Devcode 6514 owners:** Output Priority, Charger Source Priority and
+  Operating Mode now show readable labels rather than the raw API codes, so
+  `SBU` becomes `Solar -> Battery -> Utility` and `OffgridMode` becomes
+  `Off-grid Mode`. Automations and templates comparing against the raw codes
+  need updating. The dropdowns used to change these settings are unaffected.
+  The same profile also gains 17 sensors it was already receiving data for.
+- **Devcode 6544 owners:** where two cloud fields map to the same sensor key,
+  such as Main and Current priority, the sensor now shows the first match rather
+  than the last. An existing dashboard or automation can therefore read a
+  different value without anything else changing.
+- **Local and Hybrid SMG users:** discovery now refuses a register-184 layout it
+  cannot decode instead of falling back to the legacy map, and an unsupported
+  inverter address can end an automatic scan that had already matched an earlier
+  address. A failed selector read still falls back as before. If local discovery
+  stops finding your inverter after this update, that is the change to report,
+  together with any `Local Modbus register layout` line in your log.
+- **ANENJI ANJ-11KW-48V-W-P owners:** local protocol-4 telemetry is verified
+  against captures from a single unit. A protocol-4 cycle issues eight register
+  reads, more tunnel traffic than the legacy map, so please report anything
+  that looks like collector instability at a five-second interval.
+- A device the cloud API fails to answer for now keeps its last readings and is
+  labelled `Cached Cloud` by the `Data Source` sensor, rather than going
+  unavailable. A device the API stops listing is still removed.
+- Local monitoring remains read-only. Controls are written through the cloud in
+  cloud and hybrid mode, and an accepted API write is not proof that the
+  inverter applied the setting.
+
+## [2.6.0-rc.5] - 2026-10-30
+
+Fifth release candidate for 2.6.0, including all changes from
+[RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1),
+[RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.2),
+[RC3](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.3)
+and [RC4](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.4).
+See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.5/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate changes what Local and Hybrid mode do when an
+inverter stops answering, so everything RC4 asked you to check still applies. If
+your telemetry keeps switching between local and cloud, please confirm whether
+those switches are shorter or gone, and which message the log now shows.
+`Local inverter stopped answering status requests, while the collector itself
+still answers` means the collector is connected and the inverter behind it went
+quiet; `The local collector closed its connection after N seconds` means the
+collector dropped the session. The two have different causes, and RC4 and
+earlier reported both as the second. `Local collector connection closed: 0 bytes
+read on a total of 8 expected bytes` should no longer appear at all.
+
+### Fixed
+- An inverter that stops answering no longer costs the collector connection.
+  The collector's own heartbeat now decides whether a reconnect is needed: if
+  it still answers for itself, the session is kept and polling is retried over
+  it for up to three minutes, so a tunnel silence of tens of seconds no longer
+  drops hybrid mode to cloud data for a full UDP callback, reconnection and
+  rediscovery. A collector that stops answering its own heartbeat, or a silence
+  that outlives the retry window, still reconnects for a fresh discovery
+  (#53, #55).
+- Closing the local connection from this side is no longer reported as a
+  transport failure. Three failed poll rounds logged `Local collector
+  connection closed: 0 bytes read on a total of 8 expected bytes`, which is the
+  end-of-stream error our own hang-up produces, and it sent reporters looking
+  at their network for a fault that was in the inverter tunnel. A connection
+  the collector closes is now named as such, with how long the session lasted
+  (#53, thanks to @DastardlyBaker for the logs).
+- A second connection from the configured collector is no longer rejected
+  outright. The held session is asked to prove itself first: one that still
+  answers is kept and the newcomer is refused as before, and one that no longer
+  answers is closed so the collector's next callback gets through. A collector
+  only reconnects once it has abandoned the previous session, which a half-open
+  socket never reveals on this side, so a stale session could otherwise block
+  reconnection until the heartbeat watchdog expired.
+- Device diagnostics no longer invent a battery voltage for a control the API
+  did not report. A missing value was filled in with a fixed estimate from a
+  48 V system, such as `58.4 V (Est.)`, which is wrong on the 24 V hardware now
+  confirmed for devcode 6514 and indistinguishable from a real reading in a
+  diagnostics file. Such a field now reports `Not Set` (#56).
+
+## [2.6.0-rc.4] - 2026-10-28
+
+Fourth release candidate for 2.6.0, including all changes from
+[RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1),
+[RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.2)
+and [RC3](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.3).
+See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.4/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate only changes Local and Hybrid mode discovery,
+so everything RC3 asked you to check still applies. If your collector drops its
+connection and your inverter keeps switching between local and cloud data,
+please confirm it now returns to local telemetry faster, and that any discovery
+error in the log describes whether the collector answered rather than saying no
+protocol was identified.
+
+### Fixed
+- Local discovery no longer reports a collector that stopped answering as an
+  unsupported protocol. A probe in which nothing was received now says the
+  collector did not answer, and a driver that only timed out is no longer
+  described as having returned an invalid response. The per-driver reason came
+  from `ProtocolError`'s default, which contradicted the query outcomes printed
+  in the same message (#53, thanks to @DastardlyBaker for the report).
+- A collector that reconnects is rediscovered using the driver that last worked
+  for it, and when that driver receives nothing the remaining drivers are not
+  probed, because silence says nothing about which protocol a collector speaks.
+  A flapping collector previously paid for a full blind probe on every
+  reconnect, roughly 48 seconds at the 3 second request timeout, during which
+  there is no local telemetry and hybrid mode shows cloud data. The same probe
+  now costs about 12 seconds. A collector that does answer is still probed in
+  full, so new hardware is still identified.
+
+## [2.6.0-rc.3] - 2026-10-28
+
+Third release candidate for 2.6.0, including all changes from
+[RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1)
+and [RC2](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.2).
+See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.3/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate changes what happens when the cloud API answers
+for some devices and not others, which affects every cloud and hybrid
+installation. A device the API fails on now keeps its last readings instead of
+going unavailable, so please confirm your entities survive an API timeout and
+that the `Data Source` sensor tells you which devices are live. It also adds
+sensors for devcode 6514 and per-leg output sensors for dual-output inverters,
+and it changes devcode 6514's priority and operating-mode sensors from raw API
+codes to readable labels, which affects automations comparing against `SBU`,
+`OSO` or `OffgridMode`.
+
+### Added
+- Per-leg output sensors for split-phase and dual-output collectors: Output L1/L2
+  Power, Apparent Power, Voltage and Current, plus Load L1/L2 Percentage. Devcodes
+  6514 and 6544 report these next to their summed totals, and both now publish
+  them (#42, #56, thanks to @starpoltava15-netizen and @olegvsh for the reports
+  and to @vyore1980 for the CLI analysis data).
+- `tools/analysis_coverage.py` reports which raw API titles in a CLI analysis
+  resolve to a sensor and which are dropped, flagging unresolved titles that
+  carry a unit. The redacted devcode 6514 analysis is committed under
+  `docs/evidence/devcodes/`, and the test suite fails when a reading with a unit
+  stops resolving.
+
+### Fixed
 - A cloud cycle that fails for one device no longer drops that device. Its last
   known payload is retained and labelled `Cached Cloud`, so a single slow
   `queryDeviceLastData` cannot make a whole inverter's entities unavailable, and
@@ -96,6 +328,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   collector reporting `Grid  Power` resolves to the Grid Power sensor instead of
   being dropped. The cloud and local paths now share one resolver, which also
   gives the local path the friendly-name fallback the cloud path already had.
+
+## [2.6.0-rc.2] - 2026-10-25
+
+Second release candidate for 2.6.0, including all changes from [RC1](https://github.com/andreas-glaser/ha-dessmonitor/releases/tag/v2.6.0-rc.1). See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate adds local telemetry for one ANENJI model, and
+it changes three things that also affect other devices: how SMG local discovery
+treats a register layout it cannot decode, how strictly a legacy SMG snapshot is
+checked, and which cloud field a hybrid sensor displays when two share a mapped
+key. If you run Local or Hybrid mode, please confirm your inverter is still
+discovered after updating and that your dashboard values still look right.
+
+### Added
+- Read-only Modbus protocol-number 4 telemetry for ANENJI ANJ-11KW-48V-W-P
+  (cloud devcode 6544), selected by register 184. Hardware snapshots cover
+  battery, grid, output, dual-PV, temperatures and energy counters. Existing
+  cloud sensor identities, including SOC, are retained in hybrid mode
+  (thanks to @jay0x for investigation and testing).
+
+### Fixed
 - Hybrid refresh uses the current local snapshot after an awaited cloud request,
   preserving a collector connection or disconnection that happened during that
   request (thanks to @jay0x for investigation and testing).
@@ -117,6 +369,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Devcode 6544 normalizes the observed cloud mode `OffgridMode` to
   `Off-grid Mode`, matching local telemetry and the existing inverter-mode
   alias (thanks to @jay0x for investigation and testing).
+
+### Changed
+- SMG discovery rejects a successfully read register-184 layout other than 0, 1
+  or 4 rather than guessing the legacy map. A failed selector read retains the
+  legacy compatibility fallback. An unsupported slave can also end automatic
+  discovery after an earlier slave has matched.
+- Legacy SMG snapshots require at least one strictly positive Output, Battery,
+  PV or Grid voltage; merely present zero-valued voltage fields no longer pass.
+- Hybrid overlay retains distinct Main/Current cloud priority fields without a
+  local replacement. A sensor sharing their mapped key now displays the first
+  matching cloud field instead of the last; dashboards and automations observing
+  that sensor can therefore see a different value. Cloud-only and devices with
+  no local match retain their existing behavior. Field matching is case-insensitive
+  (thanks to @jay0x for investigation and testing).
+
+### Upgrade and testing notes
+- The RC1 testing request is settled. The numeric control write format is
+  confirmed working on a devcode 6514 inverter, where both SOC settings now hold
+  after the next cloud refresh (#49). No further testing is needed for that fix.
+- **Local and Hybrid SMG users:** discovery now refuses a register-184 layout it
+  cannot decode instead of falling back to the legacy map, and an unsupported
+  inverter address can end an automatic scan that had already matched an earlier
+  address. A failed selector read still falls back as before. If local discovery
+  stops finding your inverter after this update, that is the change to report,
+  together with any `Local Modbus register layout` line in your log.
+- **Devcode 6544 owners:** where two cloud fields map to the same sensor key,
+  such as Main and Current priority, the sensor now shows the first match rather
+  than the last. An existing dashboard or automation can therefore read a
+  different value without anything else changing.
+- **ANENJI ANJ-11KW-48V-W-P owners:** local protocol-4 telemetry is new and
+  verified against captures from a single unit. A protocol-4 cycle issues eight
+  register reads, more tunnel traffic than the legacy map, so please report
+  anything that looks like collector instability at a five-second interval.
+- Everything in RC1 is included. Nothing in this candidate is a breaking change,
+  and existing entity IDs are retained.
+
+## [2.6.0-rc.1] - 2026-10-24
+
+First release candidate for 2.6.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.6.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** this candidate changes how numeric controls are written for
+every device, and three fixes are not yet confirmed on hardware. If you use
+number entities such as charge current or an SOC percentage, please set one and
+check that the value still holds after the next cloud refresh a few minutes
+later. Reports either way are useful.
+
+### Added
+- Brand assets ship with the integration in `custom_components/dessmonitor/brand/`,
+  so Home Assistant 2026.3 and newer load the icon and logo locally instead of
+  from the central brands repository (thanks to @frenck).
+
+### Fixed
 - Collector pagination no longer stops after the first page when the API omits
   a `total`, which truncated accounts holding more than one page of collectors.
   The loop is also capped so it terminates even if the API keeps returning full
@@ -140,20 +444,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A collector listed in multiple cloud projects is polled once per refresh,
   avoiding duplicate device-discovery and telemetry API calls while retaining
   the same final collector metadata (thanks to @jay0x for investigation and testing).
-
-### Changed
-- SMG discovery rejects a successfully read register-184 layout other than 0, 1
-  or 4 rather than guessing the legacy map. A failed selector read retains the
-  legacy compatibility fallback. An unsupported slave can also end automatic
-  discovery after an earlier slave has matched.
-- Legacy SMG snapshots require at least one strictly positive Output, Battery,
-  PV or Grid voltage; merely present zero-valued voltage fields no longer pass.
-- Hybrid overlay retains distinct Main/Current cloud priority fields without a
-  local replacement. A sensor sharing their mapped key now displays the first
-  matching cloud field instead of the last; dashboards and automations observing
-  that sensor can therefore see a different value. Cloud-only and devices with
-  no local match retain their existing behavior. Field matching is case-insensitive
-  (thanks to @jay0x for investigation and testing).
 
 ## [2.5.0] - 2026-10-13
 
@@ -645,7 +935,13 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0...v2.6.0
+[2.6.0-rc.5]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0-rc.4...v2.6.0-rc.5
+[2.6.0-rc.4]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0-rc.3...v2.6.0-rc.4
+[2.6.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0-rc.2...v2.6.0-rc.3
+[2.6.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0-rc.1...v2.6.0-rc.2
+[2.6.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.5.0...v2.6.0-rc.1
 [2.5.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0
 [2.5.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.4.0...v2.5.0-rc.1
 [2.4.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.3.0...v2.4.0

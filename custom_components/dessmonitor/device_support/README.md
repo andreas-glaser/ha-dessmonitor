@@ -18,7 +18,7 @@ This directory contains device profiles for inverters connected through DessMoni
 - **devcode 2477**: Contributor-reported 48 V / 5 kW unit; inverter brand/model not yet confirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating.
 - **devcode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
-- **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter and Aninerel 6.2KW 48V. Reports each output leg (L1/L2) alongside the summed output.
+- **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter, Aninerel 6.2KW 48V, and Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module). Reports each output leg (L1/L2) alongside the summed output.
 - **devcode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI
 - **devcode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V and ANENJI ANJ-11KW-48V-W-P. Read-only Modbus protocol-number 4 samples are verified for the latter; see the [local guide](../../../docs/LOCAL_MODE.md).
 - **devcode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
