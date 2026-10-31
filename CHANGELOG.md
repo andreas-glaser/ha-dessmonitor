@@ -44,6 +44,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   under the internal identifier `bat_eq_time` (#57).
 - A control field the API sends without a name or an id is skipped and logged
   instead of becoming an entity named after its device alone.
+- A local query that times out no longer takes the queries behind it with it.
+  The timeout frees this side only: the collector goes on waiting for the
+  inverter and answers 8 to 11 seconds after the request on the PI18 hardware
+  measured in #53, against a 3 second request timeout, over a link that
+  carries one transaction at a time. The next query is now held back until the
+  abandoned reply lands, and only once that collector has been seen to answer
+  late, so a collector that is simply gone still fails fast. In the reported
+  log only 4 of 156 discovery queries went out on an idle link; all 4 were
+  answered, while the rest reached 41 to 57 percent, and identifying a
+  protocol that then polled flawlessly took six and a half minutes and five
+  attempts (#53, thanks to @DastardlyBaker for the debug log and to @ballhtml
+  for the latency breakdown).
+- A failed discovery reports every outcome each driver's queries produced,
+  with counts, instead of one reason that a single stray answer could
+  misrepresent. A collector that timed out 19 times and returned one malformed
+  frame was described as `smg_modbus: invalid_response; p17: timeout; pi30:
+  invalid_response`, which reads as missing device support (#53).
 - A reading whose value is free-form text, such as the grid-tie inverter status
   on devcode 632, reaches Home Assistant as text instead of being dropped by
   numeric coercion.

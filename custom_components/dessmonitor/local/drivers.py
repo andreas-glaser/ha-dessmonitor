@@ -392,12 +392,18 @@ def _driver_failure(
 ) -> str:
     """Describe why one driver failed, preferring what the probe observed.
 
-    ``ProtocolError`` defaults its reason to ``invalid_response``, so a driver
-    that never received a frame used to report a malformed one.
+    ``ProtocolError`` defaults its reason to ``invalid_response``, so the
+    exception alone reported a malformed frame for a driver whose queries had
+    mostly timed out. What the probe recorded is reported instead, in full: a
+    driver that timed out nine times and was refused once is not described by
+    either outcome on its own.
     """
-    if diagnostics.protocol_timed_out(driver.key):
-        return "timeout"
-    return failure_reason(err)
+    outcomes = diagnostics.protocol_outcomes(driver.key)
+    if not outcomes:
+        return failure_reason(err)
+    return ", ".join(
+        f"{outcome}={count}" for outcome, count in sorted(outcomes.items())
+    )
 
 
 def _discovery_failure(

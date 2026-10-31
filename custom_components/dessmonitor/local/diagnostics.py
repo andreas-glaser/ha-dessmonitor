@@ -108,18 +108,17 @@ class ProbeDiagnostics:
         """Return whether the collector answered nothing at all."""
         return self.attempted > 0 and self.answered == 0
 
-    def protocol_timed_out(self, protocol: str) -> bool:
-        """Return whether every retained attempt for one driver timed out.
+    def protocol_outcomes(self, protocol: str) -> Counter[str]:
+        """Return what one driver's queries actually did.
 
-        Reported only while no attempt has been dropped, so a bounded report
-        cannot turn a partial view into a confident claim.
+        Empty while any attempt has been dropped, so a bounded report cannot
+        turn a partial view into a confident claim.
         """
         if self.dropped_attempts:
-            return False
-        outcomes = {
+            return Counter()
+        return Counter(
             attempt.outcome for attempt in self.attempts if attempt.protocol == protocol
-        }
-        return outcomes == {"timeout"}
+        )
 
     def summary(self) -> str:
         """Describe observed outcomes even when all protocol drivers fail."""

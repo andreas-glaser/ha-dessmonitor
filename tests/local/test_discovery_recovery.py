@@ -105,3 +105,38 @@ async def test_the_remembered_driver_is_tried_first() -> None:
         await _discover(send, diagnostics, preferred_driver_key="pi30")
 
     assert diagnostics.attempts[0].protocol == "pi30"
+
+
+async def test_a_driver_with_mixed_outcomes_reports_all_of_them() -> None:
+    """A driver that mostly timed out was reported as having answered badly.
+
+    The reporter in #53 saw "smg_modbus: invalid_response; p17: timeout;
+    pi30: invalid_response" against 19 timeouts and a single malformed frame.
+    Only a driver whose every query timed out escaped the default reason, so
+    one stray answer was enough to mislabel ten.
+    """
+    answered = False
+
+    async def send(payload: bytes, device_code: int, device_address: int) -> bytes:
+        nonlocal answered
+        if not answered:
+            answered = True
+            return b"\x00" * 4
+        raise TimeoutError("collector did not answer")
+
+    diagnostics = ProbeDiagnostics()
+    with pytest.raises(DiscoveryError) as failure:
+        await _discover(send, diagnostics)
+
+    message = str(failure.value)
+    assert "timeout=" in message
+    # Every outcome the probe recorded for a driver is named with its count,
+    # so no single query can speak for the rest.
+    for driver_key in ("smg_modbus", "p17", "pi30"):
+        if f"{driver_key}: " not in message:
+            continue
+        reported = message.split(f"{driver_key}: ")[1].split(";")[0].split(")")[0]
+        counted = sum(
+            int(part.split("=")[1]) for part in reported.split(", ") if "=" in part
+        )
+        assert counted == sum(diagnostics.protocol_outcomes(driver_key).values())
