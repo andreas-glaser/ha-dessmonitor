@@ -9,6 +9,7 @@ labels with a unit cannot reach Home Assistant as a sensor.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -25,6 +26,30 @@ ANALYSIS_FILES = sorted(
     .parent.parent.joinpath("docs/evidence")
     .rglob("analysis_*.json")
 )
+
+_CLI = Path(__file__).resolve().parent.parent / "tools" / "cli"
+if str(_CLI) not in sys.path:
+    sys.path.insert(0, str(_CLI))
+
+from evidence import analysis_checksum  # noqa: E402
+
+
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_committed_analysis_is_intact(path: Path) -> None:
+    """A committed analysis is the authority for a devcode's mappings.
+
+    The CLI signs each report over its redacted contents, so a file edited
+    after the fact no longer matches. Without this the mappings could be
+    justified by evidence nobody can check.
+    """
+    analysis = _load(path)
+    stored = analysis.get("checksum")
+
+    assert stored, f"{path.name} carries no checksum"
+    assert stored == analysis_checksum(analysis), (
+        f"{path.name} does not match its own checksum; regenerate it with the "
+        "CLI rather than editing it by hand"
+    )
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -64,6 +89,21 @@ def _sensor_entities(devcode: int, points: list[dict[str, Any]], hass) -> list[A
     return _build_sensor_entities(coordinator, set())
 
 
+# Readings a collector labels with a unit but never populates. Mapping one
+# publishes a sensor that reads zero forever, so each entry here is a decision
+# with evidence behind it rather than a title nobody noticed.
+DELIBERATELY_UNMAPPED: dict[int, dict[str, str]] = {
+    4743: {
+        title: (
+            "the collector reports 0 while the string produces: 220.5 V and "
+            "7.3 A on string 1 against a 1552 W total in this analysis, and "
+            "265 V and 1.6 A against 424 W of export on live hardware (#58)"
+        )
+        for title in ("PV1 power", "PV2 power", "PV3 power")
+    },
+}
+
+
 def test_analysis_reports_are_committed() -> None:
     assert ANALYSIS_FILES, "no analysis reports found under docs/evidence"
 
@@ -74,10 +114,12 @@ def test_every_reading_with_a_unit_resolves_to_a_sensor(path: Path) -> None:
     devcode = analysis["devcode"]
     units = _titles_with_units(analysis)
 
+    excluded = DELIBERATELY_UNMAPPED.get(devcode, {})
     unmapped = {
         title: unit
         for title, unit in units.items()
-        if resolve_sensor_key(
+        if title not in excluded
+        and resolve_sensor_key(
             apply_devcode_transformations(devcode, {"title": title}).get("title"),
             title,
         )
@@ -89,6 +131,32 @@ def test_every_reading_with_a_unit_resolves_to_a_sensor(path: Path) -> None:
         "Map them in device_support/devcode_"
         f"{devcode}.py or add a SENSOR_TYPES entry."
     )
+
+
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_exclusions_still_describe_an_unmapped_reading(path: Path) -> None:
+    """An exclusion must stop applying once the title is mapped.
+
+    Otherwise a stale entry keeps a reading excluded after someone maps it, and
+    the guard quietly stops watching a sensor that now exists.
+    """
+    analysis = _load(path)
+    devcode = analysis["devcode"]
+    for title in DELIBERATELY_UNMAPPED.get(devcode, {}):
+        assert title in analysis["sensor_titles"], (
+            f"devcode {devcode} no longer reports {title!r}; remove the "
+            "exclusion in DELIBERATELY_UNMAPPED"
+        )
+        assert (
+            resolve_sensor_key(
+                apply_devcode_transformations(devcode, {"title": title}).get("title"),
+                title,
+            )
+            is None
+        ), (
+            f"{title!r} now resolves for devcode {devcode}; remove the "
+            "exclusion in DELIBERATELY_UNMAPPED"
+        )
 
 
 @pytest.mark.parametrize(

@@ -268,6 +268,10 @@ then start it again; the configured integration reconnects automatically.
   the payload's CRC and field layout.
   An unmatched reply remains rejected. A rejected reply is different from a timeout;
   changing the device code without this evidence may not help.
+  A collector that reconnects is probed with the driver that last worked for
+  it, and probing stops when that driver receives nothing at all, because
+  silence says nothing about which protocol a collector speaks. A collector
+  that answers is still probed in full, so new hardware is still identified.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
 - **Telemetry keeps switching between local and cloud:** read the log lines

@@ -50,9 +50,9 @@ SmartClient for Solar is listed as **SmartClient** on Google Play.
 
 The device profiles include known models from ANENJI, Axpert, BYD, EASUN, MUST, PowMr, SRNE, and WKS.
 
-**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, ANENJI ANJ-11KW-48V-W-P, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, Aninerel 6.2KW 48V, MUST PH19-6048 EXP, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
+**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, ANENJI ANJ-11KW-48V-W-P, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, Aninerel 6.2KW 48V, Aninerel 4.2KW 24V, MUST PH19-6048 EXP, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
 
-Other profiles cover rebranded Axpert PI18 inverters and units whose exact model is not yet recorded. See the [device support reference](custom_components/dessmonitor/device_support/README.md#currently-supported-collectors) for the full devcode list and known pairings.
+Devcodes 632 and 4743 cover grid-connected PV inverters, which report strings, AC export and energy counters but no battery, charger or priority settings. Other profiles cover rebranded Axpert PI18 inverters and units whose exact model is not yet recorded. See the [device support reference](custom_components/dessmonitor/device_support/README.md#currently-supported-collectors) for the full devcode list and known pairings.
 
 Sensors, cloud controls, and local monitoring depend on the inverter and collector model. A listed model does not imply support for every feature or local protocol. Unrecognized devices may expose basic readings without model-specific names or value mappings. To help add support for yours, follow the [support request guide](docs/ADDING_DEVCODES.md#request-support).
 
@@ -117,6 +117,8 @@ The exact entities and units vary by device. Common readings include:
 | Electrical | Battery, solar, and output voltages (V); charging and output currents (A); grid and output frequency (Hz) |
 | Energy | Energy Today and Energy Total (kWh), where reported by the device |
 | Status | Load percentage, operating mode, connectivity, and inverter temperatures |
+| Per output leg | On split-phase and dual-output collectors, Output L1/L2 power, apparent power, voltage, current, and load percentage, alongside the summed totals |
+| Provenance | `Data Source` shows `Cloud`, `Local`, or `Cached Cloud` per device, and `Timestamp` shows when that device last answered |
 
 Diagnostic sensors can also show configured values such as output priority, charger source priority, and output voltage. These are disabled by default. To enable one, open the inverter's device page under **Settings > Devices & Services > DessMonitor**, select the disabled entity, and enable it in its settings.
 
@@ -179,6 +181,8 @@ The trigger fires when the reading crosses the threshold. Adjust the threshold t
 | Local connection fails or falls back to cloud | Follow the [local troubleshooting guide](docs/LOCAL_MODE.md#troubleshooting) for network and protocol checks. Cloud support alone does not establish local compatibility. |
 | Settings are missing | Confirm you use cloud or hybrid mode, allow background discovery to finish, and check the logs. Controls depend on what the device exposes. |
 | Diagnostic sensors are missing | Check disabled entities on the device page; see [Available sensors](#available-sensors). |
+| One inverter's readings look stale while others update | A device the cloud API failed to answer for keeps its last readings and reports `Data Source` `Cached Cloud`; its `Timestamp` shows when the cloud last answered. A device the API stops listing is removed instead. |
+| Reporting a problem | Open the inverter's device page under **Settings > Devices & Services > DessMonitor** and select **Download diagnostics**. Review the file for serial numbers and other personal details before attaching it to an issue. |
 
 ### Debug Logging
 

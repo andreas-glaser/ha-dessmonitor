@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "2.5.0"
+VERSION: Final = "2.6.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -289,6 +289,28 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:current-dc",
     },
+    # Grid-tie inverters report a per-string current with no charger behind it.
+    "PV1 Current": {
+        "name": "PV1 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "PV2 Current": {
+        "name": "PV2 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "PV3 Current": {
+        "name": "PV3 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
     "grid current": {
         "name": "Grid Current",
         "unit": UNITS["CURRENT"],
@@ -426,6 +448,13 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:thermometer",
     },
+    "Ambient Temperature": {
+        "name": "Ambient Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
     "Transformer temperature": {
         "name": "Transformer Temperature",
         "unit": UNITS["TEMPERATURE"],
@@ -487,6 +516,36 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:solar-power",
     },
+    "PV3 Voltage": {
+        "name": "PV3 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    # The DC bus sits between the strings and the inverter bridge. Collectors
+    # report it as one voltage, or split into its positive and negative rails.
+    "Bus Voltage": {
+        "name": "Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "Positive Bus Voltage": {
+        "name": "Positive Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "Negative Bus Voltage": {
+        "name": "Negative Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
     "AC charging power": {
         "name": "AC Charging Power",
         "unit": UNITS["POWER"],
@@ -505,6 +564,28 @@ SENSOR_TYPES = {
         "unit": UNITS["APPARENT_POWER"],
         "state_class": "measurement",
         "icon": "mdi:flash",
+    },
+    # Grid-tie inverters report reactive power in the unit their apparent power
+    # uses, so it is kept in VA rather than converted to var.
+    "Output Reactive Power": {
+        "name": "Output Reactive Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+    },
+    "Power Factor": {
+        "name": "Power Factor",
+        "unit": "",
+        "state_class": "measurement",
+        "icon": "mdi:angle-acute",
+    },
+    # An external meter the inverter reads for export limiting.
+    "Meter Power": {
+        "name": "Meter Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:gauge",
     },
     # Split-phase collectors report each output leg alongside the totals.
     "Output L1 Active Power": {
@@ -814,6 +895,28 @@ SENSOR_TYPES = {
         "unit": "",
         "icon": "mdi:chip",
         "entity_category": "diagnostic",
+    },
+    # A grid-tie inverter reports its own status text rather than the operating
+    # mode enum the battery inverters use, so it is not an enum sensor.
+    "Inverter Status": {
+        "name": "Inverter Status",
+        "unit": "",
+        "icon": "mdi:information-outline",
+    },
+    "Grid Reconnect Waiting Time": {
+        "name": "Grid Reconnect Waiting Time",
+        "unit": "s",
+        "device_class": "duration",
+        "state_class": "measurement",
+        "icon": "mdi:timer-sand",
+        "entity_category": "diagnostic",
+    },
+    "Operating Time": {
+        "name": "Operating Time",
+        "unit": "h",
+        "device_class": "duration",
+        "state_class": "total_increasing",
+        "icon": "mdi:clock-outline",
     },
     "rated power": {
         "name": "Rated Power",

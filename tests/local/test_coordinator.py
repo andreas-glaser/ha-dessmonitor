@@ -622,7 +622,10 @@ async def test_a_collector_that_stops_answering_is_reconnected(
         collector.mute_inverter = True
         collector.mute_heartbeat = True
         await _wait_until(lambda: not coordinator._server.connected, timeout=10)
-        assert coordinator.last_update_success is False
+        # Closing the connection clears it before scheduling the disconnect
+        # callback, so the failed update lands an iteration later than the
+        # closure; asserting it in the same one raced about one run in four.
+        await _wait_until(lambda: coordinator.last_update_success is False, timeout=10)
     finally:
         await collector.stop()
         await coordinator.async_shutdown()

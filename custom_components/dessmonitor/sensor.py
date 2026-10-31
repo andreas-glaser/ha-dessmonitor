@@ -48,6 +48,13 @@ ENUM_SENSOR_TITLES = {
     "charger work enable",
 }
 
+# Readings whose value is free-form text rather than one of a fixed set of
+# states. Coercing these to a float would publish nothing at all, and giving
+# them the enum device class would reject any word not in an option list.
+TEXT_SENSOR_TITLES = {
+    "Inverter Status",
+}
+
 DIAGNOSTIC_SENSOR_TITLES = {
     "Output Voltage Setting",
     "Output priority",
@@ -427,6 +434,8 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         """Coerce API value into Home Assistant native value format."""
         if self._sensor_type in ENUM_SENSOR_TITLES:
             return self._coerce_enum_value(value)
+        if self._sensor_type in TEXT_SENSOR_TITLES:
+            return self._coerce_text_value(value)
         return self._coerce_numeric_value(value)
 
     def _coerce_enum_value(self, value: Any) -> str:
@@ -434,6 +443,13 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if value is not None and value != "":
             return str(value)
         return "Unknown"
+
+    @staticmethod
+    def _coerce_text_value(value: Any) -> str | None:
+        """Return a free-form reading as text, or None when it is absent."""
+        if value is None or value == "":
+            return None
+        return str(value)
 
     def _coerce_numeric_value(self, value: Any) -> float | str | None:
         """Attempt to coerce sensor value into a float when possible."""
