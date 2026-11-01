@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 2361)"""
+"""Eybond Data Collector (devcode 2361)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 2361)",
-    "description": "DessMonitor data collector/gateway",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 2361)",
+    "description": "Eybond data collector/gateway",
+    "manufacturer": "Eybond",
     "known_inverters": ["SRNE SR-EOV24-3.5K-5KWh"],
     "supported_features": [
         "real_time_monitoring",

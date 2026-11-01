@@ -8,9 +8,14 @@ It explicitly imports supported devcode modules and provides a unified interface
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
+
+# Vendor control field names arrive padded or doubly spaced, for example the
+# " Inverter Time" that devcode 6515 reports.
+_WHITESPACE = re.compile(r"\s+")
 
 # Registry of all supported devcodes
 # This is populated by importing devcode modules below
@@ -149,16 +154,19 @@ def map_sensor_title(devcode: int, api_title: str) -> str:
 
 
 def map_control_field(devcode: int, api_field_name: str) -> str:
-    """Map API control field name to standardized display name based on devcode."""
+    """Map an API control field name to its display name for this devcode.
+
+    The name is trimmed and its internal whitespace collapsed first, so a
+    padded vendor name neither reaches an entity nor has to be matched with its
+    padding in a devcode mapping.
+    """
+    field_name = _WHITESPACE.sub(" ", api_field_name).strip()
     config = get_devcode_config(devcode)
     if not config:
-        return api_field_name
+        return field_name
 
-    # Get control mappings for this devcode
     control_mappings = config.get("control_field_mappings", {})
-
-    # Apply mapping if exists, otherwise use original
-    return control_mappings.get(api_field_name, api_field_name)
+    return control_mappings.get(field_name, field_name)
 
 
 def filter_control_options(

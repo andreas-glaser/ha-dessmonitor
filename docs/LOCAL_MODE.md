@@ -2,7 +2,7 @@
 
 The integration can monitor inverter readings and change supported settings
 through DessMonitor or ShineMonitor. Local telemetry adds a read-only path from
-an EyeBond-compatible Wi-Fi collector to Home Assistant. It does not require
+an Eybond-compatible Wi-Fi collector to Home Assistant. It does not require
 inverter firmware changes. Settings changes continue to use the cloud API.
 
 ## Choose a mode
@@ -200,6 +200,19 @@ entries without the setting retain automatic discovery.
   are not provided. Sustained polling and reconnects still require hardware
   verification after installing this change.
 
+PI30 reads its 17 or 21-field `QPIGS` status, and on a dual-MPPT inverter it
+also reads `QPIGS2` for the second string's current, voltage and charging
+power. That inquiry is optional: a collector that refuses it is never asked
+again, and one that stays silent is retried three times and then once every
+twelfth cycle, so an inverter that gains the command after a firmware update
+still recovers. While it fails, the per-string powers are withdrawn rather
+than left stale, and hybrid mode falls back to the cloud values for them. The
+first string keeps the generic `PV Charging Current` and `PV Voltage` names it
+has always published, so a dual-PV inverter reports `PV2 Charger Current` and
+`PV2 Voltage` beside them rather than a matching `PV1` pair; its power is
+published under both `PV Charge Power` and `PV1 Charger Power` so that
+existing single-PV entities keep working.
+
 PI18 uses its 28-field `GS` response for battery charging current and both PV
 inputs, including PV2 voltage. It does not poll P17-only `GMN` or `GS2` commands.
 Firmware metadata preserves all three CPU versions. Existing sensor identifiers
@@ -327,9 +340,15 @@ then start it again; the configured integration reconnects automatically.
   itself dropped the session and the integration is waiting for its next
   callback. The two have different causes: the first points at the link between
   collector and inverter, the second at the collector or the network. If the
-  first one dominates, raising the local polling interval is worth trying,
-  since the collector shares one serial link between its own cloud uploads and
-  these queries.
+  first one dominates, raising the local polling interval is worth trying.
+  A collector answers a query the inverter ignores several seconds after the
+  integration has stopped waiting for it, and its link to the inverter carries
+  one transaction at a time: on a PI18 collector measured in #53, replies to
+  unanswered queries arrived 8 to 11 seconds after the request against a 3
+  second request timeout. The next query is now held back until that reply
+  lands, so a single unanswered poll no longer takes the rounds behind it with
+  it, but a longer interval still leaves the collector more room for its own
+  cloud uploads.
 
 Debug logging:
 

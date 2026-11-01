@@ -347,3 +347,24 @@ async def test_pagination_cannot_loop_forever_on_full_pages() -> None:
     collectors = await api._fetch_collectors_for_project(1)
     assert len(calls) == MAX_COLLECTOR_PAGES
     assert len(collectors) == MAX_COLLECTOR_PAGES * 50
+
+
+async def test_control_field_without_a_name_or_id_is_skipped(cloud_transport) -> None:
+    """A field the integration cannot identify never becomes a nameless entity."""
+    session, connector = cloud_transport
+    connector.payload = {
+        "err": 0,
+        "dat": {
+            "field": [
+                {"name": "Maximum charging current", "id": "bat_current"},
+                {"name": "", "id": "bat_orphan"},
+                {"name": "Nameless control", "id": ""},
+            ]
+        },
+    }
+    api = DessMonitorAPI("test-user", "test-password", session=session)
+    api.token, api.secret = "test-token", "test-secret"
+
+    controls = await api.get_device_control_fields("test-pn", 6515, 1, "test-sn")
+
+    assert list(controls) == ["Maximum charging current"]

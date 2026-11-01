@@ -4,14 +4,21 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from custom_components.dessmonitor.button import (
     DessMonitorButton,
     _async_build_button_entities,
 )
+from custom_components.dessmonitor.const import DOMAIN
+from custom_components.dessmonitor.number import _async_build_number_entities
 from custom_components.dessmonitor.select import (
     DessMonitorSelect,
     _async_build_select_entities,
 )
+from custom_components.dessmonitor.utils import async_migrate_control_unique_ids
 
 
 def _coordinator() -> MagicMock:
@@ -103,4 +110,98 @@ async def test_action_button_remains_cloud_backed_in_hybrid() -> None:
         sn="DEVICE-SERIAL",
         param_id="reset",
         value="1",
+    )
+
+
+def _devcode_6515_coordinator() -> MagicMock:
+    """Create a devcode 6515 device with the two control names it reports oddly."""
+    coordinator = MagicMock()
+    coordinator.data = {
+        "DEVICE-SERIAL": {
+            "collector": {"pn": "COLLECTOR-PN"},
+            "device": {"alias": "Test inverter", "devcode": 6515, "devaddr": 1},
+            "data": [],
+        }
+    }
+    coordinator.ctrl_value_cache = {"DEVICE-SERIAL": {}}
+    coordinator.async_get_controls_with_values = AsyncMock(
+        return_value=(
+            {
+                " Inverter Time": {
+                    "type": "value",
+                    "id": "sys_eybond_read_95",
+                },
+                "bat_eq_time": {
+                    "type": "value",
+                    "id": "bat_eybond_read_78",
+                },
+            },
+            {},
+        )
+    )
+    return coordinator
+
+
+async def test_padded_control_name_does_not_reach_an_entity() -> None:
+    """Devcode 6515 reports " Inverter Time"; the padding is not an identity."""
+    entities = await _async_build_number_entities(_devcode_6515_coordinator(), set())
+    entity = next(e for e in entities if e.unique_id.endswith("inverter_time"))
+
+    assert entity.name == "Test inverter Inverter Time"
+    assert entity.unique_id == "DEVICE-SERIAL_inverter_time"
+    assert entity.legacy_unique_id == "DEVICE-SERIAL__inverter_time"
+
+
+async def test_devcode_mapping_names_an_internal_control_identifier() -> None:
+    """The collector reports its equalization charge time as "bat_eq_time"."""
+    entities = await _async_build_number_entities(_devcode_6515_coordinator(), set())
+    entity = next(e for e in entities if e.unique_id.endswith("eq_charging_time"))
+
+    assert entity.name == "Test inverter Eq charging time"
+    assert entity.unique_id == "DEVICE-SERIAL_eq_charging_time"
+    assert entity.legacy_unique_id == "DEVICE-SERIAL_bat_eq_time"
+
+
+async def test_renamed_control_keeps_its_registry_entry(hass: HomeAssistant) -> None:
+    """Renaming a control carries its entity over instead of duplicating it."""
+    config_entry = MockConfigEntry(domain=DOMAIN)
+    config_entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    existing = registry.async_get_or_create(
+        "number", DOMAIN, "DEVICE-SERIAL_bat_eq_time", config_entry=config_entry
+    )
+
+    entities = await _async_build_number_entities(_devcode_6515_coordinator(), set())
+    async_migrate_control_unique_ids(hass, config_entry, "number", entities)
+
+    entry = registry.async_get(existing.entity_id)
+    assert entry is not None
+    assert entry.unique_id == "DEVICE-SERIAL_eq_charging_time"
+    assert (
+        registry.async_get_entity_id("number", DOMAIN, "DEVICE-SERIAL_bat_eq_time")
+        is None
+    )
+
+
+async def test_migration_leaves_an_occupied_unique_id_alone(
+    hass: HomeAssistant,
+) -> None:
+    """An entity already registered under the new name is never overwritten."""
+    config_entry = MockConfigEntry(domain=DOMAIN)
+    config_entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    legacy = registry.async_get_or_create(
+        "number", DOMAIN, "DEVICE-SERIAL_bat_eq_time", config_entry=config_entry
+    )
+    current = registry.async_get_or_create(
+        "number", DOMAIN, "DEVICE-SERIAL_eq_charging_time", config_entry=config_entry
+    )
+
+    entities = await _async_build_number_entities(_devcode_6515_coordinator(), set())
+    async_migrate_control_unique_ids(hass, config_entry, "number", entities)
+
+    assert registry.async_get(legacy.entity_id).unique_id == "DEVICE-SERIAL_bat_eq_time"
+    assert (
+        registry.async_get(current.entity_id).unique_id
+        == "DEVICE-SERIAL_eq_charging_time"
     )

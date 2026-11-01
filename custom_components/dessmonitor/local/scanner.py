@@ -1,4 +1,4 @@
-"""Bounded LAN discovery for EyeBond callback-capable collectors."""
+"""Bounded LAN discovery for Eybond callback-capable collectors."""
 
 from __future__ import annotations
 

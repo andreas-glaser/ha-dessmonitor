@@ -1,4 +1,4 @@
-"""Secure, bounded asyncio server for EyeBond Wi-Fi collectors."""
+"""Secure, bounded asyncio server for Eybond Wi-Fi collectors."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from .protocol import (
     FC_FORWARD_TO_DEVICE,
     FC_HEARTBEAT,
     HEADER_SIZE,
-    EyeBondHeader,
+    EybondHeader,
     ProtocolError,
     build_forward_request,
     build_heartbeat_request,
@@ -158,6 +158,10 @@ class PendingRequest:
     future: asyncio.Future[bytes]
     device_code: int
     device_address: int
+    # Set when a frame arrives for this transaction, including after the
+    # waiter gave up: a request timeout cancels the future, so it cannot say
+    # whether the collector eventually finished.
+    answered: asyncio.Event = field(default_factory=asyncio.Event)
 
 
 @dataclass(slots=True)
@@ -175,10 +179,13 @@ class CollectorConnection:
     ready_notified: bool = False
     closed_locally: bool = False
     pending: dict[int, PendingRequest] = field(default_factory=dict)
+    # Set once this collector has answered a query we had already given up on,
+    # which proves its own reply budget outlasts our request timeout.
+    answers_late: bool = False
 
 
 class CollectorServer:
-    """Manage one pinned EyeBond collector and serialized RS485 requests."""
+    """Manage one pinned Eybond collector and serialized RS485 requests."""
 
     def __init__(
         self,
@@ -189,6 +196,7 @@ class CollectorServer:
         expected_product_number: str = "",
         heartbeat_interval: float = 60.0,
         request_timeout: float = 3.0,
+        abandoned_reply_grace: float = 9.0,
         on_ready: CollectorReadyCallback | None = None,
         on_disconnect: CollectorDisconnectCallback | None = None,
     ) -> None:
@@ -198,11 +206,14 @@ class CollectorServer:
             raise ValueError("local TCP port is outside the valid range")
         if heartbeat_interval <= 0 or request_timeout <= 0:
             raise ValueError("collector timeouts must be positive")
+        if abandoned_reply_grace < 0:
+            raise ValueError("the abandoned reply grace cannot be negative")
         self.port = port
         self.allowed_peer_ip = normalize_local_ipv4(allowed_peer_ip)
         self.expected_product_number = expected_product_number.strip()
         self.heartbeat_interval = heartbeat_interval
         self.request_timeout = request_timeout
+        self.abandoned_reply_grace = abandoned_reply_grace
         self.on_ready = on_ready
         self.on_disconnect = on_disconnect
 
@@ -308,9 +319,32 @@ class CollectorServer:
                     device_code,
                     device_address,
                 )
+                await self._await_abandoned_reply(connection, transaction_id)
                 raise
             finally:
                 connection.pending.pop(transaction_id, None)
+
+    async def _await_abandoned_reply(
+        self, connection: CollectorConnection, transaction_id: int
+    ) -> None:
+        """Hold the send lock until the collector has finished the abandoned query.
+
+        A timeout frees this side, not the collector: it goes on waiting for the
+        inverter and answers seconds after we stopped listening, over a link to
+        the inverter that carries one transaction at a time. Sending the next
+        query into that window is what turns a single unanswered poll into three
+        consecutive failures, and a probe timeout into a neighbouring driver's
+        "invalid response". The wait is paid only once this collector has been
+        seen to answer late, so one that is simply gone still fails fast.
+        """
+        pending = connection.pending.get(transaction_id)
+        if pending is None or not connection.answers_late:
+            return
+        if not self.abandoned_reply_grace:
+            return
+        with contextlib.suppress(TimeoutError):
+            async with asyncio.timeout(self.abandoned_reply_grace):
+                await pending.answered.wait()
 
     async def disconnect(self) -> None:
         """Close the active connection so the collector can establish a clean session."""
@@ -477,7 +511,7 @@ class CollectorServer:
     async def _handle_heartbeat(
         self,
         connection: CollectorConnection,
-        header: EyeBondHeader,
+        header: EybondHeader,
         payload: bytes,
     ) -> None:
         """Identify and optionally pin the collector product number."""
@@ -512,13 +546,18 @@ class CollectorServer:
     @staticmethod
     def _handle_forward_response(
         connection: CollectorConnection,
-        header: EyeBondHeader,
+        header: EybondHeader,
         payload: bytes,
     ) -> None:
         """Resolve only a response that matches the pending request metadata."""
         pending = connection.pending.get(header.transaction_id)
         active_transaction = next(iter(connection.pending), 0)
+        if pending is not None:
+            pending.answered.set()
         if pending is None or pending.future.done():
+            # The collector finished a query this side had already abandoned,
+            # which proves its reply budget outlasts our request timeout.
+            connection.answers_late = True
             outcome = "unmatched_transaction"
         elif (
             header.device_code != pending.device_code

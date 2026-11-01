@@ -1,4 +1,4 @@
-"""DessMonitor Data Collector (devcode 2477)."""
+"""Eybond Data Collector (devcode 2477)."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ import re
 from typing import Any
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 2477)",
-    "description": "DessMonitor data collector/gateway",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 2477)",
+    "description": "Eybond data collector/gateway",
+    "manufacturer": "Eybond",
     "known_inverters": [],
     "supported_features": [
         "real_time_monitoring",

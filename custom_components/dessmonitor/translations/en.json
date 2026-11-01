@@ -49,7 +49,7 @@
       },
       "local": {
         "title": "DessMonitor Local",
-        "description": "Read directly from one EyeBond-compatible collector. Home Assistant must have a fixed private LAN address. The callback request can briefly interrupt the collector's cloud connection.",
+        "description": "Read directly from one Eybond-compatible collector. Home Assistant must have a fixed private LAN address. The callback request can briefly interrupt the collector's cloud connection.",
         "data": {
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ip": "Collector LAN IP",
@@ -75,7 +75,7 @@
       },
       "local_advanced": {
         "title": "DessMonitor Local Advanced Setup",
-        "description": "Override the tunnel code or standard EyeBond ports only when automatic discovery does not work.",
+        "description": "Override the tunnel code or standard Eybond ports only when automatic discovery does not work.",
         "data": {
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ip": "Collector LAN IP",

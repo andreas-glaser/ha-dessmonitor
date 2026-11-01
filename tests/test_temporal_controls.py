@@ -283,7 +283,7 @@ async def test_replaced_numbers_are_disabled_without_deleting_registry(hass):
             registry.async_get_or_create(
                 "number",
                 DOMAIN,
-                entity.legacy_number_unique_id,
+                entity.legacy_number_unique_ids[0],
                 config_entry=other_entry if index == 0 else entry,
                 disabled_by=er.RegistryEntryDisabler.USER if index == 1 else None,
                 original_name=f"Original name {index}",
@@ -296,7 +296,10 @@ async def test_replaced_numbers_are_disabled_without_deleting_registry(hass):
             )
             for index, old in enumerate(originals)
         ]
-        assert entities[-1].legacy_number_unique_id == "TEST__inverter_date"
+        assert entities[-1].legacy_number_unique_ids == (
+            "TEST__inverter_date",
+            "TEST_inverter_date",
+        )
         disable_replaced_numbers(hass, entry, entities)
         for index, old in enumerate(originals):
             preserved = registry.async_get(old.entity_id)

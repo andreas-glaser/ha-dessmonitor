@@ -1,4 +1,4 @@
-"""ShineMonitor Data Collector (devcode 4743).
+"""Eybond Data Collector (devcode 4743).
 
 Mappings come from the redacted analysis in
 ``docs/evidence/devcodes/analysis_4743.json`` (#58). The collector reports a
@@ -24,7 +24,7 @@ that scale: 265 V and 1.6 A on string 1 against 424 W of grid power.
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "ShineMonitor Data Collector (devcode 4743)",
+    "name": "Eybond Data Collector (devcode 4743)",
     "description": (
         "Data collector/gateway for single-phase grid-connected PV inverters "
         "with up to three strings, reported through ShineMonitor"

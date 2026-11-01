@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cloud-backed time entities for the four secondary-priority schedule boundaries
   on devcode 6544, plus a calendar-validated text control for its timezone-free
   inverter clock. Matching obsolete number entities are disabled, not deleted.
-  Cloud write verification remains partial; no clock timezone is assumed (thanks to @jay0x for investigation and testing).
+  Representative schedule and calendar-string cloud writes have independent
+  hardware readback on the tested model; no clock timezone is assumed
+  (thanks to @jay0x for investigation and testing).
 - Device support for devcodes 4743 and 632, both grid-connected PV inverters
   reported through ShineMonitor. Between them this adds per-string PV voltage,
   current and power for three strings, DC bus voltages, AC grid voltage,
@@ -19,6 +21,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   factor, an external meter reading, inverter status, grid reconnect waiting
   time and operating time (#58, thanks to @shanidks for both CLI analyses).
   Both redacted analyses are committed under `docs/evidence/devcodes/`.
+- Dual-MPPT PV readings over local PI30 for Axpert MAX inverters, through the
+  read-only `QPIGS2` inquiry: PV2 current, voltage and charging power, the
+  per-string powers under the existing `PV1 Charger Power` and
+  `PV2 Charger Power` names, and their sum as Total PV Power. The inquiry is
+  optional and bounded: an explicit refusal disables it for that inverter, and
+  silence backs off to one probe every twelfth cycle. A failed round withdraws
+  the per-string powers instead of leaving a stale local sum, so hybrid mode
+  falls back to the cloud values. Confirmed on an Axpert MAX 7200 reporting
+  1088 W and 1881 W across its two strings (#59, thanks to @gander88 for the
+  implementation and the hardware evidence).
+- Devcode 6515 lists the Maxsky EM11000 11kW 48V, reported with an Eybond WiFi
+  datalogger on firmware 3.6.6.6, beside the ANENJI ANJ-HHS-11KW-48V-WIFI it
+  was added for (#57, thanks to @ballhtml for the model and collector details).
+- A devcode can name a control field through `control_field_mappings`, which
+  the registry accepted but no profile used. Renaming a control changes its
+  entity identity, so the existing registry entry is carried over rather than
+  stranded beside a second entity.
+
+### Changed
+- One spelling and one vocabulary throughout: the collector vendor is Eybond,
+  which the code spelled `EyeBond` in 55 places against the company's own 6.
+  Each devcode profile now names Eybond as the manufacturer of the collector it
+  describes, where 13 of 18 named the DessMonitor portal instead, and the
+  README records that both platforms are Eybond products: `dessmonitor.com` is
+  their SmartESS platform and `shinemonitor.com` their SmartClient platform.
+  Entity names, entity ids and the integration domain are unchanged.
+- The HACS listing and the integration are named `DessMonitor / ShineMonitor
+  (Local & Cloud)`, and the README leads with local monitoring. Local mode has
+  been here since 2.3.0 and was invisible to anyone searching HACS or GitHub
+  for a local option. The integration domain, entity ids and entity names are
+  unchanged; only the displayed title changes.
+- The README names the other portals Eybond runs, SmartLamp and SmartValue,
+  and states plainly that setup reaches only DessMonitor and ShineMonitor, so
+  an account held on another portal cannot be configured.
 
 ### Fixed
 - Devcode 6514 labels the `CSO` charger source priority as `Solar First`.
@@ -33,6 +69,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Devcode 4743's `Total PV power` is published in watts. The raw title resolves
   by friendly name onto the kilowatt `Total PV Power` sensor, so a 1552 W
   reading would have been shown as 1552 kW.
+- Control field names are trimmed and their internal whitespace collapsed
+  before they reach an entity. Devcode 6515 reports `" Inverter Time"` with a
+  leading space, which published an entity with a doubled space in its name and
+  a doubled underscore in its id (#57).
+- Devcode 6515 names its equalization charge time, which the collector reports
+  under the internal identifier `bat_eq_time` (#57).
+- A control field the API sends without a name or an id is skipped and logged
+  instead of becoming an entity named after its device alone.
+- A local query that times out no longer takes the queries behind it with it.
+  The timeout frees this side only: the collector goes on waiting for the
+  inverter and answers 8 to 11 seconds after the request on the PI18 hardware
+  measured in #53, against a 3 second request timeout, over a link that
+  carries one transaction at a time. The next query is now held back until the
+  abandoned reply lands, and only once that collector has been seen to answer
+  late, so a collector that is simply gone still fails fast. In the reported
+  log only 4 of 156 discovery queries went out on an idle link; all 4 were
+  answered, while the rest reached 41 to 57 percent, and identifying a
+  protocol that then polled flawlessly took six and a half minutes and five
+  attempts (#53, thanks to @DastardlyBaker for the debug log and to @ballhtml
+  for the latency breakdown).
+- A failed discovery reports every outcome each driver's queries produced,
+  with counts, instead of one reason that a single stray answer could
+  misrepresent. A collector that timed out 19 times and returned one malformed
+  frame was described as `smg_modbus: invalid_response; p17: timeout; pi30:
+  invalid_response`, which reads as missing device support (#53).
 - A reading whose value is free-form text, such as the grid-tie inverter status
   on devcode 632, reaches Home Assistant as text instead of being dropped by
   numeric coercion.
@@ -56,6 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `time.set_value` / `text.set_value` instead of `number.set_value`.
 - Old number registry/history entries are retained. Migration records its decision
   per old entity so user disables and later re-enables survive reload/restart.
+  Both historical Inverter Date IDs are handled: the original double-underscore
+  suffix and the normalized single-underscore suffix introduced by #57.
   A re-enabled legacy number is retained in the registry but is not implemented
   by the new numeric platform. Rollback requires explicitly re-enabling the old
   numbers; it does not automatically restore old UI references or disabled flags.
@@ -656,7 +719,7 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 ## [2.3.0] - 2026-08-31
 
 ### Added
-- Optional read-only local telemetry for EyeBond-compatible collectors, with cloud-only, local-only, and preferred-local hybrid modes. Hybrid mode keeps the DessMonitor API as the canonical source for identity, metadata, controls, and fallback data while overlaying faster local readings from one or more explicitly pinned private addresses (#27, thanks to @albertdb for proposing local and hybrid support).
+- Optional read-only local telemetry for Eybond-compatible collectors, with cloud-only, local-only, and preferred-local hybrid modes. Hybrid mode keeps the DessMonitor API as the canonical source for identity, metadata, controls, and fallback data while overlaying faster local readings from one or more explicitly pinned private addresses (#27, thanks to @albertdb for proposing local and hybrid support).
 - Guided local configuration, independent cloud/local polling intervals, source diagnostics, persisted cloud snapshots, automatic local reconnect and cloud fallback, and CLI discovery/probing tools with redacted evidence output.
 
 ### Changed

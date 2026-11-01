@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "model": "ANENJI ANJ-11KW-48V-W-P",
+  "devcode": 6544,
+  "field_id": "sys_eybond_read_44023",
+  "field_name": "Inverter Date",
+  "path": "HA text.set_value -> candidate cloud API -> inverter",
+  "deployed_version": "2.6.0+pr48.20261031",
+  "candidate_head": "016961b9bf0baadf26eafff6749eb7b95e292a05",
+  "candidate_note": "65 installed files hash-verified; only version metadata differs from the candidate production sources.",
+  "installation_timezone": "Europe/Moscow",
+  "guards": {
+    "secondary_charging_priority": "OFF",
+    "secondary_output_priority": "OFF",
+    "equalization": "Prohibit",
+    "second_output": "Allow",
+    "solar_control_paused": true,
+    "bridge_stopped_during_cloud_test": true,
+    "note": "Explicitly authorized +10-minute test in the early part of the hour; no date or hour boundary crossed by the shifted time. These are installation guards, not a vendor timezone contract."
+  },
+  "baseline": {
+    "read_at": "2026-11-01T08:01:27Z",
+    "value": "2026-11-01 11:01:30"
+  },
+  "test_write": {
+    "intent_at": "2026-11-01T08:01:53.558788+00:00",
+    "ha_local_time": "2026-11-01 11:01:53",
+    "requested": "2026-11-01 11:11:53",
+    "result_at": "2026-11-01T08:01:55.138727+00:00",
+    "service_calls": 1,
+    "service_accepted": true
+  },
+  "independent_reads": [
+    {
+      "action": "queryDeviceCtrlValue",
+      "at": "2026-11-01T08:02:45Z",
+      "http_code": 200,
+      "api_error": 0,
+      "value": "2026-11-01 11:12:44"
+    },
+    {
+      "action": "queryDeviceCtrlValue",
+      "at": "2026-11-01T08:16:20Z",
+      "http_code": 200,
+      "api_error": 0,
+      "value": "2026-11-01 11:26:18"
+    }
+  ],
+  "later_ordinary_cloud_sample": {
+    "read_at": "2026-11-01T08:17:23.398234+00:00",
+    "sample_timestamp": "2026-11-01 11:10:12",
+    "inverter_datetime": "2026-11-01 11:20:21",
+    "clock_minus_sample_timestamp_seconds": 609,
+    "snapshot_mtime": 1793520896,
+    "snapshot_persisted_utc": "2026-11-01T08:14:56+00:00",
+    "note": "Persisted before the later explicit update_entity request at approximately08:16:47UTC. Compare the two sample fields, not the inverter value against the wall clock at retrieval. Earlier retained pre-write samples were not accepted as fresh evidence."
+  },
+  "cloud_restoration": {
+    "requested": "2026-11-01 11:20:00",
+    "service_calls": 1,
+    "result_at": "2026-11-01T08:20:30.342734+00:00",
+    "service_accepted": false,
+    "error_type": "APIError",
+    "initial_outcome": "unknown_until_readback",
+    "first_read": {
+      "at": "2026-11-01T08:20:32Z",
+      "status": "invalid_value",
+      "value": null
+    },
+    "later_read": {
+      "at": "2026-11-01T08:22:28Z",
+      "value": "2026-11-01 11:21:35",
+      "offset_seconds_at_request": -53
+    },
+    "note": "The +10-minute shift was removed, but exact current time was not yet restored. The cloud restoration was not blindly retried."
+  },
+  "native_clock_correction_after_handoff": {
+    "source": "Existing authorized bridge automatic clock synchronization after DessMonitor was disabled and ownership returned",
+    "send_intent_at": "2026-11-01T09:28:00.477382+00:00",
+    "drift_before_seconds": 55.477324,
+    "write_attempts": 1,
+    "outcome": "confirmed",
+    "unresolved": false,
+    "independent_readback_at": "2026-11-01T09:28:02.599105+00:00",
+    "independent_readback_value": "2026-11-01T12:28:02"
+  },
+  "final_verification": {
+    "at": "2026-11-01T09:32:06.351859+00:00",
+    "native_telemetry_available": true,
+    "native_telemetry_age_seconds": 9.55,
+    "clock_drift_seconds": 1.318,
+    "clock_within_limit": true,
+    "solar_control": "enabled",
+    "solar_execution": "converged",
+    "solar_pending": null,
+    "dessmonitor": "disabled_by_user",
+    "original_source_hashes_verified": true,
+    "original_options_restored_exactly": true,
+    "registry_records_checked": 357,
+    "registry_identity_or_binding_changes": 0,
+    "temporary_terminal": "stopped"
+  },
+  "limitations": [
+    "One calendar-string field on this model; not a universal vendor timezone or other-model guarantee.",
+    "Clock values advance naturally; evidence confirms the approximately+10-minute offset, not identical frozen strings.",
+    "No inverter-display observation or scheduled power-source transition was required or claimed for this calendar test.",
+    "The restoration API error did not mean the clock remained shifted. Independent reads determined the result before the native correction.",
+    "Native correction corroborates restoration only; the earlier cloud write was confirmed by explicit vendor reads and a later ordinary cloud sample.",
+    "Two candidate cloud service calls total: one test change and one distinct restoration. One subsequent native correction belongs to the existing bridge feature, not this PR.",
+    "This is the tested October31 candidate. The later upstream dual-legacy-ID migration resolution is a separate local code change, not part of this hardware session."
+  ]
+}

@@ -1,10 +1,12 @@
 # Schedule and inverter-clock controls: client research and migration
 
 Cloud control-value recovery and its bounded-retry follow-up have merged into
-upstream and shipped in 2.6.0. This remains a draft: hardware coverage is partial.
-An October31 candidate write to the charging-start field was confirmed on the
-inverter display and by delayed independent cloud read. Calendar writes and the
-other three schedule IDs are not qualified by that experiment.
+upstream and shipped in 2.6.0. PR #48 is open and ready for review, not marked Draft.
+The maintainer accepted the October31 charging-start test as representative of all
+four `time` entities. A November1 calendar-string write was confirmed by independent
+vendor reads and a later ordinary fresh cloud sample; restoration is complete.
+The new evidence awaits review. The November1 candidate also resolves the upstream
+dual-legacy-ID migration conflict. Neither test demonstrates scheduled power switching.
 
 | API field (devcode 6544) | Observed read | Proposed entity |
 |---|---|---|
@@ -48,10 +50,13 @@ The new platforms share cloud control caching and are absent in local-only mode.
 
 Only the five advertised IDs on devcode 6544 are reclassified. Corresponding
 old number registry entries are disabled, not deleted. Their identity suffix is
-computed by the same exported helper as `number.py`, without trimming names or
-changing existing IDs (including the leading-space Inverter Date case).
-Field classification lives separately so importing that helper cannot create a
-number/temporal platform import cycle. New IDs use serial + API field ID.
+computed by the shared `utils.control_entity_suffix` helper used by `number.py`,
+for both the raw API name and its mapped/normalized friendly name. This covers
+`__inverter_date` from before #57 and `_inverter_date` from builds carrying that
+normalization, including registries with both records. Neither old record is
+renamed or deleted. Duplicate candidate IDs are checked once. Field classification
+lives separately; temporal controls do not import the number platform. New IDs
+use serial + API field ID.
 
 Each old entry's registry options under `dessmonitor` record
 `temporal_number_migrated: true` through the supported entity-registry API.
@@ -104,7 +109,8 @@ IDs or a vendor timezone contract. The cloud IDs are not Modbus addresses.
 No automatic clock synchronization or local writes are added by this PR.
 
 Existing read-only telemetry work is independent of this candidate. API success
-alone is not device confirmation, and remaining cloud paths keep this a draft.
+alone is not device confirmation; the later dated hardware follow-ups below supply
+additional evidence beyond these historical observations.
 
 ## October 31 integration with current upstream
 
@@ -145,3 +151,32 @@ The owner reported that the clock was already correct; no calendar write was
 performed merely to create a test result. This confirms one cloud schedule
 write path, not all five controls or actual scheduled power-source switching.
 See [the exact timeline, limitations and compact record](../evidence/temporal_controls/HARDWARE_20261031.md).
+
+## November 1 calendar follow-up
+
+The owner explicitly authorized a temporary+10-minute shift followed by restoration
+of correct current time. One candidate cloud `text.set_value` was accepted; two
+independent `queryDeviceCtrlValue` reads and a later ordinary fresh cloud sample
+confirmed the offset. One cloud restoration returned an ambiguous API error but
+subsequent reading established removal of the shift, with approximately53s lag.
+After ownership returned to the normal bridge, existing automatic synchronization
+corrected the remaining drift with one independently confirmed native write.
+Solar Planner returned to enabled/converged, with no pending operation.
+
+See [calendar evidence and restoration](../evidence/temporal_controls/CALENDAR_20261101.md).
+The maintainer accepted one confirmed write per value shape; the new calendar result
+is prepared for review. Upstream subsequently normalized control names, creating
+both historical clock suffixes (`__inverter_date` and `_inverter_date`).
+
+## November 1 upstream conflict resolution
+
+The local candidate merges dev `84b2c70` and retains its control-name migration for
+ordinary numbers, while continuing to exclude the five temporal fields from that
+platform. Temporal migration checks both historical number IDs using the same
+shared suffix helper. Each existing record gets its own durable migration marker.
+Tests cover either upgrade path, both IDs together, preservation of user re-enables
+through registry reload, other-entry isolation, and a second legacy ID discovered
+after the first was migrated. No device write is part of registry migration.
+
+This code integration is separate from the October31 source used for the calendar
+hardware session. Cloud string serialization and the write path are unchanged.

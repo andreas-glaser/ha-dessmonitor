@@ -1100,7 +1100,7 @@ def setup_argparser() -> argparse.ArgumentParser:
     # Local, read-only collector probe. This command does not use cloud credentials.
     local_parser = subparsers.add_parser(
         "local-probe",
-        help="Probe one EyeBond collector locally using read-only inverter requests",
+        help="Probe one Eybond collector locally using read-only inverter requests",
     )
     local_parser.add_argument(
         "--listen-ip", required=True, help="LAN IPv4 address of this host"
@@ -1147,7 +1147,7 @@ def setup_argparser() -> argparse.ArgumentParser:
 
     scan_parser = subparsers.add_parser(
         "local-scan",
-        help="Find EyeBond collectors with one bounded LAN callback scan",
+        help="Find Eybond collectors with one bounded LAN callback scan",
     )
     scan_parser.add_argument(
         "--listen-ip", required=True, help="LAN IPv4 address of this host"

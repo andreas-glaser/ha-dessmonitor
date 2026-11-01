@@ -1,4 +1,4 @@
-"""Targeted UDP callback requester for EyeBond collectors."""
+"""Targeted UDP callback requester for Eybond collectors."""
 
 from __future__ import annotations
 

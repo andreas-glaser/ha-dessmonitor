@@ -1,8 +1,14 @@
-# Partial cloud schedule write/readback evidence
+# Cloud temporal-control write/readback evidence
+
+**November1 update:** [calendar-string write confirmed by independent vendor reads
+and a later ordinary fresh cloud sample](CALENDAR_20261101.md). Correct current
+time and the normal bridge/Solar installation were restored. The maintainer has
+accepted the October31 representative schedule test for all four `time` entities;
+the calendar result is prepared for review.
 
 **October31 update:** [one schedule field was confirmed on the inverter display
 and by delayed independent cloud read](HARDWARE_20261031.md), with explicit
-restoration evidence. Calendar writes remain unverified. The October17 record
+restoration evidence. Calendar writes were then unverified. The October17 record
 below is retained separately and must not be presented as the newer experiment.
 
 [cloud_schedule_readback.json](cloud_schedule_readback.json) contains allowlisted
@@ -36,6 +42,6 @@ the physical experiment. The failure on restoration followed by an observed
 original value must not be simplified to either "API error means unchanged"
 or "API acknowledgement proves device success".
 
-Only two cloud fields are covered:43988/43989. Output schedules43979/43980 and
-clock44023 still lack cloud-write confirmation. Native Modbus results do not
-close that gap. See [research and migration](../../research/TEMPORAL_CONTROLS.md).
+The October17 record covers only two cloud fields:43988/43989; it does not establish
+output-schedule or clock cloud writes. Native Modbus results do not close that gap.
+See the later dated updates above and [research and migration](../../research/TEMPORAL_CONTROLS.md).

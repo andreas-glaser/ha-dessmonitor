@@ -201,7 +201,7 @@ for legacy-report limitations and checksum output.
 
 ### `local-scan` - Bounded Collector Discovery
 
-Find callback-capable EyeBond collectors on one private `/24` or smaller. This
+Find callback-capable Eybond collectors on one private `/24` or smaller. This
 command does not use cloud credentials.
 
 ```bash

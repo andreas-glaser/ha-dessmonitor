@@ -16,9 +16,8 @@ from .const import DOMAIN
 from .control_values import cloud_control_snapshot, control_value, find_control_value
 from .device_support.device_registry import map_control_field
 from .entity_loader import async_setup_dynamic_entities
-from .number import number_unique_suffix
 from .temporal_fields import temporal_control_kind
-from .utils import create_device_info
+from .utils import control_entity_suffix, create_device_info
 
 _MIGRATION_OPTION = "temporal_number_migrated"
 
@@ -104,27 +103,25 @@ def disable_replaced_numbers(
     """Retire each old number once, preserving subsequent user overrides."""
     registry = er.async_get(hass)
     for entity in entities:
-        entity_id = registry.async_get_entity_id(
-            "number", DOMAIN, entity.legacy_number_unique_id
-        )
-        if entity_id is None:
-            continue
-        old = registry.async_get(entity_id)
-        if old is None or old.config_entry_id != entry.entry_id:
-            continue
-        options = dict(old.options.get(DOMAIN, {}))
-        if options.get(_MIGRATION_OPTION) is True:
-            continue
-        if old.disabled_by is None:
-            registry.async_update_entity(
-                entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION
-            )
-        # The registry persists this decision with the old entity, including
-        # user-disabled entries. A later user re-enable must survive new setup.
-        # Both registry updates are synchronous callbacks: discovery cannot
-        # interleave between changing the flag and recording the decision.
-        options[_MIGRATION_OPTION] = True
-        registry.async_update_entity_options(entity_id, DOMAIN, options)
+        for unique_id in entity.legacy_number_unique_ids:
+            entity_id = registry.async_get_entity_id("number", DOMAIN, unique_id)
+            if entity_id is None:
+                continue
+            old = registry.async_get(entity_id)
+            if old is None or old.config_entry_id != entry.entry_id:
+                continue
+            options = dict(old.options.get(DOMAIN, {}))
+            if options.get(_MIGRATION_OPTION) is True:
+                continue
+            if old.disabled_by is None:
+                registry.async_update_entity(
+                    entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION
+                )
+            # Persist the decision per old record, including user-disabled ones.
+            # A later user re-enable must survive discovery and registry reload.
+            # Both updates are synchronous callbacks and cannot interleave.
+            options[_MIGRATION_OPTION] = True
+            registry.async_update_entity_options(entity_id, DOMAIN, options)
 
 
 class DessMonitorTemporalControl(CoordinatorEntity[DessMonitorDataUpdateCoordinator]):
@@ -151,7 +148,14 @@ class DessMonitorTemporalControl(CoordinatorEntity[DessMonitorDataUpdateCoordina
         friendly = map_control_field(device["devcode"], api_name)
         self._attr_name = f"{device.get('alias', 'DessMonitor')} {friendly.strip()}"
         self._attr_unique_id = f"{serial}_{field_id}"
-        self.legacy_number_unique_id = f"{serial}_{number_unique_suffix(friendly)}"
+        # Upgrades can carry either the raw vendor-name ID (before #57) or
+        # the normalized/mapped ID. Retire both without renaming either record.
+        self.legacy_number_unique_ids = tuple(
+            dict.fromkeys(
+                f"{serial}_{control_entity_suffix(candidate)}"
+                for candidate in (api_name, friendly)
+            )
+        )
         self._attr_device_info = create_device_info(serial, device, collector)
         self._last_cloud_sample = cloud_control_snapshot(coordinator, serial)[0]
         self._last_raw_value = control_value(initial_value)
