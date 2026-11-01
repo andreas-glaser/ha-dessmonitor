@@ -44,6 +44,14 @@ shared in issue #17. Raw XMODEM CRC interoperability was cross-checked against
 No source code from that codec is included here; regression frames use synthetic
 data and Python's independent standard-library CRC implementation.
 
+The cloud time/clock control serialization was informed by the public DessMonitor
+web client's `queryDeviceCtrlValue` / `ctrlDevice` string round-trip behavior,
+observed on 2026-10-15 in
+[`chunk-4eb723b8.221dae61.js`](https://www.dessmonitor.com/js/chunk-4eb723b8.221dae61.js).
+Only interface behavior was used; no vendor JavaScript is included. Read formats
+for the five devcode 6544 fields were independently observed in hardware logs.
+This establishes client serialization, not successful on-device write validation.
+
 The Modbus protocol-number 4 layout uses register addresses, data types, and
 scales from `Communication.Protocol.No.3-10.docx`, published in
 [PreK/esphome-anenji-11kw-native-modbus](https://github.com/PreK/esphome-anenji-11kw-native-modbus/blob/55a330585846d57b4f24e6467201d8dde8985ee7/Communication.Protocol.No.3-10.docx).
