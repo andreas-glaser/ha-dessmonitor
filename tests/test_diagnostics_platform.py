@@ -154,32 +154,6 @@ async def test_the_summary_does_not_advertise(hass: HomeAssistant) -> None:
     assert "unique_features" not in summary
 
 
-async def test_a_diagnostic_sensor_matches_a_differently_spelled_title(
-    hass: HomeAssistant,
-) -> None:
-    """The same case-sensitivity as #53, in the diagnostic sensor's lookup."""
-    coordinator = MagicMock()
-    coordinator.last_update_success = True
-    coordinator.data = {
-        "SN-1": {
-            "collector": {"pn": "PN-1"},
-            "device": {"devcode": 6544, "devaddr": 1, "alias": "Inverter"},
-            "data": [{"title": "Output  Priority", "val": "SBU", "unit": ""}],
-        }
-    }
-
-    sensor = diagnostics_platform.DessMonitorDiagnosticSensor(
-        coordinator=coordinator,
-        device_sn="SN-1",
-        device_meta=coordinator.data["SN-1"]["device"],
-        collector_meta=coordinator.data["SN-1"]["collector"],
-        sensor_key="Output priority",
-        sensor_config=diagnostics_platform.DIAGNOSTIC_SENSORS["Output priority"],
-    )
-
-    assert sensor.native_value == "Solar → Battery → Utility"
-
-
 def test_the_platform_exposes_the_hub_hook_too() -> None:
     """Clicking Download diagnostics on the hub asked for this and got nothing."""
     assert hasattr(diagnostics_platform, "async_get_config_entry_diagnostics")

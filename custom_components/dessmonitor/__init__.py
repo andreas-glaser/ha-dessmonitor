@@ -14,6 +14,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -48,8 +49,12 @@ from .device_support import (
     needs_parameter_fetch,
 )
 from .sensor_titles import normalize_sensor_title, sensor_display_name
+from .support_report import PARTIAL as SUPPORT_PARTIAL
+from .support_report import SUPPORTED as SUPPORT_SUPPORTED
+from .support_report import UNSUPPORTED as SUPPORT_UNSUPPORTED
 from .support_report import (
     build_support_report,
+    device_support_status,
     report_checksum,
     resolved_key_for,
     short_identity,
@@ -72,6 +77,12 @@ LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 MAX_CONTROL_VALUE_RETRIES = 3
 
 _LOGGER = logging.getLogger(__name__)
+
+_SUPPORT_ISSUE_PREFIX = "devcode_support_"
+_SUPPORT_LEARN_MORE_URL = (
+    "https://github.com/andreas-glaser/ha-dessmonitor/blob/main/"
+    "docs/ADDING_DEVCODES.md#request-support"
+)
 
 
 def _normalize_devcode(value: Any) -> int | None:
@@ -313,6 +324,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         # that device alone or for the whole account. The hybrid overlay reads
         # it so a retained device is never presented as live.
         self.stale_cloud_serials: frozenset[str] = frozenset()
+        # Devcodes this entry has raised a support card for, so one that
+        # stops applying is withdrawn rather than left on screen.
+        self._support_issues: set[int] = set()
         self._allow_cached_fallback = allow_cached_fallback
         self._cached_cloud_data: dict[str, Any] = {}
         self._cloud_snapshot_store: Store[dict[str, Any]] | None = (
@@ -346,6 +360,68 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         data = stored.get("data")
         if isinstance(data, dict):
             self._cached_cloud_data = data
+
+    def _async_update_support_issues(self, data: dict[str, Any]) -> None:
+        """Raise one Repairs card per devcode whose readings are not all mapped.
+
+        The answer to "is my inverter supported" was a log line warned once per
+        devcode, which nobody reads, and the partial case warned nothing at all
+        (#60). One card per devcode, not per device: a five-inverter account of
+        one model would otherwise show five identical cards.
+
+        This runs after a successful cloud refresh, never inside
+        ``apply_devcode_transformations``, which is a per-reading hot path, and
+        it touches no revision counter, so entity discovery is unaffected.
+        """
+        if self.config_entry is None:
+            return
+
+        worst: dict[int, dict[str, Any]] = {}
+        for payload in data.values():
+            raw_devcode = payload.get("device", {}).get("devcode")
+            try:
+                devcode = int(raw_devcode)
+            except (TypeError, ValueError):
+                continue
+            support = device_support_status(raw_devcode, payload.get("data", []))
+            if support["status"] == SUPPORT_SUPPORTED:
+                continue
+            previous = worst.get(devcode)
+            if previous is None or (
+                previous["status"] == SUPPORT_PARTIAL
+                and support["status"] == SUPPORT_UNSUPPORTED
+            ):
+                worst[devcode] = support
+
+        stale = self._support_issues - set(worst)
+        for devcode in stale:
+            ir.async_delete_issue(
+                self.hass, DOMAIN, f"{_SUPPORT_ISSUE_PREFIX}{devcode}"
+            )
+        self._support_issues -= stale
+
+        for devcode, support in worst.items():
+            dropped = len(support["unresolved_with_unit"])
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                f"{_SUPPORT_ISSUE_PREFIX}{devcode}",
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key=(
+                    "devcode_unsupported"
+                    if support["status"] == SUPPORT_UNSUPPORTED
+                    else "devcode_partial"
+                ),
+                translation_placeholders={
+                    "devcode": str(devcode),
+                    "dropped": str(dropped),
+                    "resolved": str(support["resolved"]),
+                    "total": str(support["total"]),
+                },
+                learn_more_url=_SUPPORT_LEARN_MORE_URL,
+            )
+            self._support_issues.add(devcode)
 
     async def _async_store_cloud_snapshot(self, data: dict[str, Any]) -> None:
         """Persist a successful API refresh without making telemetry fail."""
@@ -532,6 +608,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             )
             await self._async_store_cloud_snapshot(data)
             self.cloud_revision += 1
+            self._async_update_support_issues(data)
             for sn in self.ctrl_field_cache:
                 self._sync_control_values_from_cloud(sn)
             return snapshot_with_data_source(

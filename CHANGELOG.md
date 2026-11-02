@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Home Assistant now says whether an inverter is fully supported. A **Repairs**
+  card names a devcode that has no profile, or one whose profile leaves readings
+  unmapped, with how many readings reach no entity and a link to the support
+  guide. One card per devcode, raised after a successful cloud refresh and
+  withdrawn when it stops applying. The partial case is the one that mattered:
+  devcode 6514 shipped mapping SOC alone and dropped 58 of its 76 readings for
+  eight months without a single warning (#35, #56, #60).
+- The maintainer tooling and its regression guard accept a diagnostics download
+  as evidence for a devcode, not only a CLI analysis. Because a download records
+  a unit for every reading where a CLI analysis records one for the sampled
+  readings only, committing one guards more of a devcode (#60).
 - Cloud-backed time entities for the four secondary-priority schedule boundaries
   on devcode 6515, whose field ids differ from 6544's and whose values the
   committed analysis shows reading as `HH:MM` (#57). Its clock field is left

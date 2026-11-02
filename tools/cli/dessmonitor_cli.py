@@ -1313,12 +1313,13 @@ def _coverage_of(analysis: Dict[str, Any]) -> Any:
     if tools_dir not in sys.path:
         sys.path.insert(0, tools_dir)
     try:
-        from analysis_coverage import coverage
+        from analysis_coverage import coverage, normalized_reports
     except Exception as err:  # pylint: disable=broad-except
         logger.debug("Coverage summary unavailable: %s", err)
         return None
     try:
-        return coverage(analysis)
+        (record,) = normalized_reports({"analysis": analysis})
+        return coverage(record)
     except Exception as err:  # pylint: disable=broad-except
         logger.debug("Coverage summary failed: %s", err)
         return None

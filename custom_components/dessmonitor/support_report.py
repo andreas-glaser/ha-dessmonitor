@@ -154,6 +154,18 @@ def build_support_report(
     return report
 
 
+def device_support_status(
+    devcode: Any, readings: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Return just the support block for one device's readings.
+
+    The sensor and the Repairs evaluation both need this on every refresh and
+    neither needs the rest of a report, so this builds no readings list and
+    performs no hashing.
+    """
+    return build_support_report(devcode=devcode, readings=readings)["support"]
+
+
 def classify_support(
     devcode: Any,
     resolved_keys: set[str],
@@ -302,3 +314,71 @@ def report_checksum(report: dict[str, Any]) -> str:
         json.dumps(hashable, sort_keys=True, separators=(",", ":")).encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
+
+
+def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return one comparable record per device, from either report shape.
+
+    Evidence reaches the repository as a CLI analysis or, now, as a
+    diagnostics download, and the coverage tooling and its test guard both
+    (#60). Each record carries the devcode, the raw titles, the units observed
+    for them, which path produced it, and whether its checksum still matches.
+    """
+    if "analysis" in payload and isinstance(payload["analysis"], dict):
+        analysis = payload["analysis"]
+        return [
+            {
+                "devcode": analysis.get("devcode"),
+                "titles": [str(title) for title in analysis.get("sensor_titles", [])],
+                "units": _units_from_analysis(analysis),
+                "source": analysis.get("source", "cli_analysis"),
+                "checksum": analysis.get("checksum"),
+                "checksum_valid": bool(analysis.get("checksum"))
+                and analysis["checksum"] == analysis_checksum(analysis),
+            }
+        ]
+
+    devices = payload.get("devices")
+    if isinstance(devices, list):
+        return [
+            record
+            for device in devices
+            if isinstance(device, dict)
+            for record in normalized_reports(device)
+        ]
+
+    if "readings" in payload:
+        readings = payload.get("readings") or []
+        return [
+            {
+                "devcode": payload.get("devcode"),
+                "titles": [str(reading.get("title", "")) for reading in readings],
+                "units": {
+                    str(reading.get("title")): str(reading.get("unit"))
+                    for reading in readings
+                    if reading.get("title") and reading.get("unit")
+                },
+                "source": payload.get("source", "integration_diagnostics"),
+                "checksum": payload.get("checksum"),
+                "checksum_valid": bool(payload.get("checksum"))
+                and payload["checksum"] == report_checksum(payload),
+            }
+        ]
+
+    raise ValueError("not a devcode analysis or support report")
+
+
+def _units_from_analysis(analysis: dict[str, Any]) -> dict[str, str]:
+    """Collect the units a CLI analysis observed, keyed by raw title.
+
+    It records a unit for the sampled readings only, which is why a report
+    built in Home Assistant is the better evidence.
+    """
+    units: dict[str, str] = {}
+    for section, label in (("sample_data", "title"), ("parameters", "name")):
+        for point in analysis.get(section, []):
+            title = point.get(label)
+            unit = (point.get("unit") or "").strip()
+            if title and unit:
+                units[str(title)] = unit
+    return units

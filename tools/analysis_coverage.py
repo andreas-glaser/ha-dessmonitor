@@ -31,22 +31,11 @@ from custom_components.dessmonitor.device_support import (  # noqa: E402
 from custom_components.dessmonitor.sensor_titles import (  # noqa: E402
     resolve_sensor_key,
 )
+from custom_components.dessmonitor.support_report import (  # noqa: E402
+    normalized_reports,
+)
 
-
-def _units_by_title(analysis: dict[str, Any]) -> dict[str, str]:
-    """Collect the units an analysis observed, keyed by raw title.
-
-    ``sample_data`` holds the first twenty readings and ``parameters`` the
-    queryDeviceParsEs entries, so a title may legitimately have no unit here.
-    """
-    units: dict[str, str] = {}
-    for section, label in (("sample_data", "title"), ("parameters", "name")):
-        for point in analysis.get(section, []):
-            title = point.get(label)
-            unit = (point.get("unit") or "").strip()
-            if title and unit:
-                units[str(title)] = unit
-    return units
+__all__ = ["Coverage", "coverage", "normalized_reports", "report"]
 
 
 @dataclass(frozen=True)
@@ -83,10 +72,10 @@ class Coverage:
         ]
 
 
-def coverage(analysis: dict[str, Any]) -> Coverage:
-    """Resolve every title in an analysis against the current mappings."""
-    devcode = analysis.get("devcode")
-    titles = analysis.get("sensor_titles", [])
+def coverage(record: dict[str, Any]) -> Coverage:
+    """Resolve every title in one normalized record against the mappings."""
+    devcode = record.get("devcode")
+    titles = record.get("titles", [])
     if devcode is None or not titles:
         raise ValueError("not a devcode analysis report")
 
@@ -105,22 +94,38 @@ def coverage(analysis: dict[str, Any]) -> Coverage:
         registered=is_devcode_supported(devcode),
         resolved=resolved,
         unresolved=unresolved,
-        units=_units_by_title(analysis),
+        units=dict(record.get("units", {})),
     )
 
 
 def report(path: Path) -> int:
     """Print one analysis file's sensor coverage and return the unmapped count."""
     with path.open("r", encoding="utf-8") as handle:
-        analysis = json.load(handle).get("analysis", {})
+        payload = json.load(handle)
 
     try:
-        result = coverage(analysis)
+        records = normalized_reports(payload)
+    except ValueError as err:
+        raise ValueError(f"{path} is {err}") from err
+
+    unmapped = 0
+    for index, record in enumerate(records):
+        unmapped += _report_one(path, record, index=index, of=len(records))
+    return unmapped
+
+
+def _report_one(
+    path: Path, record: dict[str, Any], *, index: int = 0, of: int = 1
+) -> int:
+    """Print one device's coverage and return its unmapped reading count."""
+    try:
+        result = coverage(record)
     except ValueError as err:
         raise ValueError(f"{path} is {err}") from err
 
     supported = "registered" if result.registered else "UNREGISTERED"
-    print(f"{path} - devcode {result.devcode} ({supported})")
+    label = f"{path}" if of == 1 else f"{path} [device {index + 1} of {of}]"
+    print(f"{label} - devcode {result.devcode} ({supported}, {record['source']})")
     print(f"  resolved {len(result.resolved)}/{result.total}")
     for title, key in result.resolved:
         arrow = "" if title == key else f" -> {key}"

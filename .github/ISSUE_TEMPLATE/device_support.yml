@@ -6,7 +6,16 @@ body:
   - type: markdown
     attributes:
       value: |
-        One command produces everything needed. On a computer with Python 3.11+,
+        **The quickest way is from Home Assistant itself.** Open
+        **Settings > Devices & services > DessMonitor**, use the three-dot menu
+        on the integration entry, and choose **Download diagnostics**. That file
+        covers every inverter on the account, says whether each devcode is
+        supported, partial or unsupported, and names every reading that reaches
+        no entity. Credentials are redacted and identifiers appear only as a
+        `sha256:` hash.
+
+        If the integration will not set up at all, produce the same evidence from
+        a computer with Python 3.11+ instead:
         [download the dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
         extract it, open a terminal in the extracted folder and run:
 
@@ -83,7 +92,7 @@ body:
     attributes:
       label: Before submitting
       options:
-        - label: I will attach the `analysis_<devcode>.json` file(s) the CLI wrote.
+        - label: I will attach the diagnostics download, or the `analysis_<devcode>.json` file(s) the CLI wrote.
           required: true
         - label: The file came from this integration's CLI, not from another integration's diagnostics download.
           required: true

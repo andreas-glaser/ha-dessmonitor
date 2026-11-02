@@ -9,19 +9,37 @@ device-specific mappings for that code. It continues using raw sensor titles and
 values, but some sensors may be missing or need name, unit, or operating-mode
 mappings. The warning is logged once per devcode until Home Assistant restarts.
 
-You do not need to write Python code to request support:
+You do not need to install anything to request support, and you do not need to
+type your password anywhere.
 
 1. [Search existing issues](https://github.com/andreas-glaser/ha-dessmonitor/issues)
-   for the devcode shown in your warning.
-2. Produce an analysis of your own hardware with one command, below.
+   for your devcode.
+2. In Home Assistant, open **Settings > Devices & services > DessMonitor**, use
+   the three-dot menu on the integration entry itself, and choose **Download
+   diagnostics**.
 3. Open a [device support request](https://github.com/andreas-glaser/ha-dessmonitor/issues/new?template=device_support.yml)
-   and attach the file, or attach it to the matching existing issue.
+   and attach that file, or attach it to the matching existing issue.
 
-### One command
+That download covers every inverter on the account in one file. For each one it
+records the devcode, whether it is `supported`, `partial` or `unsupported`, how
+many of its readings reach an entity, and the title and unit of every reading
+that reaches none, which is the list a maintainer works from. It also carries
+the control fields, so settings can be mapped from the same file.
 
-On a computer with Python 3.11+, download the
-[dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
-extract it, and open a terminal in the extracted folder:
+**It contains no credentials and no identifiers.** The username, password,
+company key and token are redacted, and serial numbers, collector aliases and
+collector product numbers appear only as a `sha256:` correlation hash, so two
+downloads of the same account can still be compared without disclosing either.
+Review it before attaching it, as you should with any diagnostics file.
+
+If Home Assistant shows a **Repairs** card saying a devcode has no mappings or
+is missing readings, that card is raised by this check and links here.
+
+### If the integration will not set up at all
+
+Then there is no diagnostics download to take, and the CLI below is the way to
+produce the same evidence from a computer. It is also what to use when a cloud
+write needs testing, which the integration cannot do for you.
 
 ```bash
 cd tools/cli
@@ -35,9 +53,9 @@ integration, and a company key only if your installer gave you one
 (`--company-key`). The command prompts for your password rather than taking it
 on the command line, where your shell would record it.
 
-It then does the rest: it lists the collectors on the account, analyses every
-inverter behind them, writes one redacted `analysis_<devcode>.json` per device,
-and prints what each one covers, for example:
+It lists the collectors on the account, analyses every inverter behind them,
+writes one redacted `analysis_<devcode>.json` per device, and prints what each
+one covers, for example:
 
 ```
    Wrote analysis_6515.json (devcode 6515)
@@ -45,16 +63,8 @@ and prints what each one covers, for example:
    Every reading this collector labels with a unit already reaches Home Assistant.
 ```
 
-That coverage line is the answer to "is my device fully supported", and you get
-it without waiting for anyone. If a reading your vendor app shows is listed as
-carrying a unit but reaching nothing, say so in the issue: those are the ones
-worth mapping. If the devcode has no profile yet, the command says so.
-
 Attach the JSON files, and paste the summary block the command prints at the
-end. It names the devcode and coverage and contains no serial number, collector
-alias or identifying value.
-
-Share only those analysis files, never your password or the CLI credentials file
+end. Share only those files, never your password or the CLI credentials file
 (`.dessmonitor_cli_config.json`). The report is redacted before it is written:
 `device_sn`, `collector_alias` and known identifying values in telemetry,
 parameters and unit-pattern samples are blanked, including `devise serial
@@ -62,7 +72,7 @@ number` and record IDs, and the checksum is computed after redaction.
 Review the file for anything else identifying; if you redact more,
 mention that in the issue so the maintainer can account for checksum changes.
 
-The analysis lets a maintainer check the mappings and prepare a dev build for you
+Either file lets a maintainer check the mappings and prepare a dev build for you
 to test. To contribute the mappings yourself, continue with the workflow below.
 
 ## Background
@@ -428,6 +438,12 @@ Run the coverage report against the analysis:
 The `report` command prints a summary of the same thing on the reporter's own
 machine, so an issue may already name the readings that resolve to nothing. This
 is the detailed form of it, and it is the one to work from.
+
+Both shapes of evidence are accepted: a CLI `analysis_<devcode>.json` and a
+diagnostics download. The tool prints which produced the file, and a download
+records a unit for *every* reading where a CLI analysis records one for the
+sampled readings only, so a committed download guards more of a devcode than a
+committed analysis does.
 
 It prints every raw title with the canonical key it resolves to, then the
 unresolved ones, marking those the collector labelled with a unit. A unit means

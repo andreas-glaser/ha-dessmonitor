@@ -19,6 +19,7 @@ import pytest
 from custom_components.dessmonitor.device_support import apply_devcode_transformations
 from custom_components.dessmonitor.sensor import _build_sensor_entities
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
+from custom_components.dessmonitor.support_report import normalized_reports
 
 ANALYSIS_FILES = sorted(
     Path(__file__)
@@ -42,20 +43,28 @@ def test_committed_analysis_is_intact(path: Path) -> None:
     after the fact no longer matches. Without this the mappings could be
     justified by evidence nobody can check.
     """
-    analysis = _load(path)
-    stored = analysis.get("checksum")
-
-    assert stored, f"{path.name} carries no checksum"
-    assert stored == analysis_checksum(analysis), (
-        f"{path.name} does not match its own checksum; regenerate it with the "
-        "CLI rather than editing it by hand"
-    )
+    for record in _records(path):
+        assert record["checksum"], f"{path.name} carries no checksum"
+        assert record["checksum_valid"], (
+            f"{path.name} does not match its own checksum; regenerate it from "
+            "the CLI or the diagnostics download rather than editing it by hand"
+        )
 
 
 def _load(path: Path) -> dict[str, Any]:
     """Return the analysis payload of a committed CLI report."""
     with path.open("r", encoding="utf-8") as handle:
         return dict(json.load(handle)["analysis"])
+
+
+def _records(path: Path) -> list[dict[str, Any]]:
+    """Return one normalized record per device, for either committed shape.
+
+    Evidence arrives as a CLI analysis or as a diagnostics download, and a
+    devcode is guarded the same way whichever produced it (#60).
+    """
+    with path.open("r", encoding="utf-8") as handle:
+        return normalized_reports(json.load(handle))
 
 
 def _titles_with_units(analysis: dict[str, Any]) -> dict[str, str]:
@@ -110,9 +119,14 @@ def test_analysis_reports_are_committed() -> None:
 
 @pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
 def test_every_reading_with_a_unit_resolves_to_a_sensor(path: Path) -> None:
-    analysis = _load(path)
-    devcode = analysis["devcode"]
-    units = _titles_with_units(analysis)
+    for record in _records(path):
+        _assert_every_reading_resolves(path, record)
+
+
+def _assert_every_reading_resolves(path: Path, record: dict[str, Any]) -> None:
+    """Fail when a reading that carries a unit reaches no sensor."""
+    devcode = record["devcode"]
+    units = dict(record["units"])
 
     excluded = DELIBERATELY_UNMAPPED.get(devcode, {})
     unmapped = {
@@ -140,23 +154,25 @@ def test_exclusions_still_describe_an_unmapped_reading(path: Path) -> None:
     Otherwise a stale entry keeps a reading excluded after someone maps it, and
     the guard quietly stops watching a sensor that now exists.
     """
-    analysis = _load(path)
-    devcode = analysis["devcode"]
-    for title in DELIBERATELY_UNMAPPED.get(devcode, {}):
-        assert title in analysis["sensor_titles"], (
-            f"devcode {devcode} no longer reports {title!r}; remove the "
-            "exclusion in DELIBERATELY_UNMAPPED"
-        )
-        assert (
-            resolve_sensor_key(
-                apply_devcode_transformations(devcode, {"title": title}).get("title"),
-                title,
+    for record in _records(path):
+        devcode = record["devcode"]
+        for title in DELIBERATELY_UNMAPPED.get(devcode, {}):
+            assert title in record["titles"], (
+                f"devcode {devcode} no longer reports {title!r}; remove the "
+                "exclusion in DELIBERATELY_UNMAPPED"
             )
-            is None
-        ), (
-            f"{title!r} now resolves for devcode {devcode}; remove the "
-            "exclusion in DELIBERATELY_UNMAPPED"
-        )
+            assert (
+                resolve_sensor_key(
+                    apply_devcode_transformations(devcode, {"title": title}).get(
+                        "title"
+                    ),
+                    title,
+                )
+                is None
+            ), (
+                f"{title!r} now resolves for devcode {devcode}; remove the "
+                "exclusion in DELIBERATELY_UNMAPPED"
+            )
 
 
 @pytest.mark.parametrize(
@@ -230,3 +246,45 @@ def test_existing_unique_ids_are_unchanged(hass) -> None:
         "TEST-SN_battery_voltage",
         "TEST-SN_output_active_power",
     }
+
+
+def test_a_diagnostics_report_is_guarded_like_a_cli_analysis() -> None:
+    """Either shape can be committed as evidence for a devcode (#60).
+
+    A diagnostics download records a unit for every reading, where a CLI
+    analysis records one for the sampled readings only, so committing one of
+    those closes the blind spot in this guard rather than widening it.
+    """
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    readings = [
+        {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+        {"title": "Daily Generation", "val": "10.2", "unit": "kWh"},
+        {"title": "Protocol Number", "val": "3", "unit": ""},
+    ]
+    report = build_support_report(devcode=6515, readings=readings)
+
+    (record,) = normalized_reports({"devices": [report]})
+
+    assert record["devcode"] == 6515
+    assert record["source"] == "integration_diagnostics"
+    assert record["checksum_valid"] is True
+    assert record["units"] == {"Battery Voltage": "V", "Daily Generation": "kWh"}
+    assert "Protocol Number" in record["titles"]
+
+    # And the guard still catches the dropped reading in it.
+    with pytest.raises(AssertionError, match="Daily Generation"):
+        _assert_every_reading_resolves(Path("downloaded.json"), record)
+
+
+def test_an_edited_report_fails_its_checksum() -> None:
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    report = build_support_report(
+        devcode=6515, readings=[{"title": "SOC", "val": "37", "unit": "%"}]
+    )
+    report["devcode"] = 6544
+
+    (record,) = normalized_reports(report)
+
+    assert record["checksum_valid"] is False
