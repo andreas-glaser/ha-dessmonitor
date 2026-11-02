@@ -130,13 +130,15 @@ Diagnostic sensors can also show configured values such as output priority, char
 
 ### Device Configuration Entities
 
-In cloud and hybrid modes, supported settings appear as **select**, **number**, and **button** entities on the inverter's device page. You can also use them in dashboards and automations.
+In cloud and hybrid modes, supported settings appear as **select**, **number**, **button**, **time**, and **text** entities on the inverter's device page. You can also use them in dashboards and automations.
 
 | Entity type | Examples, when supported |
 |---|---|
 | Select | Output priority, charger source priority, battery type, buzzer, output voltage/frequency, backlight, and power saving |
 | Number | Charging voltage targets, maximum charging currents, low-voltage and SOC protection thresholds, and equalization timing |
 | Button | Clear records, reset user settings, start equalization charging, and exit fault mode |
+| Time | Daily schedule boundaries such as secondary charging and output priority start and end times, in the inverter's own local time |
+| Text | The inverter's wall clock, as a `YYYY-MM-DD HH:MM:SS` calendar string, with no timezone conversion |
 
 Available controls, options, and numeric ranges come from the device. Control discovery runs in the background, so settings may appear after the first sensor readings. Changes always use the cloud API, including in hybrid mode; local-only mode provides sensors without configuration controls.
 

@@ -124,28 +124,28 @@ readings never become midnight or a fabricated date. A successful cloud API
 response updates the displayed value; hardware readback is still required to
 confirm the inverter applied it.
 
-This domain migration requires a minor release and an explicit upgrade note.
-After upgrading, matching old `number` entries are disabled once and retained
-for history. The migration decision is persisted on each old registry entry;
-later user re-enables survive rediscovery and restart. A re-enabled old record
-does not gain a numeric implementation in the new version.
-New controls have `time`/`text` entity IDs:
-update dashboard references and automations to use `time.set_value` or
-`text.set_value`. Other numbers and user-disabled registry entries are preserved.
-When rolling back, restore the previous files and manually re-enable only the
-old number entries disabled by this replacement if needed.
+These five controls were `number` entities in 2.6.0 and earlier. On upgrade
+the old `number` entries are disabled once and kept, so their history survives;
+the decision is recorded on each old registry entry, so re-enabling one
+yourself survives rediscovery and a restart. A re-enabled old entry keeps its
+history but gains no numeric implementation. Update dashboard references and
+automations to the new `time` and `text` entity IDs and to `time.set_value` or
+`text.set_value`. Other numbers and entries you had disabled are untouched.
 
-The serializers follow the official web client's string round-trip behavior
-and the observed device read formats. Unit tests cover exact payloads, calendar
-validation, recovery and state publication. Later vendor-API tests observed
-changed secondary charging start/end values through separate reads; output
-schedule and clock cloud writes remain unverified. Native Modbus bridge writes
-are a different interface. See the [evidence and migration details](research/TEMPORAL_CONTROLS.md).
-
-An October31 candidate test additionally confirmed the charging-start write on
-the inverter display and by a delayed independent cloud read. Only that field
-is covered by the new experiment; a restoration API error despite an observed
-restored setting is retained in the [hardware evidence](evidence/temporal_controls/HARDWARE_20261031.md).
+The serializers follow the official web client's string round-trip behavior and
+the observed device read formats. One write of each shape is confirmed on
+hardware: a secondary charging start time, agreed by the owner's inverter display
+and by an independent cloud read almost four minutes later, and an inverter
+clock offset, held by independent reads 1 and 14 minutes after the write and
+by a later ordinary cloud sample. The other three schedule fields go through
+the same serialization and the same cloud call and are not individually
+qualified. A successful API response is still not proof that the inverter
+applied a setting, and native Modbus writes are a different interface. Both
+sessions recorded a restoration API error against a setting that separate reads
+showed restored; the timelines, including that, are in the
+[hardware](evidence/temporal_controls/HARDWARE_20261031.md) and
+[calendar](evidence/temporal_controls/CALENDAR_20261101.md) evidence, with the
+[research and migration notes](research/TEMPORAL_CONTROLS.md).
 
 The `Data Source` sensor shows `Local`, `Cloud`, or `Cached Cloud`. Hybrid only
 overlays a local device after matching it to canonical API or cached metadata;

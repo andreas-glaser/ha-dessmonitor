@@ -110,11 +110,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   total, and live hardware showed 265 V and 1.6 A against 424 W of export, both
   with a per-string power of 0. `Total PV power` carries the real figure (#58).
 
-### Upgrade notes — devcode 6544 time and clock controls
-- This domain migration belongs in a minor release with a prominent upgrade note.
-  Four schedule controls move from `number` to `time`, and Inverter Date moves
-  from `number` to `text`. Update dashboard/automation entity references and use
-  `time.set_value` / `text.set_value` instead of `number.set_value`.
+### Upgrade notes: devcode 6544 time and clock controls
+- Four schedule controls move from `number` to `time`, and Inverter Date moves
+  from `number` to `text`. Update dashboard and automation entity references and
+  use `time.set_value` / `text.set_value` instead of `number.set_value`.
 - Old number registry/history entries are retained. Migration records its decision
   per old entity so user disables and later re-enables survive reload/restart.
   Both historical Inverter Date IDs are handled: the original double-underscore
