@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Cloud-backed time entities for the four secondary-priority schedule boundaries
+  on devcode 6544, plus a calendar-validated text control for its timezone-free
+  inverter clock. Matching obsolete number entities are disabled, not deleted.
+  Representative schedule and calendar-string cloud writes have independent
+  hardware readback on the tested model; no clock timezone is assumed
+  (thanks to @jay0x for investigation and testing).
 - Device support for devcodes 4743 and 632, both grid-connected PV inverters
   reported through ShineMonitor. Between them this adds per-string PV voltage,
   current and power for three strings, DC bus voltages, AC grid voltage,
@@ -103,6 +109,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the committed analysis shows 220.5 V and 7.3 A on string 1 against a 1552 W
   total, and live hardware showed 265 V and 1.6 A against 424 W of export, both
   with a per-string power of 0. `Total PV power` carries the real figure (#58).
+
+### Upgrade notes — devcode 6544 time and clock controls
+- This domain migration belongs in a minor release with a prominent upgrade note.
+  Four schedule controls move from `number` to `time`, and Inverter Date moves
+  from `number` to `text`. Update dashboard/automation entity references and use
+  `time.set_value` / `text.set_value` instead of `number.set_value`.
+- Old number registry/history entries are retained. Migration records its decision
+  per old entity so user disables and later re-enables survive reload/restart.
+  Both historical Inverter Date IDs are handled: the original double-underscore
+  suffix and the normalized single-underscore suffix introduced by #57.
+  A re-enabled legacy number is retained in the registry but is not implemented
+  by the new numeric platform. Rollback requires explicitly re-enabling the old
+  numbers; it does not automatically restore old UI references or disabled flags.
 
 ## [2.6.0] - 2026-10-31
 
