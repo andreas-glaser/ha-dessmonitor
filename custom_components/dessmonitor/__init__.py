@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
 from typing import Any
 
@@ -20,6 +20,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import DessMonitorAPI, DessMonitorError
 from .const import (
     CONF_CONNECTION_TYPE,
+    CONF_LOCAL_EXPECTED_PN,
     CONF_LOCAL_MODE,
     CONF_UPDATE_INTERVAL,
     CONNECTION_TYPE_CLOUD,
@@ -29,6 +30,7 @@ from .const import (
     LOCAL_MODE_DISABLED,
     LOCAL_MODE_PREFER_LOCAL,
     UNITS,
+    VERSION,
     resolve_api_profile,
 )
 from .control_values import (
@@ -39,12 +41,19 @@ from .control_values import (
 )
 from .data_sources import snapshot_with_data_source
 from .device_support import (
+    apply_devcode_transformations,
     get_parameter_sensor_names,
     is_devcode_supported,
     map_sensor_title,
     needs_parameter_fetch,
 )
-from .sensor_titles import sensor_display_name
+from .sensor_titles import normalize_sensor_title, sensor_display_name
+from .support_report import (
+    build_support_report,
+    report_checksum,
+    resolved_key_for,
+    short_identity,
+)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -962,7 +971,7 @@ async def async_get_device_diagnostics(
         diagnostics["battery_config_error"] = control_error
 
     diagnostics["summary"] = _build_diagnostics_summary(
-        coordinator, device_data, diagnostics
+        device_info.get("device", {}).get("devcode"), device_data, diagnostics
     )
 
     _LOGGER.debug(
@@ -980,6 +989,143 @@ def _resolve_device_sn(device: dr.DeviceEntry) -> str | None:
         if domain == DOMAIN:
             return identifier
     return None
+
+
+# Credentials never leave the instance in a support file. Each key is replaced
+# rather than dropped, so a reader can still tell a configured value from an
+# absent one, and the collector product number becomes its correlation hash
+# because these files are attached to public issues (AGENTS.md, #60).
+_REDACTED_ENTRY_KEYS = frozenset({"username", "password", "company_key", "token"})
+_HASHED_ENTRY_KEYS = frozenset({CONF_LOCAL_EXPECTED_PN})
+_REDACTED = "**redacted**"
+
+
+def _redacted_entry_values(values: Mapping[str, Any]) -> dict[str, Any]:
+    """Return config values with credentials and identifiers removed."""
+    result: dict[str, Any] = {}
+    for key, value in values.items():
+        if key in _REDACTED_ENTRY_KEYS:
+            result[key] = _REDACTED if value not in (None, "") else value
+        elif key in _HASHED_ENTRY_KEYS:
+            result[key] = short_identity(value) if value else value
+        else:
+            result[key] = value
+    return result
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> dict[str, Any]:
+    """Return one support report per device, with nothing identifying in it.
+
+    Home Assistant offers this download on the integration card, and with no
+    hook the request failed before reaching the integration: "Download
+    diagnostics" on the hub did nothing useful. It now answers what every
+    support thread opens with, for every device at once: which mode the entry
+    runs in, which devcodes it sees, whether each is supported, partial or
+    unsupported, and which readings reach no entity (#60).
+
+    Serial numbers, aliases and collector product numbers are replaced by the
+    ``sha256:`` correlation form, so two downloads of the same account can be
+    compared without disclosing either.
+    """
+    report: dict[str, Any] = {
+        "integration": {
+            "version": VERSION,
+            "connection_type": entry.data.get(
+                CONF_CONNECTION_TYPE, CONNECTION_TYPE_CLOUD
+            ),
+            "local_mode": entry.options.get(CONF_LOCAL_MODE, LOCAL_MODE_DISABLED),
+            "api_profile": resolve_api_profile(dict(entry.data)),
+        },
+        "entry_data": _redacted_entry_values(entry.data),
+        "entry_options": _redacted_entry_values(entry.options),
+    }
+
+    coordinator: DessMonitorDataUpdateCoordinator | None = hass.data.get(
+        DOMAIN, {}
+    ).get(entry.entry_id)
+    if coordinator is None:
+        report["error"] = "The config entry is not loaded"
+        return report
+
+    report["coordinator"] = {
+        "last_update_success": coordinator.last_update_success,
+        "update_interval_seconds": (
+            coordinator.update_interval.total_seconds()
+            if coordinator.update_interval
+            else None
+        ),
+        "cloud_revision": coordinator.cloud_revision,
+        "devices_in_snapshot": len(coordinator.data or {}),
+        "devices_on_a_retained_cloud_payload": len(coordinator.stale_cloud_serials),
+        "hybrid": getattr(coordinator, "is_hybrid", False),
+    }
+
+    if getattr(coordinator, "is_hybrid", False):
+        report["local"] = {
+            "setup_errors": list(getattr(coordinator, "local_setup_errors", [])),
+            "transports": [
+                {
+                    "connected": local.connected,
+                    "last_update_success": local.last_update_success,
+                    "device_code": local.device_code,
+                    "devices": len(local.data or {}),
+                }
+                for local in getattr(coordinator, "locals", ())
+            ],
+        }
+
+    report["devices"] = [
+        await _build_device_support_report(coordinator, entry, serial, payload)
+        for serial, payload in sorted((coordinator.data or {}).items())
+    ]
+    return report
+
+
+async def _build_device_support_report(
+    coordinator: DessMonitorDataUpdateCoordinator,
+    entry: ConfigEntry,
+    serial: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Build one device's report, tolerating a device the cloud cannot answer for.
+
+    A failed control read must not fail the whole download: a reporter whose
+    account is timing out is exactly the one who needs to attach this file.
+    """
+    device_meta = payload.get("device", {})
+    collector_meta = payload.get("collector", {})
+    readings = payload.get("data", [])
+
+    control_fields: dict[str, Any] = {}
+    parameters: dict[str, Any] = {}
+    control_error: str | None = None
+    try:
+        control_fields, parameters, control_error = await _fetch_control_details(
+            coordinator, serial, payload, readings
+        )
+    except Exception as err:  # pylint: disable=broad-except
+        control_error = str(err)
+        _LOGGER.debug("Control details unavailable for device %s: %s", serial, err)
+
+    report = build_support_report(
+        devcode=device_meta.get("devcode"),
+        readings=readings,
+        device_serial=serial,
+        collector_product_number=collector_meta.get("pn"),
+        device_address=device_meta.get("devaddr"),
+        control_fields=control_fields,
+        parameters=parameters,
+        api_profile=resolve_api_profile(dict(entry.data)),
+        integration_version=VERSION,
+    )
+    report["data_source"] = _extract_sensor_value(readings, "Data Source")
+    report["last_update"] = _extract_sensor_value(readings, "Timestamp", "Unknown")
+    if control_error:
+        report["control_error"] = control_error
+    report["checksum"] = report_checksum(report)
+    return report
 
 
 def _build_base_diagnostics(
@@ -1211,32 +1357,47 @@ def _extract_sensor_value(
     return default
 
 
+# Readings the integration deliberately publishes as an entity attribute
+# rather than as a sensor of their own. They are not dropped, so they do not
+# belong in the summary's list of readings that reach nothing.
+_READINGS_PUBLISHED_AS_ATTRIBUTES = {"timestamp"}
+
+
 def _build_diagnostics_summary(
-    coordinator: DessMonitorDataUpdateCoordinator,
+    devcode: Any,
     device_data: list[dict[str, Any]],
     diagnostics: dict[str, Any],
 ) -> dict[str, Any]:
-    """Create diagnostics summary block."""
-    sensor_types = coordinator.data.get("sensor_types", [])
-    total_sensors = 0
-    if isinstance(sensor_types, list):
-        total_sensors = len(
-            [dp for dp in device_data if dp.get("title") in sensor_types]
-        )
+    """Create diagnostics summary block.
 
-    last_update = _extract_sensor_value(device_data, "Timestamp", "Unknown")
+    ``total_sensors_created`` counted the readings listed in
+    ``coordinator.data["sensor_types"]``, a key nothing has ever set, so it
+    reported 0 on every healthy device. It now counts the distinct canonical
+    sensors this device's readings resolve to, which is what the sensor
+    platform creates, and ``readings_without_a_sensor`` names the rest. That
+    pair is the first thing worth knowing when a reporter says a reading is
+    missing.
+
+    Coverage is decided by ``support_report.resolved_key_for``, the single
+    predicate the sensor platform, this summary, the hub report and the
+    maintainer tooling all ask.
+    """
+    resolved: set[str] = set()
+    unresolved: list[str] = []
+    for data_point in device_data:
+        title = data_point.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        key = resolved_key_for(devcode, data_point)
+        if key:
+            resolved.add(key)
+        elif normalize_sensor_title(title) not in _READINGS_PUBLISHED_AS_ATTRIBUTES:
+            unresolved.append(title.strip())
 
     return {
-        "total_sensors_created": total_sensors,
-        "last_update": last_update,
+        "total_sensors_created": len(resolved),
+        "readings_without_a_sensor": sorted(set(unresolved)),
+        "last_update": _extract_sensor_value(device_data, "Timestamp", "Unknown"),
         "control_fields_found": len(diagnostics.get("configuration", {})),
         "parameters_found": len(diagnostics.get("parameters", {})),
-        "unique_features": [
-            "39 Control Fields (vs ~10 in other projects)",
-            "Battery EQ Mode settings",
-            "Advanced power saving modes",
-            "Comprehensive voltage protection settings",
-            "Detailed buzzer and display controls",
-            "Remote boot control options",
-        ],
     }

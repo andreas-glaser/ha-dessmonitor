@@ -19,7 +19,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import CHARGER_PRIORITIES, DOMAIN, OUTPUT_PRIORITIES
-from .device_support import map_charger_priority, map_output_priority
+from .device_support import (
+    apply_devcode_transformations,
+    map_charger_priority,
+    map_output_priority,
+)
 from .sensor_titles import normalize_sensor_title
 from .utils import create_device_info
 
@@ -39,6 +43,21 @@ async def async_get_device_diagnostics(
     from . import async_get_device_diagnostics as build_device_diagnostics
 
     return await build_device_diagnostics(hass, entry, device)
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> dict[str, Any]:
+    """Expose the hub diagnostics builder on the module Home Assistant loads.
+
+    Only the device hook existed, so "Download diagnostics" on the integration
+    card asked for a config-entry report the integration never offered and the
+    request failed before it reached us. Defining this anywhere but here would
+    leave it just as dead.
+    """
+    from . import async_get_config_entry_diagnostics as build_entry_diagnostics
+
+    return await build_entry_diagnostics(hass, entry)
 
 
 # Diagnostic sensors that get their data from the regular API (queryDeviceLastData)
@@ -130,6 +149,10 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
         self._device_meta = device_meta
         self._collector_meta = collector_meta
         self._sensor_key = sensor_key
+        # Matched in its normalized form, like every other title comparison in
+        # the integration: a collector may spell the control differently from
+        # the key here, and the setup check above already normalizes (#53).
+        self._normalized_sensor_key = normalize_sensor_title(sensor_key)
         self._sensor_config = sensor_config
 
         device_alias = device_meta.get("alias", "Unknown Device")
@@ -171,31 +194,28 @@ class DessMonitorDiagnosticSensor(CoordinatorEntity, SensorEntity):
         devcode = device_meta.get("devcode")
 
         for data_point in device_data:
-            if data_point.get("title") == self._sensor_key:
-                # Apply devcode transformations if available
-                if devcode:
-                    from .device_support import apply_devcode_transformations
+            title = data_point.get("title")
+            if (
+                not isinstance(title, str)
+                or normalize_sensor_title(title) != self._normalized_sensor_key
+            ):
+                continue
 
-                    data_point = apply_devcode_transformations(
-                        devcode, data_point.copy()
-                    )
+            if devcode:
+                data_point = apply_devcode_transformations(devcode, data_point.copy())
+            value = data_point.get("val")
+            device_class = self._sensor_config.get("device_class")
 
-                value = data_point.get("val")
+            if device_class == "enum":
+                return str(value) if value not in (None, "") else "Unknown"
 
-                # Handle enum types (priorities, modes, etc.)
-                if self._sensor_config.get("device_class") == "enum":
-                    if value is not None and value != "":
-                        return str(value)
-                    return "Unknown"
+            if device_class in ("voltage", "current"):
+                try:
+                    return float(value) if value is not None else None
+                except (ValueError, TypeError):
+                    return None
 
-                # Handle numeric types (voltage, current)
-                if self._sensor_config.get("device_class") in ["voltage", "current"]:
-                    try:
-                        return float(value) if value is not None else None
-                    except (ValueError, TypeError):
-                        return None
-
-                return value
+            return value
 
         return None
 

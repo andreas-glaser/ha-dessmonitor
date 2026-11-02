@@ -77,6 +77,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- "Download diagnostics" on the integration card produced an error instead of a
+  file. Only the per-device hook existed, so Home Assistant's request for a
+  config-entry report failed before it reached the integration. The hub now
+  returns one file covering every device on the account: the mode the entry
+  runs in, the coordinator and local transport state, and for each device
+  whether its devcode is `supported`, `partial` or `unsupported`, how many of
+  its readings reach an entity, and the name and unit of every reading that
+  reaches none. Serial numbers, aliases and collector product numbers appear
+  only as `sha256:` correlation hashes, and the username, password, company key
+  and token are redacted (#60).
 - In hybrid mode a reading that the cloud and the local driver spell with
   different capitalisation went unknown for as long as local telemetry flowed.
   Devcode 2452 reports `Grid frequency` while the PI18 profile emits
