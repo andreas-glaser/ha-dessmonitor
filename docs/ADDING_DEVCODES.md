@@ -425,6 +425,10 @@ Run the coverage report against the analysis:
 .venv/bin/python tools/analysis_coverage.py path/to/analysis_XXXX.json
 ```
 
+The `report` command prints a summary of the same thing on the reporter's own
+machine, so an issue may already name the readings that resolve to nothing. This
+is the detailed form of it, and it is the one to work from.
+
 It prints every raw title with the canonical key it resolves to, then the
 unresolved ones, marking those the collector labelled with a unit. A unit means
 the title is a reading and should become a sensor; unresolved titles without one
@@ -566,6 +570,7 @@ Before opening a PR:
 - [ ] Operating mode targets are in `OPERATING_MODES` or explicitly added via the mapping
 - [ ] `SENSOR_TITLE_MAPPINGS` only contains titles that fail the shared resolver
 - [ ] `PARAMETER_SENSOR_NAMES` set iff the reporter needs a sensor from the parameters endpoint
+- [ ] `TEMPORAL_CONTROLS` lists every advertised clock-valued field whose read format the analysis shows, and nothing else
 - [ ] `tools/analysis_coverage.py` reports no unresolved title carrying a unit
 - [ ] Redacted analysis committed under `docs/evidence/devcodes/` and `verify` passes
 - [ ] Root `README.md`, `device_support/README.md`, `CHANGELOG.md` all updated
