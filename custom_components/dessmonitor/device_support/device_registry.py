@@ -204,7 +204,8 @@ def temporal_control_kind(devcode: Any, field_id: Any) -> str | None:
 
 def _temporal_controls(devcode: Any) -> dict[str, str]:
     """Return the temporal control fields a devcode profile declares."""
-    config = get_devcode_config(_as_devcode(devcode))
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
     if not config:
         return {}
     controls = config.get("temporal_controls")
