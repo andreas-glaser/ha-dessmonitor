@@ -23,6 +23,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import stat
 import sys
 import time
@@ -56,6 +57,45 @@ if "--debug" in sys.argv:
     sys.argv.remove("--debug")  # Remove it so argparse doesn't complain
 logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+
+
+_UNIT_TOKENS = ("kWh", "Wh", "W", "VA", "V", "A", "Hz", "°C", "°F", "%")
+_MEASUREMENT = re.compile(
+    r"^-?\d+(?:\.\d+)?\s*(" + "|".join(re.escape(u) for u in _UNIT_TOKENS) + r")$"
+)
+_SCHEDULE_WORDS = ("start time", "end time")
+
+
+def observed_unit(value: Any) -> str | None:
+    """Return the unit a reading carries, or None when the value is not one.
+
+    A plain substring search treats a setting such as ``"Always on"`` or the
+    input mode ``"APL"`` as an amperage, which published them under
+    ``unit_patterns`` as though a devcode author had to map a reading. Only a
+    number followed by a unit is a measurement.
+    """
+    match = _MEASUREMENT.match(str(value).strip())
+    return match.group(1) if match else None
+
+
+def priority_bucket(title: str) -> str | None:
+    """Return which priority enum a title contributes an observed value to.
+
+    A schedule boundary such as ``"Secondary Output Priority Start Time"``
+    names a priority but carries a clock value, so counting it enumerated
+    ``16:32`` as an output priority and ``generate_devcode_template`` wrote
+    that clock into OUTPUT_PRIORITY_MAPPING for the next devcode author.
+    """
+    title_lower = title.lower()
+    if "priority" not in title_lower:
+        return None
+    if any(word in title_lower for word in _SCHEDULE_WORDS):
+        return None
+    if "output" in title_lower:
+        return "output"
+    if "charg" in title_lower:
+        return "charger"
+    return None
 
 
 def _write_private_file(path_value: str | Path, content: str) -> Path:
@@ -861,32 +901,22 @@ DEVCODE_CONFIG = {
 
                     potential_typos.append({"original": title, "suggested": suggested})
 
-            # Detect units in values (W, V, A, Hz, °C, %, kWh, etc.)
+            # Record a value that carries a unit, so the devcode author
+            # sees which titles are readings rather than settings.
             value_str = str(value)
-            if any(
-                unit in value_str
-                for unit in ["W", "V", "A", "Hz", "°C", "°F", "%", "kWh", "Wh"]
-            ):
-                if title not in unit_patterns:
-                    unit_patterns[title] = []
-                unit_patterns[title].append(value_str)
+            if observed_unit(value_str):
+                unit_patterns.setdefault(title, []).append(value_str)
 
             # Check for operating modes
             if "operating" in title_lower and "mode" in title_lower:
                 mode_val = str(value)
                 operating_modes[mode_val] = operating_modes.get(mode_val, 0) + 1
 
-            # Check for priorities
-            if "priority" in title_lower:
-                priority_val = str(value)
-                if "output" in title_lower:
-                    output_priorities[priority_val] = (
-                        output_priorities.get(priority_val, 0) + 1
-                    )
-                elif "charg" in title_lower:
-                    charger_priorities[priority_val] = (
-                        charger_priorities.get(priority_val, 0) + 1
-                    )
+            bucket = priority_bucket(title)
+            if bucket == "output":
+                output_priorities[value_str] = output_priorities.get(value_str, 0) + 1
+            elif bucket == "charger":
+                charger_priorities[value_str] = charger_priorities.get(value_str, 0) + 1
 
         control_entries: List[Dict[str, Any]] = []
         parameter_entries: List[Dict[str, Any]] = []

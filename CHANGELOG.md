@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Devcode 6515 lists the Maxsky EM11000 11kW 48V, reported with an Eybond WiFi
   datalogger on firmware 3.6.6.6, beside the ANENJI ANJ-HHS-11KW-48V-WIFI it
   was added for (#57, thanks to @ballhtml for the model and collector details).
+  Their redacted CLI analysis is committed under `docs/evidence/devcodes/`, so
+  the devcode is guarded for the first time: 34 of its 79 titles resolve to
+  sensors and none of the remaining 45 carries a unit. Its observed values,
+  including the Mains Mode operating mode and the vendor's two misspelled
+  temperature titles, now have tests.
 - A devcode can name a control field through `control_field_mappings`, which
   the registry accepted but no profile used. Renaming a control changes its
   entity identity, so the existing registry entry is carried over rather than
@@ -57,6 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The contributor CLI recorded a schedule boundary as a priority code: a title
+  such as `Secondary Output Priority Start Time` put its clock value in the
+  observed output priorities, and `generate_devcode_template` wrote that clock
+  into the generated `OUTPUT_PRIORITY_MAPPING` for the next devcode author. It
+  also recorded any setting whose text contains a unit letter, such as the
+  `APL` input mode, as a reading carrying amperes. A value is now taken as a
+  reading only when it is a number followed by a unit (#57).
 - Devcode 6514 labels the `CSO` charger source priority as `Solar First`.
   2.6.0 left it showing the raw code, because no evidence named it and a wrong
   charge-source label is worse than an unlabelled one; the reporter's inverter
