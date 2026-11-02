@@ -108,6 +108,19 @@ PARAMETER_SENSOR_NAMES: set[str] = set()
 # Example:
 # PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
+# Temporal Controls
+# Cloud control ids whose value is a clock rather than a number. A number
+# entity cannot carry "16:32": with no API range hint Home Assistant would
+# publish it 0-100 and a write would send "50" into a schedule field, so an
+# unlisted field of this shape is not published at all. List one here only with
+# a read of it in the committed analysis, and "text" only with a confirmed
+# write, since a calendar string in the wrong format sets the inverter clock
+# rather than being rejected. See docs/ADDING_DEVCODES.md section 4.6.
+TEMPORAL_CONTROLS: dict[str, str] = {
+    # "bat_eybond_read_61": "time",   # HH:MM schedule boundary
+    # "sys_eybond_read_95": "text",   # YYYY-MM-DD HH:MM:SS inverter clock
+}
+
 # Export all mappings in standardized structure
 # DO NOT MODIFY THIS PART - just update the mappings above
 DEVCODE_CONFIG = {
@@ -117,6 +130,7 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "control_field_mappings": CONTROL_FIELD_MAPPINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

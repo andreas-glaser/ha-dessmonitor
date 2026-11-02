@@ -1,4 +1,4 @@
-"""Minute-resolution cloud schedule controls for devcode 6544."""
+"""Minute-resolution cloud schedule controls, for the devcodes that declare them."""
 
 from __future__ import annotations
 

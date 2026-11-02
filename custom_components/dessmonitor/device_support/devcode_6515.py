@@ -75,6 +75,19 @@ CONTROL_FIELD_MAPPINGS: dict[str, str] = {
     "bat_eq_time": "Eq charging time",
 }
 
+# Cloud control ids, not local Modbus write addresses. The four schedule
+# boundaries read as HH:MM in the analysis committed for #57. The clock,
+# sys_eybond_read_95, is deliberately absent: no read of it has been reported
+# on this devcode, and a calendar string written in the wrong format would set
+# the inverter clock rather than be rejected.
+TEMPORAL_CONTROLS: dict[str, str] = {
+    "bat_eybond_read_61": "time",
+    "bat_eybond_read_62": "time",
+    "bse_eybond_read_52": "time",
+    "bse_eybond_read_53": "time",
+}
+
+
 VALUE_TRANSFORMATIONS: dict = {}
 
 PARAMETER_SENSOR_NAMES: set[str] = set()
@@ -86,6 +99,7 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "control_field_mappings": CONTROL_FIELD_MAPPINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

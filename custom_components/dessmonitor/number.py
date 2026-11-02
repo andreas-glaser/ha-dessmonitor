@@ -17,10 +17,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
 from .control_values import cloud_control_snapshot, control_value, find_control_value
-from .device_support.device_registry import map_control_field
+from .device_support.device_registry import (
+    map_control_field,
+    temporal_control_kind,
+)
 from .entity_loader import async_setup_dynamic_entities
 from .number_range import compute_range_and_step, is_hint_range_usable
-from .temporal_fields import temporal_control_kind
 from .utils import (
     async_migrate_control_unique_ids,
     control_entity_suffix,
@@ -108,6 +110,15 @@ async def _async_build_number_entities(
                 continue
             if temporal_control_kind(devcode, param_id) is not None:
                 continue
+            if _is_non_numeric_setting(current_values.get(param_id)):
+                _LOGGER.debug(
+                    "Skipping control %s on device %s: it reports %r, which is "
+                    "not a number",
+                    param_id,
+                    device_sn,
+                    current_values.get(param_id),
+                )
+                continue
 
             friendly_name = map_control_field(devcode, name)
             entity_key = f"{device_sn}:{param_id}"
@@ -133,6 +144,23 @@ async def _async_build_number_entities(
     if entities:
         _LOGGER.info("Adding %d number entities", len(entities))
     return entities
+
+
+def _is_non_numeric_setting(raw: str | float | None) -> bool:
+    """Return True when a value control reports something that is not a number.
+
+    A schedule boundary such as ``"16:32"`` or a calendar string is a real
+    setting, but not one a number entity can carry: with no API hint it would
+    be published with Home Assistant's default 0-100 range, and a write would
+    send ``"50"`` into a field that expects a clock. A devcode whose temporal
+    fields are classified routes them to the time and text platforms instead;
+    this is the guard for every devcode that is not, including the ones nobody
+    has reported yet. An absent or placeholder value is not evidence either
+    way, so the control is still published and the write guard covers it.
+    """
+    return (
+        control_value(raw) is not None and DessMonitorNumber._coerce_value(raw) is None
+    )
 
 
 def _format_control_value(value: float) -> str:
@@ -312,6 +340,13 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         """Update the current value."""
         if not math.isfinite(value):
             raise ValueError("Control value must be a finite number")
+        if _is_non_numeric_setting(self._last_raw_value):
+            # Reached when the value arrived after this entity was built. The
+            # API accepts a malformed setting silently (#49), so refuse here.
+            raise ValueError(
+                f"{self._param_name} reports {self._last_raw_value!r}, which is "
+                "not a number; this control cannot be written as one"
+            )
 
         _LOGGER.debug("Setting %s to %s", self._attr_unique_id, value)
 

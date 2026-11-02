@@ -169,6 +169,48 @@ def map_control_field(devcode: int, api_field_name: str) -> str:
     return control_mappings.get(field_name, field_name)
 
 
+def _as_devcode(devcode: Any) -> int | None:
+    """Return a devcode as the registry keys it, or None when it is not one.
+
+    The cloud payload carries the devcode as a number for some accounts and as
+    a string for others, and both reach these lookups.
+    """
+    try:
+        return int(devcode)
+    except (TypeError, ValueError):
+        return None
+
+
+def devcode_has_temporal_controls(devcode: Any) -> bool:
+    """Return whether this devcode declares any temporal control.
+
+    Discovery asks before fetching a device's control fields, so a devcode
+    with no temporal control costs no cloud request.
+    """
+    return bool(_temporal_controls(devcode))
+
+
+def temporal_control_kind(devcode: Any, field_id: Any) -> str | None:
+    """Return the platform a control field belongs on: time, text or neither.
+
+    Only fields a devcode profile declares are reclassified. A field id means
+    different things on different devcodes, so the profile that reported it
+    owns the mapping, and an unlisted field stays on the number platform.
+    """
+    if not isinstance(field_id, str):
+        return None
+    return _temporal_controls(devcode).get(field_id)
+
+
+def _temporal_controls(devcode: Any) -> dict[str, str]:
+    """Return the temporal control fields a devcode profile declares."""
+    config = get_devcode_config(_as_devcode(devcode))
+    if not config:
+        return {}
+    controls = config.get("temporal_controls")
+    return controls if isinstance(controls, dict) else {}
+
+
 def filter_control_options(
     devcode: int,
     param_id: str,

@@ -1,4 +1,10 @@
-"""Cloud-backed wall-clock controls for verified devcode 6544 field IDs."""
+"""Cloud-backed wall-clock controls for the fields a devcode profile declares.
+
+Which fields those are, and whether each is a schedule boundary or a
+calendar string, belongs to ``device_support/devcode_<n>.py``. This module
+owns the shared entity behaviour: discovery, recovery, the single cloud
+write, and retiring the number entity the field used to be.
+"""
 
 from __future__ import annotations
 
@@ -14,9 +20,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
 from .control_values import cloud_control_snapshot, control_value, find_control_value
-from .device_support.device_registry import map_control_field
+from .device_support.device_registry import (
+    devcode_has_temporal_controls,
+    map_control_field,
+    temporal_control_kind,
+)
 from .entity_loader import async_setup_dynamic_entities
-from .temporal_fields import temporal_control_kind
 from .utils import control_entity_suffix, create_device_info
 
 _MIGRATION_OPTION = "temporal_number_migrated"
@@ -65,7 +74,7 @@ async def async_build_temporal_entities(
         devcode = device.get("devcode")
         address = device.get("devaddr")
         pn = collector.get("pn")
-        if str(devcode) != "6544" or not pn or address is None:
+        if not devcode_has_temporal_controls(devcode) or not pn or address is None:
             continue
         controls, values = await coordinator.async_get_controls_with_values(
             pn, devcode, address, serial

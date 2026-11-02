@@ -103,26 +103,39 @@ Numeric controls reporting a non-numeric format (for example a time or date)
 show `value_status: unsupported_format`; retrying the connection cannot turn
 such a value into a numeric setting.
 
-### Schedule times and inverter clock (devcode 6544)
+### Schedule times and inverter clock
 
-The four advertised Secondary Charging/Output Priority Start/End Time controls
-are `time` entities. They use the inverter's local wall-clock time in `HH:MM`
-format; seconds must be zero. They do not activate a priority mode or impose
-ordering on start/end times. That permissive input validation does not establish
-whether the device supports overnight or equal-boundary schedules.
+The advertised Secondary Charging and Output Priority Start/End Time controls
+are `time` entities, on devcode 6544 and on devcode 6515. They use the
+inverter's local wall-clock time in `HH:MM` format; seconds must be zero. They
+do not activate a priority mode or impose ordering on start and end times. That
+permissive input validation does not establish whether the device supports
+overnight or equal-boundary schedules.
 
-`Inverter Date` is a **text** control accepting a valid calendar timestamp in
-`YYYY-MM-DD HH:MM:SS` format. The API value has no timezone. A timezone-aware
-`datetime` entity would require knowing the inverter's timezone; the integration
-does not assume that it equals Home Assistant's timezone or convert the entered
-clock value. There is no automatic clock synchronization.
+On devcode 6544, `Inverter Date` is a **text** control accepting a valid
+calendar timestamp in `YYYY-MM-DD HH:MM:SS` format. The API value has no
+timezone. A timezone-aware `datetime` entity would require knowing the
+inverter's timezone; the integration does not assume that it equals Home
+Assistant's timezone or convert the entered clock value. There is no automatic
+clock synchronization. Devcode 6515 advertises a clock field too, and it is
+deliberately not exposed: nobody has reported a read of it, and a calendar
+string written in the wrong format would set the inverter clock rather than be
+rejected.
 
-Only the verified devcode 6544 field IDs are reclassified, and only when advertised
-by the cloud API. Both platforms share the existing control cache/recovery path;
-they do not add local writes or an independent polling loop. Empty or malformed
-readings never become midnight or a fabricated date. A successful cloud API
-response updates the displayed value; hardware readback is still required to
-confirm the inverter applied it.
+Each devcode profile declares its own fields, in `TEMPORAL_CONTROLS` in
+`device_support/devcode_<n>.py`, and only fields the cloud API advertises become
+entities. A setting of this shape that no profile declares is not published at
+all: a number entity cannot carry `16:32`, and with no range hint from the API
+it would appear with Home Assistant's default 0-100 range, where a write would
+send `50` into a schedule field. If such a value arrives after the entity
+exists, the control reports `value_status: unsupported_format` and refuses the
+write rather than sending a number.
+
+Both platforms share the existing control cache and recovery path; they do not
+add local writes or an independent polling loop. Empty or malformed readings
+never become midnight or a fabricated date. A successful cloud API response
+updates the displayed value; hardware readback is still required to confirm the
+inverter applied it.
 
 These five controls were `number` entities in 2.6.0 and earlier. On upgrade
 the old `number` entries are disabled once and kept, so their history survives;

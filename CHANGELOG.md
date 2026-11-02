@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Cloud-backed time entities for the four secondary-priority schedule boundaries
+  on devcode 6515, whose field ids differ from 6544's and whose values the
+  committed analysis shows reading as `HH:MM` (#57). Its clock field is left
+  alone until somebody reports a read of it: a calendar string written in the
+  wrong format would set the inverter clock rather than be rejected. Each
+  devcode profile now declares its own temporal fields in `TEMPORAL_CONTROLS`,
+  so adding the next one is a profile change rather than an integration change.
+- Cloud-backed time entities for the four secondary-priority schedule boundaries
   on devcode 6544, plus a calendar-validated text control for its timezone-free
   inverter clock. Matching obsolete number entities are disabled, not deleted.
   Representative schedule and calendar-string cloud writes have independent
@@ -62,6 +69,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A setting whose value is a clock is no longer published as a number entity on
+  any devcode. The API gives these fields no range hint, so Home Assistant
+  published them with its default 0-100 range and a write sent `50` into a
+  schedule field, which the API accepts without an error. Devcodes that declare
+  such a field get a `time` or `text` entity; elsewhere the control is not
+  published, and one whose value arrives later reports
+  `value_status: unsupported_format` and refuses the write.
 - The contributor CLI recorded a schedule boundary as a priority code: a title
   such as `Secondary Output Priority Start Time` put its clock value in the
   observed output priorities, and `generate_devcode_template` wrote that clock

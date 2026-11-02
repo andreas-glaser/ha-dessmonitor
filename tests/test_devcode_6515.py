@@ -17,9 +17,11 @@ import pytest
 from custom_components.dessmonitor.device_support import apply_devcode_transformations
 from custom_components.dessmonitor.device_support.device_registry import (
     map_control_field,
+    temporal_control_kind,
 )
 from custom_components.dessmonitor.sensor import _build_sensor_entities
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
+
 
 
 @pytest.mark.parametrize(
@@ -142,3 +144,35 @@ def test_equalization_time_is_named_after_its_neighbours() -> None:
 def test_control_names_are_trimmed_before_they_become_an_entity() -> None:
     """The same collector reports the clock with a leading space (#57)."""
     assert map_control_field(6515, " Inverter Time") == "Inverter Time"
+
+
+@pytest.mark.parametrize(
+    "field_id,expected",
+    [
+        # The four schedule boundaries this collector advertises, reading as
+        # HH:MM in the committed analysis.
+        ("bat_eybond_read_61", "time"),
+        ("bat_eybond_read_62", "time"),
+        ("bse_eybond_read_52", "time"),
+        ("bse_eybond_read_53", "time"),
+        # The clock, whose read format nobody has reported on this devcode.
+        ("sys_eybond_read_95", None),
+        # Devcode 6544's ids mean nothing here.
+        ("bat_eybond_read_43988", None),
+        ("sys_eybond_read_44023", None),
+        # An ordinary numeric setting stays a number entity.
+        ("bat_eybond_read_67", None),
+    ],
+)
+def test_temporal_fields_are_scoped_to_this_devcode(
+    field_id: str, expected: str | None
+) -> None:
+    assert temporal_control_kind(6515, field_id) == expected
+    assert temporal_control_kind("6515", field_id) == expected
+
+
+@pytest.mark.parametrize("field_id", ["bat_eybond_read_61", "bse_eybond_read_52"])
+def test_this_devcodes_ids_do_not_leak_to_other_devcodes(field_id: str) -> None:
+    """Field ids repeat across devcodes with different meanings."""
+    assert temporal_control_kind(6544, field_id) is None
+    assert temporal_control_kind(6514, field_id) is None

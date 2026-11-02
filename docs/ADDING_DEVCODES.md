@@ -258,7 +258,43 @@ changes that identity. `async_migrate_control_unique_ids` carries the existing
 registry entry over, which keeps automations working, but it runs once: choose
 the final name rather than renaming across releases.
 
-### 4.6 `VALUE_TRANSFORMATIONS`
+### 4.6 `TEMPORAL_CONTROLS`
+
+Some collectors advertise settings whose value is a clock: the secondary
+charging and output priority boundaries read as `16:32`, and the inverter's own
+date reads as a calendar string. A number entity cannot carry either. With no
+range hint from the API, Home Assistant publishes such a control with its
+default 0-100 range, and a write sends `50` into a schedule field, which the
+API accepts without an error. A control of that shape that no profile declares
+is therefore not published at all, on any devcode.
+
+List the field id from the `control_fields` section of the analysis against the
+platform it belongs on:
+
+```python
+TEMPORAL_CONTROLS: dict[str, str] = {
+    "bat_eybond_read_61": "time",    # HH:MM, minute resolution
+    "sys_eybond_read_95": "text",    # YYYY-MM-DD HH:MM:SS, no timezone
+}
+```
+
+Two rules, both from #48 and #57:
+
+- Declare a `time` field only when the committed analysis shows it reading as
+  `HH:MM`. The id alone is not enough: the same id means something else on
+  another devcode, which is why each profile declares its own.
+- Declare a `text` clock only when a write to it has been confirmed on
+  hardware for that devcode, or when its read format is at least observed. A
+  calendar string in the wrong format sets the inverter clock rather than being
+  rejected, and the schedules depend on that clock. Devcode 6515 advertises
+  such a field, `sys_eybond_read_95`, and it is deliberately left out until
+  somebody reports one read of it.
+
+Moving a field from `number` to `time` or `text` changes its entity id, so it
+ships in a minor release with an upgrade note. The old number entity is
+disabled once and kept, never deleted.
+
+### 4.7 `VALUE_TRANSFORMATIONS`
 
 Use when the API delivers a value in the wrong unit or with wrong scaling. Keys are the *post-title-mapping* title (the canonical name), values are callables.
 
@@ -280,7 +316,7 @@ VALUE_TRANSFORMATIONS: dict = {
 
 Callables must be tolerant of unparseable input and return something the sensor can display (the original value is a safe fallback).
 
-### 4.7 `PARAMETER_SENSOR_NAMES`
+### 4.8 `PARAMETER_SENSOR_NAMES`
 
 Most sensors arrive via `queryDeviceLastData`. A minority (notably SOC on devcode 2376) only appear under `queryDeviceParsEs`. The analysis lists these in the `parameters` section.
 
@@ -292,7 +328,7 @@ PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
 The coordinator will fetch `queryDeviceParsEs` in parallel and merge the parameters into the device data (deduplicated). Leave empty otherwise.
 
-### 4.8 Configuration
+### 4.9 Configuration
 
 ```python
 DEVCODE_CONFIG = {
@@ -302,6 +338,7 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "control_field_mappings": CONTROL_FIELD_MAPPINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

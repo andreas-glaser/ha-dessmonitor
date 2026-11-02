@@ -298,17 +298,51 @@ async def test_unsupported_select_value_is_retried_after_recovery(hass):
     await coordinator.async_shutdown()
 
 
-async def test_time_string_is_identified_as_unsupported_number_format(hass):
+async def test_a_time_string_control_is_not_published_as_a_number(hass):
+    """A clock value is a setting, but not one a number entity can carry.
+
+    With no API hint it would be published with Home Assistant's default
+    0-100 range, and a write would send "50" into a schedule field. Devcodes
+    whose temporal fields are classified route them to the time and text
+    platforms; this is the guard for the rest.
+    """
     coordinator = _coordinator(
         hass, _cloud("first", _point("Secondary Output Priority Start Time", "15:30"))
     )
     coordinator.api.get_device_control_fields.return_value = {
         "Secondary Output Priority Start Time": {"type": "value", "id": "time"}
     }
+    assert await _async_build_number_entities(coordinator, set()) == []
+    coordinator.api.get_device_control_value.assert_not_awaited()
+    await coordinator.async_shutdown()
+
+
+async def test_a_late_time_string_is_reported_and_refuses_a_write(hass):
+    """The value can also arrive after the entity exists.
+
+    Nothing can withdraw an entity Home Assistant already has, so the write
+    has to be refused instead. The API accepts a malformed setting without an
+    error (#49), which is why this cannot be left to the device.
+    """
+    coordinator = _coordinator(hass, _cloud("first"))
+    coordinator.api.get_device_control_fields.return_value = {
+        "Secondary Output Priority Start Time": {"type": "value", "id": "time"}
+    }
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "null"}
+
     (number,) = await _async_build_number_entities(coordinator, set())
+    assert number.extra_state_attributes["value_status"] == "not_loaded"
+
+    coordinator.ctrl_value_cache["TEST"]["time"] = "15:30"
+    with patch.object(number, "async_write_ha_state"):
+        number._handle_coordinator_update()
+
     assert number.native_value is None
     assert number.extra_state_attributes["value_status"] == "unsupported_format"
-    coordinator.api.get_device_control_value.assert_not_awaited()
+    with pytest.raises(ValueError, match="not a number"):
+        await number.async_set_native_value(50)
+    coordinator.api.set_device_control_value.assert_not_awaited()
     await coordinator.async_shutdown()
 
 

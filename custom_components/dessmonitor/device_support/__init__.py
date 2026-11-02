@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .device_registry import (
     apply_devcode_transformations,
+    devcode_has_temporal_controls,
     get_all_charger_priorities,
     get_all_operating_modes,
     get_all_output_priorities,
@@ -25,10 +26,12 @@ from .device_registry import (
     map_output_priority,
     map_sensor_title,
     needs_parameter_fetch,
+    temporal_control_kind,
 )
 
 __all__ = [
     "apply_devcode_transformations",
+    "devcode_has_temporal_controls",
     "get_all_charger_priorities",
     "get_all_operating_modes",
     "get_all_output_priorities",

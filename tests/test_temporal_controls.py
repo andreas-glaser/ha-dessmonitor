@@ -35,11 +35,12 @@ FIELDS = {
 }
 
 
-def _coordinator(hass, *, devcode=6544, values=True):
+def _coordinator(hass, *, devcode=6544, values=True, fields=None):
+    fields = FIELDS if fields is None else fields
     api = AsyncMock()
     api.get_device_control_fields.return_value = {
         name: {"type": "value", "id": field_id}
-        for name, (field_id, _) in FIELDS.items()
+        for name, (field_id, _) in fields.items()
     }
     api.get_device_control_value.return_value = {"val": "null"}
     coordinator = DessMonitorDataUpdateCoordinator(hass, api, 300)
@@ -50,7 +51,7 @@ def _coordinator(hass, *, devcode=6544, values=True):
             "data": [
                 {"title": "Timestamp", "val": "first"},
                 *(
-                    [{"title": name, "val": raw} for name, (_, raw) in FIELDS.items()]
+                    [{"title": name, "val": raw} for name, (_, raw) in fields.items()]
                     if values
                     else []
                 ),
@@ -98,9 +99,12 @@ async def test_verified_fields_replace_numbers_without_extra_cloud_reads(hass, d
 async def test_other_devcodes_and_unrelated_value_fields_remain_numeric(hass):
     coordinator = _coordinator(hass, devcode=2376)
     try:
+        # An unclassified devcode gains no temporal entity, and these five
+        # fields are not published as numbers either: their values are clocks,
+        # which a number entity cannot carry safely.
         assert await _entities(coordinator) == []
         assert await _entities(coordinator, "text") == []
-        assert len(await _async_build_number_entities(coordinator, set())) == 5
+        assert await _async_build_number_entities(coordinator, set()) == []
         coordinator.data["TEST"]["device"]["devcode"] = 6544
         coordinator.ctrl_field_cache["TEST"] = {
             "Charge duration": {"id": "duration", "type": "value", "unit": "Min"}
@@ -333,4 +337,69 @@ async def test_native_values_are_published_through_home_assistant(hass, kind, ex
         assert state.attributes["control_transport"] == "cloud"
     finally:
         await component._async_reset()
+        await coordinator.async_shutdown()
+
+
+# Devcode 6515 advertises the same four schedule boundaries under its own ids,
+# with the values observed in the analysis committed for #57. Its clock,
+# sys_eybond_read_95, has never been read, so it is deliberately unclassified.
+FIELDS_6515 = {
+    "Secondary Charging Priority Start Time": ("bat_eybond_read_61", "16:44"),
+    "Secondary Charging Priority End Time": ("bat_eybond_read_62", "19:40"),
+    "Secondary Output Priority Start Time": ("bse_eybond_read_52", "16:32"),
+    "Secondary Output Priority End Time": ("bse_eybond_read_53", "17:00"),
+}
+
+
+async def test_devcode_6515_schedule_fields_are_time_entities(hass):
+    coordinator = _coordinator(hass, devcode=6515, fields=FIELDS_6515)
+    try:
+        times = await _entities(coordinator)
+        assert sorted(entity._field_id for entity in times) == [
+            "bat_eybond_read_61",
+            "bat_eybond_read_62",
+            "bse_eybond_read_52",
+            "bse_eybond_read_53",
+        ]
+        assert [entity.native_value for entity in times] == [
+            time(16, 44),
+            time(19, 40),
+            time(16, 32),
+            time(17, 0),
+        ]
+        assert await _entities(coordinator, "text") == []
+        assert await _async_build_number_entities(coordinator, set()) == []
+
+        entity = times[0]
+        entity.hass = hass
+        with patch.object(entity, "async_write_ha_state"):
+            await entity.async_set_value(time(16, 45))
+        coordinator.api.set_device_control_value.assert_awaited_once()
+        assert (
+            coordinator.api.set_device_control_value.await_args.kwargs["value"]
+            == "16:45"
+        )
+    finally:
+        await coordinator.async_shutdown()
+
+
+@pytest.mark.parametrize("clock", ["2026-11-01 10:00:39", "10:00:39"])
+async def test_devcode_6515_clock_is_neither_classified_nor_numeric(hass, clock):
+    """Its read format is unobserved, so no write path may assume one.
+
+    Writing a calendar string in the wrong format would set the inverter clock
+    rather than be rejected, and the schedules depend on that clock. Until a
+    read is reported it stays out of the time and text platforms, and out of
+    the number platform for either calendar shape it may use. A clock reported
+    as a bare digit run, such as 20261101100039, is indistinguishable from a
+    numeric setting and would still be published as a number; that is the
+    remaining reason to ask the reporter for one read of it.
+    """
+    fields = {" Inverter Time": ("sys_eybond_read_95", clock)}
+    coordinator = _coordinator(hass, devcode=6515, fields=fields)
+    try:
+        assert await _entities(coordinator) == []
+        assert await _entities(coordinator, "text") == []
+        assert await _async_build_number_entities(coordinator, set()) == []
+    finally:
         await coordinator.async_shutdown()
