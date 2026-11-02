@@ -34,7 +34,7 @@ from .device_support import (
     get_all_output_priorities,
     is_devcode_supported,
 )
-from .sensor_titles import resolve_sensor_key
+from .sensor_titles import normalize_sensor_title, resolve_sensor_key
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -216,6 +216,17 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         self._collector_meta = collector_meta
         self._sensor_type = sensor_type
         self._source_titles = source_titles or {sensor_type}
+        # Compared in their normalized form. The cloud and a local driver can
+        # spell one reading differently: devcode 2452 reports "Grid frequency"
+        # while the PI18 profile emits "Grid Frequency", and the hybrid overlay
+        # replaces the cloud point with the local one, title included. Matching
+        # the raw spelling left the entity unknown for as long as local
+        # telemetry flowed, which is what #53 saw as holes in its history.
+        self._source_title_keys = frozenset(
+            normalize_sensor_title(title)
+            for title in self._source_titles
+            if isinstance(title, str)
+        )
 
         sensor_config: dict[str, Any] = cast(
             dict[str, Any], SENSOR_TYPES.get(sensor_type, {})
@@ -410,7 +421,10 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         for data_point in device_data:
             title = data_point.get("title")
-            if isinstance(title, str) and title.strip() in self._source_titles:
+            if (
+                isinstance(title, str)
+                and normalize_sensor_title(title) in self._source_title_keys
+            ):
                 return data_point, devcode
 
         _LOGGER.debug(

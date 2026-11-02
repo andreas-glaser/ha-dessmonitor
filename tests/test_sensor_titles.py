@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from custom_components.dessmonitor.const import SENSOR_TYPES
 from custom_components.dessmonitor.sensor_titles import (
     normalize_sensor_title,
     resolve_sensor_key,
@@ -58,3 +59,30 @@ def test_sensor_unit_uses_the_canonical_definition() -> None:
 
 def test_normalize_sensor_title() -> None:
     assert normalize_sensor_title("  Output  L1   Voltage ") == "output l1 voltage"
+
+
+def test_no_two_sensor_definitions_differ_only_in_case_or_spacing() -> None:
+    """One reading, one canonical key.
+
+    `Grid Frequency` and `Grid frequency` were both defined, with identical
+    configuration, the same display name and the same unique id. Nothing chose
+    between them: whichever spelling a collector used became that entity's
+    sensor type, which is how the cloud and a local driver ended up matching
+    different raw titles for one reading (#53). A new pair would recreate that,
+    and the resolver already ignores case and collapses whitespace, so the
+    second entry can never be reached by a different route either.
+    """
+    by_normalized: dict[str, list[str]] = {}
+    for key in SENSOR_TYPES:
+        by_normalized.setdefault(normalize_sensor_title(key), []).append(key)
+
+    duplicates = {
+        normalized: keys
+        for normalized, keys in by_normalized.items()
+        if len(keys) > 1
+    }
+
+    assert not duplicates, (
+        "these SENSOR_TYPES keys name one reading twice: "
+        f"{duplicates}. Keep one and let the resolver match the other spelling."
+    )

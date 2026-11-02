@@ -77,6 +77,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- In hybrid mode a reading that the cloud and the local driver spell with
+  different capitalisation went unknown for as long as local telemetry flowed.
+  Devcode 2452 reports `Grid frequency` while the PI18 profile emits
+  `Grid Frequency`; the overlay matched the two and kept the local point, title
+  included, but the entity matched its raw source titles exactly, so it stopped
+  finding its own value. The reporter's debug log carried 352 of
+  `No matching data point found for sensor ..._grid_frequency`, and their
+  history showed the sensor reading only while the device had fallen back to
+  cloud (#53). The entity now matches titles the way everything else in the
+  integration does, trimmed, whitespace-collapsed and case-insensitive. Grid
+  Frequency and Output Frequency are the two readings that were affected, and
+  the duplicate `SENSOR_TYPES` entries that made one reading two keys are gone,
+  with a test that fails if another pair appears. Entity ids and names are
+  unchanged: both spellings always produced the same ones.
 - A setting whose value is a clock is no longer published as a number entity on
   any devcode. The API gives these fields no range hint, so Home Assistant
   published them with its default 0-100 range and a write sent `50` into a

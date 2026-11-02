@@ -325,13 +325,6 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:current-ac",
     },
-    "Output frequency": {
-        "name": "Output Frequency",
-        "unit": UNITS["FREQUENCY"],
-        "device_class": "frequency",
-        "state_class": "measurement",
-        "icon": "mdi:sine-wave",
-    },
     "Output Frequency": {
         "name": "Output Frequency",
         "unit": UNITS["FREQUENCY"],
@@ -366,13 +359,6 @@ SENSOR_TYPES = {
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash",
-    },
-    "Grid frequency": {
-        "name": "Grid Frequency",
-        "unit": UNITS["FREQUENCY"],
-        "device_class": "frequency",
-        "state_class": "measurement",
-        "icon": "mdi:sine-wave",
     },
     "Load Percent": {
         "name": "Load Percentage",

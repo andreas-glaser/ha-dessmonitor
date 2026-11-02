@@ -34,7 +34,7 @@ def _resolved_key(title: str) -> str | None:
         # AC side, including the grid voltage the reporter asked for.
         ("Grid R voltage", "Grid Voltage"),
         ("Grid R current", "grid current"),
-        ("Grid frequency", "Grid frequency"),
+        ("Grid frequency", "Grid Frequency"),
         ("Output Power", "Output Active Power"),
         ("Output S", "Output Apparent Power"),
         ("Output Q", "Output Reactive Power"),
