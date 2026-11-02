@@ -13,22 +13,53 @@ You do not need to write Python code to request support:
 
 1. [Search existing issues](https://github.com/andreas-glaser/ha-dessmonitor/issues)
    for the devcode shown in your warning.
-2. [Generate an analysis JSON](#1-produce-the-analysis-contributor-side) on a
-   computer with Python installed, following the commands below.
-3. Attach the JSON to the matching issue, or
-   [open a support request](https://github.com/andreas-glaser/ha-dessmonitor/issues/new).
-   Include your devcode, inverter brand and model, integration version, account
-   platform, and any missing or incorrect readings or settings compared with
-   that platform's website or mobile app.
+2. Produce an analysis of your own hardware with one command, below.
+3. Open a [device support request](https://github.com/andreas-glaser/ha-dessmonitor/issues/new?template=device_support.yml)
+   and attach the file, or attach it to the matching existing issue.
 
-Share only the analysis JSON, never your password or the CLI credentials file
-(`.dessmonitor_cli_config.json`). Use `--redacted`, as shown in every analysis example,
-to blank `device_sn`, `collector_alias`, and known identifying values in telemetry,
-parameters, and unit-pattern samples before sharing on GitHub or with an AI
-assistant. This includes `devise serial number` and record IDs. The CLI computes
-a valid checksum after redaction. Regenerate older reports whose nested sample
-values were not redacted.
-Review the file for other identifying information; if you redact more,
+### One command
+
+On a computer with Python 3.11+, download the
+[dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
+extract it, and open a terminal in the extracted folder:
+
+```bash
+cd tools/cli
+pip install -r requirements.txt
+python3 dessmonitor_cli.py report --username YOUR_USERNAME
+```
+
+Add `--api-profile shinemonitor_solar` if your account is on ShineMonitor; omit
+it for DessMonitor, the default. Use the same username as your Home Assistant
+integration, and a company key only if your installer gave you one
+(`--company-key`). The command prompts for your password rather than taking it
+on the command line, where your shell would record it.
+
+It then does the rest: it lists the collectors on the account, analyses every
+inverter behind them, writes one redacted `analysis_<devcode>.json` per device,
+and prints what each one covers, for example:
+
+```
+   Wrote analysis_6515.json (devcode 6515)
+   Coverage: 34 of 79 titles reach Home Assistant as sensors (already supported)
+   Every reading this collector labels with a unit already reaches Home Assistant.
+```
+
+That coverage line is the answer to "is my device fully supported", and you get
+it without waiting for anyone. If a reading your vendor app shows is listed as
+carrying a unit but reaching nothing, say so in the issue: those are the ones
+worth mapping. If the devcode has no profile yet, the command says so.
+
+Attach the JSON files, and paste the summary block the command prints at the
+end. It names the devcode and coverage and contains no serial number, collector
+alias or identifying value.
+
+Share only those analysis files, never your password or the CLI credentials file
+(`.dessmonitor_cli_config.json`). The report is redacted before it is written:
+`device_sn`, `collector_alias` and known identifying values in telemetry,
+parameters and unit-pattern samples are blanked, including `devise serial
+number` and record IDs, and the checksum is computed after redaction.
+Review the file for anything else identifying; if you redact more,
 mention that in the issue so the maintainer can account for checksum changes.
 
 The analysis lets a maintainer check the mappings and prepare a dev build for you
@@ -64,12 +95,27 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 
 ## 1. Produce the analysis (contributor side)
 
-Download the [dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
-extract it, and open a terminal in the extracted repository folder. Run:
+One command covers the whole account. Download the
+[dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
+extract it, and open a terminal in the extracted repository folder:
 
 ```bash
 cd tools/cli
 pip install -r requirements.txt
+python3 dessmonitor_cli.py report --username YOUR_USERNAME
+```
+
+It authenticates, enumerates collectors and devices, writes one redacted
+`analysis_<devcode>.json` per device into the current directory, prints each
+one's sensor coverage, and ends with a summary to paste into the issue. A
+device that fails to answer is reported and the others still get written.
+Add `--api-profile shinemonitor_solar` for a ShineMonitor account and
+`--output-dir` to write somewhere other than the current directory.
+
+The step-by-step equivalent is still there when you need a single device, a
+non-redacted report for your own debugging, or the generated template:
+
+```bash
 python3 dessmonitor_cli.py auth \
     --username YOUR_USERNAME --company-key YOUR_COMPANY_KEY
 
@@ -82,13 +128,13 @@ python3 dessmonitor_cli.py analyze --redacted \
 Use the same username and company key as your Home Assistant integration. The
 `auth` command prompts for your password. Replace `COLLECTOR_PN` with the PN from
 `collectors`, then use the serial number for the matching devcode from `devices`
-as `DEVICE_SN`. Replace `XXXX` in the output filename with your devcode.
+as `DEVICE_SN`. Replace `XXXX` in the output filename with your devcode. For
+ShineMonitor, add `--api-profile shinemonitor_solar` to `auth`; the CLI
+remembers the chosen profile for subsequent commands.
 
-For ShineMonitor, add `--api-profile shinemonitor_solar`
-to `auth`. Omit it for DessMonitor, the default. The CLI prompts for
-the password and remembers the chosen profile for subsequent commands.
-
-The `analyze` command writes a structured JSON file containing sensor titles, observed operating mode / priority values, unit patterns, a sample of live data, device control fields, and an HMAC checksum. The reporter should attach that file to the GitHub issue or PR.
+Either way the analysis is a structured JSON file containing sensor titles,
+observed operating mode and priority values, unit patterns, a sample of live
+data, device control fields, and an HMAC checksum.
 
 ## 2. Verify the analysis file
 

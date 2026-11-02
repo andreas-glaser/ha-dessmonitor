@@ -52,6 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stranded beside a second entity.
 
 ### Changed
+- Reporting hardware is one command. `dessmonitor_cli.py report --username YOU`
+  signs in, enumerates the account, writes one redacted analysis per device and
+  prints what each one covers, in place of five commands and picking the right
+  serial number out of two listings. The coverage line answers "is my device
+  fully supported" on the reporter's own machine, and names any reading that
+  carries a unit and reaches nothing. GitHub issue forms now ask for the
+  devcode, model, collector firmware, version and platform up front, which is
+  what every device-support thread has had to establish by hand.
 - One spelling and one vocabulary throughout: the collector vendor is Eybond,
   which the code spelled `EyeBond` in 55 places against the company's own 6.
   Each devcode profile now names Eybond as the manufacturer of the collector it

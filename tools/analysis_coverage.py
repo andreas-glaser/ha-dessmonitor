@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -48,17 +49,47 @@ def _units_by_title(analysis: dict[str, Any]) -> dict[str, str]:
     return units
 
 
-def report(path: Path) -> int:
-    """Print one analysis file's sensor coverage and return the unresolved count."""
-    with path.open("r", encoding="utf-8") as handle:
-        analysis = json.load(handle).get("analysis", {})
+@dataclass(frozen=True)
+class Coverage:
+    """Which of a collector's titles reach Home Assistant as sensors.
 
+    The contributor CLI prints a summary of this straight after an analysis, so
+    a reporter sees what their own hardware is missing without waiting for a
+    maintainer, and the maintainer-side report below prints the detail.
+    """
+
+    devcode: Any
+    registered: bool
+    resolved: list[tuple[str, str]]
+    unresolved: list[str]
+    units: dict[str, str]
+
+    @property
+    def total(self) -> int:
+        return len(self.resolved) + len(self.unresolved)
+
+    @property
+    def unmapped_readings(self) -> list[tuple[str, str]]:
+        """Unresolved titles the collector labelled with a unit.
+
+        A title without a unit is a setting, an identity field or a timestamp,
+        which reaches Home Assistant through another platform or not at all.
+        One with a unit is a reading that is being dropped.
+        """
+        return [
+            (title, self.units[title])
+            for title in self.unresolved
+            if title in self.units
+        ]
+
+
+def coverage(analysis: dict[str, Any]) -> Coverage:
+    """Resolve every title in an analysis against the current mappings."""
     devcode = analysis.get("devcode")
     titles = analysis.get("sensor_titles", [])
     if devcode is None or not titles:
-        raise ValueError(f"{path} is not a devcode analysis report")
+        raise ValueError("not a devcode analysis report")
 
-    units = _units_by_title(analysis)
     resolved: list[tuple[str, str]] = []
     unresolved: list[str] = []
     for title in titles:
@@ -69,17 +100,39 @@ def report(path: Path) -> int:
         else:
             unresolved.append(title)
 
-    supported = "registered" if is_devcode_supported(devcode) else "UNREGISTERED"
-    print(f"{path} - devcode {devcode} ({supported})")
-    print(f"  resolved {len(resolved)}/{len(titles)}")
-    for title, key in resolved:
+    return Coverage(
+        devcode=devcode,
+        registered=is_devcode_supported(devcode),
+        resolved=resolved,
+        unresolved=unresolved,
+        units=_units_by_title(analysis),
+    )
+
+
+def report(path: Path) -> int:
+    """Print one analysis file's sensor coverage and return the unmapped count."""
+    with path.open("r", encoding="utf-8") as handle:
+        analysis = json.load(handle).get("analysis", {})
+
+    try:
+        result = coverage(analysis)
+    except ValueError as err:
+        raise ValueError(f"{path} is {err}") from err
+
+    supported = "registered" if result.registered else "UNREGISTERED"
+    print(f"{path} - devcode {result.devcode} ({supported})")
+    print(f"  resolved {len(result.resolved)}/{result.total}")
+    for title, key in result.resolved:
         arrow = "" if title == key else f" -> {key}"
         print(f"    {title}{arrow}")
 
-    with_units = [title for title in unresolved if title in units]
-    print(f"  unresolved {len(unresolved)}, of which {len(with_units)} carry a unit")
-    for title in unresolved:
-        unit = units.get(title)
+    with_units = result.unmapped_readings
+    print(
+        f"  unresolved {len(result.unresolved)}, "
+        f"of which {len(with_units)} carry a unit"
+    )
+    for title in result.unresolved:
+        unit = result.units.get(title)
         print(f"    {title}{f'  [{unit}]' if unit else ''}")
 
     return len(with_units)
