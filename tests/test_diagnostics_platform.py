@@ -10,7 +10,9 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
 
+from custom_components.dessmonitor import _format_control_fields
 from custom_components.dessmonitor import diagnostics as diagnostics_platform
+from custom_components.dessmonitor.api import DessMonitorAPI
 from custom_components.dessmonitor.const import DOMAIN
 
 
@@ -78,7 +80,7 @@ def test_an_unread_voltage_control_is_not_invented() -> None:
         [{"title": "Battery Voltage", "val": "27.4", "unit": "V"}],
     )
 
-    assert field["value"] == "Not Set"
+    assert field["value"] == "Not read"
     assert field["unit"] == "V"
 
 
@@ -301,3 +303,113 @@ async def test_the_hub_report_is_json_serializable(hass: HomeAssistant) -> None:
     assert json.loads(json.dumps(report))["local"]["transports"][0]["device_code"] == (
         2452
     )
+
+
+async def test_control_fields_format_the_shape_the_api_returns(
+    cloud_transport,
+) -> None:
+    """Device diagnostics returned 500 on any device with an option control.
+
+    `get_device_control_fields` returns each field's options as a dict of
+    option key to label, and the diagnostics formatter read them as a list of
+    dicts. Iterating a dict yields its string keys, so `opt["key"]` raised
+    `TypeError: string indices must be integers`, and the whole download
+    failed. Every other test here stubs the control fields out, so the
+    producer and the consumer had never run against each other.
+    """
+    session, connector = cloud_transport
+    connector.payload = {
+        "err": 0,
+        "dat": {
+            "field": [
+                {
+                    "id": "los_output_source_priority",
+                    "name": "Output priority",
+                    "item": [
+                        {"key": "0", "val": "Utility first"},
+                        {"key": "2", "val": "SBU priority"},
+                    ],
+                },
+                {
+                    "id": "bse_eybond_read_1",
+                    "name": "Bulk Charging Voltage",
+                    "unit": "V",
+                },
+            ]
+        },
+    }
+    api = DessMonitorAPI("test-user", "test-password", session=session)
+    api.token, api.secret = "test-token", "test-secret"
+
+    fields = await api.get_device_control_fields("PN-1", 2376, 1, "SN-1")
+    formatted = _format_control_fields(
+        fields, [{"title": "Output priority", "val": "SBU", "unit": ""}]
+    )
+
+    assert formatted["Output priority"]["options"] == [
+        "0: Utility first",
+        "2: SBU priority",
+    ]
+    assert formatted["Output priority"]["id"] == "los_output_source_priority"
+    # PRIORITY_MAPPINGS turns the reading "SBU" into option key 2, which has
+    # to resolve through the same mapping rather than fall back to the key.
+    assert formatted["Output priority"]["value"] == "SBU priority"
+    assert formatted["Bulk Charging Voltage"]["unit"] == "V"
+
+
+async def test_diagnostics_report_the_control_values_the_entities_show(
+    hass: HomeAssistant,
+) -> None:
+    """The file said "Not Set" for controls Home Assistant was displaying.
+
+    Most control fields never appear in the telemetry payload, and the
+    formatters looked nowhere else, so a device download reported 36 of 40
+    controls as having no value while 131 of 140 control entities on that
+    account held one (#60). An explicit read lands in the coordinator's value
+    cache, which is the same place the entities read from.
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "SN-1": {
+            "collector": {"pn": "PN-1"},
+            "device": {"devcode": 2376, "devaddr": 1, "alias": "Inverter"},
+            "data": [{"title": "Battery Voltage", "val": "53.1", "unit": "V"}],
+        }
+    }
+    coordinator.ctrl_value_cache = {
+        "SN-1": {"sys_eybond_ctrl_51": "3", "bse_eybond_read_1": "56.4"}
+    }
+    coordinator.api.get_device_control_fields = AsyncMock(
+        return_value={
+            "Buzzer Mode": {
+                "id": "sys_eybond_ctrl_51",
+                "type": "options",
+                "options": {"0": "Beeps OFF", "3": "Beeps only in fault mode"},
+            },
+            "Bulk Charging Voltage": {
+                "id": "bse_eybond_read_1",
+                "type": "value",
+                "unit": "V",
+            },
+            "Backlight Control": {
+                "id": "sys_eybond_ctrl_53",
+                "type": "options",
+                "options": {"0": "Backlight Timing Off", "1": "Backlight On"},
+            },
+        }
+    )
+    coordinator.api.get_device_parameters = AsyncMock(return_value={})
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+    device = DeviceEntry(identifiers={(DOMAIN, "SN-1")})
+
+    config = (await diagnostics_platform.async_get_device_diagnostics(hass, entry, device))[
+        "configuration"
+    ]
+
+    # Read through an explicit control read, and reported as its label.
+    assert config["Buzzer Mode"]["value"] == "Beeps only in fault mode"
+    assert config["Bulk Charging Voltage"]["value"] == "56.4"
+    # Never read, and said so rather than claiming the control is unset.
+    assert config["Backlight Control"]["value"] == "Not read"

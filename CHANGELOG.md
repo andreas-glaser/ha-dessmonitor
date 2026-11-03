@@ -88,6 +88,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- Device diagnostics reported "Not Set" for controls Home Assistant was
+  displaying a value for. Most control fields never appear in the telemetry
+  payload, and the formatter looked nowhere else, so a download could report
+  36 of 40 controls as having no value while the entities held one. It now
+  reports what was read, from the same cache the entities use, and says "Not
+  read" where nothing has been (#60).
+- "Download diagnostics" on a device page returned a 500 error on every device
+  that has a control with selectable options, which is every supported inverter.
+  The API client returns a control's options as a mapping of option key to
+  label, and the diagnostics formatter read them as a list of records, so
+  building the file raised `TypeError: string indices must be integers`. The
+  same fault emptied the control fields and parameters out of the hub report,
+  where it was recorded as a control read failure rather than raised (#60).
 - "Download diagnostics" on the integration card produced an error instead of a
   file. Only the per-device hook existed, so Home Assistant's request for a
   config-entry report failed before it reached the integration. The hub now

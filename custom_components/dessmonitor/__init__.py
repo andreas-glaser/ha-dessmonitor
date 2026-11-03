@@ -1237,6 +1237,10 @@ CONFIG_KEYWORDS = {
     "configuration",
 }
 STATUS_KEYWORDS = {"status", "operating mode", "state", "online", "connectivity"}
+# A control this integration has no value for. It is not the same as a value
+# of zero or an empty setting, and a support file has to say which it means.
+_UNREAD = "Not read"
+
 PRIORITY_MAPPINGS = {
     "Output priority": {"SBU": 2, "UTI": 0, "SOL": 1, "SUB": 3},
     "Charger Source Priority": {
@@ -1303,7 +1307,9 @@ async def _fetch_control_details(
         )
         return {}, {}, str(err)
 
-    formatted_fields = _format_control_fields(control_fields, device_data)
+    formatted_fields = _format_control_fields(
+        control_fields, device_data, _known_control_values(coordinator, device_sn)
+    )
     _LOGGER.debug(
         "Added %d control fields and %d parameters to diagnostics for device %s",
         len(formatted_fields),
@@ -1313,36 +1319,69 @@ async def _fetch_control_details(
     return formatted_fields, device_parameters, None
 
 
+def _known_control_values(
+    coordinator: DessMonitorDataUpdateCoordinator, device_sn: str
+) -> Mapping[str, str]:
+    """Return the control values this device has been read for, by field id.
+
+    Most control fields never appear in ordinary telemetry, so a diagnostics
+    file built from the telemetry payload alone claimed no value for controls
+    Home Assistant was displaying one for. The coordinator's cache is where an
+    explicit read lands, and it is the same value the entities show.
+    """
+    cache = getattr(coordinator, "ctrl_value_cache", None)
+    if not isinstance(cache, dict):
+        return {}
+    values = cache.get(device_sn)
+    return values if isinstance(values, dict) else {}
+
+
+def _read_control_value(
+    field_data: Mapping[str, Any], known_values: Mapping[str, str] | None
+) -> str | None:
+    """Return the value read for this control field, if one has been."""
+    field_id = field_data.get("id")
+    if not known_values or not isinstance(field_id, str):
+        return None
+    return known_values.get(field_id)
+
+
 def _format_control_fields(
-    control_fields: dict[str, Any], device_data: list[dict[str, Any]]
+    control_fields: dict[str, Any],
+    device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Format control field metadata for diagnostics output."""
     formatted: dict[str, Any] = {}
+    known_values = known_values or {}
 
     for field_name, field_data in control_fields.items():
         if field_data.get("type") == "options":
             formatted[field_name] = _format_option_field(
-                field_name, field_data, device_data
+                field_name, field_data, device_data, known_values
             )
         else:
             formatted[field_name] = _format_numeric_field(
-                field_name, field_data, device_data
+                field_name, field_data, device_data, known_values
             )
 
     return formatted
 
 
 def _format_option_field(
-    field_name: str, field_data: dict[str, Any], device_data: list[dict[str, Any]]
+    field_name: str,
+    field_data: dict[str, Any],
+    device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Format control fields that expose selectable options."""
     sensor_value = _extract_sensor_value(device_data, field_name)
     current_value = _resolve_option_value(
-        field_name, field_data, sensor_value, device_data
+        field_name, field_data, sensor_value, device_data, known_values or {}
     )
 
     options_display = [
-        f"{opt['key']}: {opt['val']}" for opt in field_data.get("options", [])
+        f"{key}: {label}" for key, label in field_data.get("options", {}).items()
     ]
 
     return {
@@ -1357,9 +1396,13 @@ def _format_numeric_field(
     field_name: str,
     field_data: dict[str, Any],
     device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Format numeric control fields, reporting only what was read."""
-    current_value = _extract_sensor_value(device_data, field_name, default="Not Set")
+    current_value = _extract_sensor_value(device_data, field_name)
+    if current_value is None:
+        read_value = _read_control_value(field_data, known_values)
+        current_value = _UNREAD if read_value is None else read_value
 
     unit = ""
     if "Voltage" in field_name:
@@ -1379,6 +1422,7 @@ def _resolve_option_value(
     field_data: dict[str, Any],
     sensor_value: Any,
     device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ):
     """Resolve option value with priority mappings when available."""
     if sensor_value and field_name in PRIORITY_MAPPINGS:
@@ -1402,7 +1446,13 @@ def _resolve_option_value(
                 fallback=f"{output_voltage} V (Custom)",
             )
 
-    return "Not Set"
+    # Most controls never appear in telemetry. Their value comes from an
+    # explicit read, which the coordinator caches by field id.
+    read_value = _read_control_value(field_data, known_values)
+    if read_value is not None:
+        return _lookup_option_value(field_data, read_value)
+
+    return _UNREAD
 
 
 def _match_priority_option(field_name: str, sensor_value: str) -> str | None:
@@ -1418,9 +1468,9 @@ def _lookup_option_value(
     field_data: dict[str, Any], option_key: str, fallback: str | None = None
 ) -> str:
     """Return display value for a control option key."""
-    for option in field_data.get("options", []):
-        if option.get("key") == option_key:
-            return option.get("val", option_key)
+    options = field_data.get("options", {})
+    if option_key in options:
+        return options[option_key]
     return fallback or option_key
 
 
