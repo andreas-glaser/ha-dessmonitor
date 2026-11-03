@@ -88,6 +88,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The support card and the diagnostics report counted readings two different
+  ways in the same sentence: readings that reach an entity were counted as
+  distinct entities while the total counted raw readings, so a collector that
+  reports one title twice - devcode 2376 repeats two - read as if readings
+  were being dropped when none were. Both are now reading counts, a reading
+  published as an entity attribute is not counted among readings that could
+  reach an entity, and the number of distinct entities is reported separately
+  as `sensors`. Support classification is unchanged (#60).
 - A control whose value read timed out stayed unknown until the entry was
   reloaded. Reads were retired after three fruitless rounds whether the API
   had answered or not, so a field that reads intermittently was treated like
