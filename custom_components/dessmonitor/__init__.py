@@ -76,6 +76,22 @@ LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 # request every refresh for as long as the entry stays loaded.
 MAX_CONTROL_VALUE_RETRIES = 3
 
+# The same bound for rounds the vendor never answered. A field the API answers
+# with nothing is one this hardware does not carry, and three rounds settle it.
+# A read that times out says nothing about the field: on the hardware in #60 a
+# field that timed out answered on a later round, and spending the short budget
+# on those rounds left a readable control reading unknown until the entry was
+# reloaded. These rounds get a longer budget so flaky reads can recover, still
+# bounded so a dead API cannot be polled for the life of the entry.
+MAX_UNANSWERED_CONTROL_VALUE_RETRIES = 12
+
+# Wall clock one round of control-value reads may take. The API answers each
+# field separately and a stalled field costs the full request timeout, so a
+# round of dozens of fields can outlive Home Assistant's startup window and
+# leave every control on the account unavailable meanwhile. Reads still in
+# flight at the deadline are abandoned and retried on a later revision.
+CONTROL_VALUE_ROUND_TIMEOUT_SECONDS = 60
+
 _LOGGER = logging.getLogger(__name__)
 
 _SUPPORT_ISSUE_PREFIX = "devcode_support_"
@@ -316,6 +332,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_value_attempts: dict[str, int] = {}
         self._ctrl_value_retries: dict[str, int] = {}
+        self._ctrl_value_unanswered: dict[str, bool] = {}
         self._ctrl_cloud_samples: dict[str, object] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
@@ -491,15 +508,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 )
             ]
             retries = self._ctrl_value_retries.get(sn, 0)
+            budget = self._control_value_budget(sn)
             if (
                 missing
-                and retries < MAX_CONTROL_VALUE_RETRIES
+                and retries < budget
                 and self._ctrl_value_attempts.get(sn) != self.cloud_revision
             ):
                 self._ctrl_value_attempts[sn] = self.cloud_revision
-                fetched = await self._fetch_all_control_values(
+                fetched, unanswered = await self._fetch_all_control_values(
                     pn, devcode, devaddr, sn, missing
                 )
+                self._ctrl_value_unanswered[sn] = unanswered
                 # A cloud refresh or accepted write may have filled a value
                 # while these reads were in flight. Do not overwrite it.
                 for field_id, value in fetched.items():
@@ -519,14 +538,16 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     self._ctrl_value_retries[sn] = 0
                 else:
                     self._ctrl_value_retries[sn] = retries + 1
-                    if self._ctrl_value_retries[sn] == MAX_CONTROL_VALUE_RETRIES:
+                    if self._ctrl_value_retries[sn] >= self._control_value_budget(sn):
                         _LOGGER.info(
-                            "Giving up on %d unreadable control value(s) for device "
-                            "%s after %d attempts; ordinary cloud telemetry still "
-                            "updates them, and reloading the entry retries",
+                            "Giving up on %d control value(s) for device %s after "
+                            "%d attempts, the last of which the API %s; ordinary "
+                            "cloud telemetry still updates them, and reloading the "
+                            "entry retries",
                             len(missing),
                             sn,
-                            MAX_CONTROL_VALUE_RETRIES,
+                            self._ctrl_value_retries[sn],
+                            "did not answer" if unanswered else "answered with none",
                         )
             changed = values != before
         if changed:
@@ -534,6 +555,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             # the independent cloud refresh timer and revision counter.
             self.async_update_listeners()
         return controls, values
+
+    def _control_value_budget(self, sn: str) -> int:
+        """Return how many fruitless read rounds this device still gets.
+
+        A round the API answered tells us the field has no value to give. A
+        round it never answered tells us nothing, so those get the longer
+        budget rather than retiring a control that reads intermittently.
+        """
+        if self._ctrl_value_unanswered.get(sn):
+            return MAX_UNANSWERED_CONTROL_VALUE_RETRIES
+        return MAX_CONTROL_VALUE_RETRIES
 
     def _sync_control_values_from_cloud(self, sn: str) -> None:
         """Refresh exact settings only when a new cloud sample arrives."""
@@ -558,39 +590,71 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         devaddr: int,
         sn: str,
         field_ids: list[str],
-    ) -> dict[str, str]:
-        """Fetch current values for all control fields in parallel."""
+    ) -> tuple[dict[str, str], bool]:
+        """Read the given control values in parallel, within one deadline.
+
+        Returns the values that were read, and whether any field went
+        unanswered - a failed read or one still in flight at the deadline.
+        That is what separates a field this hardware does not carry from a
+        round that says nothing about it, and the retry budget keys off it.
+        """
         if not field_ids:
-            return {}
+            return {}, False
 
         sem = asyncio.Semaphore(5)
 
-        async def _fetch_one(field_id: str) -> tuple[str, str | None]:
+        async def _fetch_one(field_id: str) -> tuple[str, str | None, bool]:
             async with sem:
                 try:
                     result = await self.api.get_device_control_value(
                         pn, devcode, devaddr, sn, field_id
                     )
-                    return field_id, control_value(result.get("val"))
-                except Exception as err:
+                except Exception as err:  # pylint: disable=broad-except
                     _LOGGER.debug(
                         "Failed to read control value %s for %s: %s",
                         field_id,
                         sn,
                         err,
                     )
-                    return field_id, None
+                    return field_id, None, True
+                return field_id, control_value(result.get("val")), False
 
         _LOGGER.info("Fetching %d control values for device %s", len(field_ids), sn)
-        results = await asyncio.gather(*[_fetch_one(fid) for fid in field_ids])
-        values = {fid: val for fid, val in results if val is not None}
+        tasks = [asyncio.create_task(_fetch_one(fid)) for fid in field_ids]
+        try:
+            done, pending = await asyncio.wait(
+                tasks, timeout=CONTROL_VALUE_ROUND_TIMEOUT_SECONDS
+            )
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        if pending:
+            _LOGGER.info(
+                "Abandoned %d of %d control value reads for device %s after %ds; "
+                "a later refresh retries them",
+                len(pending),
+                len(field_ids),
+                sn,
+                CONTROL_VALUE_ROUND_TIMEOUT_SECONDS,
+            )
+
+        values: dict[str, str] = {}
+        unanswered = bool(pending)
+        for task in done:
+            field_id, value, failed = task.result()
+            if value is not None:
+                values[field_id] = value
+            unanswered = unanswered or failed
+
         _LOGGER.info(
             "Fetched %d/%d control values for device %s",
             len(values),
             len(field_ids),
             sn,
         )
-        return values
+        return values, unanswered
 
     async def _async_update_data(self):
         """Update data via library."""

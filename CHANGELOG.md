@@ -88,6 +88,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A control whose value read timed out stayed unknown until the entry was
+  reloaded. Reads were retired after three fruitless rounds whether the API
+  had answered or not, so a field that reads intermittently was treated like
+  one the hardware does not carry. A round the API never answered now keeps a
+  longer, still bounded budget, and only a round it answered with nothing
+  counts against the short one (#60).
+- One stalled control read could leave every control on the account
+  unavailable for minutes after a restart. The API answers one field per
+  request, so a device with dozens of fields spent the full request timeout on
+  each stalled one and outlived Home Assistant's startup window. A round of
+  reads now has its own deadline, and what it abandons is retried on a later
+  refresh (#60).
 - Device diagnostics reported "Not Set" for controls Home Assistant was
   displaying a value for. Most control fields never appear in the telemetry
   payload, and the formatter looked nowhere else, so a download could report
