@@ -76,6 +76,22 @@ LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 # request every refresh for as long as the entry stays loaded.
 MAX_CONTROL_VALUE_RETRIES = 3
 
+# The same bound for rounds the vendor never answered. A field the API answers
+# with nothing is one this hardware does not carry, and three rounds settle it.
+# A read that times out says nothing about the field: on the hardware in #60 a
+# field that timed out answered on a later round, and spending the short budget
+# on those rounds left a readable control reading unknown until the entry was
+# reloaded. These rounds get a longer budget so flaky reads can recover, still
+# bounded so a dead API cannot be polled for the life of the entry.
+MAX_UNANSWERED_CONTROL_VALUE_RETRIES = 12
+
+# Wall clock one round of control-value reads may take. The API answers each
+# field separately and a stalled field costs the full request timeout, so a
+# round of dozens of fields can outlive Home Assistant's startup window and
+# leave every control on the account unavailable meanwhile. Reads still in
+# flight at the deadline are abandoned and retried on a later revision.
+CONTROL_VALUE_ROUND_TIMEOUT_SECONDS = 60
+
 _LOGGER = logging.getLogger(__name__)
 
 _SUPPORT_ISSUE_PREFIX = "devcode_support_"
@@ -316,6 +332,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_value_attempts: dict[str, int] = {}
         self._ctrl_value_retries: dict[str, int] = {}
+        self._ctrl_value_unanswered: dict[str, bool] = {}
         self._ctrl_cloud_samples: dict[str, object] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
@@ -491,15 +508,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 )
             ]
             retries = self._ctrl_value_retries.get(sn, 0)
+            budget = self._control_value_budget(sn)
             if (
                 missing
-                and retries < MAX_CONTROL_VALUE_RETRIES
+                and retries < budget
                 and self._ctrl_value_attempts.get(sn) != self.cloud_revision
             ):
                 self._ctrl_value_attempts[sn] = self.cloud_revision
-                fetched = await self._fetch_all_control_values(
+                fetched, unanswered = await self._fetch_all_control_values(
                     pn, devcode, devaddr, sn, missing
                 )
+                self._ctrl_value_unanswered[sn] = unanswered
                 # A cloud refresh or accepted write may have filled a value
                 # while these reads were in flight. Do not overwrite it.
                 for field_id, value in fetched.items():
@@ -519,14 +538,16 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     self._ctrl_value_retries[sn] = 0
                 else:
                     self._ctrl_value_retries[sn] = retries + 1
-                    if self._ctrl_value_retries[sn] == MAX_CONTROL_VALUE_RETRIES:
+                    if self._ctrl_value_retries[sn] >= self._control_value_budget(sn):
                         _LOGGER.info(
-                            "Giving up on %d unreadable control value(s) for device "
-                            "%s after %d attempts; ordinary cloud telemetry still "
-                            "updates them, and reloading the entry retries",
+                            "Giving up on %d control value(s) for device %s after "
+                            "%d attempts, the last of which the API %s; ordinary "
+                            "cloud telemetry still updates them, and reloading the "
+                            "entry retries",
                             len(missing),
                             sn,
-                            MAX_CONTROL_VALUE_RETRIES,
+                            self._ctrl_value_retries[sn],
+                            "did not answer" if unanswered else "answered with none",
                         )
             changed = values != before
         if changed:
@@ -534,6 +555,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             # the independent cloud refresh timer and revision counter.
             self.async_update_listeners()
         return controls, values
+
+    def _control_value_budget(self, sn: str) -> int:
+        """Return how many fruitless read rounds this device still gets.
+
+        A round the API answered tells us the field has no value to give. A
+        round it never answered tells us nothing, so those get the longer
+        budget rather than retiring a control that reads intermittently.
+        """
+        if self._ctrl_value_unanswered.get(sn):
+            return MAX_UNANSWERED_CONTROL_VALUE_RETRIES
+        return MAX_CONTROL_VALUE_RETRIES
 
     def _sync_control_values_from_cloud(self, sn: str) -> None:
         """Refresh exact settings only when a new cloud sample arrives."""
@@ -558,39 +590,71 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         devaddr: int,
         sn: str,
         field_ids: list[str],
-    ) -> dict[str, str]:
-        """Fetch current values for all control fields in parallel."""
+    ) -> tuple[dict[str, str], bool]:
+        """Read the given control values in parallel, within one deadline.
+
+        Returns the values that were read, and whether any field went
+        unanswered - a failed read or one still in flight at the deadline.
+        That is what separates a field this hardware does not carry from a
+        round that says nothing about it, and the retry budget keys off it.
+        """
         if not field_ids:
-            return {}
+            return {}, False
 
         sem = asyncio.Semaphore(5)
 
-        async def _fetch_one(field_id: str) -> tuple[str, str | None]:
+        async def _fetch_one(field_id: str) -> tuple[str, str | None, bool]:
             async with sem:
                 try:
                     result = await self.api.get_device_control_value(
                         pn, devcode, devaddr, sn, field_id
                     )
-                    return field_id, control_value(result.get("val"))
-                except Exception as err:
+                except Exception as err:  # pylint: disable=broad-except
                     _LOGGER.debug(
                         "Failed to read control value %s for %s: %s",
                         field_id,
                         sn,
                         err,
                     )
-                    return field_id, None
+                    return field_id, None, True
+                return field_id, control_value(result.get("val")), False
 
         _LOGGER.info("Fetching %d control values for device %s", len(field_ids), sn)
-        results = await asyncio.gather(*[_fetch_one(fid) for fid in field_ids])
-        values = {fid: val for fid, val in results if val is not None}
+        tasks = [asyncio.create_task(_fetch_one(fid)) for fid in field_ids]
+        try:
+            done, pending = await asyncio.wait(
+                tasks, timeout=CONTROL_VALUE_ROUND_TIMEOUT_SECONDS
+            )
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        if pending:
+            _LOGGER.info(
+                "Abandoned %d of %d control value reads for device %s after %ds; "
+                "a later refresh retries them",
+                len(pending),
+                len(field_ids),
+                sn,
+                CONTROL_VALUE_ROUND_TIMEOUT_SECONDS,
+            )
+
+        values: dict[str, str] = {}
+        unanswered = bool(pending)
+        for task in done:
+            field_id, value, failed = task.result()
+            if value is not None:
+                values[field_id] = value
+            unanswered = unanswered or failed
+
         _LOGGER.info(
             "Fetched %d/%d control values for device %s",
             len(values),
             len(field_ids),
             sn,
         )
-        return values
+        return values, unanswered
 
     async def _async_update_data(self):
         """Update data via library."""
@@ -1237,6 +1301,10 @@ CONFIG_KEYWORDS = {
     "configuration",
 }
 STATUS_KEYWORDS = {"status", "operating mode", "state", "online", "connectivity"}
+# A control this integration has no value for. It is not the same as a value
+# of zero or an empty setting, and a support file has to say which it means.
+_UNREAD = "Not read"
+
 PRIORITY_MAPPINGS = {
     "Output priority": {"SBU": 2, "UTI": 0, "SOL": 1, "SUB": 3},
     "Charger Source Priority": {
@@ -1303,7 +1371,9 @@ async def _fetch_control_details(
         )
         return {}, {}, str(err)
 
-    formatted_fields = _format_control_fields(control_fields, device_data)
+    formatted_fields = _format_control_fields(
+        control_fields, device_data, _known_control_values(coordinator, device_sn)
+    )
     _LOGGER.debug(
         "Added %d control fields and %d parameters to diagnostics for device %s",
         len(formatted_fields),
@@ -1313,36 +1383,69 @@ async def _fetch_control_details(
     return formatted_fields, device_parameters, None
 
 
+def _known_control_values(
+    coordinator: DessMonitorDataUpdateCoordinator, device_sn: str
+) -> Mapping[str, str]:
+    """Return the control values this device has been read for, by field id.
+
+    Most control fields never appear in ordinary telemetry, so a diagnostics
+    file built from the telemetry payload alone claimed no value for controls
+    Home Assistant was displaying one for. The coordinator's cache is where an
+    explicit read lands, and it is the same value the entities show.
+    """
+    cache = getattr(coordinator, "ctrl_value_cache", None)
+    if not isinstance(cache, dict):
+        return {}
+    values = cache.get(device_sn)
+    return values if isinstance(values, dict) else {}
+
+
+def _read_control_value(
+    field_data: Mapping[str, Any], known_values: Mapping[str, str] | None
+) -> str | None:
+    """Return the value read for this control field, if one has been."""
+    field_id = field_data.get("id")
+    if not known_values or not isinstance(field_id, str):
+        return None
+    return known_values.get(field_id)
+
+
 def _format_control_fields(
-    control_fields: dict[str, Any], device_data: list[dict[str, Any]]
+    control_fields: dict[str, Any],
+    device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Format control field metadata for diagnostics output."""
     formatted: dict[str, Any] = {}
+    known_values = known_values or {}
 
     for field_name, field_data in control_fields.items():
         if field_data.get("type") == "options":
             formatted[field_name] = _format_option_field(
-                field_name, field_data, device_data
+                field_name, field_data, device_data, known_values
             )
         else:
             formatted[field_name] = _format_numeric_field(
-                field_name, field_data, device_data
+                field_name, field_data, device_data, known_values
             )
 
     return formatted
 
 
 def _format_option_field(
-    field_name: str, field_data: dict[str, Any], device_data: list[dict[str, Any]]
+    field_name: str,
+    field_data: dict[str, Any],
+    device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Format control fields that expose selectable options."""
     sensor_value = _extract_sensor_value(device_data, field_name)
     current_value = _resolve_option_value(
-        field_name, field_data, sensor_value, device_data
+        field_name, field_data, sensor_value, device_data, known_values or {}
     )
 
     options_display = [
-        f"{opt['key']}: {opt['val']}" for opt in field_data.get("options", [])
+        f"{key}: {label}" for key, label in field_data.get("options", {}).items()
     ]
 
     return {
@@ -1357,9 +1460,13 @@ def _format_numeric_field(
     field_name: str,
     field_data: dict[str, Any],
     device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Format numeric control fields, reporting only what was read."""
-    current_value = _extract_sensor_value(device_data, field_name, default="Not Set")
+    current_value = _extract_sensor_value(device_data, field_name)
+    if current_value is None:
+        read_value = _read_control_value(field_data, known_values)
+        current_value = _UNREAD if read_value is None else read_value
 
     unit = ""
     if "Voltage" in field_name:
@@ -1379,6 +1486,7 @@ def _resolve_option_value(
     field_data: dict[str, Any],
     sensor_value: Any,
     device_data: list[dict[str, Any]],
+    known_values: Mapping[str, str] | None = None,
 ):
     """Resolve option value with priority mappings when available."""
     if sensor_value and field_name in PRIORITY_MAPPINGS:
@@ -1402,7 +1510,13 @@ def _resolve_option_value(
                 fallback=f"{output_voltage} V (Custom)",
             )
 
-    return "Not Set"
+    # Most controls never appear in telemetry. Their value comes from an
+    # explicit read, which the coordinator caches by field id.
+    read_value = _read_control_value(field_data, known_values)
+    if read_value is not None:
+        return _lookup_option_value(field_data, read_value)
+
+    return _UNREAD
 
 
 def _match_priority_option(field_name: str, sensor_value: str) -> str | None:
@@ -1418,9 +1532,9 @@ def _lookup_option_value(
     field_data: dict[str, Any], option_key: str, fallback: str | None = None
 ) -> str:
     """Return display value for a control option key."""
-    for option in field_data.get("options", []):
-        if option.get("key") == option_key:
-            return option.get("val", option_key)
+    options = field_data.get("options", {})
+    if option_key in options:
+        return options[option_key]
     return fallback or option_key
 
 

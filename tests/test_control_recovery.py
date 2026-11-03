@@ -7,6 +7,7 @@ import pytest
 
 from custom_components.dessmonitor import (
     MAX_CONTROL_VALUE_RETRIES,
+    MAX_UNANSWERED_CONTROL_VALUE_RETRIES,
     DessMonitorDataUpdateCoordinator,
 )
 from custom_components.dessmonitor.api import DessMonitorError
@@ -394,8 +395,16 @@ async def test_partial_recovery_restores_the_retry_budget(hass):
 
 
 async def test_ordinary_telemetry_recovers_existing_entities_after_budget_exhausted(hass):
-    """Stopping per-field reads must not strand entities at unknown."""
+    """Stopping per-field reads must not strand entities at unknown.
+
+    The reads here answer with a placeholder rather than failing, which is
+    the case that retires a field after the short budget: the API spoke, and
+    it has no value to give. A read that fails outright is a different case
+    with its own budget, exercised below.
+    """
     coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "null"}
     select_known, number_known = set(), set()
     (select,) = await _async_build_select_entities(coordinator, select_known)
     (number,) = await _async_build_number_entities(coordinator, number_known)
@@ -443,3 +452,121 @@ async def test_ordinary_telemetry_recovers_existing_entities_after_budget_exhaus
 )
 def test_placeholder_values_are_not_valid_cache_entries(value):
     assert control_value(value) is None
+
+
+async def test_a_read_that_fails_keeps_its_longer_budget(hass):
+    """A field that answers one round in three must not be retired after three.
+
+    On the hardware in #60 nine control values timed out during startup and
+    every one of those entities stayed unknown. The reads were flaky, not
+    unsupported: the same fields answered when asked again. The short budget
+    is for a field the API answers with nothing, which settles the question;
+    a read that never lands settles nothing, so it gets the longer budget.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    await _async_build_select_entities(coordinator, set())
+    await _async_build_number_entities(coordinator, set())
+    assert coordinator.api.get_device_control_value.await_count == 2
+
+    for _ in range(MAX_CONTROL_VALUE_RETRIES + 1):
+        coordinator.cloud_revision += 1
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    # The short budget would have stopped at three rounds of two reads.
+    assert coordinator.api.get_device_control_value.await_count > 2 * (
+        MAX_CONTROL_VALUE_RETRIES
+    )
+
+    async def read(_pn, _devcode, _address, _sn, field):
+        return {"val": "2" if field == "priority" else "17A"}
+
+    coordinator.api.get_device_control_value.side_effect = read
+    coordinator.cloud_revision += 1
+    _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    assert values == {"priority": "2", "current": "17A"}
+    assert coordinator._ctrl_value_retries["TEST"] == 0
+    await coordinator.async_shutdown()
+
+
+async def test_a_failing_read_is_still_bounded(hass):
+    """A dead API must not be polled for the life of the entry."""
+    coordinator = _coordinator(hass, _cloud())
+    await _async_build_select_entities(coordinator, set())
+
+    for _ in range(MAX_UNANSWERED_CONTROL_VALUE_RETRIES + 5):
+        coordinator.cloud_revision += 1
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    assert coordinator.api.get_device_control_value.await_count == 2 * (
+        MAX_UNANSWERED_CONTROL_VALUE_RETRIES
+    )
+    await coordinator.async_shutdown()
+
+
+async def test_one_stalled_field_does_not_hold_up_the_round(hass):
+    """A read that never returns used to hold entity discovery open.
+
+    The API answers one field per request and a stalled one costs the full
+    request timeout, so a device with dozens of fields could outlive Home
+    Assistant's startup window with every control on the account unavailable
+    (#60). The round now has its own deadline, and what it abandons is
+    retried on a later revision rather than waited on.
+    """
+    coordinator = _coordinator(hass, _cloud())
+
+    async def read(_pn, _devcode, _address, _sn, field):
+        if field == "priority":
+            await asyncio.sleep(3600)
+        return {"val": "17A"}
+
+    coordinator.api.get_device_control_value.side_effect = read
+
+    with patch(
+        "custom_components.dessmonitor.CONTROL_VALUE_ROUND_TIMEOUT_SECONDS", 0.05
+    ):
+        values, unanswered = await coordinator._fetch_all_control_values(
+            "PN", 6544, 1, "TEST", ["priority", "current"]
+        )
+
+    assert values == {"current": "17A"}
+    assert unanswered is True
+    await coordinator.async_shutdown()
+
+
+async def test_cancelling_a_round_leaves_no_reads_running(hass):
+    """Unloading the entry cancels discovery mid-round.
+
+    The reads run as their own tasks so the round can have a deadline, which
+    means the round owns cancelling them. A task left running after unload
+    would keep calling an API client whose session is being closed.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    started: list[str] = []
+
+    async def read(_pn, _devcode, _address, _sn, field):
+        started.append(field)
+        await asyncio.sleep(3600)
+
+    coordinator.api.get_device_control_value.side_effect = read
+
+    round_task = asyncio.create_task(
+        coordinator._fetch_all_control_values(
+            "PN", 6544, 1, "TEST", ["priority", "current"]
+        )
+    )
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert started, "the reads should have begun"
+
+    round_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await round_task
+
+    pending = [
+        task
+        for task in asyncio.all_tasks()
+        if "_fetch_one" in repr(task.get_coro()) and not task.done()
+    ]
+    assert pending == []
+    await coordinator.async_shutdown()

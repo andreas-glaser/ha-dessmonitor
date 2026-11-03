@@ -68,7 +68,9 @@ def test_a_profile_whose_readings_all_resolve_is_supported() -> None:
 
     assert report["support"]["status"] == SUPPORTED
     assert report["support"]["resolved"] == 2
-    assert report["support"]["total"] == len(_readings())
+    # Timestamp is published as an attribute of every sensor, so it is not a
+    # reading that could reach one and is not counted among them.
+    assert report["support"]["total"] == len(_readings()) - 1
     # Settings and identity fields are listed, not counted as dropped readings.
     assert "Protocol Number" in report["support"]["unresolved_without_unit"]
 
@@ -194,3 +196,36 @@ def test_the_module_loads_without_the_integration_package() -> None:
     assert module.is_identifier_name("Devise serial number") is True
     assert module.short_identity(SERIAL) == short_identity(SERIAL)
     assert module.analysis_checksum({"devcode": 6515})
+
+
+def test_the_counts_describe_one_population() -> None:
+    """"Maps N of M readings" has to be arithmetic a reader can check.
+
+    ``resolved`` counted distinct entity keys while ``total`` counted raw
+    rows, so a collector that reports one title twice - devcode 2376 repeats
+    "Output frequency" and "Battery Current" - looked as if readings were
+    being dropped, in the diagnostics file and in the Repairs card text
+    (#60). Rows that reach an entity, plus rows that reach nothing, are now
+    the readings counted.
+    """
+    readings = [
+        {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+        # The same reading twice: two rows, one entity.
+        {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+        {"title": "SOC", "val": "37", "unit": "%"},
+        {"title": "Protocol Number", "val": "3", "unit": ""},
+        # Published as an attribute, so not a reading that could reach one.
+        {"title": "Timestamp", "val": "2026-11-02 10:00:39", "unit": ""},
+    ]
+
+    support = build_support_report(devcode=6515, readings=readings)["support"]
+
+    unresolved_rows = sum(
+        1 for row in build_support_report(devcode=6515, readings=readings)["readings"]
+        if not row["resolved_key"] and row["title"] != "Timestamp"
+    )
+    assert support["resolved"] == 3
+    assert support["total"] == 4
+    assert support["total"] - support["resolved"] == unresolved_rows
+    # The entities those readings reach, which is the smaller number.
+    assert support["sensors"] == 2

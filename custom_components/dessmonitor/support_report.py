@@ -25,7 +25,12 @@ from typing import Any
 # redaction and checksum helpers below. The devcode-aware functions import
 # what they need when they run, inside Home Assistant or the test suite.
 
-REPORT_VERSION = 4
+# 5 counts readings consistently: ``resolved`` and ``total`` are both reading
+# counts, so "maps N of M readings" is arithmetic a reader can check, and the
+# number of distinct entities those readings reach is reported separately.
+# Version 4 counted distinct entity keys against raw rows, which made a device
+# whose collector repeats a title look as if readings were being dropped.
+REPORT_VERSION = 5
 
 SUPPORTED = "supported"
 PARTIAL = "partial"
@@ -93,6 +98,10 @@ def build_support_report(
     unresolved_with_unit: list[dict[str, str]] = []
     unresolved_without_unit: list[str] = []
     resolved_keys: set[str] = set()
+    # Rows, not titles: a collector that reports one title twice reaches one
+    # entity with two readings, and both counts have to say so.
+    resolved_rows = 0
+    attribute_rows = 0
 
     for point in readings:
         title = point.get("title")
@@ -110,7 +119,9 @@ def build_support_report(
 
         if key:
             resolved_keys.add(key)
+            resolved_rows += 1
         elif title.casefold() in _ATTRIBUTE_READINGS:
+            attribute_rows += 1
             continue
         elif unit:
             unresolved_with_unit.append({"title": title, "unit": unit, "sample": value})
@@ -128,11 +139,12 @@ def build_support_report(
         "collector_identity": short_identity(collector_product_number),
         "device_address": device_address,
         "support": {
-            "status": classify_support(devcode, resolved_keys, unresolved_with_unit),
+            "status": classify_support(devcode, unresolved_with_unit),
             "profile": profile["name"],
             "known_inverters": profile["known_inverters"],
-            "resolved": len(resolved_keys),
-            "total": len(reading_rows),
+            "resolved": resolved_rows,
+            "total": len(reading_rows) - attribute_rows,
+            "sensors": len(resolved_keys),
             "unresolved_with_unit": sorted(
                 unresolved_with_unit, key=lambda item: item["title"].casefold()
             ),
@@ -168,7 +180,6 @@ def device_support_status(
 
 def classify_support(
     devcode: Any,
-    resolved_keys: set[str],
     unresolved_with_unit: list[dict[str, str]],
 ) -> str:
     """Classify a devcode as supported, partial or unsupported.

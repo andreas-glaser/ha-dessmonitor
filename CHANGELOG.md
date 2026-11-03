@@ -88,6 +88,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The support card and the diagnostics report counted readings two different
+  ways in the same sentence: readings that reach an entity were counted as
+  distinct entities while the total counted raw readings, so a collector that
+  reports one title twice - devcode 2376 repeats two - read as if readings
+  were being dropped when none were. Both are now reading counts, a reading
+  published as an entity attribute is not counted among readings that could
+  reach an entity, and the number of distinct entities is reported separately
+  as `sensors`. Support classification is unchanged (#60).
+- A control whose value read timed out stayed unknown until the entry was
+  reloaded. Reads were retired after three fruitless rounds whether the API
+  had answered or not, so a field that reads intermittently was treated like
+  one the hardware does not carry. A round the API never answered now keeps a
+  longer, still bounded budget, and only a round it answered with nothing
+  counts against the short one (#60).
+- One stalled control read could leave every control on the account
+  unavailable for minutes after a restart. The API answers one field per
+  request, so a device with dozens of fields spent the full request timeout on
+  each stalled one and outlived Home Assistant's startup window. A round of
+  reads now has its own deadline, and what it abandons is retried on a later
+  refresh (#60).
+- Device diagnostics reported "Not Set" for controls Home Assistant was
+  displaying a value for. Most control fields never appear in the telemetry
+  payload, and the formatter looked nowhere else, so a download could report
+  36 of 40 controls as having no value while the entities held one. It now
+  reports what was read, from the same cache the entities use, and says "Not
+  read" where nothing has been (#60).
+- "Download diagnostics" on a device page returned a 500 error on every device
+  that has a control with selectable options, which is every supported inverter.
+  The API client returns a control's options as a mapping of option key to
+  label, and the diagnostics formatter read them as a list of records, so
+  building the file raised `TypeError: string indices must be integers`. The
+  same fault emptied the control fields and parameters out of the hub report,
+  where it was recorded as a control read failure rather than raised (#60).
 - "Download diagnostics" on the integration card produced an error instead of a
   file. Only the per-device hook existed, so Home Assistant's request for a
   config-entry report failed before it reached the integration. The hub now
