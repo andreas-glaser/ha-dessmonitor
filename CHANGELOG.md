@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0-rc.1] - 2026-11-04
+
+First release candidate for 2.7.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.7.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** devcodes 6544 and 6515 each move four schedule controls
+from `number` to `time`, and their inverter clock from `number` to `text`.
+If you reference any of those entities by id in a dashboard or automation,
+update the reference after upgrading; the old entities are disabled, not
+deleted, and carry your customizations over. Devcode 6515 also gains support
+for the first time (Maxsky EM11000 and ANENJI ANJ-HHS-11KW-48V-WIFI); if you
+run one, a report on whether its sensors and controls look right would help
+confirm the single hardware report this candidate rests on. The new
+**Repairs** card for a partially- or un-supported devcode is also new; a
+report if it appears when it should not would help too.
+
 ### Added
 - Home Assistant now says whether an inverter is fully supported. A **Repairs**
   card names a devcode that has no profile, or one whose profile leaves readings
@@ -223,6 +238,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A re-enabled legacy number is retained in the registry but is not implemented
   by the new numeric platform. Rollback requires explicitly re-enabling the old
   numbers; it does not automatically restore old UI references or disabled flags.
+
+### Upgrade notes: devcode 6515 time and clock controls
+- The same four schedule controls move from `number` to `time`, and Inverter
+  Time moves from `number` to `text`, under this devcode's own field ids.
+  Update dashboard and automation entity references and use `time.set_value` /
+  `text.set_value` instead of `number.set_value`.
+- The same migration applies: old number registry/history entries are
+  retained and disabled rather than deleted, both historical Inverter Time IDs
+  are handled (the original double-underscore suffix and the normalized
+  single-underscore suffix introduced by #57), and rollback requires
+  explicitly re-enabling the old numbers.
 
 ## [2.6.0] - 2026-10-31
 
