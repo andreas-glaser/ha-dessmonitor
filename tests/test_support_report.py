@@ -268,3 +268,45 @@ def test_a_setting_declared_by_another_devcode_is_still_a_dropped_reading() -> N
     assert report["support"]["unresolved_with_unit"] == [
         {"title": "Battery bulk voltage", "unit": "V", "sample": "56.5"}
     ]
+
+
+def test_the_counts_add_up_even_when_rows_are_excluded() -> None:
+    """A reader must be able to reconstruct "maps N of M readings".
+
+    Three classes of row are left out of ``total``: an attribute of another
+    entity, a declared setting, and a blank title. Without the breakdown the
+    numbers simply did not add up, which is the complaint that produced report
+    version 5 in the first place (#60).
+    """
+    readings = [
+        {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+        # The same reading twice: two rows, one entity, both counted.
+        {"title": "Battery Voltage", "val": "53.2", "unit": "V"},
+        # Two rows of one unresolved title: the list below deduplicates them,
+        # the count must not.
+        {"title": "Mystery Reading", "val": "1", "unit": ""},
+        {"title": "Mystery Reading", "val": "2", "unit": ""},
+        {"title": "Timestamp", "val": "2026-11-05 10:00:39", "unit": ""},
+    ]
+
+    support = build_support_report(devcode=6515, readings=readings)["support"]
+
+    assert support["resolved"] + support["unresolved"] == support["total"]
+    assert support["total"] == 4
+    assert support["excluded"] == {"attribute_readings": 1, "declared_settings": 0}
+    assert support["unresolved_without_unit"] == ["Mystery Reading"]
+    assert support["sensors"] == 1
+
+
+def test_a_declared_setting_is_counted_under_its_own_exclusion() -> None:
+    """The breakdown names which exclusion each row fell under (#53)."""
+    readings = [
+        {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+        {"title": "Battery bulk voltage", "val": "56.5", "unit": "V"},
+        {"title": "Timestamp", "val": "2026-11-05 10:00:39", "unit": ""},
+    ]
+
+    support = build_support_report(devcode=2452, readings=readings)["support"]
+
+    assert support["excluded"] == {"attribute_readings": 1, "declared_settings": 1}
+    assert support["resolved"] + support["unresolved"] == support["total"] == 1

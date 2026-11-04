@@ -497,12 +497,28 @@ resolves, which keeps a later `const.py` or mapping edit from silently dropping
 one.
 
 A diagnostics download is committed under the same `analysis_XXXX.json` name,
-because that is what the test globs for. It is already redacted when Home
-Assistant writes it, so keep its `devices` entries exactly as they arrived
-(their checksums cover them) and drop only the sections that say nothing about
-the devcode: the `home_assistant`, `custom_components`, `integration_manifest`,
-`issues` and `setup_times` blocks the host adds, and `entry_data` /
-`entry_options`.
+because that is what the test globs for. One command does it:
+
+```bash
+.venv/bin/python tools/evidence_from_diagnostics.py ~/Downloads/config_entry-dessmonitor-01ABC.json
+```
+
+It keeps the integration's own sections verbatim, because their checksums cover
+them, drops the host and config-entry sections that say nothing about the
+devcode, verifies every device checksum, refuses to write if one fails, and
+writes one file per devcode the download covers. Add `--dry-run` to look first
+and `--force` to replace existing evidence.
+
+To see what an issue's attachments say before any of that:
+
+```bash
+.venv/bin/python tools/triage.py 62
+```
+
+It reads the issue and its comments, downloads each attached report into a
+temporary directory, and prints each devcode's coverage, the readings that
+carry a unit and reach no entity, and any reading whose local and cloud
+figures disagree about scale.
 
 Only commit a CLI report produced with `--redacted`, and confirm `device_sn` and
 `collector_alias` are empty before adding it. If the reporter supplied an

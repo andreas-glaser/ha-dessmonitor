@@ -458,3 +458,75 @@ async def test_hub_diagnostics_do_not_disclose_local_network_addresses(
         "private ipv4 in subnet 2",
     ]
     assert options["local_poll_interval"] == 10
+
+
+def test_every_config_key_is_classified() -> None:
+    """A new option must not reach a public issue by being forgotten (#53).
+
+    The download used to publish any key nobody had classified, which is how a
+    reporter's collector and listen addresses ended up in an attachment. Adding
+    a `CONF_*` constant now fails here until its disclosure is decided.
+    """
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE
+    from custom_components.dessmonitor import const
+
+    config_keys = {
+        getattr(const, name)
+        for name in dir(const)
+        if name.startswith("CONF_") and isinstance(getattr(const, name), str)
+    }
+
+    unclassified = sorted(config_keys - set(_ENTRY_DISCLOSURE))
+    assert not unclassified, (
+        f"these configuration keys have no disclosure decision: {unclassified}. "
+        "Add each to _ENTRY_DISCLOSURE as publish, redact, hash or "
+        "describe_address."
+    )
+
+
+async def test_no_configured_value_reaches_the_download_verbatim(
+    hass: HomeAssistant,
+) -> None:
+    """The support guide promises no credentials and no identifiers.
+
+    It promised that while the file carried two LAN addresses, because the
+    tests asserted four specific secrets rather than the categorical claim.
+    This sets every known configuration key to a recognisable value and
+    asserts that none of them appears in the file as written.
+    """
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, _PUBLISH
+    from custom_components.dessmonitor import const
+
+    sentinels: dict[str, str] = {}
+    for name in dir(const):
+        if not name.startswith("CONF_"):
+            continue
+        key = getattr(const, name)
+        if not isinstance(key, str) or _ENTRY_DISCLOSURE.get(key) is _PUBLISH:
+            continue
+        sentinels[key] = f"sentinel-{name.lower()}-9f3b"
+
+    assert sentinels, "no redacted configuration keys to check"
+
+    coordinator = MagicMock()
+    coordinator.is_hybrid = False
+    coordinator.last_update_success = True
+    coordinator.cloud_revision = 1
+    coordinator.stale_cloud_serials = frozenset()
+    coordinator.update_interval = timedelta(seconds=300)
+    coordinator.data = {}
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = dict(sentinels)
+    entry.options = dict(sentinels)
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    serialized = json.dumps(report)
+    leaked = sorted(key for key, value in sentinels.items() if value in serialized)
+    assert not leaked, f"these configured values reached the download: {leaked}"
+    # Each key is still present, so a reader can tell a configured value from
+    # an absent one.
+    for key in sentinels:
+        assert key in report["entry_data"]

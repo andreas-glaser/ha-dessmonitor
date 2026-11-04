@@ -71,6 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stranded beside a second entity.
 
 ### Changed
+- The support report says how many readings each exclusion accounts for, and
+  counts the unresolved rows, so `resolved + unresolved == total` exactly even
+  where a collector repeats a title. Three classes of row are left out of the
+  total - nothing, entity attributes and declared settings - and the card's
+  "maps N of M readings" was no longer arithmetic a reader could check.
 - Reporting hardware is one command. `dessmonitor_cli.py report --username YOU`
   signs in, enumerates the account, writes one redacted analysis per device and
   prints what each one covers, in place of five commands and picking the right
@@ -96,6 +101,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The diagnostics download published any configuration key nobody had
+  classified, which is how a reporter's collector and listen addresses reached
+  a public issue. The classification is now an allowlist: a key that is not
+  listed is redacted, adding a `CONF_*` constant fails the test suite until its
+  disclosure is decided, and a second test sets every known key to a sentinel
+  and asserts none of them reaches the file.
 - A control read that the integration expects to fail, retries on a bounded
   budget and reports itself was also logged at error level by the API layer, on
   every attempt. One account collected twenty red log entries in an hour -
