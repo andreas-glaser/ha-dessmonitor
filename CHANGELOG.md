@@ -96,6 +96,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The diagnostics download carried the LAN addresses local mode is configured
+  with: the collector's address and the address Home Assistant listens on, in
+  the file the support guide tells people to attach to a public issue (#53).
+  Both are now described rather than disclosed - address family, whether the
+  address is private or public, and a per-download subnet number - which keeps
+  the one fact a local-mode thread turns on, whether the two share a subnet.
 - Local telemetry published the lifetime energy counter a thousand times too
   high on PI18 and P17 inverters. The `ET` query answers in watt-hours and the
   sensor is kWh, so Energy Total read 10,104,399 kWh on the inverter in #53,
