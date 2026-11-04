@@ -1,0 +1,366 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.7.0-rc.1",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "api_profile": "shinemonitor_solar"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 60.0,
+      "cloud_revision": 4,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": false
+    },
+    "devices": [
+      {
+        "report_version": 5,
+        "source": "integration_diagnostics",
+        "api_profile": "shinemonitor_solar",
+        "integration_version": "2.7.0-rc.1",
+        "devcode": 684,
+        "device_identity": "sha256:a54e0294ecca",
+        "collector_identity": "sha256:2b4ab9fe556a",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 8,
+          "total": 38,
+          "sensors": 8,
+          "unresolved_with_unit": [
+            {
+              "title": "DC current 1",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "DC current 2",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "DC voltage 1",
+              "unit": "V",
+              "sample": "121.2"
+            },
+            {
+              "title": "DC voltage 2",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "grid current A",
+              "unit": "A",
+              "sample": "0.1"
+            },
+            {
+              "title": "grid voltage A",
+              "unit": "V",
+              "sample": "232.9"
+            },
+            {
+              "title": "inductor temperature",
+              "unit": "°C",
+              "sample": "0.0"
+            },
+            {
+              "title": "inside temperature",
+              "unit": "°C",
+              "sample": "0.0"
+            },
+            {
+              "title": "radiator temperature",
+              "unit": "°C",
+              "sample": "23.4"
+            },
+            {
+              "title": "rate power",
+              "unit": "W",
+              "sample": "3000"
+            },
+            {
+              "title": "rate voltage",
+              "unit": "V",
+              "sample": "230.0"
+            },
+            {
+              "title": "today energy",
+              "unit": "kWh",
+              "sample": "7.65"
+            },
+            {
+              "title": "total energy",
+              "unit": "kWh",
+              "sample": "28603.85"
+            }
+          ],
+          "unresolved_without_unit": [
+            "communication board protocol version",
+            "communication protocol version",
+            "ctrl board protocol version",
+            "device address",
+            "device type",
+            "fault information 1",
+            "fault information 2",
+            "fault information 3",
+            "fault information 4",
+            "fault information 5",
+            "fault information 6",
+            "fault information 7",
+            "id",
+            "MPPT channel",
+            "register number",
+            "safety regulation",
+            "work mode"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-04 17:35:31",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "device type",
+            "value": "single channel single phase inverter",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "device address",
+            "value": "1",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "communication protocol version",
+            "value": "0.01",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "ctrl board protocol version",
+            "value": "5.25",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "communication board protocol version",
+            "value": "5.25",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "safety regulation",
+            "value": "7",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "MPPT channel",
+            "value": "1",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "rate power",
+            "value": "3000",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "rate voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "register number",
+            "value": "40",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "work mode",
+            "value": "normal",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "today energy",
+            "value": "7.65",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "total energy",
+            "value": "28603.85",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "output active power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "DC voltage 1",
+            "value": "121.2",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "DC voltage 2",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "DC current 1",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "DC current 2",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "grid voltage A",
+            "value": "232.9",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "grid current A",
+            "value": "0.1",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "grid frequency",
+            "value": "50.01",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "power factor",
+            "value": "1.000",
+            "unit": "",
+            "resolved_key": "Power Factor"
+          },
+          {
+            "title": "radiator temperature",
+            "value": "23.4",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "inductor temperature",
+            "value": "0.0",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "transformer temperature",
+            "value": "0.0",
+            "unit": "°C",
+            "resolved_key": "Transformer temperature"
+          },
+          {
+            "title": "inside temperature",
+            "value": "0.0",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "fault information 1",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "fault information 2",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "fault information 3",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "fault information 4",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "fault information 5",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "fault information 6",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "fault information 7",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [],
+        "parameters": [],
+        "checksum": "8bff5ccf3784981a0867ecdc8398c41bd1335cfe5c143112a0825a9d434aa7c2",
+        "data_source": "Cloud",
+        "last_update": "2026-11-04 17:35:31",
+        "control_error": "ERR_NO_RECORD(获取默认模板为空)"
+      }
+    ]
+  }
+}

@@ -334,7 +334,16 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
     diagnostics download, and the coverage tooling and its test guard both
     (#60). Each record carries the devcode, the raw titles, the units observed
     for them, which path produced it, and whether its checksum still matches.
+
+    A download is read as the reporter attaches it: Home Assistant writes the
+    report a diagnostics hook returns under a ``data`` key, beside the host and
+    integration metadata it adds itself, so the shapes below sit one level down
+    in every file that reaches an issue (#62).
     """
+    data = payload.get("data")
+    if isinstance(data, dict) and ("devices" in data or "readings" in data):
+        return normalized_reports(data)
+
     if "analysis" in payload and isinstance(payload["analysis"], dict):
         analysis = payload["analysis"]
         return [

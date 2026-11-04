@@ -448,6 +448,22 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:thermometer",
     },
+    # Reported beside the radiator and transformer readings by the grid-tie
+    # collectors (devcode 684, #62).
+    "Inductor Temperature": {
+        "name": "Inductor Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
+    "Inside Temperature": {
+        "name": "Inside Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
     "BMS battery temperature": {
         "name": "BMS Battery Temperature",
         "unit": UNITS["TEMPERATURE"],
@@ -908,6 +924,14 @@ SENSOR_TYPES = {
         "name": "Rated Power",
         "unit": UNITS["POWER"],
         "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "rated voltage": {
+        "name": "Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash",
         "entity_category": "diagnostic",

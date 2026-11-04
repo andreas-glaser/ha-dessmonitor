@@ -42,7 +42,6 @@ from .control_values import (
 )
 from .data_sources import snapshot_with_data_source
 from .device_support import (
-    apply_devcode_transformations,
     get_parameter_sensor_names,
     is_devcode_supported,
     map_sensor_title,
@@ -84,6 +83,14 @@ MAX_CONTROL_VALUE_RETRIES = 3
 # reloaded. These rounds get a longer budget so flaky reads can recover, still
 # bounded so a dead API cannot be polled for the life of the entry.
 MAX_UNANSWERED_CONTROL_VALUE_RETRIES = 12
+
+# Consecutive cloud revisions that may re-ask for a device's control field
+# list. A grid-tie collector has no control template at all and the platform
+# answers `queryDeviceCtrlField` with ERR_NO_RECORD every time (#62), so
+# without a bound that device costs one failing request and one warning per
+# refresh for the life of the entry. The budget matches the unanswered value
+# reads: long enough for a flaky account to recover, short enough to settle.
+MAX_CONTROL_FIELD_RETRIES = 12
 
 # Wall clock one round of control-value reads may take. The API answers each
 # field separately and a stalled field costs the full request timeout, so a
@@ -330,6 +337,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.ctrl_value_cache: dict[str, dict[str, str]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
+        self._ctrl_field_failures: dict[str, int] = {}
         self._ctrl_value_attempts: dict[str, int] = {}
         self._ctrl_value_retries: dict[str, int] = {}
         self._ctrl_value_unanswered: dict[str, bool] = {}
@@ -461,6 +469,52 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.stale_cloud_serials = frozenset(self._cached_cloud_data)
         return snapshot_with_data_source(self._cached_cloud_data, "Cached Cloud")
 
+    async def _async_cache_control_fields(
+        self, pn: str, devcode: int, devaddr: int, sn: str
+    ) -> bool:
+        """Fetch a device's control field list once, and say whether it is cached.
+
+        One attempt per cloud revision, and a bounded number of them: a
+        grid-tie collector has no control template and the platform refuses the
+        request every time (#62), which otherwise costs a failing request and a
+        warning on every refresh for as long as the entry stays loaded.
+        """
+        if self._ctrl_field_attempts.get(sn) == self.cloud_revision:
+            return False
+        failures = self._ctrl_field_failures.get(sn, 0)
+        if failures >= MAX_CONTROL_FIELD_RETRIES:
+            return False
+
+        self._ctrl_field_attempts[sn] = self.cloud_revision
+        try:
+            controls = await self.api.get_device_control_fields(
+                pn, devcode, devaddr, sn
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            self._ctrl_field_failures[sn] = failures + 1
+            if failures + 1 >= MAX_CONTROL_FIELD_RETRIES:
+                _LOGGER.warning(
+                    "Giving up on control fields for device %s after %d attempts; "
+                    "it publishes no controls until the entry is reloaded: %s",
+                    sn,
+                    failures + 1,
+                    err,
+                )
+            else:
+                # Once at warning level, then quietly: the first line says a
+                # device has no controls yet, the rest only repeat it.
+                _LOGGER.log(
+                    logging.WARNING if not failures else logging.DEBUG,
+                    "Failed to fetch control fields for device %s: %s",
+                    sn,
+                    err,
+                )
+            return False
+
+        self._ctrl_field_failures.pop(sn, None)
+        self.ctrl_field_cache[sn] = controls
+        return True
+
     async def async_get_controls_with_values(
         self, pn: str, devcode: int, devaddr: int, sn: str
     ) -> tuple[dict[str, Any], dict[str, str]]:
@@ -469,29 +523,22 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         Seed values from the ordinary cloud payload and retry only missing
         values once per cloud revision, until three rounds recover nothing.
         Ordinary telemetry can still recover values after that budget is spent.
-        Local pushes cannot trigger retries.
+        Local pushes cannot trigger retries. The field list itself is fetched
+        once and then cached whether or not it holds anything, and a device the
+        API keeps refusing it for is retired after
+        ``MAX_CONTROL_FIELD_RETRIES`` revisions.
         The per-device lock shares work between select/number/button loaders.
         """
         if sn not in self._ctrl_locks:
             self._ctrl_locks[sn] = asyncio.Lock()
 
         async with self._ctrl_locks[sn]:
-            if not self.ctrl_field_cache.get(sn):
-                if self._ctrl_field_attempts.get(sn) == self.cloud_revision:
+            # Presence, not truth: a device the API answers with an empty field
+            # list carries no controls, and re-asking every revision for the
+            # life of the entry buys nothing.
+            if sn not in self.ctrl_field_cache:
+                if not await self._async_cache_control_fields(pn, devcode, devaddr, sn):
                     return {}, self.ctrl_value_cache.get(sn, {})
-                self._ctrl_field_attempts[sn] = self.cloud_revision
-                try:
-                    controls = await self.api.get_device_control_fields(
-                        pn, devcode, devaddr, sn
-                    )
-                except Exception as err:
-                    _LOGGER.warning(
-                        "Failed to fetch control fields for device %s: %s",
-                        sn,
-                        err,
-                    )
-                    return {}, {}
-                self.ctrl_field_cache[sn] = controls
 
             controls = self.ctrl_field_cache[sn]
             values = self.ctrl_value_cache.setdefault(sn, {})

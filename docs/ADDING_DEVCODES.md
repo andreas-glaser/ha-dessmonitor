@@ -444,7 +444,9 @@ Both shapes of evidence are accepted: a CLI `analysis_<devcode>.json` and a
 diagnostics download. The tool prints which produced the file, and a download
 records a unit for *every* reading where a CLI analysis records one for the
 sampled readings only, so a committed download guards more of a devcode than a
-committed analysis does.
+committed analysis does. A download is read exactly as the reporter attached
+it: Home Assistant wraps the report under a `data` key, and the tool unwraps
+that envelope itself (#62).
 
 It prints every raw title with the canonical key it resolves to, then the
 unresolved ones, marking those the collector labelled with a unit. A unit means
@@ -462,7 +464,15 @@ under `docs/evidence/` and fails when a reading that carries a unit no longer
 resolves, which keeps a later `const.py` or mapping edit from silently dropping
 one.
 
-Only commit a report produced with `--redacted`, and confirm `device_sn` and
+A diagnostics download is committed under the same `analysis_XXXX.json` name,
+because that is what the test globs for. It is already redacted when Home
+Assistant writes it, so keep its `devices` entries exactly as they arrived
+(their checksums cover them) and drop only the sections that say nothing about
+the devcode: the `home_assistant`, `custom_components`, `integration_manifest`,
+`issues` and `setup_times` blocks the host adds, and `entry_data` /
+`entry_options`.
+
+Only commit a CLI report produced with `--redacted`, and confirm `device_sn` and
 `collector_alias` are empty before adding it. If the reporter supplied an
 unredacted file, redact it first:
 

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Device support for devcode 684, a single-phase grid-connected PV inverter
+  reported through ShineMonitor and sold as Panther Solar. It adds both string
+  voltages and currents, grid voltage and current, the daily and lifetime
+  energy counters, the radiator, inductor and enclosure temperatures, the
+  nameplate power and voltage ratings and the work mode: 22 of its 39 readings
+  resolve now against 8 before, and none of the remaining 17 carries a unit
+  (#62, thanks to @sabiwa for the diagnostics download). The download is
+  committed under `docs/evidence/devcodes/`.
 - Home Assistant now says whether an inverter is fully supported. A **Repairs**
   card names a devcode that has no profile, or one whose profile leaves readings
   unmapped, with how many readings reach no entity and a link to the support
@@ -88,6 +96,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A device the cloud reports no control template for was asked for its control
+  field list once per refresh for as long as the entry stayed loaded, each
+  attempt logging a warning. A grid-tie collector has no template at all and
+  answers `ERR_NO_RECORD` every time (#62). An empty field list is now cached
+  as the answer it is, and repeated refusals are retired after twelve
+  revisions with one warning at the start and one at the end; reloading the
+  entry starts a new budget.
+- The maintainer tooling rejected every diagnostics download a reporter
+  actually attaches. Home Assistant writes the report a diagnostics hook
+  returns under a `data` key, beside the host metadata it adds itself, and
+  `tools/analysis_coverage.py` only understood the unwrapped shape, so it
+  answered "not a devcode analysis or support report" for the file the support
+  guide asks for (#62).
 - The support card and the diagnostics report counted readings two different
   ways in the same sentence: readings that reach an entity were counted as
   distinct entities while the total counted raw readings, so a collector that
