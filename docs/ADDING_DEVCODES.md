@@ -385,7 +385,37 @@ PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
 The coordinator will fetch `queryDeviceParsEs` in parallel and merge the parameters into the device data (deduplicated). Leave empty otherwise.
 
-### 4.9 Configuration
+### 4.9 `SETTING_READINGS`
+
+Some collectors return the inverter's own setpoints in the telemetry call.
+Devcode 2452 reports the battery recharge, bulk and float voltages, the
+back-to-discharge voltage and the second output's schedule beside the live
+readings, and five of those are the values of controls the same account
+publishes as number and select entities. They carry a unit, so the support
+report counted them among the readings that reach no entity and the Repairs
+card told the owner that fourteen readings were missing while none were (#53).
+
+List such titles here, exactly as the collector spells them. They then count as
+neither resolved nor dropped, the coverage tool marks them `(setting)`, and the
+committed-evidence guard stops demanding a sensor for them:
+
+```python
+SETTING_READINGS: set[str] = {
+    "Battery bulk voltage",
+    "Battery float voltage",
+}
+```
+
+Two rules:
+
+- A setting is not a sensor. Mapping one onto a `SENSOR_TYPES` key publishes a
+  second entity for a value the number or select entity already owns.
+- Declare only what the committed evidence shows, and only where the reading
+  really is a setting. A nameplate rating is not: it is a read-only fact about
+  the hardware, so it becomes a diagnostic sensor, as `rated power` and
+  `battery rated voltage` do on this devcode.
+
+### 4.10 Configuration
 
 ```python
 DEVCODE_CONFIG = {
@@ -398,6 +428,7 @@ DEVCODE_CONFIG = {
     "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
+    "setting_readings": SETTING_READINGS,
 }
 ```
 
@@ -449,8 +480,9 @@ it: Home Assistant wraps the report under a `data` key, and the tool unwraps
 that envelope itself (#62).
 
 It prints every raw title with the canonical key it resolves to, then the
-unresolved ones, marking those the collector labelled with a unit. A unit means
-the title is a reading and should become a sensor; unresolved titles without one
+unresolved ones, marking those the collector labelled with a unit and those a
+profile declares a setting. A unit means the title is a reading and should
+become a sensor, unless it is a setting; unresolved titles without one
 are settings, identity fields and timestamps, which reach Home Assistant through
 the number, select and button platforms instead. Work through the marked titles
 until none remain, then re-run the report.
@@ -597,6 +629,7 @@ Before opening a PR:
 - [ ] Operating mode targets are in `OPERATING_MODES` or explicitly added via the mapping
 - [ ] `SENSOR_TITLE_MAPPINGS` only contains titles that fail the shared resolver
 - [ ] `PARAMETER_SENSOR_NAMES` set iff the reporter needs a sensor from the parameters endpoint
+- [ ] `SETTING_READINGS` lists every setpoint the collector returns among the readings, and no nameplate rating
 - [ ] `TEMPORAL_CONTROLS` lists every advertised clock-valued field whose read format the analysis shows, and nothing else
 - [ ] `tools/analysis_coverage.py` reports no unresolved title carrying a unit
 - [ ] Redacted analysis committed under `docs/evidence/devcodes/` and `verify` passes

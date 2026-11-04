@@ -928,6 +928,48 @@ SENSOR_TYPES = {
         "icon": "mdi:flash",
         "entity_category": "diagnostic",
     },
+    # Nameplate ratings devcode 2452 reports beside its telemetry (#53). They
+    # are facts about the hardware rather than settings, so they are sensors,
+    # and diagnostic ones because they never change.
+    "rated current": {
+        "name": "Rated Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "rated frequency": {
+        "name": "Rated Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "rated apparent power": {
+        "name": "Rated Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "battery rated voltage": {
+        "name": "Battery Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery",
+        "entity_category": "diagnostic",
+    },
+    "grid rated current": {
+        "name": "Grid Rated Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+        "entity_category": "diagnostic",
+    },
     "rated voltage": {
         "name": "Rated Voltage",
         "unit": UNITS["VOLTAGE"],

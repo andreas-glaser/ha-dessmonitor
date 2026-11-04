@@ -25,12 +25,17 @@ from typing import Any
 # redaction and checksum helpers below. The devcode-aware functions import
 # what they need when they run, inside Home Assistant or the test suite.
 
+# 6 leaves a reading a profile declares a setting out of both counts, the way
+# an entity attribute already was: devcode 2452 returns the inverter's own
+# setpoints beside its telemetry, five of them the values of controls the
+# account publishes as number and select entities, and counting them as
+# readings that reach no entity told the owner fourteen were missing (#53).
 # 5 counts readings consistently: ``resolved`` and ``total`` are both reading
 # counts, so "maps N of M readings" is arithmetic a reader can check, and the
 # number of distinct entities those readings reach is reported separately.
 # Version 4 counted distinct entity keys against raw rows, which made a device
 # whose collector repeats a title look as if readings were being dropped.
-REPORT_VERSION = 5
+REPORT_VERSION = 6
 
 SUPPORTED = "supported"
 PARTIAL = "partial"
@@ -94,6 +99,8 @@ def build_support_report(
     analysis records one only for the first twenty, so a report built from this
     is the better evidence for the coverage guard (#60).
     """
+    from .device_support import is_setting_reading
+
     reading_rows: list[dict[str, Any]] = []
     unresolved_with_unit: list[dict[str, str]] = []
     unresolved_without_unit: list[str] = []
@@ -101,7 +108,9 @@ def build_support_report(
     # Rows, not titles: a collector that reports one title twice reaches one
     # entity with two readings, and both counts have to say so.
     resolved_rows = 0
-    attribute_rows = 0
+    # Rows that reach no sensor and should not: an attribute of another entity,
+    # or a setting the profile declares (#53).
+    excluded_rows = 0
 
     for point in readings:
         title = point.get("title")
@@ -120,8 +129,10 @@ def build_support_report(
         if key:
             resolved_keys.add(key)
             resolved_rows += 1
-        elif title.casefold() in _ATTRIBUTE_READINGS:
-            attribute_rows += 1
+        elif title.casefold() in _ATTRIBUTE_READINGS or is_setting_reading(
+            devcode, title
+        ):
+            excluded_rows += 1
             continue
         elif unit:
             unresolved_with_unit.append({"title": title, "unit": unit, "sample": value})
@@ -143,7 +154,7 @@ def build_support_report(
             "profile": profile["name"],
             "known_inverters": profile["known_inverters"],
             "resolved": resolved_rows,
-            "total": len(reading_rows) - attribute_rows,
+            "total": len(reading_rows) - excluded_rows,
             "sensors": len(resolved_keys),
             "unresolved_with_unit": sorted(
                 unresolved_with_unit, key=lambda item: item["title"].casefold()

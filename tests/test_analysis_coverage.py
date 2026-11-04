@@ -15,7 +15,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.dessmonitor.device_support import apply_devcode_transformations
+from custom_components.dessmonitor.device_support import (
+    apply_devcode_transformations,
+    is_setting_reading,
+)
 from custom_components.dessmonitor.sensor import _build_sensor_entities
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
 from custom_components.dessmonitor.support_report import normalized_reports
@@ -103,6 +106,7 @@ def _assert_every_reading_resolves(path: Path, record: dict[str, Any]) -> None:
         title: unit
         for title, unit in units.items()
         if title not in excluded
+        and not is_setting_reading(devcode, title)
         and resolve_sensor_key(
             apply_devcode_transformations(devcode, {"title": title}).get("title"),
             title,

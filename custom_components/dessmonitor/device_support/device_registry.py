@@ -373,6 +373,35 @@ def needs_parameter_fetch(devcode: int) -> bool:
     return bool(get_parameter_sensor_names(devcode))
 
 
+def is_setting_reading(devcode: Any, title: str) -> bool:
+    """Return whether a profile declares this title a setting, not a reading.
+
+    Several collectors return the inverter's own setpoints in the telemetry
+    call: devcode 2452 reports the battery recharge, bulk and float voltages
+    beside the live readings, and five of them are the values of controls the
+    account already publishes as number and select entities. They carry a unit,
+    so the support report counted them among the readings that reach no entity
+    and told the owner that fourteen readings were missing when none were (#53).
+
+    A profile declares them explicitly, from committed evidence, rather than
+    being guessed at from the control template: an account whose control
+    template cannot be read still gets the right answer.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config:
+        return False
+    declared = config.get("setting_readings")
+    if not declared:
+        return False
+    return _normalize_title(title) in {_normalize_title(name) for name in declared}
+
+
+def _normalize_title(title: Any) -> str:
+    """Compare titles the way the shared sensor resolver does."""
+    return " ".join(str(title).split()).casefold()
+
+
 def get_all_operating_modes() -> list[str]:
     """Get all possible operating mode values from base modes and all devcode transformations."""
     from ..const import OPERATING_MODES

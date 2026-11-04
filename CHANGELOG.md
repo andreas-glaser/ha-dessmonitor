@@ -96,6 +96,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The support card counted a devcode's own settings as readings that reach no
+  entity. Devcode 2452 returns the inverter's setpoints in the same call as the
+  telemetry - the battery recharge, bulk and float voltages, the
+  back-to-discharge voltage, the second output's schedule - and five of them
+  are the values of controls the account already publishes as number and select
+  entities. All of them carry a unit, so a fresh install was told that fourteen
+  readings were missing while none were (#53). A profile now declares such
+  titles in `SETTING_READINGS`, and they count as neither mapped nor dropped.
+  Its six nameplate ratings do become diagnostic sensors: rated power, apparent
+  power, current and frequency, the battery rated voltage and the grid rated
+  current. The download for that devcode is committed under
+  `docs/evidence/devcodes/` (thanks to @DastardlyBaker for it).
 - The diagnostics download carried the LAN addresses local mode is configured
   with: the collector's address and the address Home Assistant listens on, in
   the file the support guide tells people to attach to a public issue (#53).
