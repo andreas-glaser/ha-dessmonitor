@@ -1415,12 +1415,19 @@ def _build_base_diagnostics(
     device_meta = device_info.get("device", {})
     collector_meta = device_info.get("collector", {})
 
+    # Home Assistant offers "Download diagnostics" on each device as well as on
+    # the integration entry, and a reporter attaches whichever one they found.
+    # This file used to print the serial number, the collector product number
+    # and the user's own alias, while the hub file replaced all three with the
+    # correlation hash and the support guide promised the download carried no
+    # identifiers. Both files now keep that promise, and two downloads of one
+    # device still carry the same hash so they can be compared (#53).
     return {
         "device_info": {
-            "serial_number": device_sn,
-            "alias": device_meta.get("alias", "Unknown"),
+            "serial_number": short_identity(device_sn),
+            "alias": short_identity(device_meta.get("alias")),
             "firmware_version": collector_meta.get("fireware", "Unknown"),
-            "collector_pn": collector_meta.get("pn", "Unknown"),
+            "collector_pn": short_identity(collector_meta.get("pn")),
             "device_code": device_meta.get("devcode"),
             "device_address": device_meta.get("devaddr"),
         },

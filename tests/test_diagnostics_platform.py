@@ -14,6 +14,7 @@ from custom_components.dessmonitor import _format_control_fields
 from custom_components.dessmonitor import diagnostics as diagnostics_platform
 from custom_components.dessmonitor.api import DessMonitorAPI
 from custom_components.dessmonitor.const import DOMAIN
+from custom_components.dessmonitor.support_report import short_identity
 
 
 def test_platform_exposes_the_hooks_home_assistant_looks_up() -> None:
@@ -42,8 +43,12 @@ async def test_device_diagnostics_returns_the_device_payload(
         hass, entry, device
     )
 
-    assert report["device_info"]["serial_number"] == "SN-1"
-    assert report["device_info"]["collector_pn"] == "PN-1"
+    # Both downloads are attached to public issues, so neither prints the
+    # serial, the collector product number or the user's alias (#53).
+    assert report["device_info"]["serial_number"] == short_identity("SN-1")
+    assert report["device_info"]["collector_pn"] == short_identity("PN-1")
+    assert report["device_info"]["alias"] == short_identity("Inverter")
+    assert "SN-1" not in json.dumps(report)
     assert report["device_info"]["device_code"] == 6544
     assert report["raw_data_points"] == 1
 
