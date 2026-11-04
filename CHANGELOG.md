@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Device support for devcode 684, a single-phase grid-connected PV inverter
+  reported through ShineMonitor and sold as Panther Solar. It adds both string
+  voltages and currents, grid voltage and current, the daily and lifetime
+  energy counters, the radiator, inductor and enclosure temperatures, the
+  nameplate power and voltage ratings and the work mode: 22 of its 39 readings
+  resolve now against 8 before, and none of the remaining 17 carries a unit
+  (#62, thanks to @sabiwa for the diagnostics download). The download is
+  committed under `docs/evidence/devcodes/`.
 - Home Assistant now says whether an inverter is fully supported. A **Repairs**
   card names a devcode that has no profile, or one whose profile leaves readings
   unmapped, with how many readings reach no entity and a link to the support
