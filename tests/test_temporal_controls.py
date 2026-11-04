@@ -341,13 +341,13 @@ async def test_native_values_are_published_through_home_assistant(hass, kind, ex
 
 
 # Devcode 6515 advertises the same four schedule boundaries under its own ids,
-# with the values observed in the analysis committed for #57. Its clock,
-# sys_eybond_read_95, has never been read, so it is deliberately unclassified.
+# plus a clock, with the values observed in the analyses committed for #57.
 FIELDS_6515 = {
     "Secondary Charging Priority Start Time": ("bat_eybond_read_61", "16:44"),
     "Secondary Charging Priority End Time": ("bat_eybond_read_62", "19:40"),
     "Secondary Output Priority Start Time": ("bse_eybond_read_52", "16:32"),
     "Secondary Output Priority End Time": ("bse_eybond_read_53", "17:00"),
+    " Inverter Time": ("sys_eybond_read_95", "2026-10-29 20:25:34"),
 }
 
 
@@ -367,7 +367,19 @@ async def test_devcode_6515_schedule_fields_are_time_entities(hass):
             time(16, 32),
             time(17, 0),
         ]
-        assert await _entities(coordinator, "text") == []
+        clocks = await _entities(coordinator, "text")
+        assert [entity._field_id for entity in clocks] == ["sys_eybond_read_95"]
+        assert clocks[0].native_value == "2026-10-29 20:25:34"
+        # Pre-#57 releases published this field as a number entity under its
+        # untrimmed raw name, with no other guard against its non-numeric
+        # value: unique_id "TEST__inverter_time" (double underscore from the
+        # leading space). disable_replaced_numbers must still find and retire
+        # that exact id on upgrade, or those installs keep a broken entity
+        # alongside the new clock instead of replacing it.
+        assert clocks[0].legacy_number_unique_ids == (
+            "TEST__inverter_time",
+            "TEST_inverter_time",
+        )
         assert await _async_build_number_entities(coordinator, set()) == []
 
         entity = times[0]
@@ -383,23 +395,22 @@ async def test_devcode_6515_schedule_fields_are_time_entities(hass):
         await coordinator.async_shutdown()
 
 
-@pytest.mark.parametrize("clock", ["2026-11-01 10:00:39", "10:00:39"])
-async def test_devcode_6515_clock_is_neither_classified_nor_numeric(hass, clock):
-    """Its read format is unobserved, so no write path may assume one.
+async def test_devcode_6515_clock_rejects_an_unobserved_shape(hass):
+    """The field is classified, but an unexpected wire value is not trusted.
 
-    Writing a calendar string in the wrong format would set the inverter clock
-    rather than be rejected, and the schedules depend on that clock. Until a
-    read is reported it stays out of the time and text platforms, and out of
-    the number platform for either calendar shape it may use. A clock reported
-    as a bare digit run, such as 20261101100039, is indistinguishable from a
-    numeric setting and would still be published as a number; that is the
-    remaining reason to ask the reporter for one read of it.
+    A clock reported as a bare digit run, such as 20261101100039, is
+    indistinguishable from a numeric setting. Nobody has reported that shape
+    on this devcode, so it must still read as unsupported rather than guessed,
+    and it must never fall back to the number platform.
     """
-    fields = {" Inverter Time": ("sys_eybond_read_95", clock)}
+    fields = {" Inverter Time": ("sys_eybond_read_95", "10:00:39")}
     coordinator = _coordinator(hass, devcode=6515, fields=fields)
     try:
         assert await _entities(coordinator) == []
-        assert await _entities(coordinator, "text") == []
+        clocks = await _entities(coordinator, "text")
+        assert len(clocks) == 1
+        assert clocks[0].native_value is None
+        assert clocks[0].extra_state_attributes["value_status"] == "unsupported_format"
         assert await _async_build_number_entities(coordinator, set()) == []
     finally:
         await coordinator.async_shutdown()

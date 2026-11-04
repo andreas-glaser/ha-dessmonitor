@@ -76,15 +76,15 @@ CONTROL_FIELD_MAPPINGS: dict[str, str] = {
 }
 
 # Cloud control ids, not local Modbus write addresses. The four schedule
-# boundaries read as HH:MM in the analysis committed for #57. The clock,
-# sys_eybond_read_95, is deliberately absent: no read of it has been reported
-# on this devcode, and a calendar string written in the wrong format would set
-# the inverter clock rather than be rejected.
+# boundaries read as HH:MM, and the clock reads the same 19-character
+# "YYYY-MM-DD HH:MM:SS" string as 6544's sys_eybond_read_44023, both confirmed
+# by hardware reads reported for #57.
 TEMPORAL_CONTROLS: dict[str, str] = {
     "bat_eybond_read_61": "time",
     "bat_eybond_read_62": "time",
     "bse_eybond_read_52": "time",
     "bse_eybond_read_53": "time",
+    "sys_eybond_read_95": "text",
 }
 
 

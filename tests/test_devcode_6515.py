@@ -155,8 +155,9 @@ def test_control_names_are_trimmed_before_they_become_an_entity() -> None:
         ("bat_eybond_read_62", "time"),
         ("bse_eybond_read_52", "time"),
         ("bse_eybond_read_53", "time"),
-        # The clock, whose read format nobody has reported on this devcode.
-        ("sys_eybond_read_95", None),
+        # The clock, confirmed reading the same 19-character calendar string
+        # as 6544's sys_eybond_read_44023.
+        ("sys_eybond_read_95", "text"),
         # Devcode 6544's ids mean nothing here.
         ("bat_eybond_read_43988", None),
         ("sys_eybond_read_44023", None),

@@ -142,14 +142,18 @@ def _devcode_6515_coordinator() -> MagicMock:
     return coordinator
 
 
-async def test_padded_control_name_does_not_reach_an_entity() -> None:
-    """Devcode 6515 reports " Inverter Time"; the padding is not an identity."""
-    entities = await _async_build_number_entities(_devcode_6515_coordinator(), set())
-    entity = next(e for e in entities if e.unique_id.endswith("inverter_time"))
+async def test_padded_control_name_does_not_reach_a_number_entity() -> None:
+    """Devcode 6515 reports " Inverter Time" as a clock, not a number.
 
-    assert entity.name == "Test inverter Inverter Time"
-    assert entity.unique_id == "DEVICE-SERIAL_inverter_time"
-    assert entity.legacy_unique_id == "DEVICE-SERIAL__inverter_time"
+    Its confirmed `YYYY-MM-DD HH:MM:SS` read format classifies it as a
+    temporal control (see test_temporal_controls.py), which excludes it from
+    the number platform the same way the schedule boundaries are excluded.
+    The trimming of its leading space is covered directly on
+    `map_control_field` in test_devcode_6515.py.
+    """
+    entities = await _async_build_number_entities(_devcode_6515_coordinator(), set())
+
+    assert all(not e.unique_id.endswith("inverter_time") for e in entities)
 
 
 async def test_devcode_mapping_names_an_internal_control_identifier() -> None:

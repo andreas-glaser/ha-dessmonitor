@@ -343,8 +343,9 @@ Two rules, both from #48 and #57:
   hardware for that devcode, or when its read format is at least observed. A
   calendar string in the wrong format sets the inverter clock rather than being
   rejected, and the schedules depend on that clock. Devcode 6515 advertises
-  such a field, `sys_eybond_read_95`, and it is deliberately left out until
-  somebody reports one read of it.
+  such a field, `sys_eybond_read_95`, and it stayed out of this list until a
+  reported read showed the same 19-character `YYYY-MM-DD HH:MM:SS` string as
+  6544's `sys_eybond_read_44023`.
 
 Moving a field from `number` to `time` or `text` changes its entity id, so it
 ships in a minor release with an upgrade note. The old number entity is

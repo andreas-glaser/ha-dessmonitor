@@ -21,11 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   readings only, committing one guards more of a devcode (#60).
 - Cloud-backed time entities for the four secondary-priority schedule boundaries
   on devcode 6515, whose field ids differ from 6544's and whose values the
-  committed analysis shows reading as `HH:MM` (#57). Its clock field is left
-  alone until somebody reports a read of it: a calendar string written in the
-  wrong format would set the inverter clock rather than be rejected. Each
-  devcode profile now declares its own temporal fields in `TEMPORAL_CONTROLS`,
-  so adding the next one is a profile change rather than an integration change.
+  committed analysis shows reading as `HH:MM`, plus a calendar-validated text
+  control for its clock once a reported read showed the same 19-character
+  `YYYY-MM-DD HH:MM:SS` string as 6544's (#57). Each devcode profile now
+  declares its own temporal fields in `TEMPORAL_CONTROLS`, so adding the next
+  one is a profile change rather than an integration change.
 - Cloud-backed time entities for the four secondary-priority schedule boundaries
   on devcode 6544, plus a calendar-validated text control for its timezone-free
   inverter clock. Matching obsolete number entities are disabled, not deleted.
