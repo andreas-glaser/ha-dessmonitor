@@ -25,6 +25,11 @@ from typing import Any
 # redaction and checksum helpers below. The devcode-aware functions import
 # what they need when they run, inside Home Assistant or the test suite.
 
+# 7 says how many rows each exclusion accounts for, under ``excluded``, and
+# counts the unresolved rows, so resolved + unresolved == total exactly. Three
+# classes of row are now left out of ``total`` - nothing, attributes and
+# declared settings - and without the breakdown a reader cannot reconstruct
+# "maps N of M readings", which is the complaint that produced version 5.
 # 6 leaves a reading a profile declares a setting out of both counts, the way
 # an entity attribute already was: devcode 2452 returns the inverter's own
 # setpoints beside its telemetry, five of them the values of controls the
@@ -35,7 +40,7 @@ from typing import Any
 # number of distinct entities those readings reach is reported separately.
 # Version 4 counted distinct entity keys against raw rows, which made a device
 # whose collector repeats a title look as if readings were being dropped.
-REPORT_VERSION = 6
+REPORT_VERSION = 7
 
 SUPPORTED = "supported"
 PARTIAL = "partial"
@@ -108,9 +113,12 @@ def build_support_report(
     # Rows, not titles: a collector that reports one title twice reaches one
     # entity with two readings, and both counts have to say so.
     resolved_rows = 0
-    # Rows that reach no sensor and should not: an attribute of another entity,
-    # or a setting the profile declares (#53).
-    excluded_rows = 0
+    # Rows that reach no sensor and should not. Counted apart so the report
+    # says why ``resolved`` and the unresolved lists do not add up to the
+    # number of rows the collector sent.
+    attribute_rows = 0
+    setting_rows = 0
+    unresolved_rows = 0
 
     for point in readings:
         title = point.get("title")
@@ -129,14 +137,17 @@ def build_support_report(
         if key:
             resolved_keys.add(key)
             resolved_rows += 1
-        elif title.casefold() in _ATTRIBUTE_READINGS or is_setting_reading(
-            devcode, title
-        ):
-            excluded_rows += 1
+        elif title.casefold() in _ATTRIBUTE_READINGS:
+            attribute_rows += 1
+            continue
+        elif is_setting_reading(devcode, title):
+            setting_rows += 1
             continue
         elif unit:
+            unresolved_rows += 1
             unresolved_with_unit.append({"title": title, "unit": unit, "sample": value})
         else:
+            unresolved_rows += 1
             unresolved_without_unit.append(title)
 
     profile = _profile_facts(devcode)
@@ -154,7 +165,14 @@ def build_support_report(
             "profile": profile["name"],
             "known_inverters": profile["known_inverters"],
             "resolved": resolved_rows,
-            "total": len(reading_rows) - excluded_rows,
+            # Rows, so that resolved + unresolved == total exactly, even where
+            # a collector repeats a title and the lists below deduplicate it.
+            "unresolved": unresolved_rows,
+            "total": len(reading_rows) - attribute_rows - setting_rows,
+            "excluded": {
+                "attribute_readings": attribute_rows,
+                "declared_settings": setting_rows,
+            },
             "sensors": len(resolved_keys),
             "unresolved_with_unit": sorted(
                 unresolved_with_unit, key=lambda item: item["title"].casefold()
@@ -175,6 +193,73 @@ def build_support_report(
 
     report["checksum"] = report_checksum(report)
     return report
+
+
+# How far two sources may disagree about one reading before the difference is
+# a unit mistake rather than two measurements taken a moment apart. The
+# legitimate pairs in the committed evidence differ by well under a percent
+# (50.1 Hz against 50.2, 230.5 V against 230.3); the PI18 energy counter in
+# #53 differed by exactly a thousand.
+SCALE_DISAGREEMENT_RATIO = 100.0
+
+
+def cross_source_readings(report: dict[str, Any]) -> dict[str, tuple[float, float]]:
+    """Pair a device report's readings with its cloud parameters, by sensor key.
+
+    A hybrid snapshot carries the local value in ``readings`` and the cloud's
+    own figure for the same sensor in ``parameters``, so a device report holds
+    two independent measurements of one reading. That pairing is the only
+    evidence a unit mistake in a local driver leaves behind in a support file,
+    and it is what shows the PI18 ``ET`` query answering 10104399 beside the
+    cloud's 10104.399 kWh (#53).
+
+    Only readings both sources carry, and both carry as numbers, are returned.
+    """
+    devcode = report.get("devcode")
+    readings = _numeric_by_key(devcode, report.get("readings") or [], "title", "value")
+    parameters = _numeric_by_key(
+        devcode, report.get("parameters") or [], "name", "value"
+    )
+    return {
+        key: (readings[key], parameters[key])
+        for key in sorted(readings.keys() & parameters.keys())
+    }
+
+
+def scale_disagreements(
+    report: dict[str, Any], *, ratio: float = SCALE_DISAGREEMENT_RATIO
+) -> dict[str, tuple[float, float]]:
+    """Return the paired readings whose two sources disagree about scale."""
+    disagreements: dict[str, tuple[float, float]] = {}
+    for key, (local, cloud) in cross_source_readings(report).items():
+        larger, smaller = max(abs(local), abs(cloud)), min(abs(local), abs(cloud))
+        if smaller and larger / smaller >= ratio:
+            disagreements[key] = (local, cloud)
+    return disagreements
+
+
+def _numeric_by_key(
+    devcode: Any, points: list[dict[str, Any]], title_field: str, value_field: str
+) -> dict[str, float]:
+    """Resolve each point to its sensor key, keeping only numeric values.
+
+    The first value for a key wins, as it does on the sensor platform: a
+    collector that reports one title twice reaches one entity.
+    """
+    resolved: dict[str, float] = {}
+    for point in points:
+        title = point.get(title_field)
+        if not isinstance(title, str) or not title.strip():
+            continue
+        raw = point.get(value_field)
+        try:
+            value = float(str(raw).strip())
+        except (TypeError, ValueError):
+            continue
+        key = resolved_key_for(devcode, {"title": title, "val": raw})
+        if key and key not in resolved:
+            resolved[key] = value
+    return resolved
 
 
 def device_support_status(

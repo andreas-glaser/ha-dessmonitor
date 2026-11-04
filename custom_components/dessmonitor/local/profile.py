@@ -65,6 +65,13 @@ PI18_GS_FIELDS = (
     Field("PV2 Voltage", 19, "V", 0.1),
 )
 
+# Every reading this driver can emit, and the unit it emits it in. The local
+# path labels a value with the canonical unit from ``SENSOR_TYPES``, not with
+# this one, so a number in the wrong scale is published wearing the right
+# label: that is how the PI18 ``ET`` query shipped in watt-hours on a kWh
+# sensor (#53). ``tests/local/test_driver_contracts.py`` holds this table
+# against the sensor catalogue so a field cannot claim a unit the entity does
+# not have, and the parser's scale is chosen to match what is declared here.
 SENSOR_UNITS = {
     field.title: field.unit for field in (*GS_FIELDS, *GS2_FIELDS, *PI18_GS_FIELDS)
 } | {"Operating mode": "", "Energy Total": "kWh"}

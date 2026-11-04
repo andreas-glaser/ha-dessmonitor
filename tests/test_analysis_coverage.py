@@ -21,7 +21,10 @@ from custom_components.dessmonitor.device_support import (
 )
 from custom_components.dessmonitor.sensor import _build_sensor_entities
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
-from custom_components.dessmonitor.support_report import normalized_reports
+from custom_components.dessmonitor.support_report import (
+    normalized_reports,
+    scale_disagreements,
+)
 
 ANALYSIS_FILES = sorted(
     Path(__file__)
@@ -293,3 +296,69 @@ def test_a_diagnostics_download_is_read_as_home_assistant_writes_it() -> None:
         assert record["source"] == "integration_diagnostics"
         assert record["checksum_valid"] is True
         assert record["units"] == {"today energy": "kWh"}
+
+
+# Scale disagreements a committed file *records*, rather than ones the
+# integration still has. A hybrid download carries the local reading and the
+# cloud's own figure for the same sensor, so a file taken before a unit fix
+# preserves the evidence of it. Each entry names the fix that closed it, and
+# the test below removes the entry's excuse once the file no longer shows it.
+RECORDED_DISAGREEMENTS: dict[tuple[int, str], str] = {
+    (2452, "Energy Total"): (
+        "taken before the PI18 ET unit fix: the local query answered in "
+        "watt-hours against the cloud's kWh, 10104399 against 10104.399 (#53)"
+    ),
+}
+
+
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_two_sources_agree_on_the_scale_of_a_reading(path: Path) -> None:
+    """A hybrid download measures the same reading twice; they must agree.
+
+    `SENSOR_TYPES` declares a unit, local drivers emit numbers, and nothing
+    compared the two until the PI18 lifetime energy counter was found reading a
+    thousand times too high in a file we already had (#53). Where a committed
+    download carries both a local reading and the cloud's parameter for one
+    sensor, an order of magnitude between them is a unit mistake.
+    """
+    for device in _device_reports(path):
+        devcode = device.get("devcode")
+        for key, (local, cloud) in scale_disagreements(device).items():
+            assert (devcode, key) in RECORDED_DISAGREEMENTS, (
+                f"{path.name}: devcode {devcode} reports {key} as {local} "
+                f"locally and {cloud} from the cloud. One of the two is scaled "
+                "wrongly; fix the driver or the mapping, or record the entry in "
+                "RECORDED_DISAGREEMENTS with the reason."
+            )
+
+
+def test_recorded_disagreements_still_describe_a_committed_file() -> None:
+    """An entry must lose its excuse once the evidence stops showing it.
+
+    Otherwise a stale entry keeps a real disagreement excused after someone
+    replaces the file with one taken on fixed code.
+    """
+    seen: set[tuple[int, str]] = set()
+    for path in ANALYSIS_FILES:
+        for device in _device_reports(path):
+            devcode = device.get("devcode")
+            for key in scale_disagreements(device):
+                seen.add((devcode, key))
+
+    stale = sorted(set(RECORDED_DISAGREEMENTS) - seen)
+    assert not stale, (
+        f"no committed file shows these disagreements any more: {stale}. "
+        "Remove them from RECORDED_DISAGREEMENTS."
+    )
+
+
+def _device_reports(path: Path) -> list[dict[str, Any]]:
+    """Return the device reports in a committed diagnostics download.
+
+    A CLI analysis has no second source to compare against, so it yields none.
+    """
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    data = payload.get("data", payload)
+    devices = data.get("devices") if isinstance(data, dict) else None
+    return [device for device in devices or [] if isinstance(device, dict)]

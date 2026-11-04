@@ -21,13 +21,23 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import (
+    CONF_API_PROFILE,
+    CONF_COMPANY_KEY,
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
     CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_DEVICE_ADDRESS,
+    CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
     CONF_LOCAL_LISTEN_IP,
     CONF_LOCAL_MODE,
+    CONF_LOCAL_POLL_INTERVAL,
+    CONF_LOCAL_REDIRECT_CONFIRMED,
+    CONF_LOCAL_TCP_PORT,
+    CONF_LOCAL_UDP_PORT,
+    CONF_PASSWORD,
     CONF_UPDATE_INTERVAL,
+    CONF_USERNAME,
     CONNECTION_TYPE_CLOUD,
     CONNECTION_TYPE_LOCAL,
     DEFAULT_UPDATE_INTERVAL,
@@ -1187,18 +1197,42 @@ def _resolve_device_sn(device: dr.DeviceEntry) -> str | None:
     return None
 
 
-# Credentials never leave the instance in a support file. Each key is replaced
-# rather than dropped, so a reader can still tell a configured value from an
-# absent one, and the collector product number becomes its correlation hash
-# because these files are attached to public issues (AGENTS.md, #60).
-_REDACTED_ENTRY_KEYS = frozenset({"username", "password", "company_key", "token"})
-_HASHED_ENTRY_KEYS = frozenset({CONF_LOCAL_EXPECTED_PN})
-# Local mode configures the collector's address and the address Home Assistant
-# listens on. Both are network identifiers and both were written out verbatim,
-# in a file the support guide tells people to attach to a public issue (#53).
-_NETWORK_ENTRY_KEYS = frozenset(
-    {CONF_LOCAL_LISTEN_IP, CONF_LOCAL_COLLECTOR_IP, CONF_LOCAL_COLLECTOR_IPS}
-)
+# What a support download may say about each configuration key. The file is
+# attached to public issues, so this is an allowlist: a key that is not
+# classified here is redacted rather than published, and
+# ``test_every_config_key_is_classified`` fails until someone decides. The
+# previous deny-list published anything nobody had thought about, which is how
+# a reporter's collector and listen addresses reached a public issue (#53).
+_PUBLISH = "publish"
+_REDACT = "redact"
+_HASH = "hash"
+_DESCRIBE_ADDRESS = "describe_address"
+
+_ENTRY_DISCLOSURE: dict[str, str] = {
+    # Credentials and the session token: never, in any form.
+    CONF_USERNAME: _REDACT,
+    CONF_PASSWORD: _REDACT,
+    CONF_COMPANY_KEY: _REDACT,
+    "token": _REDACT,
+    # Choices that shape behaviour and identify nothing.
+    CONF_API_PROFILE: _PUBLISH,
+    CONF_CONNECTION_TYPE: _PUBLISH,
+    CONF_UPDATE_INTERVAL: _PUBLISH,
+    CONF_LOCAL_MODE: _PUBLISH,
+    CONF_LOCAL_POLL_INTERVAL: _PUBLISH,
+    CONF_LOCAL_TCP_PORT: _PUBLISH,
+    CONF_LOCAL_UDP_PORT: _PUBLISH,
+    CONF_LOCAL_DEVICE_ADDRESS: _PUBLISH,
+    CONF_LOCAL_DEVICE_CODE: _PUBLISH,
+    CONF_LOCAL_REDIRECT_CONFIRMED: _PUBLISH,
+    # The collector product number correlates two downloads of one account
+    # without disclosing the number itself.
+    CONF_LOCAL_EXPECTED_PN: _HASH,
+    # Network addresses are described rather than printed; see below.
+    CONF_LOCAL_LISTEN_IP: _DESCRIBE_ADDRESS,
+    CONF_LOCAL_COLLECTOR_IP: _DESCRIBE_ADDRESS,
+    CONF_LOCAL_COLLECTOR_IPS: _DESCRIBE_ADDRESS,
+}
 _REDACTED = "**redacted**"
 
 
@@ -1230,24 +1264,31 @@ def _redacted_entry_values(
 ) -> dict[str, Any]:
     """Return config values with credentials and identifiers removed.
 
+    Only a key ``_ENTRY_DISCLOSURE`` classifies is published; anything else is
+    redacted, so a configuration option added later cannot be disclosed by
+    being forgotten.
+
     ``subnets`` carries the address grouping across both the data and the
     options of one download, so the same subnet gets the same number in both.
     """
     labels = subnets if subnets is not None else {}
     result: dict[str, Any] = {}
     for key, value in values.items():
-        if key in _REDACTED_ENTRY_KEYS:
-            result[key] = _REDACTED if value not in (None, "") else value
-        elif key in _HASHED_ENTRY_KEYS:
+        disclosure = _ENTRY_DISCLOSURE.get(key, _REDACT)
+        if disclosure is _PUBLISH:
+            result[key] = value
+        elif disclosure is _HASH:
             result[key] = short_identity(value) if value else value
-        elif key in _NETWORK_ENTRY_KEYS:
+        elif disclosure is _DESCRIBE_ADDRESS:
             result[key] = (
                 [_network_label(item, labels) for item in value]
                 if isinstance(value, (list, tuple))
                 else _network_label(value, labels)
             )
         else:
-            result[key] = value
+            # Redacted, and the key is kept so a reader can still tell a
+            # configured value from an absent one.
+            result[key] = _REDACTED if value not in (None, "") else value
     return result
 
 
