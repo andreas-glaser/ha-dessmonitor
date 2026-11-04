@@ -101,6 +101,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A device's own diagnostics download printed its serial number, its collector
+  product number and the owner's alias, while the integration-wide download
+  replaced all three with the `sha256:` correlation form and both the support
+  guide and the Repairs card promised the file carried no identifiers. Home
+  Assistant offers that button on every device page, so a reporter who used it
+  disclosed what the other file protects (#53). Both downloads now hash the
+  three, and two downloads of one device still carry the same hash.
 - The diagnostics download published any configuration key nobody had
   classified, which is how a reporter's collector and listen addresses reached
   a public issue. The classification is now an allowlist: a key that is not
