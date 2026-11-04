@@ -590,7 +590,11 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     self._ctrl_value_retries[sn] = retries + 1
                     if self._ctrl_value_retries[sn] >= self._control_value_budget(sn):
-                        _LOGGER.info(
+                        # Once per device per budget, and the only line that
+                        # reports it now that the API layer keeps its own
+                        # attempts at debug (#61). A control left unknown is
+                        # worth a warning; the attempts themselves were not.
+                        _LOGGER.warning(
                             "Giving up on %d control value(s) for device %s after "
                             "%d attempts, the last of which the API %s; ordinary "
                             "cloud telemetry still updates them, and reloading the "

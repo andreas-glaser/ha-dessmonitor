@@ -96,6 +96,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A control read that the integration expects to fail, retries on a bounded
+  budget and reports itself was also logged at error level by the API layer, on
+  every attempt. One account collected twenty red log entries in an hour -
+  `queryDeviceCtrlValue: ERR_TIMEOUT` and `ERR_SYSTEM_EXCEPTION` - for a
+  condition being handled as designed (#61). Those attempts are debug now, and
+  the line that says a device's controls were given up on is a warning rather
+  than info, so the outcome stays visible while the attempts do not. Failures
+  on every other request are unchanged.
 - The support card counted a devcode's own settings as readings that reach no
   entity. Devcode 2452 returns the inverter's setpoints in the same call as the
   telemetry - the battery recharge, bulk and float voltages, the

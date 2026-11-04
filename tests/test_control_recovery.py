@@ -1,6 +1,7 @@
 """Control recovery uses cloud revisions, not fast local telemetry updates."""
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -635,4 +636,31 @@ async def test_a_control_field_list_that_recovers_is_published(hass):
 
     assert set(controls) == set(CONTROLS)
     assert coordinator._ctrl_field_failures == {}
+    await coordinator.async_shutdown()
+
+
+async def test_exhausting_the_budget_is_reported_once_per_device(hass, caplog):
+    """The give-up line is now the only report of an unreadable control (#61).
+
+    The API layer logged every refused attempt at error level, which filled a
+    reporter's log with twenty red entries in an hour for a bounded, retried
+    condition. Those attempts are debug now, so this line carries the outcome
+    and has to be visible by default.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    await _async_build_select_entities(coordinator, set())
+
+    with caplog.at_level(logging.DEBUG, logger="custom_components.dessmonitor"):
+        for _ in range(MAX_UNANSWERED_CONTROL_VALUE_RETRIES + 5):
+            coordinator.cloud_revision += 1
+            await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    warnings = [
+        record
+        for record in caplog.records
+        if record.levelno == logging.WARNING
+        and record.getMessage().startswith("Giving up on")
+    ]
+    assert len(warnings) == 1
+    assert "TEST" in warnings[0].getMessage()
     await coordinator.async_shutdown()
