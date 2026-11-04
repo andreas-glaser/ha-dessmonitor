@@ -229,3 +229,42 @@ def test_the_counts_describe_one_population() -> None:
     assert support["total"] - support["resolved"] == unresolved_rows
     # The entities those readings reach, which is the smaller number.
     assert support["sensors"] == 2
+
+
+def test_a_setting_the_profile_declares_is_not_reported_as_a_dropped_reading() -> None:
+    """Devcode 2452 returns its own setpoints among the telemetry (#53).
+
+    Five of them are the values of controls the account publishes as number and
+    select entities, and all of them carry a unit, so the card told the owner
+    that fourteen readings were missing while nothing was.
+    """
+    readings = [
+        {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+        {"title": "Battery bulk voltage", "val": "56.5", "unit": "V"},
+        {"title": "Battery float voltage", "val": "56.5", "unit": "V"},
+        {"title": "Low DC cut off voltage on second output", "val": "48.0", "unit": "V"},
+    ]
+
+    report = build_support_report(devcode=2452, readings=readings)
+    support = report["support"]
+
+    assert support["status"] == SUPPORTED
+    assert support["unresolved_with_unit"] == []
+    # One reading, and the three settings counted in neither column.
+    assert (support["resolved"], support["total"]) == (1, 1)
+    # They stay in the readings list, so a maintainer still sees the values.
+    assert [row["title"] for row in report["readings"]] == [
+        row["title"] for row in readings
+    ]
+
+
+def test_a_setting_declared_by_another_devcode_is_still_a_dropped_reading() -> None:
+    """Each profile declares its own settings; a title is not settings-shaped."""
+    readings = [{"title": "Battery bulk voltage", "val": "56.5", "unit": "V"}]
+
+    report = build_support_report(devcode=6515, readings=readings)
+
+    assert report["support"]["status"] == PARTIAL
+    assert report["support"]["unresolved_with_unit"] == [
+        {"title": "Battery bulk voltage", "unit": "V", "sample": "56.5"}
+    ]

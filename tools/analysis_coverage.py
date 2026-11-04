@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from custom_components.dessmonitor.device_support import (  # noqa: E402
     apply_devcode_transformations,
     is_devcode_supported,
+    is_setting_reading,
 )
 from custom_components.dessmonitor.sensor_titles import (  # noqa: E402
     resolve_sensor_key,
@@ -63,12 +64,23 @@ class Coverage:
 
         A title without a unit is a setting, an identity field or a timestamp,
         which reaches Home Assistant through another platform or not at all.
-        One with a unit is a reading that is being dropped.
+        One with a unit is a reading that is being dropped - unless the profile
+        declares it a setting, which is how a collector that returns its own
+        setpoints among the telemetry is handled (#53).
         """
         return [
             (title, self.units[title])
             for title in self.unresolved
-            if title in self.units
+            if title in self.units and not is_setting_reading(self.devcode, title)
+        ]
+
+    @property
+    def declared_settings(self) -> list[str]:
+        """Unresolved titles the profile declares to be settings, not readings."""
+        return [
+            title
+            for title in self.unresolved
+            if is_setting_reading(self.devcode, title)
         ]
 
 
@@ -132,13 +144,16 @@ def _report_one(
         print(f"    {title}{arrow}")
 
     with_units = result.unmapped_readings
+    settings = set(result.declared_settings)
     print(
         f"  unresolved {len(result.unresolved)}, "
         f"of which {len(with_units)} carry a unit"
+        + (f" and {len(settings)} are declared settings" if settings else "")
     )
     for title in result.unresolved:
         unit = result.units.get(title)
-        print(f"    {title}{f'  [{unit}]' if unit else ''}")
+        marker = "  (setting)" if title in settings else ""
+        print(f"    {title}{f'  [{unit}]' if unit else ''}{marker}")
 
     return len(with_units)
 

@@ -413,3 +413,48 @@ async def test_diagnostics_report_the_control_values_the_entities_show(
     assert config["Bulk Charging Voltage"]["value"] == "56.4"
     # Never read, and said so rather than claiming the control is unset.
     assert config["Backlight Control"]["value"] == "Not read"
+
+
+async def test_hub_diagnostics_do_not_disclose_local_network_addresses(
+    hass: HomeAssistant,
+) -> None:
+    """The LAN addresses local mode is configured with are identifiers (#53).
+
+    A reporter attached this file to a public issue with their collector and
+    Home Assistant addresses in it. What support needs from those two fields is
+    the family, the scope and whether they share a subnet, so that is what the
+    download now carries.
+    """
+    coordinator = MagicMock()
+    coordinator.is_hybrid = False
+    coordinator.last_update_success = True
+    coordinator.cloud_revision = 1
+    coordinator.stale_cloud_serials = frozenset()
+    coordinator.update_interval = timedelta(seconds=300)
+    coordinator.data = {}
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = {"username": "someone@example.com", "password": "hunter2"}
+    entry.options = {
+        "local_mode": "prefer_local",
+        "local_listen_ip": "192.168.18.134",
+        "local_collector_ips": ["192.168.18.27", "10.11.12.13"],
+        "local_poll_interval": 10,
+    }
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    serialized = json.dumps(report)
+    for address in ("192.168.18.134", "192.168.18.27", "10.11.12.13"):
+        assert address not in serialized
+
+    options = report["entry_options"]
+    # The listen address shares the first collector's subnet and not the
+    # second's, which is the fact a local-mode thread actually turns on.
+    assert options["local_listen_ip"] == "private ipv4 in subnet 1"
+    assert options["local_collector_ips"] == [
+        "private ipv4 in subnet 1",
+        "private ipv4 in subnet 2",
+    ]
+    assert options["local_poll_interval"] == 10

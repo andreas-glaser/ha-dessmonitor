@@ -111,7 +111,12 @@ def parse_command_response(
         mode = response.data.strip()
         return {"Operating mode": MODE_MAP.get(mode, "Unknown")}
     if command == "ET":
-        return {"Energy Total": _parse_number(response.data, 1.0)}
+        # ET answers in watt-hours while the sensor is kWh, so the reading was
+        # published a thousand times too high: the diagnostics in #53 show this
+        # query returning 10104399 beside the cloud's own 10104.399 kWh for the
+        # same inverter. In hybrid mode the overlay puts that figure on the
+        # Energy Total entity, which feeds the energy dashboard.
+        return {"Energy Total": _parse_number(response.data, 0.001)}
     if command == "PI":
         identified = response.data.strip()
         if identified not in {"17", "18"}:

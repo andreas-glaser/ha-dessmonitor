@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import ipaddress
 import logging
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
@@ -21,7 +22,10 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import DessMonitorAPI, DessMonitorError
 from .const import (
     CONF_CONNECTION_TYPE,
+    CONF_LOCAL_COLLECTOR_IP,
+    CONF_LOCAL_COLLECTOR_IPS,
     CONF_LOCAL_EXPECTED_PN,
+    CONF_LOCAL_LISTEN_IP,
     CONF_LOCAL_MODE,
     CONF_UPDATE_INTERVAL,
     CONNECTION_TYPE_CLOUD,
@@ -1185,17 +1189,59 @@ def _resolve_device_sn(device: dr.DeviceEntry) -> str | None:
 # because these files are attached to public issues (AGENTS.md, #60).
 _REDACTED_ENTRY_KEYS = frozenset({"username", "password", "company_key", "token"})
 _HASHED_ENTRY_KEYS = frozenset({CONF_LOCAL_EXPECTED_PN})
+# Local mode configures the collector's address and the address Home Assistant
+# listens on. Both are network identifiers and both were written out verbatim,
+# in a file the support guide tells people to attach to a public issue (#53).
+_NETWORK_ENTRY_KEYS = frozenset(
+    {CONF_LOCAL_LISTEN_IP, CONF_LOCAL_COLLECTOR_IP, CONF_LOCAL_COLLECTOR_IPS}
+)
 _REDACTED = "**redacted**"
 
 
-def _redacted_entry_values(values: Mapping[str, Any]) -> dict[str, Any]:
-    """Return config values with credentials and identifiers removed."""
+def _network_label(value: Any, subnets: dict[str, int]) -> str:
+    """Describe an address by family, scope and subnet, never by its value.
+
+    Local mode fails in ways that depend on exactly these three facts: whether
+    the collector is reachable at all (a public address is a misconfiguration),
+    and whether Home Assistant listens on the same subnet the collector talks
+    to. Replacing the addresses with a bare marker would take that away, so the
+    numbering is per download and says only which addresses share a subnet.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return text
+    try:
+        address = ipaddress.ip_address(text)
+    except ValueError:
+        return _REDACTED
+    prefix = 24 if address.version == 4 else 64
+    network = str(ipaddress.ip_network(f"{address}/{prefix}", strict=False))
+    label = subnets.setdefault(network, len(subnets) + 1)
+    scope = "private" if address.is_private else "public"
+    return f"{scope} ipv{address.version} in subnet {label}"
+
+
+def _redacted_entry_values(
+    values: Mapping[str, Any], subnets: dict[str, int] | None = None
+) -> dict[str, Any]:
+    """Return config values with credentials and identifiers removed.
+
+    ``subnets`` carries the address grouping across both the data and the
+    options of one download, so the same subnet gets the same number in both.
+    """
+    labels = subnets if subnets is not None else {}
     result: dict[str, Any] = {}
     for key, value in values.items():
         if key in _REDACTED_ENTRY_KEYS:
             result[key] = _REDACTED if value not in (None, "") else value
         elif key in _HASHED_ENTRY_KEYS:
             result[key] = short_identity(value) if value else value
+        elif key in _NETWORK_ENTRY_KEYS:
+            result[key] = (
+                [_network_label(item, labels) for item in value]
+                if isinstance(value, (list, tuple))
+                else _network_label(value, labels)
+            )
         else:
             result[key] = value
     return result
@@ -1217,6 +1263,7 @@ async def async_get_config_entry_diagnostics(
     ``sha256:`` correlation form, so two downloads of the same account can be
     compared without disclosing either.
     """
+    subnets: dict[str, int] = {}
     report: dict[str, Any] = {
         "integration": {
             "version": VERSION,
@@ -1226,8 +1273,8 @@ async def async_get_config_entry_diagnostics(
             "local_mode": entry.options.get(CONF_LOCAL_MODE, LOCAL_MODE_DISABLED),
             "api_profile": resolve_api_profile(dict(entry.data)),
         },
-        "entry_data": _redacted_entry_values(entry.data),
-        "entry_options": _redacted_entry_values(entry.options),
+        "entry_data": _redacted_entry_values(entry.data, subnets),
+        "entry_options": _redacted_entry_values(entry.options, subnets),
     }
 
     coordinator: DessMonitorDataUpdateCoordinator | None = hass.data.get(
