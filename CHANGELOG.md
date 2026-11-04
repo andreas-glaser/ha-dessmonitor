@@ -88,6 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The maintainer tooling rejected every diagnostics download a reporter
+  actually attaches. Home Assistant writes the report a diagnostics hook
+  returns under a `data` key, beside the host metadata it adds itself, and
+  `tools/analysis_coverage.py` only understood the unwrapped shape, so it
+  answered "not a devcode analysis or support report" for the file the support
+  guide asks for (#62).
 - The support card and the diagnostics report counted readings two different
   ways in the same sentence: readings that reach an entity were counted as
   distinct entities while the total counted raw readings, so a collector that

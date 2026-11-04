@@ -9,7 +9,6 @@ labels with a unit cannot reach Home Assistant as a sensor.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -28,13 +27,6 @@ ANALYSIS_FILES = sorted(
     .rglob("analysis_*.json")
 )
 
-_CLI = Path(__file__).resolve().parent.parent / "tools" / "cli"
-if str(_CLI) not in sys.path:
-    sys.path.insert(0, str(_CLI))
-
-from evidence import analysis_checksum  # noqa: E402
-
-
 @pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
 def test_committed_analysis_is_intact(path: Path) -> None:
     """A committed analysis is the authority for a devcode's mappings.
@@ -51,12 +43,6 @@ def test_committed_analysis_is_intact(path: Path) -> None:
         )
 
 
-def _load(path: Path) -> dict[str, Any]:
-    """Return the analysis payload of a committed CLI report."""
-    with path.open("r", encoding="utf-8") as handle:
-        return dict(json.load(handle)["analysis"])
-
-
 def _records(path: Path) -> list[dict[str, Any]]:
     """Return one normalized record per device, for either committed shape.
 
@@ -65,22 +51,6 @@ def _records(path: Path) -> list[dict[str, Any]]:
     """
     with path.open("r", encoding="utf-8") as handle:
         return normalized_reports(json.load(handle))
-
-
-def _titles_with_units(analysis: dict[str, Any]) -> dict[str, str]:
-    """Return observed units by raw title, which marks a title as a reading.
-
-    A title without a unit is a setting, an identity field or a timestamp, and
-    those reach Home Assistant through the number, select and button platforms.
-    """
-    units: dict[str, str] = {}
-    for section, label in (("sample_data", "title"), ("parameters", "name")):
-        for point in analysis.get(section, []):
-            title = point.get(label)
-            unit = (point.get("unit") or "").strip()
-            if title and unit:
-                units[str(title)] = unit
-    return units
 
 
 def _sensor_entities(devcode: int, points: list[dict[str, Any]], hass) -> list[Any]:
@@ -288,3 +258,34 @@ def test_an_edited_report_fails_its_checksum() -> None:
     (record,) = normalized_reports(report)
 
     assert record["checksum_valid"] is False
+
+
+def test_a_diagnostics_download_is_read_as_home_assistant_writes_it() -> None:
+    """Home Assistant wraps a diagnostics report under ``data`` (#62).
+
+    That envelope, not the bare report, is what a reporter attaches to an
+    issue, and the coverage tooling rejected every one of those files as "not a
+    devcode analysis or support report".
+    """
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    report = build_support_report(
+        devcode=684,
+        readings=[
+            {"title": "today energy", "val": "7.65", "unit": "kWh"},
+            {"title": "work mode", "val": "normal", "unit": ""},
+        ],
+    )
+
+    for payload in (
+        # The config-entry hook, which reports every device on the account.
+        {"home_assistant": {"version": "2026.10.4"}, "data": {"devices": [report]}},
+        # The per-device hook, which reports one.
+        {"home_assistant": {"version": "2026.10.4"}, "data": report},
+    ):
+        (record,) = normalized_reports(payload)
+
+        assert record["devcode"] == 684
+        assert record["source"] == "integration_diagnostics"
+        assert record["checksum_valid"] is True
+        assert record["units"] == {"today energy": "kWh"}
