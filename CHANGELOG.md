@@ -96,6 +96,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- Local telemetry published the lifetime energy counter a thousand times too
+  high on PI18 and P17 inverters. The `ET` query answers in watt-hours and the
+  sensor is kWh, so Energy Total read 10,104,399 kWh on the inverter in #53,
+  whose own cloud account reported 10,104.399 kWh at the same moment. In hybrid
+  mode the overlay puts that figure on the entity that feeds the energy
+  dashboard. Cloud-only setups were never affected.
 - A device the cloud reports no control template for was asked for its control
   field list once per refresh for as long as the entry stayed loaded, each
   attempt logging a warning. A grid-tie collector has no template at all and
@@ -232,6 +238,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the committed analysis shows 220.5 V and 7.3 A on string 1 against a 1552 W
   total, and live hardware showed 265 V and 1.6 A against 424 W of export, both
   with a per-string power of 0. `Total PV power` carries the real figure (#58).
+
+### Upgrade notes: local total energy on PI18 and P17
+- Energy Total now reads a thousand times lower on local and hybrid setups with
+  a PI18 or P17 inverter, because the old value was a thousand times too high.
+  The corrected reading is the right one, and it matches what the vendor cloud
+  and the inverter's own display report.
+- Home Assistant keeps the inflated figure in long-term statistics, and reads
+  the drop as a meter reset, so the energy dashboard will show one historical
+  spike. Open **Developer tools > Statistics**, find the Energy Total sensor,
+  and use the fix offered for the drop, or delete its statistics and let them
+  rebuild. Nothing needs doing if the entity is not on your energy dashboard.
 
 ### Upgrade notes: devcode 6544 time and clock controls
 - Four schedule controls move from `number` to `time`, and Inverter Date moves

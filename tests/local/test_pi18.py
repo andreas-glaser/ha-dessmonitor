@@ -75,7 +75,8 @@ async def test_pi18_discovery_and_polling_use_identified_profile(device_code) ->
     assert device.firmware == "12345,67890,00000"
     assert device.metadata["rated_output_power"] == 4500
     assert device.metadata["rated_battery_voltage"] == 48.0
-    assert (await driver.poll(send, device, cycle=12))["Energy Total"] == 83
+    # ET answers in watt-hours, so 83 Wh is 0.083 kWh on a kWh sensor.
+    assert (await driver.poll(send, device, cycle=12))["Energy Total"] == 0.083
     assert set(commands) == set(responses)
 
 
@@ -157,3 +158,18 @@ async def test_each_inverter_address_selects_its_own_profile() -> None:
         "1.0",
         "12345,67890,00000",
     ]
+
+
+def test_total_energy_is_reported_in_kilowatt_hours() -> None:
+    """ET answers in watt-hours and the sensor is kWh (#53).
+
+    The diagnostics in #53 show this query returning 10104399 on an inverter
+    whose own cloud account reported 10104.399 kWh at the same moment, so the
+    Energy Total entity read a thousand times too high whenever local telemetry
+    was overlaid on the cloud snapshot.
+    """
+    response = pi18_response("10104399")
+
+    values = parse_command_response("ET", response, protocol_id="18")
+
+    assert values == {"Energy Total": 10104.399}
