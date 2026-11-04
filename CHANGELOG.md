@@ -88,6 +88,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A device the cloud reports no control template for was asked for its control
+  field list once per refresh for as long as the entry stayed loaded, each
+  attempt logging a warning. A grid-tie collector has no template at all and
+  answers `ERR_NO_RECORD` every time (#62). An empty field list is now cached
+  as the answer it is, and repeated refusals are retired after twelve
+  revisions with one warning at the start and one at the end; reloading the
+  entry starts a new budget.
 - The maintainer tooling rejected every diagnostics download a reporter
   actually attaches. Home Assistant writes the report a diagnostics hook
   returns under a `data` key, beside the host metadata it adds itself, and
