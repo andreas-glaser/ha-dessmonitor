@@ -119,6 +119,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The diagnostics download says whether a control without a value is still
+  being read for or was given up on, with how many rounds recovered nothing,
+  how many are allowed and whether the last round went unanswered. An unknown
+  control looked identical either way, which is the first question behind one
+  that never recovers (#61).
 - The diagnostics download says what each local transport saw: the devices it
   reports, their RS485 address, whether that address was verified and which
   driver answered. The hybrid overlay matches a local device to a cloud one by

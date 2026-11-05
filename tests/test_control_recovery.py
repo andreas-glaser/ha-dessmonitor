@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -664,3 +664,42 @@ async def test_exhausting_the_budget_is_reported_once_per_device(hass, caplog):
     assert len(warnings) == 1
     assert "TEST" in warnings[0].getMessage()
     await coordinator.async_shutdown()
+
+
+async def test_the_download_says_whether_reads_have_been_given_up_on(hass):
+    """A control reading unknown looks the same either way (#61).
+
+    Whether the next refresh will ask again or the budget ran out rounds ago
+    is the first question behind a control that never recovers, and the file
+    could not answer it.
+    """
+    from custom_components.dessmonitor import (
+        MAX_UNANSWERED_CONTROL_VALUE_RETRIES,
+        _build_device_support_report,
+    )
+
+    data = _cloud("first")
+    coordinator = _coordinator(hass, data)
+    coordinator.api.get_device_parameters = AsyncMock(return_value={})
+    entry = MagicMock(entry_id="entry", data={"username": "u"}, options={})
+
+    async def _state():
+        report = await _build_device_support_report(
+            coordinator, entry, "TEST", coordinator.data["TEST"]
+        )
+        return report["control_reads"]
+
+    # Every read times out, so each round spends one of the twelve allowed.
+    for round_number in range(MAX_UNANSWERED_CONTROL_VALUE_RETRIES):
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+        state = await _state()
+        assert state["last_round_went_unanswered"] is True
+        assert state["rounds_allowed"] == MAX_UNANSWERED_CONTROL_VALUE_RETRIES
+        if state["rounds_that_recovered_nothing"] >= state["rounds_allowed"]:
+            break
+        assert state["still_trying"] is True
+        coordinator.cloud_revision += 1
+
+    state = await _state()
+    assert state["still_trying"] is False
+    assert state["without_a_value"] == state["fields"]

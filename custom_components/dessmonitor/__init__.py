@@ -1404,6 +1404,51 @@ def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _control_read_state(
+    coordinator: DessMonitorDataUpdateCoordinator,
+    serial: str,
+    control_fields: dict[str, Any],
+) -> dict[str, Any]:
+    """Say whether a control without a value is still being read for.
+
+    A control that reads unknown looks identical whether the next refresh will
+    ask again or the retry budget ran out rounds ago, and that is the first
+    question behind a control that never recovers (#60, #61). The budget is
+    three rounds that recover nothing when the API answered and had no value,
+    and twelve when it never answered, because a read that times out says
+    nothing about the field.
+    """
+    retries = _int_for(getattr(coordinator, "_ctrl_value_retries", None), serial)
+    budget_for = getattr(coordinator, "_control_value_budget", None)
+    budget = budget_for(serial) if callable(budget_for) else None
+    if not isinstance(budget, int) or isinstance(budget, bool):
+        budget = None
+    unanswered = getattr(coordinator, "_ctrl_value_unanswered", None)
+    unread = sum(
+        1
+        for field in control_fields.values()
+        if isinstance(field, dict) and field.get("value") == _UNREAD
+    )
+    return {
+        "fields": len(control_fields),
+        "without_a_value": unread,
+        "rounds_that_recovered_nothing": retries,
+        "rounds_allowed": budget,
+        "still_trying": budget is None or retries < budget,
+        "last_round_went_unanswered": bool(
+            unanswered.get(serial, False) if isinstance(unanswered, dict) else False
+        ),
+    }
+
+
+def _int_for(mapping: Any, key: str) -> int:
+    """Return a counter a coordinator keeps per device, or zero."""
+    if not isinstance(mapping, dict):
+        return 0
+    value = mapping.get(key, 0)
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
 async def _build_device_support_report(
     coordinator: DessMonitorDataUpdateCoordinator,
     entry: ConfigEntry,
@@ -1441,6 +1486,7 @@ async def _build_device_support_report(
         api_profile=resolve_api_profile(dict(entry.data)),
         integration_version=VERSION,
     )
+    report["control_reads"] = _control_read_state(coordinator, serial, control_fields)
     report["data_source"] = _extract_sensor_value(readings, "Data Source")
     report["last_update"] = _extract_sensor_value(readings, "Timestamp", "Unknown")
     if control_error:
