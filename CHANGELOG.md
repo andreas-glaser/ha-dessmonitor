@@ -7,22 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.7.0-rc.1] - 2026-11-04
+## [2.7.0-rc.2] - 2026-11-05
 
-First release candidate for 2.7.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.7.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+Second release candidate for 2.7.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.7.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
 
-**Testing focus:** devcodes 6544 and 6515 each move four schedule controls
-from `number` to `time`, and their inverter clock from `number` to `text`.
-If you reference any of those entities by id in a dashboard or automation,
-update the reference after upgrading; the old entities are disabled, not
-deleted, and carry your customizations over. Devcode 6515 also gains support
-for the first time (Maxsky EM11000 and ANENJI ANJ-HHS-11KW-48V-WIFI); if you
-run one, a report on whether its sensors and controls look right would help
-confirm the single hardware report this candidate rests on. The new
-**Repairs** card for a partially- or un-supported devcode is also new; a
-report if it appears when it should not would help too.
+**Testing focus:** three things that change what you see. Local and hybrid
+setups with a PI18 or P17 inverter get a corrected Energy Total, a thousand
+times lower than before, and the upgrade note below says what to do about the
+spike it leaves in the energy dashboard. Controls that read unknown may now
+show a value, on any devcode whose platform reports a setting in a spelling it
+does not itself offer. And devcodes 684 and 2477 gain most of their readings,
+so an owner of either confirming that the new sensors look right would settle
+what one diagnostics file each currently rests on. Everything in rc.1 still
+applies: the 6544 and 6515 entity moves are in this candidate too.
 
 ### Added
+
 - A devcode profile can name the reading that carries a control's value, for a
   collector that answers a control's own name with a live measurement instead.
   Devcode 2376 reports the measured output voltage for its Output Voltage
@@ -49,91 +49,17 @@ report if it appears when it should not would help too.
   resolve now against 8 before, and none of the remaining 17 carries a unit
   (#62, thanks to @sabiwa for the diagnostics download). The download is
   committed under `docs/evidence/devcodes/`.
-- Home Assistant now says whether an inverter is fully supported. A **Repairs**
-  card names a devcode that has no profile, or one whose profile leaves readings
-  unmapped, with how many readings reach no entity and a link to the support
-  guide. One card per devcode, raised after a successful cloud refresh and
-  withdrawn when it stops applying. The partial case is the one that mattered:
-  devcode 6514 shipped mapping SOC alone and dropped 58 of its 76 readings for
-  eight months without a single warning (#35, #56, #60).
-- The maintainer tooling and its regression guard accept a diagnostics download
-  as evidence for a devcode, not only a CLI analysis. Because a download records
-  a unit for every reading where a CLI analysis records one for the sampled
-  readings only, committing one guards more of a devcode (#60).
-- Cloud-backed time entities for the four secondary-priority schedule boundaries
-  on devcode 6515, whose field ids differ from 6544's and whose values the
-  committed analysis shows reading as `HH:MM`, plus a calendar-validated text
-  control for its clock once a reported read showed the same 19-character
-  `YYYY-MM-DD HH:MM:SS` string as 6544's (#57). Each devcode profile now
-  declares its own temporal fields in `TEMPORAL_CONTROLS`, so adding the next
-  one is a profile change rather than an integration change.
-- Cloud-backed time entities for the four secondary-priority schedule boundaries
-  on devcode 6544, plus a calendar-validated text control for its timezone-free
-  inverter clock. Matching obsolete number entities are disabled, not deleted.
-  Representative schedule and calendar-string cloud writes have independent
-  hardware readback on the tested model; no clock timezone is assumed
-  (thanks to @jay0x for investigation and testing).
-- Device support for devcodes 4743 and 632, both grid-connected PV inverters
-  reported through ShineMonitor. Between them this adds per-string PV voltage,
-  current and power for three strings, DC bus voltages, AC grid voltage,
-  current, frequency and power, output apparent and reactive power, power
-  factor, an external meter reading, inverter status, grid reconnect waiting
-  time and operating time (#58, thanks to @shanidks for both CLI analyses).
-  Both redacted analyses are committed under `docs/evidence/devcodes/`.
-- Dual-MPPT PV readings over local PI30 for Axpert MAX inverters, through the
-  read-only `QPIGS2` inquiry: PV2 current, voltage and charging power, the
-  per-string powers under the existing `PV1 Charger Power` and
-  `PV2 Charger Power` names, and their sum as Total PV Power. The inquiry is
-  optional and bounded: an explicit refusal disables it for that inverter, and
-  silence backs off to one probe every twelfth cycle. A failed round withdraws
-  the per-string powers instead of leaving a stale local sum, so hybrid mode
-  falls back to the cloud values. Confirmed on an Axpert MAX 7200 reporting
-  1088 W and 1881 W across its two strings (#59, thanks to @gander88 for the
-  implementation and the hardware evidence).
-- Devcode 6515 lists the Maxsky EM11000 11kW 48V, reported with an Eybond WiFi
-  datalogger on firmware 3.6.6.6, beside the ANENJI ANJ-HHS-11KW-48V-WIFI it
-  was added for (#57, thanks to @ballhtml for the model and collector details).
-  Their redacted CLI analysis is committed under `docs/evidence/devcodes/`, so
-  the devcode is guarded for the first time: 34 of its 79 titles resolve to
-  sensors and none of the remaining 45 carries a unit. Its observed values,
-  including the Mains Mode operating mode and the vendor's two misspelled
-  temperature titles, now have tests.
-- A devcode can name a control field through `control_field_mappings`, which
-  the registry accepted but no profile used. Renaming a control changes its
-  entity identity, so the existing registry entry is carried over rather than
-  stranded beside a second entity.
 
 ### Changed
+
 - The support report says how many readings each exclusion accounts for, and
   counts the unresolved rows, so `resolved + unresolved == total` exactly even
   where a collector repeats a title. Three classes of row are left out of the
   total - nothing, entity attributes and declared settings - and the card's
   "maps N of M readings" was no longer arithmetic a reader could check.
-- Reporting hardware is one command. `dessmonitor_cli.py report --username YOU`
-  signs in, enumerates the account, writes one redacted analysis per device and
-  prints what each one covers, in place of five commands and picking the right
-  serial number out of two listings. The coverage line answers "is my device
-  fully supported" on the reporter's own machine, and names any reading that
-  carries a unit and reaches nothing. GitHub issue forms now ask for the
-  devcode, model, collector firmware, version and platform up front, which is
-  what every device-support thread has had to establish by hand.
-- One spelling and one vocabulary throughout: the collector vendor is Eybond,
-  which the code spelled `EyeBond` in 55 places against the company's own 6.
-  Each devcode profile now names Eybond as the manufacturer of the collector it
-  describes, where 13 of 18 named the DessMonitor portal instead, and the
-  README records that both platforms are Eybond products: `dessmonitor.com` is
-  their SmartESS platform and `shinemonitor.com` their SmartClient platform.
-  Entity names, entity ids and the integration domain are unchanged.
-- The HACS listing and the integration are named `DessMonitor / ShineMonitor
-  (Local & Cloud)`, and the README leads with local monitoring. Local mode has
-  been here since 2.3.0 and was invisible to anyone searching HACS or GitHub
-  for a local option. The integration domain, entity ids and entity names are
-  unchanged; only the displayed title changes.
-- The README names the other portals Eybond runs, SmartLamp and SmartValue,
-  and states plainly that setup reaches only DessMonitor and ShineMonitor, so
-  an account held on another portal cannot be configured.
 
 ### Fixed
+
 - A control whose value the vendor reports in a spelling it does not offer no
   longer reads unknown. Devcode 2376 answers 60.0 for an Output Frequency
   whose options are keyed "50.00" and "60.00", and the string comparison never
@@ -207,6 +133,115 @@ report if it appears when it should not would help too.
   `tools/analysis_coverage.py` only understood the unwrapped shape, so it
   answered "not a devcode analysis or support report" for the file the support
   guide asks for (#62).
+
+### Upgrade notes: local total energy on PI18 and P17
+
+- Energy Total now reads a thousand times lower on local and hybrid setups with
+  a PI18 or P17 inverter, because the old value was a thousand times too high.
+  The corrected reading is the right one, and it matches what the vendor cloud
+  and the inverter's own display report.
+- Home Assistant keeps the inflated figure in long-term statistics, and reads
+  the drop as a meter reset, so the energy dashboard will show one historical
+  spike. Open **Developer tools > Statistics**, find the Energy Total sensor,
+  and use the fix offered for the drop, or delete its statistics and let them
+  rebuild. Nothing needs doing if the entity is not on your energy dashboard.
+
+## [2.7.0-rc.1] - 2026-11-04
+
+First release candidate for 2.7.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.7.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** devcodes 6544 and 6515 each move four schedule controls
+from `number` to `time`, and their inverter clock from `number` to `text`.
+If you reference any of those entities by id in a dashboard or automation,
+update the reference after upgrading; the old entities are disabled, not
+deleted, and carry your customizations over. Devcode 6515 also gains support
+for the first time (Maxsky EM11000 and ANENJI ANJ-HHS-11KW-48V-WIFI); if you
+run one, a report on whether its sensors and controls look right would help
+confirm the single hardware report this candidate rests on. The new
+**Repairs** card for a partially- or un-supported devcode is also new; a
+report if it appears when it should not would help too.
+
+### Added
+- Home Assistant now says whether an inverter is fully supported. A **Repairs**
+  card names a devcode that has no profile, or one whose profile leaves readings
+  unmapped, with how many readings reach no entity and a link to the support
+  guide. One card per devcode, raised after a successful cloud refresh and
+  withdrawn when it stops applying. The partial case is the one that mattered:
+  devcode 6514 shipped mapping SOC alone and dropped 58 of its 76 readings for
+  eight months without a single warning (#35, #56, #60).
+- The maintainer tooling and its regression guard accept a diagnostics download
+  as evidence for a devcode, not only a CLI analysis. Because a download records
+  a unit for every reading where a CLI analysis records one for the sampled
+  readings only, committing one guards more of a devcode (#60).
+- Cloud-backed time entities for the four secondary-priority schedule boundaries
+  on devcode 6515, whose field ids differ from 6544's and whose values the
+  committed analysis shows reading as `HH:MM`, plus a calendar-validated text
+  control for its clock once a reported read showed the same 19-character
+  `YYYY-MM-DD HH:MM:SS` string as 6544's (#57). Each devcode profile now
+  declares its own temporal fields in `TEMPORAL_CONTROLS`, so adding the next
+  one is a profile change rather than an integration change.
+- Cloud-backed time entities for the four secondary-priority schedule boundaries
+  on devcode 6544, plus a calendar-validated text control for its timezone-free
+  inverter clock. Matching obsolete number entities are disabled, not deleted.
+  Representative schedule and calendar-string cloud writes have independent
+  hardware readback on the tested model; no clock timezone is assumed
+  (thanks to @jay0x for investigation and testing).
+- Device support for devcodes 4743 and 632, both grid-connected PV inverters
+  reported through ShineMonitor. Between them this adds per-string PV voltage,
+  current and power for three strings, DC bus voltages, AC grid voltage,
+  current, frequency and power, output apparent and reactive power, power
+  factor, an external meter reading, inverter status, grid reconnect waiting
+  time and operating time (#58, thanks to @shanidks for both CLI analyses).
+  Both redacted analyses are committed under `docs/evidence/devcodes/`.
+- Dual-MPPT PV readings over local PI30 for Axpert MAX inverters, through the
+  read-only `QPIGS2` inquiry: PV2 current, voltage and charging power, the
+  per-string powers under the existing `PV1 Charger Power` and
+  `PV2 Charger Power` names, and their sum as Total PV Power. The inquiry is
+  optional and bounded: an explicit refusal disables it for that inverter, and
+  silence backs off to one probe every twelfth cycle. A failed round withdraws
+  the per-string powers instead of leaving a stale local sum, so hybrid mode
+  falls back to the cloud values. Confirmed on an Axpert MAX 7200 reporting
+  1088 W and 1881 W across its two strings (#59, thanks to @gander88 for the
+  implementation and the hardware evidence).
+- Devcode 6515 lists the Maxsky EM11000 11kW 48V, reported with an Eybond WiFi
+  datalogger on firmware 3.6.6.6, beside the ANENJI ANJ-HHS-11KW-48V-WIFI it
+  was added for (#57, thanks to @ballhtml for the model and collector details).
+  Their redacted CLI analysis is committed under `docs/evidence/devcodes/`, so
+  the devcode is guarded for the first time: 34 of its 79 titles resolve to
+  sensors and none of the remaining 45 carries a unit. Its observed values,
+  including the Mains Mode operating mode and the vendor's two misspelled
+  temperature titles, now have tests.
+- A devcode can name a control field through `control_field_mappings`, which
+  the registry accepted but no profile used. Renaming a control changes its
+  entity identity, so the existing registry entry is carried over rather than
+  stranded beside a second entity.
+
+### Changed
+- Reporting hardware is one command. `dessmonitor_cli.py report --username YOU`
+  signs in, enumerates the account, writes one redacted analysis per device and
+  prints what each one covers, in place of five commands and picking the right
+  serial number out of two listings. The coverage line answers "is my device
+  fully supported" on the reporter's own machine, and names any reading that
+  carries a unit and reaches nothing. GitHub issue forms now ask for the
+  devcode, model, collector firmware, version and platform up front, which is
+  what every device-support thread has had to establish by hand.
+- One spelling and one vocabulary throughout: the collector vendor is Eybond,
+  which the code spelled `EyeBond` in 55 places against the company's own 6.
+  Each devcode profile now names Eybond as the manufacturer of the collector it
+  describes, where 13 of 18 named the DessMonitor portal instead, and the
+  README records that both platforms are Eybond products: `dessmonitor.com` is
+  their SmartESS platform and `shinemonitor.com` their SmartClient platform.
+  Entity names, entity ids and the integration domain are unchanged.
+- The HACS listing and the integration are named `DessMonitor / ShineMonitor
+  (Local & Cloud)`, and the README leads with local monitoring. Local mode has
+  been here since 2.3.0 and was invisible to anyone searching HACS or GitHub
+  for a local option. The integration domain, entity ids and entity names are
+  unchanged; only the displayed title changes.
+- The README names the other portals Eybond runs, SmartLamp and SmartValue,
+  and states plainly that setup reaches only DessMonitor and ShineMonitor, so
+  an account held on another portal cannot be configured.
+
+### Fixed
 - The support card and the diagnostics report counted readings two different
   ways in the same sentence: readings that reach an entity were counted as
   distinct entities while the total counted raw readings, so a collector that
@@ -330,17 +365,6 @@ report if it appears when it should not would help too.
   the committed analysis shows 220.5 V and 7.3 A on string 1 against a 1552 W
   total, and live hardware showed 265 V and 1.6 A against 424 W of export, both
   with a per-string power of 0. `Total PV power` carries the real figure (#58).
-
-### Upgrade notes: local total energy on PI18 and P17
-- Energy Total now reads a thousand times lower on local and hybrid setups with
-  a PI18 or P17 inverter, because the old value was a thousand times too high.
-  The corrected reading is the right one, and it matches what the vendor cloud
-  and the inverter's own display report.
-- Home Assistant keeps the inflated figure in long-term statistics, and reads
-  the drop as a meter reset, so the energy dashboard will show one historical
-  spike. Open **Developer tools > Statistics**, find the Energy Total sensor,
-  and use the fix offered for the drop, or delete its statistics and let them
-  rebuild. Nothing needs doing if the entity is not on your energy dashboard.
 
 ### Upgrade notes: devcode 6544 time and clock controls
 - Four schedule controls move from `number` to `time`, and Inverter Date moves
