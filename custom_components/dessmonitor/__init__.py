@@ -1361,6 +1361,18 @@ async def async_get_config_entry_diagnostics(
                     "last_update_success": local.last_update_success,
                     "device_code": local.device_code,
                     "devices": len(local.data or {}),
+                    # What the local side actually saw. The hybrid overlay
+                    # matches a local device to a cloud one by serial, or by
+                    # collector and RS485 address together, and a device that
+                    # matches nothing stays on cloud telemetry in silence. The
+                    # file recorded only that a transport was connected, so a
+                    # mismatch between an inverter answering locally at one
+                    # address and the cloud listing it at another could not be
+                    # seen in it at all (#61).
+                    "devices_seen": [
+                        _local_device_facts(serial, payload)
+                        for serial, payload in sorted((local.data or {}).items())
+                    ],
                 }
                 for local in getattr(coordinator, "locals", ())
             ],
@@ -1371,6 +1383,25 @@ async def async_get_config_entry_diagnostics(
         for serial, payload in sorted((coordinator.data or {}).items())
     ]
     return report
+
+
+def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Describe one locally seen device, without naming it.
+
+    Identities are the same correlation hashes the device reports carry, so a
+    local device and a cloud one can be told apart and compared across a file
+    without a serial number or a collector product number appearing in it.
+    """
+    device = payload.get("device") or {}
+    collector = payload.get("collector") or {}
+    return {
+        "device_identity": short_identity(serial),
+        "collector_identity": short_identity(collector.get("pn")),
+        "device_address": device.get("devaddr"),
+        "address_verified": device.get("local_address_verified"),
+        "protocol": device.get("local_protocol"),
+        "readings": len(payload.get("data") or []),
+    }
 
 
 async def _build_device_support_report(

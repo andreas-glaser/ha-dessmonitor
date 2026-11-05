@@ -119,6 +119,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- The diagnostics download says what each local transport saw: the devices it
+  reports, their RS485 address, whether that address was verified and which
+  driver answered. The hybrid overlay matches a local device to a cloud one by
+  serial, or by collector and address together, and a device that matches
+  nothing keeps cloud telemetry in silence - the file showed only that a
+  transport was connected, so the mismatch could not be found in it (#61).
 - A control whose value the vendor reports in a spelling it does not offer no
   longer reads unknown. Devcode 2376 answers 60.0 for an Output Frequency
   whose options are keyed "50.00" and "60.00", and the string comparison never
