@@ -423,13 +423,31 @@ def report_checksum(report: dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _control_names(control_fields: Any) -> list[str]:
+    """Return the control-field names a diagnostics download recorded.
+
+    A download carries the device's control template beside its readings, and
+    which unresolved titles are that device's own settings is the one judgement
+    a reviewer has to make about a new devcode. The coverage tooling shows them
+    so the answer comes from the file rather than from the reviewer guessing.
+    """
+    if not isinstance(control_fields, list):
+        return []
+    return [
+        str(field["name"]).strip()
+        for field in control_fields
+        if isinstance(field, dict) and str(field.get("name") or "").strip()
+    ]
+
+
 def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """Return one comparable record per device, from either report shape.
 
     Evidence reaches the repository as a CLI analysis or, now, as a
     diagnostics download, and the coverage tooling and its test guard both
     (#60). Each record carries the devcode, the raw titles, the units observed
-    for them, which path produced it, and whether its checksum still matches.
+    for them, the names of its control fields when the shape records any, which
+    path produced it, and whether its checksum still matches.
 
     A download is read as the reporter attaches it: Home Assistant writes the
     report a diagnostics hook returns under a ``data`` key, beside the host and
@@ -448,6 +466,7 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 "titles": [str(title) for title in analysis.get("sensor_titles", [])],
                 "units": _units_from_analysis(analysis),
                 "source": analysis.get("source", "cli_analysis"),
+                "controls": [],
                 "checksum": analysis.get("checksum"),
                 "checksum_valid": bool(analysis.get("checksum"))
                 and analysis["checksum"] == analysis_checksum(analysis),
@@ -475,6 +494,7 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
                     if reading.get("title") and reading.get("unit")
                 },
                 "source": payload.get("source", "integration_diagnostics"),
+                "controls": _control_names(payload.get("control_fields")),
                 "checksum": payload.get("checksum"),
                 "checksum_valid": bool(payload.get("checksum"))
                 and payload["checksum"] == report_checksum(payload),

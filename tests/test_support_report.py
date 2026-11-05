@@ -199,7 +199,7 @@ def test_the_module_loads_without_the_integration_package() -> None:
 
 
 def test_the_counts_describe_one_population() -> None:
-    """"Maps N of M readings" has to be arithmetic a reader can check.
+    """ "Maps N of M readings" has to be arithmetic a reader can check.
 
     ``resolved`` counted distinct entity keys while ``total`` counted raw
     rows, so a collector that reports one title twice - devcode 2376 repeats
@@ -221,7 +221,8 @@ def test_the_counts_describe_one_population() -> None:
     support = build_support_report(devcode=6515, readings=readings)["support"]
 
     unresolved_rows = sum(
-        1 for row in build_support_report(devcode=6515, readings=readings)["readings"]
+        1
+        for row in build_support_report(devcode=6515, readings=readings)["readings"]
         if not row["resolved_key"] and row["title"] != "Timestamp"
     )
     assert support["resolved"] == 3
@@ -242,7 +243,11 @@ def test_a_setting_the_profile_declares_is_not_reported_as_a_dropped_reading() -
         {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
         {"title": "Battery bulk voltage", "val": "56.5", "unit": "V"},
         {"title": "Battery float voltage", "val": "56.5", "unit": "V"},
-        {"title": "Low DC cut off voltage on second output", "val": "48.0", "unit": "V"},
+        {
+            "title": "Low DC cut off voltage on second output",
+            "val": "48.0",
+            "unit": "V",
+        },
     ]
 
     report = build_support_report(devcode=2452, readings=readings)
@@ -310,3 +315,57 @@ def test_a_declared_setting_is_counted_under_its_own_exclusion() -> None:
 
     assert support["excluded"] == {"attribute_readings": 1, "declared_settings": 1}
     assert support["resolved"] + support["unresolved"] == support["total"] == 1
+
+
+def test_a_normalized_download_carries_the_device_control_names() -> None:
+    """The maintainer tooling classifies a title against this (#61).
+
+    A reading that is one of the device's own settings must not be counted as
+    a dropped reading, and the download that reports the title also reports
+    the control template, so the record carries both.
+    """
+    from custom_components.dessmonitor.support_report import normalized_reports
+
+    report = build_support_report(
+        devcode=2477,
+        readings=[{"title": "Buzzer Alarm", "val": "Enable", "unit": ""}],
+        control_fields={
+            "Buzzer Alarm": {"type": "options", "id": "bz_alarm"},
+            "Battery Type": {"type": "options", "id": "bat_type"},
+        },
+    )
+
+    (record,) = normalized_reports(report)
+
+    # In the order the report lists them, which is the order it sorts them in.
+    assert record["controls"] == ["Battery Type", "Buzzer Alarm"]
+    assert record["checksum_valid"] is True
+
+
+def test_a_malformed_control_row_is_skipped_rather_than_reported() -> None:
+    """The names are read back from a file a reporter attached."""
+    from custom_components.dessmonitor.support_report import _control_names
+
+    assert _control_names(
+        [
+            {"name": " Buzzer Alarm "},
+            {"name": ""},
+            {"value": "no name"},
+            "not a row",
+        ]
+    ) == ["Buzzer Alarm"]
+    assert _control_names(None) == []
+    assert _control_names({"Buzzer Alarm": {}}) == []
+
+
+def test_a_report_without_a_control_template_carries_no_names() -> None:
+    """A device the platform reports no controls for, as devcode 684 is."""
+    from custom_components.dessmonitor.support_report import normalized_reports
+
+    report = build_support_report(
+        devcode=684, readings=[{"title": "today energy", "val": "7.6", "unit": "kWh"}]
+    )
+
+    (record,) = normalized_reports(report)
+
+    assert record["controls"] == []
