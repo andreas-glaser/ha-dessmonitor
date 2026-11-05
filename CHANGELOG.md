@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A devcode profile can name the reading that carries a control's value, for a
+  collector that answers a control's own name with a live measurement instead.
+  Devcode 2376 reports the measured output voltage for its Output Voltage
+  control, whose setpoint is a reading of its own, so that control is now
+  filled from telemetry rather than left unread and re-read live on every
+  cloud revision (#61).
+- Devcode 2477's inverter is confirmed as the Novopal NP35PEU24 from its
+  nameplate, matching the ratings the collector reports (#61, thanks to
+  @yurkila for the photograph).
 - Devcode 2477 now maps the rest of what its collector reports. Its eight
   nameplate ratings become diagnostic sensors, the battery, PV, mains and load
   status texts become sensors, and the twenty-four setpoints it returns among
@@ -110,6 +119,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A control whose value the vendor reports in a spelling it does not offer no
+  longer reads unknown. Devcode 2376 answers 60.0 for an Output Frequency
+  whose options are keyed "50.00" and "60.00", and the string comparison never
+  matched, so the select showed no value and the field was read again on every
+  cloud revision - each one a live request over the collector's
+  single-transaction link. Values are now compared as numbers as well, and the
+  vendor's own key is what a write still sends (#61).
+- The diagnostics download no longer reports a control value that the matching
+  entity rejects. It took any reading whose title matched a control's name as
+  that control's value without checking it against the control's options, so a
+  file could present a live 229.8 V as an Output Voltage setting offering 220,
+  230 and 240 while Home Assistant showed none (#61).
+- A serial number or other identity reading is no longer counted among the
+  readings that reach no entity. A fully mapped devcode 2376 collector reported
+  three (#61).
 - A device's own diagnostics download printed its serial number, its collector
   product number and the owner's alias, while the integration-wide download
   replaced all three with the `sha256:` correlation form and both the support
