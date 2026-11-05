@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Devcode 2477 now maps the rest of what its collector reports. Its eight
+  nameplate ratings become diagnostic sensors, the battery, PV, mains and load
+  status texts become sensors, and the twenty-four setpoints it returns among
+  the telemetry are declared settings rather than counted as readings that
+  reach no entity: 34 of its 64 readings resolve now against 22 before, and
+  none of the remaining 30 carries a unit, so the support card no longer tells
+  the owner that nineteen readings are missing when none are (#61, thanks to
+  @yurkila for the diagnostics download). The download is committed under
+  `docs/evidence/devcodes/`.
 - Device support for devcode 684, a single-phase grid-connected PV inverter
   reported through ShineMonitor and sold as Panther Solar. It adds both string
   voltages and currents, grid voltage and current, the daily and lifetime

@@ -414,6 +414,14 @@ Two rules:
   really is a setting. A nameplate rating is not: it is a read-only fact about
   the hardware, so it becomes a diagnostic sensor, as `rated power` and
   `battery rated voltage` do on this devcode.
+- Spell each entry as the *reading* is titled, not as the control template
+  names it. A collector does not always spell the two the same: devcode 2477
+  reports "Beeps While Primary Source Interupt" and "Transfer To Bypass @
+  Overload" as readings against a "...Interrupt" and a "Transfer To Bypass
+  Overload" control (#61).
+- A title that also arrives as a live reading is not declared. Devcode 2477
+  sends `Output Voltage` and `Output Frequency` twice, once measured and once
+  as the setpoint; declaring either would take away the sensor.
 
 ### 4.10 Configuration
 
@@ -480,8 +488,12 @@ it: Home Assistant wraps the report under a `data` key, and the tool unwraps
 that envelope itself (#62).
 
 It prints every raw title with the canonical key it resolves to, then the
-unresolved ones, marking those the collector labelled with a unit and those a
-profile declares a setting. A unit means the title is a reading and should
+unresolved ones, marking those the collector labelled with a unit, those a
+profile declares a setting, and those the same report lists in the device's
+control template - a title marked `(control on this device)` is a setting to
+declare rather than a reading being dropped. Pass `--controls` to also list the
+control fields whose names no reading title matches, which is where a collector
+that spells a reading and its control differently shows up. A unit means the title is a reading and should
 become a sensor, unless it is a setting; unresolved titles without one
 are settings, identity fields and timestamps, which reach Home Assistant through
 the number, select and button platforms instead. Work through the marked titles
