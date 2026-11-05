@@ -1,4 +1,23 @@
-"""Eybond Data Collector (devcode 2477)."""
+"""Eybond Data Collector (devcode 2477).
+
+Voltronic-family inverter on the DessMonitor platform. Evidence for the rating
+and setting titles below is the diagnostics download in
+``docs/evidence/devcodes/analysis_2477.json`` (#61).
+
+``queryDeviceLastData`` returns the inverter's nameplate ratings and its own
+setpoints alongside the live readings, as devcode 2452 does. The ratings are
+facts about the hardware and become diagnostic sensors; the setpoints are
+settings the account publishes as number and select entities, so they are
+declared in ``SETTING_READINGS`` rather than mapped onto a sensor each. Of the
+sixty-three titles this collector sent, twenty-two reached an entity and the
+report told the owner that nineteen readings were missing when none were.
+
+The collector's reading titles and its control-field names are not spelled the
+same, so a setting is declared from the reading title it sends: it reports
+"Beeps While Primary Source Interupt" as a reading and "...Interrupt" as a
+control, and "Transfer To Bypass @ Overload" against "Transfer To Bypass
+Overload".
+"""
 
 from __future__ import annotations
 
@@ -41,6 +60,19 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "PV Input Power": "PV Charge Power",
     "PV Input Voltage": "PV Voltage",
     "Working State": "Operating mode",
+    # Nameplate ratings. The collector labels each with a unit, so each is a
+    # reading, and none of them is a control on this devcode. "Nonimal" is the
+    # vendor's spelling, not a typo here.
+    "Nominal AC Current": "grid rated current",
+    "Nominal AC Voltage": "grid rated voltage",
+    "Nominal Output Current": "rated current",
+    "Nominal Output Frequency": "rated frequency",
+    "Nominal Output Voltage": "rated voltage",
+    "Nonimal Output Active Power": "rated power",
+    "Nonimal Output Apparent Power": "rated apparent power",
+    "Rated Battery Voltage": "battery rated voltage",
+    # Status texts the vendor app shows and nothing here published.
+    "Mains Status": "Grid Status",
 }
 
 VALUE_TRANSFORMATIONS: dict = {}
@@ -108,6 +140,37 @@ def filter_control_options(
     return selected
 
 
+# Setpoints this collector returns among the telemetry, each the value of a
+# control the account publishes. A setting is not a reading whichever way the
+# vendor delivers it, and counting these as dropped readings is what made the
+# support report tell this owner that readings were missing (#61).
+SETTING_READINGS: set[str] = {
+    "AC Input Range",
+    "Auto Return To Default Display Screen",
+    "Battery Equalization",
+    "Battery Equalization Activated Immediately",
+    "Battery Equalization Interval",
+    "Battery Equalization Voltage",
+    "Battery Equalized Time",
+    "Battery Equalized Timeout",
+    "Battery Type",
+    "Beeps While Primary Source Interupt",
+    "Bulk Charging Voltage",
+    "Buzzer Alarm",
+    "Comeback Battery Mode Voltage Point Under (SBU Priority)",
+    "Comeback Utility Mode Voltage Point Under (SBU Priority)",
+    "Floating Charging Voltage",
+    "LCD Backlight",
+    "Low Battery Cut-off Voltage",
+    "Max Total Charge Current",
+    "Max Utility Charge Current",
+    "Over Temperature Auto Restart",
+    "Overload Auto Restart",
+    "Power Saving Mode",
+    "Record Fault Code",
+    "Transfer To Bypass @ Overload",
+}
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -117,4 +180,5 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "control_options_filter": filter_control_options,
+    "setting_readings": SETTING_READINGS,
 }
