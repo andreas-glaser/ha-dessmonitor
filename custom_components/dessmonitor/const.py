@@ -448,6 +448,22 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:thermometer",
     },
+    # Reported beside the radiator and transformer readings by the grid-tie
+    # collectors (devcode 684, #62).
+    "Inductor Temperature": {
+        "name": "Inductor Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
+    "Inside Temperature": {
+        "name": "Inside Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
     "BMS battery temperature": {
         "name": "BMS Battery Temperature",
         "unit": UNITS["TEMPERATURE"],
@@ -889,6 +905,33 @@ SENSOR_TYPES = {
         "unit": "",
         "icon": "mdi:information-outline",
     },
+    # Per-subsystem status texts, first reported on devcode 2477 (#61). A
+    # collector sends them without a unit and each names a state rather than
+    # measuring one ("PV Undervoltage", "Load On (Normal)"), so they are plain
+    # text sensors like Inverter Status above: no report carries a vendor's
+    # full set of strings for a field, and an enum would mark the rest invalid.
+    # A devcode whose own spelling differs maps onto these in its own profile,
+    # as 2477 maps its "Mains Status" onto Grid Status.
+    "Battery Status": {
+        "name": "Battery Status",
+        "unit": "",
+        "icon": "mdi:battery-heart-variant",
+    },
+    "PV Status": {
+        "name": "PV Status",
+        "unit": "",
+        "icon": "mdi:solar-power-variant",
+    },
+    "Grid Status": {
+        "name": "Grid Status",
+        "unit": "",
+        "icon": "mdi:transmission-tower",
+    },
+    "Load Status": {
+        "name": "Load Status",
+        "unit": "",
+        "icon": "mdi:power-plug",
+    },
     "Grid Reconnect Waiting Time": {
         "name": "Grid Reconnect Waiting Time",
         "unit": "s",
@@ -908,6 +951,64 @@ SENSOR_TYPES = {
         "name": "Rated Power",
         "unit": UNITS["POWER"],
         "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    # Nameplate ratings devcode 2452 reports beside its telemetry (#53). They
+    # are facts about the hardware rather than settings, so they are sensors,
+    # and diagnostic ones because they never change.
+    "rated current": {
+        "name": "Rated Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "rated frequency": {
+        "name": "Rated Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "rated apparent power": {
+        "name": "Rated Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "battery rated voltage": {
+        "name": "Battery Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery",
+        "entity_category": "diagnostic",
+    },
+    "grid rated current": {
+        "name": "Grid Rated Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+        "entity_category": "diagnostic",
+    },
+    "grid rated voltage": {
+        "name": "Grid Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+        "entity_category": "diagnostic",
+    },
+    "rated voltage": {
+        "name": "Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash",
         "entity_category": "diagnostic",

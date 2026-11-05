@@ -1,11 +1,13 @@
 """Control recovery uses cloud revisions, not fast local telemetry updates."""
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from custom_components.dessmonitor import (
+    MAX_CONTROL_FIELD_RETRIES,
     MAX_CONTROL_VALUE_RETRIES,
     MAX_UNANSWERED_CONTROL_VALUE_RETRIES,
     DessMonitorDataUpdateCoordinator,
@@ -569,4 +571,96 @@ async def test_cancelling_a_round_leaves_no_reads_running(hass):
         if "_fetch_one" in repr(task.get_coro()) and not task.done()
     ]
     assert pending == []
+    await coordinator.async_shutdown()
+
+
+async def test_a_device_without_controls_is_asked_for_its_fields_once(hass):
+    """An empty field list is an answer, not a reason to ask again.
+
+    The cache was keyed on a non-empty list, so a collector that carries no
+    controls cost one request per cloud revision for the life of the entry.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_fields.return_value = {}
+
+    for revision in range(1, 6):
+        coordinator.cloud_revision = revision
+        controls, _values = await coordinator.async_get_controls_with_values(
+            "PN", 684, 1, "TEST"
+        )
+        assert controls == {}
+
+    assert coordinator.api.get_device_control_fields.await_count == 1
+    await coordinator.async_shutdown()
+
+
+async def test_a_refused_control_field_list_is_retired(hass):
+    """A grid-tie collector has no control template and never will (#62).
+
+    The platform answers ERR_NO_RECORD every time, so the retries are bounded
+    rather than warning once a minute for as long as the entry stays loaded.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_fields.side_effect = DessMonitorError(
+        "ERR_NO_RECORD(no default template)", 4
+    )
+
+    for revision in range(1, MAX_CONTROL_FIELD_RETRIES + 6):
+        coordinator.cloud_revision = revision
+        controls, _values = await coordinator.async_get_controls_with_values(
+            "PN", 684, 1, "TEST"
+        )
+        assert controls == {}
+
+    assert (
+        coordinator.api.get_device_control_fields.await_count
+        == MAX_CONTROL_FIELD_RETRIES
+    )
+    await coordinator.async_shutdown()
+
+
+async def test_a_control_field_list_that_recovers_is_published(hass):
+    """The bound must not retire a device whose account is briefly failing."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_fields.side_effect = [
+        DessMonitorError("ERR_TIMEOUT", 2),
+        DessMonitorError("ERR_TIMEOUT", 2),
+        CONTROLS,
+    ]
+
+    for revision in range(1, 4):
+        coordinator.cloud_revision = revision
+        controls, _values = await coordinator.async_get_controls_with_values(
+            "PN", 6544, 1, "TEST"
+        )
+
+    assert set(controls) == set(CONTROLS)
+    assert coordinator._ctrl_field_failures == {}
+    await coordinator.async_shutdown()
+
+
+async def test_exhausting_the_budget_is_reported_once_per_device(hass, caplog):
+    """The give-up line is now the only report of an unreadable control (#61).
+
+    The API layer logged every refused attempt at error level, which filled a
+    reporter's log with twenty red entries in an hour for a bounded, retried
+    condition. Those attempts are debug now, so this line carries the outcome
+    and has to be visible by default.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    await _async_build_select_entities(coordinator, set())
+
+    with caplog.at_level(logging.DEBUG, logger="custom_components.dessmonitor"):
+        for _ in range(MAX_UNANSWERED_CONTROL_VALUE_RETRIES + 5):
+            coordinator.cloud_revision += 1
+            await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    warnings = [
+        record
+        for record in caplog.records
+        if record.levelno == logging.WARNING
+        and record.getMessage().startswith("Giving up on")
+    ]
+    assert len(warnings) == 1
+    assert "TEST" in warnings[0].getMessage()
     await coordinator.async_shutdown()

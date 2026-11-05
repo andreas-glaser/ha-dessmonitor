@@ -385,7 +385,45 @@ PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
 The coordinator will fetch `queryDeviceParsEs` in parallel and merge the parameters into the device data (deduplicated). Leave empty otherwise.
 
-### 4.9 Configuration
+### 4.9 `SETTING_READINGS`
+
+Some collectors return the inverter's own setpoints in the telemetry call.
+Devcode 2452 reports the battery recharge, bulk and float voltages, the
+back-to-discharge voltage and the second output's schedule beside the live
+readings, and five of those are the values of controls the same account
+publishes as number and select entities. They carry a unit, so the support
+report counted them among the readings that reach no entity and the Repairs
+card told the owner that fourteen readings were missing while none were (#53).
+
+List such titles here, exactly as the collector spells them. They then count as
+neither resolved nor dropped, the coverage tool marks them `(setting)`, and the
+committed-evidence guard stops demanding a sensor for them:
+
+```python
+SETTING_READINGS: set[str] = {
+    "Battery bulk voltage",
+    "Battery float voltage",
+}
+```
+
+Two rules:
+
+- A setting is not a sensor. Mapping one onto a `SENSOR_TYPES` key publishes a
+  second entity for a value the number or select entity already owns.
+- Declare only what the committed evidence shows, and only where the reading
+  really is a setting. A nameplate rating is not: it is a read-only fact about
+  the hardware, so it becomes a diagnostic sensor, as `rated power` and
+  `battery rated voltage` do on this devcode.
+- Spell each entry as the *reading* is titled, not as the control template
+  names it. A collector does not always spell the two the same: devcode 2477
+  reports "Beeps While Primary Source Interupt" and "Transfer To Bypass @
+  Overload" as readings against a "...Interrupt" and a "Transfer To Bypass
+  Overload" control (#61).
+- A title that also arrives as a live reading is not declared. Devcode 2477
+  sends `Output Voltage` and `Output Frequency` twice, once measured and once
+  as the setpoint; declaring either would take away the sensor.
+
+### 4.10 Configuration
 
 ```python
 DEVCODE_CONFIG = {
@@ -398,6 +436,7 @@ DEVCODE_CONFIG = {
     "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
+    "setting_readings": SETTING_READINGS,
 }
 ```
 
@@ -444,11 +483,18 @@ Both shapes of evidence are accepted: a CLI `analysis_<devcode>.json` and a
 diagnostics download. The tool prints which produced the file, and a download
 records a unit for *every* reading where a CLI analysis records one for the
 sampled readings only, so a committed download guards more of a devcode than a
-committed analysis does.
+committed analysis does. A download is read exactly as the reporter attached
+it: Home Assistant wraps the report under a `data` key, and the tool unwraps
+that envelope itself (#62).
 
 It prints every raw title with the canonical key it resolves to, then the
-unresolved ones, marking those the collector labelled with a unit. A unit means
-the title is a reading and should become a sensor; unresolved titles without one
+unresolved ones, marking those the collector labelled with a unit, those a
+profile declares a setting, and those the same report lists in the device's
+control template - a title marked `(control on this device)` is a setting to
+declare rather than a reading being dropped. Pass `--controls` to also list the
+control fields whose names no reading title matches, which is where a collector
+that spells a reading and its control differently shows up. A unit means the title is a reading and should
+become a sensor, unless it is a setting; unresolved titles without one
 are settings, identity fields and timestamps, which reach Home Assistant through
 the number, select and button platforms instead. Work through the marked titles
 until none remain, then re-run the report.
@@ -462,7 +508,31 @@ under `docs/evidence/` and fails when a reading that carries a unit no longer
 resolves, which keeps a later `const.py` or mapping edit from silently dropping
 one.
 
-Only commit a report produced with `--redacted`, and confirm `device_sn` and
+A diagnostics download is committed under the same `analysis_XXXX.json` name,
+because that is what the test globs for. One command does it:
+
+```bash
+.venv/bin/python tools/evidence_from_diagnostics.py ~/Downloads/config_entry-dessmonitor-01ABC.json
+```
+
+It keeps the integration's own sections verbatim, because their checksums cover
+them, drops the host and config-entry sections that say nothing about the
+devcode, verifies every device checksum, refuses to write if one fails, and
+writes one file per devcode the download covers. Add `--dry-run` to look first
+and `--force` to replace existing evidence.
+
+To see what an issue's attachments say before any of that:
+
+```bash
+.venv/bin/python tools/triage.py 62
+```
+
+It reads the issue and its comments, downloads each attached report into a
+temporary directory, and prints each devcode's coverage, the readings that
+carry a unit and reach no entity, and any reading whose local and cloud
+figures disagree about scale.
+
+Only commit a CLI report produced with `--redacted`, and confirm `device_sn` and
 `collector_alias` are empty before adding it. If the reporter supplied an
 unredacted file, redact it first:
 
@@ -587,6 +657,7 @@ Before opening a PR:
 - [ ] Operating mode targets are in `OPERATING_MODES` or explicitly added via the mapping
 - [ ] `SENSOR_TITLE_MAPPINGS` only contains titles that fail the shared resolver
 - [ ] `PARAMETER_SENSOR_NAMES` set iff the reporter needs a sensor from the parameters endpoint
+- [ ] `SETTING_READINGS` lists every setpoint the collector returns among the readings, and no nameplate rating
 - [ ] `TEMPORAL_CONTROLS` lists every advertised clock-valued field whose read format the analysis shows, and nothing else
 - [ ] `tools/analysis_coverage.py` reports no unresolved title carrying a unit
 - [ ] Redacted analysis committed under `docs/evidence/devcodes/` and `verify` passes

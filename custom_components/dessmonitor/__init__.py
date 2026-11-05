@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import ipaddress
 import logging
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
@@ -20,10 +21,23 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import DessMonitorAPI, DessMonitorError
 from .const import (
+    CONF_API_PROFILE,
+    CONF_COMPANY_KEY,
     CONF_CONNECTION_TYPE,
+    CONF_LOCAL_COLLECTOR_IP,
+    CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_DEVICE_ADDRESS,
+    CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
+    CONF_LOCAL_LISTEN_IP,
     CONF_LOCAL_MODE,
+    CONF_LOCAL_POLL_INTERVAL,
+    CONF_LOCAL_REDIRECT_CONFIRMED,
+    CONF_LOCAL_TCP_PORT,
+    CONF_LOCAL_UDP_PORT,
+    CONF_PASSWORD,
     CONF_UPDATE_INTERVAL,
+    CONF_USERNAME,
     CONNECTION_TYPE_CLOUD,
     CONNECTION_TYPE_LOCAL,
     DEFAULT_UPDATE_INTERVAL,
@@ -38,23 +52,26 @@ from .control_values import (
     cloud_control_snapshot,
     control_value,
     find_control_value,
+    first_control_value,
+    option_key_for,
     setting_value,
 )
 from .data_sources import snapshot_with_data_source
 from .device_support import (
-    apply_devcode_transformations,
+    control_value_reading,
     get_parameter_sensor_names,
     is_devcode_supported,
     map_sensor_title,
     needs_parameter_fetch,
 )
-from .sensor_titles import normalize_sensor_title, sensor_display_name
+from .sensor_titles import sensor_display_name
 from .support_report import PARTIAL as SUPPORT_PARTIAL
 from .support_report import SUPPORTED as SUPPORT_SUPPORTED
 from .support_report import UNSUPPORTED as SUPPORT_UNSUPPORTED
 from .support_report import (
     build_support_report,
     device_support_status,
+    is_attribute_reading,
     report_checksum,
     resolved_key_for,
     short_identity,
@@ -84,6 +101,14 @@ MAX_CONTROL_VALUE_RETRIES = 3
 # reloaded. These rounds get a longer budget so flaky reads can recover, still
 # bounded so a dead API cannot be polled for the life of the entry.
 MAX_UNANSWERED_CONTROL_VALUE_RETRIES = 12
+
+# Consecutive cloud revisions that may re-ask for a device's control field
+# list. A grid-tie collector has no control template at all and the platform
+# answers `queryDeviceCtrlField` with ERR_NO_RECORD every time (#62), so
+# without a bound that device costs one failing request and one warning per
+# refresh for the life of the entry. The budget matches the unanswered value
+# reads: long enough for a flaky account to recover, short enough to settle.
+MAX_CONTROL_FIELD_RETRIES = 12
 
 # Wall clock one round of control-value reads may take. The API answers each
 # field separately and a stalled field costs the full request timeout, so a
@@ -330,6 +355,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.ctrl_value_cache: dict[str, dict[str, str]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
+        self._ctrl_field_failures: dict[str, int] = {}
         self._ctrl_value_attempts: dict[str, int] = {}
         self._ctrl_value_retries: dict[str, int] = {}
         self._ctrl_value_unanswered: dict[str, bool] = {}
@@ -461,6 +487,52 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.stale_cloud_serials = frozenset(self._cached_cloud_data)
         return snapshot_with_data_source(self._cached_cloud_data, "Cached Cloud")
 
+    async def _async_cache_control_fields(
+        self, pn: str, devcode: int, devaddr: int, sn: str
+    ) -> bool:
+        """Fetch a device's control field list once, and say whether it is cached.
+
+        One attempt per cloud revision, and a bounded number of them: a
+        grid-tie collector has no control template and the platform refuses the
+        request every time (#62), which otherwise costs a failing request and a
+        warning on every refresh for as long as the entry stays loaded.
+        """
+        if self._ctrl_field_attempts.get(sn) == self.cloud_revision:
+            return False
+        failures = self._ctrl_field_failures.get(sn, 0)
+        if failures >= MAX_CONTROL_FIELD_RETRIES:
+            return False
+
+        self._ctrl_field_attempts[sn] = self.cloud_revision
+        try:
+            controls = await self.api.get_device_control_fields(
+                pn, devcode, devaddr, sn
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            self._ctrl_field_failures[sn] = failures + 1
+            if failures + 1 >= MAX_CONTROL_FIELD_RETRIES:
+                _LOGGER.warning(
+                    "Giving up on control fields for device %s after %d attempts; "
+                    "it publishes no controls until the entry is reloaded: %s",
+                    sn,
+                    failures + 1,
+                    err,
+                )
+            else:
+                # Once at warning level, then quietly: the first line says a
+                # device has no controls yet, the rest only repeat it.
+                _LOGGER.log(
+                    logging.WARNING if not failures else logging.DEBUG,
+                    "Failed to fetch control fields for device %s: %s",
+                    sn,
+                    err,
+                )
+            return False
+
+        self._ctrl_field_failures.pop(sn, None)
+        self.ctrl_field_cache[sn] = controls
+        return True
+
     async def async_get_controls_with_values(
         self, pn: str, devcode: int, devaddr: int, sn: str
     ) -> tuple[dict[str, Any], dict[str, str]]:
@@ -469,29 +541,22 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         Seed values from the ordinary cloud payload and retry only missing
         values once per cloud revision, until three rounds recover nothing.
         Ordinary telemetry can still recover values after that budget is spent.
-        Local pushes cannot trigger retries.
+        Local pushes cannot trigger retries. The field list itself is fetched
+        once and then cached whether or not it holds anything, and a device the
+        API keeps refusing it for is retired after
+        ``MAX_CONTROL_FIELD_RETRIES`` revisions.
         The per-device lock shares work between select/number/button loaders.
         """
         if sn not in self._ctrl_locks:
             self._ctrl_locks[sn] = asyncio.Lock()
 
         async with self._ctrl_locks[sn]:
-            if not self.ctrl_field_cache.get(sn):
-                if self._ctrl_field_attempts.get(sn) == self.cloud_revision:
+            # Presence, not truth: a device the API answers with an empty field
+            # list carries no controls, and re-asking every revision for the
+            # life of the entry buys nothing.
+            if sn not in self.ctrl_field_cache:
+                if not await self._async_cache_control_fields(pn, devcode, devaddr, sn):
                     return {}, self.ctrl_value_cache.get(sn, {})
-                self._ctrl_field_attempts[sn] = self.cloud_revision
-                try:
-                    controls = await self.api.get_device_control_fields(
-                        pn, devcode, devaddr, sn
-                    )
-                except Exception as err:
-                    _LOGGER.warning(
-                        "Failed to fetch control fields for device %s: %s",
-                        sn,
-                        err,
-                    )
-                    return {}, {}
-                self.ctrl_field_cache[sn] = controls
 
             controls = self.ctrl_field_cache[sn]
             values = self.ctrl_value_cache.setdefault(sn, {})
@@ -539,7 +604,11 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     self._ctrl_value_retries[sn] = retries + 1
                     if self._ctrl_value_retries[sn] >= self._control_value_budget(sn):
-                        _LOGGER.info(
+                        # Once per device per budget, and the only line that
+                        # reports it now that the API layer keeps its own
+                        # attempts at debug (#61). A control left unknown is
+                        # worth a warning; the attempts themselves were not.
+                        _LOGGER.warning(
                             "Giving up on %d control value(s) for device %s after "
                             "%d attempts, the last of which the API %s; ordinary "
                             "cloud telemetry still updates them, and reloading the "
@@ -577,9 +646,15 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             return
         self._ctrl_cloud_samples[sn] = stamp
         values = self.ctrl_value_cache.setdefault(sn, {})
+        devcode = (self.data or {}).get(sn, {}).get("device", {}).get("devcode")
         for name, config in controls.items():
             field_id = config.get("id")
-            value = setting_value(config, find_control_value(points, name))
+            # A profile may name the reading that carries this control's value,
+            # where the collector answers the control's own name with a live
+            # measurement instead.
+            declared = control_value_reading(devcode, field_id)
+            titles = (declared, name) if declared else (name,)
+            value = setting_value(config, first_control_value(points, *titles))
             if field_id and value is not None:
                 values[field_id] = value
 
@@ -1132,25 +1207,98 @@ def _resolve_device_sn(device: dr.DeviceEntry) -> str | None:
     return None
 
 
-# Credentials never leave the instance in a support file. Each key is replaced
-# rather than dropped, so a reader can still tell a configured value from an
-# absent one, and the collector product number becomes its correlation hash
-# because these files are attached to public issues (AGENTS.md, #60).
-_REDACTED_ENTRY_KEYS = frozenset({"username", "password", "company_key", "token"})
-_HASHED_ENTRY_KEYS = frozenset({CONF_LOCAL_EXPECTED_PN})
+# What a support download may say about each configuration key. The file is
+# attached to public issues, so this is an allowlist: a key that is not
+# classified here is redacted rather than published, and
+# ``test_every_config_key_is_classified`` fails until someone decides. The
+# previous deny-list published anything nobody had thought about, which is how
+# a reporter's collector and listen addresses reached a public issue (#53).
+_PUBLISH = "publish"
+_REDACT = "redact"
+_HASH = "hash"
+_DESCRIBE_ADDRESS = "describe_address"
+
+_ENTRY_DISCLOSURE: dict[str, str] = {
+    # Credentials and the session token: never, in any form.
+    CONF_USERNAME: _REDACT,
+    CONF_PASSWORD: _REDACT,
+    CONF_COMPANY_KEY: _REDACT,
+    "token": _REDACT,
+    # Choices that shape behaviour and identify nothing.
+    CONF_API_PROFILE: _PUBLISH,
+    CONF_CONNECTION_TYPE: _PUBLISH,
+    CONF_UPDATE_INTERVAL: _PUBLISH,
+    CONF_LOCAL_MODE: _PUBLISH,
+    CONF_LOCAL_POLL_INTERVAL: _PUBLISH,
+    CONF_LOCAL_TCP_PORT: _PUBLISH,
+    CONF_LOCAL_UDP_PORT: _PUBLISH,
+    CONF_LOCAL_DEVICE_ADDRESS: _PUBLISH,
+    CONF_LOCAL_DEVICE_CODE: _PUBLISH,
+    CONF_LOCAL_REDIRECT_CONFIRMED: _PUBLISH,
+    # The collector product number correlates two downloads of one account
+    # without disclosing the number itself.
+    CONF_LOCAL_EXPECTED_PN: _HASH,
+    # Network addresses are described rather than printed; see below.
+    CONF_LOCAL_LISTEN_IP: _DESCRIBE_ADDRESS,
+    CONF_LOCAL_COLLECTOR_IP: _DESCRIBE_ADDRESS,
+    CONF_LOCAL_COLLECTOR_IPS: _DESCRIBE_ADDRESS,
+}
 _REDACTED = "**redacted**"
 
 
-def _redacted_entry_values(values: Mapping[str, Any]) -> dict[str, Any]:
-    """Return config values with credentials and identifiers removed."""
+def _network_label(value: Any, subnets: dict[str, int]) -> str:
+    """Describe an address by family, scope and subnet, never by its value.
+
+    Local mode fails in ways that depend on exactly these three facts: whether
+    the collector is reachable at all (a public address is a misconfiguration),
+    and whether Home Assistant listens on the same subnet the collector talks
+    to. Replacing the addresses with a bare marker would take that away, so the
+    numbering is per download and says only which addresses share a subnet.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return text
+    try:
+        address = ipaddress.ip_address(text)
+    except ValueError:
+        return _REDACTED
+    prefix = 24 if address.version == 4 else 64
+    network = str(ipaddress.ip_network(f"{address}/{prefix}", strict=False))
+    label = subnets.setdefault(network, len(subnets) + 1)
+    scope = "private" if address.is_private else "public"
+    return f"{scope} ipv{address.version} in subnet {label}"
+
+
+def _redacted_entry_values(
+    values: Mapping[str, Any], subnets: dict[str, int] | None = None
+) -> dict[str, Any]:
+    """Return config values with credentials and identifiers removed.
+
+    Only a key ``_ENTRY_DISCLOSURE`` classifies is published; anything else is
+    redacted, so a configuration option added later cannot be disclosed by
+    being forgotten.
+
+    ``subnets`` carries the address grouping across both the data and the
+    options of one download, so the same subnet gets the same number in both.
+    """
+    labels = subnets if subnets is not None else {}
     result: dict[str, Any] = {}
     for key, value in values.items():
-        if key in _REDACTED_ENTRY_KEYS:
-            result[key] = _REDACTED if value not in (None, "") else value
-        elif key in _HASHED_ENTRY_KEYS:
-            result[key] = short_identity(value) if value else value
-        else:
+        disclosure = _ENTRY_DISCLOSURE.get(key, _REDACT)
+        if disclosure is _PUBLISH:
             result[key] = value
+        elif disclosure is _HASH:
+            result[key] = short_identity(value) if value else value
+        elif disclosure is _DESCRIBE_ADDRESS:
+            result[key] = (
+                [_network_label(item, labels) for item in value]
+                if isinstance(value, (list, tuple))
+                else _network_label(value, labels)
+            )
+        else:
+            # Redacted, and the key is kept so a reader can still tell a
+            # configured value from an absent one.
+            result[key] = _REDACTED if value not in (None, "") else value
     return result
 
 
@@ -1170,6 +1318,7 @@ async def async_get_config_entry_diagnostics(
     ``sha256:`` correlation form, so two downloads of the same account can be
     compared without disclosing either.
     """
+    subnets: dict[str, int] = {}
     report: dict[str, Any] = {
         "integration": {
             "version": VERSION,
@@ -1179,8 +1328,8 @@ async def async_get_config_entry_diagnostics(
             "local_mode": entry.options.get(CONF_LOCAL_MODE, LOCAL_MODE_DISABLED),
             "api_profile": resolve_api_profile(dict(entry.data)),
         },
-        "entry_data": _redacted_entry_values(entry.data),
-        "entry_options": _redacted_entry_values(entry.options),
+        "entry_data": _redacted_entry_values(entry.data, subnets),
+        "entry_options": _redacted_entry_values(entry.options, subnets),
     }
 
     coordinator: DessMonitorDataUpdateCoordinator | None = hass.data.get(
@@ -1276,12 +1425,19 @@ def _build_base_diagnostics(
     device_meta = device_info.get("device", {})
     collector_meta = device_info.get("collector", {})
 
+    # Home Assistant offers "Download diagnostics" on each device as well as on
+    # the integration entry, and a reporter attaches whichever one they found.
+    # This file used to print the serial number, the collector product number
+    # and the user's own alias, while the hub file replaced all three with the
+    # correlation hash and the support guide promised the download carried no
+    # identifiers. Both files now keep that promise, and two downloads of one
+    # device still carry the same hash so they can be compared (#53).
     return {
         "device_info": {
-            "serial_number": device_sn,
-            "alias": device_meta.get("alias", "Unknown"),
+            "serial_number": short_identity(device_sn),
+            "alias": short_identity(device_meta.get("alias")),
             "firmware_version": collector_meta.get("fireware", "Unknown"),
-            "collector_pn": collector_meta.get("pn", "Unknown"),
+            "collector_pn": short_identity(collector_meta.get("pn")),
             "device_code": device_meta.get("devcode"),
             "device_address": device_meta.get("devaddr"),
         },
@@ -1372,7 +1528,10 @@ async def _fetch_control_details(
         return {}, {}, str(err)
 
     formatted_fields = _format_control_fields(
-        control_fields, device_data, _known_control_values(coordinator, device_sn)
+        control_fields,
+        device_data,
+        _known_control_values(coordinator, device_sn),
+        device_meta.get("devcode"),
     )
     _LOGGER.debug(
         "Added %d control fields and %d parameters to diagnostics for device %s",
@@ -1414,6 +1573,7 @@ def _format_control_fields(
     control_fields: dict[str, Any],
     device_data: list[dict[str, Any]],
     known_values: Mapping[str, str] | None = None,
+    devcode: Any = None,
 ) -> dict[str, Any]:
     """Format control field metadata for diagnostics output."""
     formatted: dict[str, Any] = {}
@@ -1422,7 +1582,7 @@ def _format_control_fields(
     for field_name, field_data in control_fields.items():
         if field_data.get("type") == "options":
             formatted[field_name] = _format_option_field(
-                field_name, field_data, device_data, known_values
+                field_name, field_data, device_data, known_values, devcode
             )
         else:
             formatted[field_name] = _format_numeric_field(
@@ -1437,9 +1597,13 @@ def _format_option_field(
     field_data: dict[str, Any],
     device_data: list[dict[str, Any]],
     known_values: Mapping[str, str] | None = None,
+    devcode: Any = None,
 ) -> dict[str, Any]:
     """Format control fields that expose selectable options."""
+    declared = control_value_reading(devcode, field_data.get("id"))
     sensor_value = _extract_sensor_value(device_data, field_name)
+    if declared:
+        sensor_value = _extract_sensor_value(device_data, declared, sensor_value)
     current_value = _resolve_option_value(
         field_name, field_data, sensor_value, device_data, known_values or {}
     )
@@ -1494,21 +1658,16 @@ def _resolve_option_value(
         if desired_key is not None:
             return _lookup_option_value(field_data, desired_key)
 
-    if sensor_value:
-        return sensor_value
-
-    if field_name == "Output Voltage":
-        output_voltage = _extract_sensor_value(device_data, "Output Voltage")
-        if output_voltage is not None:
-            try:
-                voltage_key = str(float(output_voltage))
-            except (TypeError, ValueError):
-                voltage_key = str(output_voltage)
-            return _lookup_option_value(
-                field_data,
-                voltage_key,
-                fallback=f"{output_voltage} V (Custom)",
-            )
+    # Only a value that corresponds to one of the control's options is
+    # reported. A collector answers a control's name with a live measurement on
+    # some devcodes - devcode 2376 reports 229.8 V for an Output Voltage whose
+    # options are 220, 230 and 240 - and the file used to present that as the
+    # control's value while the entity, which checks, showed none.
+    telemetry = control_value(sensor_value)
+    if telemetry is not None:
+        option_key = option_key_for(field_data.get("options", {}), telemetry)
+        if option_key is not None:
+            return _lookup_option_value(field_data, option_key)
 
     # Most controls never appear in telemetry. Their value comes from an
     # explicit read, which the coordinator caches by field id.
@@ -1548,12 +1707,6 @@ def _extract_sensor_value(
     return default
 
 
-# Readings the integration deliberately publishes as an entity attribute
-# rather than as a sensor of their own. They are not dropped, so they do not
-# belong in the summary's list of readings that reach nothing.
-_READINGS_PUBLISHED_AS_ATTRIBUTES = {"timestamp"}
-
-
 def _build_diagnostics_summary(
     devcode: Any,
     device_data: list[dict[str, Any]],
@@ -1582,7 +1735,7 @@ def _build_diagnostics_summary(
         key = resolved_key_for(devcode, data_point)
         if key:
             resolved.add(key)
-        elif normalize_sensor_title(title) not in _READINGS_PUBLISHED_AS_ATTRIBUTES:
+        elif not is_attribute_reading(title):
             unresolved.append(title.strip())
 
     return {

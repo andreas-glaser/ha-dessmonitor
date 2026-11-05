@@ -65,6 +65,13 @@ PI18_GS_FIELDS = (
     Field("PV2 Voltage", 19, "V", 0.1),
 )
 
+# Every reading this driver can emit, and the unit it emits it in. The local
+# path labels a value with the canonical unit from ``SENSOR_TYPES``, not with
+# this one, so a number in the wrong scale is published wearing the right
+# label: that is how the PI18 ``ET`` query shipped in watt-hours on a kWh
+# sensor (#53). ``tests/local/test_driver_contracts.py`` holds this table
+# against the sensor catalogue so a field cannot claim a unit the entity does
+# not have, and the parser's scale is chosen to match what is declared here.
 SENSOR_UNITS = {
     field.title: field.unit for field in (*GS_FIELDS, *GS2_FIELDS, *PI18_GS_FIELDS)
 } | {"Operating mode": "", "Energy Total": "kWh"}
@@ -111,7 +118,12 @@ def parse_command_response(
         mode = response.data.strip()
         return {"Operating mode": MODE_MAP.get(mode, "Unknown")}
     if command == "ET":
-        return {"Energy Total": _parse_number(response.data, 1.0)}
+        # ET answers in watt-hours while the sensor is kWh, so the reading was
+        # published a thousand times too high: the diagnostics in #53 show this
+        # query returning 10104399 beside the cloud's own 10104.399 kWh for the
+        # same inverter. In hybrid mode the overlay puts that figure on the
+        # Energy Total entity, which feeds the energy dashboard.
+        return {"Energy Total": _parse_number(response.data, 0.001)}
     if command == "PI":
         identified = response.data.strip()
         if identified not in {"17", "18"}:

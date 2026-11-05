@@ -9,17 +9,22 @@ labels with a unit cannot reach Home Assistant as a sensor.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.dessmonitor.device_support import apply_devcode_transformations
+from custom_components.dessmonitor.device_support import (
+    apply_devcode_transformations,
+    is_setting_reading,
+)
 from custom_components.dessmonitor.sensor import _build_sensor_entities
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
-from custom_components.dessmonitor.support_report import normalized_reports
+from custom_components.dessmonitor.support_report import (
+    normalized_reports,
+    scale_disagreements,
+)
 
 ANALYSIS_FILES = sorted(
     Path(__file__)
@@ -27,13 +32,6 @@ ANALYSIS_FILES = sorted(
     .parent.parent.joinpath("docs/evidence")
     .rglob("analysis_*.json")
 )
-
-_CLI = Path(__file__).resolve().parent.parent / "tools" / "cli"
-if str(_CLI) not in sys.path:
-    sys.path.insert(0, str(_CLI))
-
-from evidence import analysis_checksum  # noqa: E402
-
 
 @pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
 def test_committed_analysis_is_intact(path: Path) -> None:
@@ -51,12 +49,6 @@ def test_committed_analysis_is_intact(path: Path) -> None:
         )
 
 
-def _load(path: Path) -> dict[str, Any]:
-    """Return the analysis payload of a committed CLI report."""
-    with path.open("r", encoding="utf-8") as handle:
-        return dict(json.load(handle)["analysis"])
-
-
 def _records(path: Path) -> list[dict[str, Any]]:
     """Return one normalized record per device, for either committed shape.
 
@@ -65,22 +57,6 @@ def _records(path: Path) -> list[dict[str, Any]]:
     """
     with path.open("r", encoding="utf-8") as handle:
         return normalized_reports(json.load(handle))
-
-
-def _titles_with_units(analysis: dict[str, Any]) -> dict[str, str]:
-    """Return observed units by raw title, which marks a title as a reading.
-
-    A title without a unit is a setting, an identity field or a timestamp, and
-    those reach Home Assistant through the number, select and button platforms.
-    """
-    units: dict[str, str] = {}
-    for section, label in (("sample_data", "title"), ("parameters", "name")):
-        for point in analysis.get(section, []):
-            title = point.get(label)
-            unit = (point.get("unit") or "").strip()
-            if title and unit:
-                units[str(title)] = unit
-    return units
 
 
 def _sensor_entities(devcode: int, points: list[dict[str, Any]], hass) -> list[Any]:
@@ -133,6 +109,7 @@ def _assert_every_reading_resolves(path: Path, record: dict[str, Any]) -> None:
         title: unit
         for title, unit in units.items()
         if title not in excluded
+        and not is_setting_reading(devcode, title)
         and resolve_sensor_key(
             apply_devcode_transformations(devcode, {"title": title}).get("title"),
             title,
@@ -288,3 +265,100 @@ def test_an_edited_report_fails_its_checksum() -> None:
     (record,) = normalized_reports(report)
 
     assert record["checksum_valid"] is False
+
+
+def test_a_diagnostics_download_is_read_as_home_assistant_writes_it() -> None:
+    """Home Assistant wraps a diagnostics report under ``data`` (#62).
+
+    That envelope, not the bare report, is what a reporter attaches to an
+    issue, and the coverage tooling rejected every one of those files as "not a
+    devcode analysis or support report".
+    """
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    report = build_support_report(
+        devcode=684,
+        readings=[
+            {"title": "today energy", "val": "7.65", "unit": "kWh"},
+            {"title": "work mode", "val": "normal", "unit": ""},
+        ],
+    )
+
+    for payload in (
+        # The config-entry hook, which reports every device on the account.
+        {"home_assistant": {"version": "2026.10.4"}, "data": {"devices": [report]}},
+        # The per-device hook, which reports one.
+        {"home_assistant": {"version": "2026.10.4"}, "data": report},
+    ):
+        (record,) = normalized_reports(payload)
+
+        assert record["devcode"] == 684
+        assert record["source"] == "integration_diagnostics"
+        assert record["checksum_valid"] is True
+        assert record["units"] == {"today energy": "kWh"}
+
+
+# Scale disagreements a committed file *records*, rather than ones the
+# integration still has. A hybrid download carries the local reading and the
+# cloud's own figure for the same sensor, so a file taken before a unit fix
+# preserves the evidence of it. Each entry names the fix that closed it, and
+# the test below removes the entry's excuse once the file no longer shows it.
+RECORDED_DISAGREEMENTS: dict[tuple[int, str], str] = {
+    (2452, "Energy Total"): (
+        "taken before the PI18 ET unit fix: the local query answered in "
+        "watt-hours against the cloud's kWh, 10104399 against 10104.399 (#53)"
+    ),
+}
+
+
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_two_sources_agree_on_the_scale_of_a_reading(path: Path) -> None:
+    """A hybrid download measures the same reading twice; they must agree.
+
+    `SENSOR_TYPES` declares a unit, local drivers emit numbers, and nothing
+    compared the two until the PI18 lifetime energy counter was found reading a
+    thousand times too high in a file we already had (#53). Where a committed
+    download carries both a local reading and the cloud's parameter for one
+    sensor, an order of magnitude between them is a unit mistake.
+    """
+    for device in _device_reports(path):
+        devcode = device.get("devcode")
+        for key, (local, cloud) in scale_disagreements(device).items():
+            assert (devcode, key) in RECORDED_DISAGREEMENTS, (
+                f"{path.name}: devcode {devcode} reports {key} as {local} "
+                f"locally and {cloud} from the cloud. One of the two is scaled "
+                "wrongly; fix the driver or the mapping, or record the entry in "
+                "RECORDED_DISAGREEMENTS with the reason."
+            )
+
+
+def test_recorded_disagreements_still_describe_a_committed_file() -> None:
+    """An entry must lose its excuse once the evidence stops showing it.
+
+    Otherwise a stale entry keeps a real disagreement excused after someone
+    replaces the file with one taken on fixed code.
+    """
+    seen: set[tuple[int, str]] = set()
+    for path in ANALYSIS_FILES:
+        for device in _device_reports(path):
+            devcode = device.get("devcode")
+            for key in scale_disagreements(device):
+                seen.add((devcode, key))
+
+    stale = sorted(set(RECORDED_DISAGREEMENTS) - seen)
+    assert not stale, (
+        f"no committed file shows these disagreements any more: {stale}. "
+        "Remove them from RECORDED_DISAGREEMENTS."
+    )
+
+
+def _device_reports(path: Path) -> list[dict[str, Any]]:
+    """Return the device reports in a committed diagnostics download.
+
+    A CLI analysis has no second source to compare against, so it yields none.
+    """
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    data = payload.get("data", payload)
+    devices = data.get("devices") if isinstance(data, dict) else None
+    return [device for device in devices or [] if isinstance(device, dict)]

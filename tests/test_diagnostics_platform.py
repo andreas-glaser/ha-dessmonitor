@@ -14,6 +14,7 @@ from custom_components.dessmonitor import _format_control_fields
 from custom_components.dessmonitor import diagnostics as diagnostics_platform
 from custom_components.dessmonitor.api import DessMonitorAPI
 from custom_components.dessmonitor.const import DOMAIN
+from custom_components.dessmonitor.support_report import short_identity
 
 
 def test_platform_exposes_the_hooks_home_assistant_looks_up() -> None:
@@ -42,8 +43,12 @@ async def test_device_diagnostics_returns_the_device_payload(
         hass, entry, device
     )
 
-    assert report["device_info"]["serial_number"] == "SN-1"
-    assert report["device_info"]["collector_pn"] == "PN-1"
+    # Both downloads are attached to public issues, so neither prints the
+    # serial, the collector product number or the user's alias (#53).
+    assert report["device_info"]["serial_number"] == short_identity("SN-1")
+    assert report["device_info"]["collector_pn"] == short_identity("PN-1")
+    assert report["device_info"]["alias"] == short_identity("Inverter")
+    assert "SN-1" not in json.dumps(report)
     assert report["device_info"]["device_code"] == 6544
     assert report["raw_data_points"] == 1
 
@@ -413,3 +418,120 @@ async def test_diagnostics_report_the_control_values_the_entities_show(
     assert config["Bulk Charging Voltage"]["value"] == "56.4"
     # Never read, and said so rather than claiming the control is unset.
     assert config["Backlight Control"]["value"] == "Not read"
+
+
+async def test_hub_diagnostics_do_not_disclose_local_network_addresses(
+    hass: HomeAssistant,
+) -> None:
+    """The LAN addresses local mode is configured with are identifiers (#53).
+
+    A reporter attached this file to a public issue with their collector and
+    Home Assistant addresses in it. What support needs from those two fields is
+    the family, the scope and whether they share a subnet, so that is what the
+    download now carries.
+    """
+    coordinator = MagicMock()
+    coordinator.is_hybrid = False
+    coordinator.last_update_success = True
+    coordinator.cloud_revision = 1
+    coordinator.stale_cloud_serials = frozenset()
+    coordinator.update_interval = timedelta(seconds=300)
+    coordinator.data = {}
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = {"username": "someone@example.com", "password": "hunter2"}
+    entry.options = {
+        "local_mode": "prefer_local",
+        "local_listen_ip": "192.168.18.134",
+        "local_collector_ips": ["192.168.18.27", "10.11.12.13"],
+        "local_poll_interval": 10,
+    }
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    serialized = json.dumps(report)
+    for address in ("192.168.18.134", "192.168.18.27", "10.11.12.13"):
+        assert address not in serialized
+
+    options = report["entry_options"]
+    # The listen address shares the first collector's subnet and not the
+    # second's, which is the fact a local-mode thread actually turns on.
+    assert options["local_listen_ip"] == "private ipv4 in subnet 1"
+    assert options["local_collector_ips"] == [
+        "private ipv4 in subnet 1",
+        "private ipv4 in subnet 2",
+    ]
+    assert options["local_poll_interval"] == 10
+
+
+def test_every_config_key_is_classified() -> None:
+    """A new option must not reach a public issue by being forgotten (#53).
+
+    The download used to publish any key nobody had classified, which is how a
+    reporter's collector and listen addresses ended up in an attachment. Adding
+    a `CONF_*` constant now fails here until its disclosure is decided.
+    """
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE
+    from custom_components.dessmonitor import const
+
+    config_keys = {
+        getattr(const, name)
+        for name in dir(const)
+        if name.startswith("CONF_") and isinstance(getattr(const, name), str)
+    }
+
+    unclassified = sorted(config_keys - set(_ENTRY_DISCLOSURE))
+    assert not unclassified, (
+        f"these configuration keys have no disclosure decision: {unclassified}. "
+        "Add each to _ENTRY_DISCLOSURE as publish, redact, hash or "
+        "describe_address."
+    )
+
+
+async def test_no_configured_value_reaches_the_download_verbatim(
+    hass: HomeAssistant,
+) -> None:
+    """The support guide promises no credentials and no identifiers.
+
+    It promised that while the file carried two LAN addresses, because the
+    tests asserted four specific secrets rather than the categorical claim.
+    This sets every known configuration key to a recognisable value and
+    asserts that none of them appears in the file as written.
+    """
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, _PUBLISH
+    from custom_components.dessmonitor import const
+
+    sentinels: dict[str, str] = {}
+    for name in dir(const):
+        if not name.startswith("CONF_"):
+            continue
+        key = getattr(const, name)
+        if not isinstance(key, str) or _ENTRY_DISCLOSURE.get(key) is _PUBLISH:
+            continue
+        sentinels[key] = f"sentinel-{name.lower()}-9f3b"
+
+    assert sentinels, "no redacted configuration keys to check"
+
+    coordinator = MagicMock()
+    coordinator.is_hybrid = False
+    coordinator.last_update_success = True
+    coordinator.cloud_revision = 1
+    coordinator.stale_cloud_serials = frozenset()
+    coordinator.update_interval = timedelta(seconds=300)
+    coordinator.data = {}
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = dict(sentinels)
+    entry.options = dict(sentinels)
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    serialized = json.dumps(report)
+    leaked = sorted(key for key, value in sentinels.items() if value in serialized)
+    assert not leaked, f"these configured values reached the download: {leaked}"
+    # Each key is still present, so a reader can tell a configured value from
+    # an absent one.
+    for key in sentinels:
+        assert key in report["entry_data"]

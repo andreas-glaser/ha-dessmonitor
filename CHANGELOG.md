@@ -23,6 +23,32 @@ confirm the single hardware report this candidate rests on. The new
 report if it appears when it should not would help too.
 
 ### Added
+- A devcode profile can name the reading that carries a control's value, for a
+  collector that answers a control's own name with a live measurement instead.
+  Devcode 2376 reports the measured output voltage for its Output Voltage
+  control, whose setpoint is a reading of its own, so that control is now
+  filled from telemetry rather than left unread and re-read live on every
+  cloud revision (#61).
+- Devcode 2477's inverter is confirmed as the Novopal NP35PEU24 from its
+  nameplate, matching the ratings the collector reports (#61, thanks to
+  @yurkila for the photograph).
+- Devcode 2477 now maps the rest of what its collector reports. Its eight
+  nameplate ratings become diagnostic sensors, the battery, PV, mains and load
+  status texts become sensors, and the twenty-four setpoints it returns among
+  the telemetry are declared settings rather than counted as readings that
+  reach no entity: 34 of its 64 readings resolve now against 22 before, and
+  none of the remaining 30 carries a unit, so the support card no longer tells
+  the owner that nineteen readings are missing when none are (#61, thanks to
+  @yurkila for the diagnostics download). The download is committed under
+  `docs/evidence/devcodes/`.
+- Device support for devcode 684, a single-phase grid-connected PV inverter
+  reported through ShineMonitor and sold as Panther Solar. It adds both string
+  voltages and currents, grid voltage and current, the daily and lifetime
+  energy counters, the radiator, inductor and enclosure temperatures, the
+  nameplate power and voltage ratings and the work mode: 22 of its 39 readings
+  resolve now against 8 before, and none of the remaining 17 carries a unit
+  (#62, thanks to @sabiwa for the diagnostics download). The download is
+  committed under `docs/evidence/devcodes/`.
 - Home Assistant now says whether an inverter is fully supported. A **Repairs**
   card names a devcode that has no profile, or one whose profile leaves readings
   unmapped, with how many readings reach no entity and a link to the support
@@ -78,6 +104,11 @@ report if it appears when it should not would help too.
   stranded beside a second entity.
 
 ### Changed
+- The support report says how many readings each exclusion accounts for, and
+  counts the unresolved rows, so `resolved + unresolved == total` exactly even
+  where a collector repeats a title. Three classes of row are left out of the
+  total - nothing, entity attributes and declared settings - and the card's
+  "maps N of M readings" was no longer arithmetic a reader could check.
 - Reporting hardware is one command. `dessmonitor_cli.py report --username YOU`
   signs in, enumerates the account, writes one redacted analysis per device and
   prints what each one covers, in place of five commands and picking the right
@@ -103,6 +134,79 @@ report if it appears when it should not would help too.
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A control whose value the vendor reports in a spelling it does not offer no
+  longer reads unknown. Devcode 2376 answers 60.0 for an Output Frequency
+  whose options are keyed "50.00" and "60.00", and the string comparison never
+  matched, so the select showed no value and the field was read again on every
+  cloud revision - each one a live request over the collector's
+  single-transaction link. Values are now compared as numbers as well, and the
+  vendor's own key is what a write still sends (#61).
+- The diagnostics download no longer reports a control value that the matching
+  entity rejects. It took any reading whose title matched a control's name as
+  that control's value without checking it against the control's options, so a
+  file could present a live 229.8 V as an Output Voltage setting offering 220,
+  230 and 240 while Home Assistant showed none (#61).
+- A serial number or other identity reading is no longer counted among the
+  readings that reach no entity. A fully mapped devcode 2376 collector reported
+  three (#61).
+- A device's own diagnostics download printed its serial number, its collector
+  product number and the owner's alias, while the integration-wide download
+  replaced all three with the `sha256:` correlation form and both the support
+  guide and the Repairs card promised the file carried no identifiers. Home
+  Assistant offers that button on every device page, so a reporter who used it
+  disclosed what the other file protects (#53). Both downloads now hash the
+  three, and two downloads of one device still carry the same hash.
+- The diagnostics download published any configuration key nobody had
+  classified, which is how a reporter's collector and listen addresses reached
+  a public issue. The classification is now an allowlist: a key that is not
+  listed is redacted, adding a `CONF_*` constant fails the test suite until its
+  disclosure is decided, and a second test sets every known key to a sentinel
+  and asserts none of them reaches the file.
+- A control read that the integration expects to fail, retries on a bounded
+  budget and reports itself was also logged at error level by the API layer, on
+  every attempt. One account collected twenty red log entries in an hour -
+  `queryDeviceCtrlValue: ERR_TIMEOUT` and `ERR_SYSTEM_EXCEPTION` - for a
+  condition being handled as designed (#61). Those attempts are debug now, and
+  the line that says a device's controls were given up on is a warning rather
+  than info, so the outcome stays visible while the attempts do not. Failures
+  on every other request are unchanged.
+- The support card counted a devcode's own settings as readings that reach no
+  entity. Devcode 2452 returns the inverter's setpoints in the same call as the
+  telemetry - the battery recharge, bulk and float voltages, the
+  back-to-discharge voltage, the second output's schedule - and five of them
+  are the values of controls the account already publishes as number and select
+  entities. All of them carry a unit, so a fresh install was told that fourteen
+  readings were missing while none were (#53). A profile now declares such
+  titles in `SETTING_READINGS`, and they count as neither mapped nor dropped.
+  Its six nameplate ratings do become diagnostic sensors: rated power, apparent
+  power, current and frequency, the battery rated voltage and the grid rated
+  current. The download for that devcode is committed under
+  `docs/evidence/devcodes/` (thanks to @DastardlyBaker for it).
+- The diagnostics download carried the LAN addresses local mode is configured
+  with: the collector's address and the address Home Assistant listens on, in
+  the file the support guide tells people to attach to a public issue (#53).
+  Both are now described rather than disclosed - address family, whether the
+  address is private or public, and a per-download subnet number - which keeps
+  the one fact a local-mode thread turns on, whether the two share a subnet.
+- Local telemetry published the lifetime energy counter a thousand times too
+  high on PI18 and P17 inverters. The `ET` query answers in watt-hours and the
+  sensor is kWh, so Energy Total read 10,104,399 kWh on the inverter in #53,
+  whose own cloud account reported 10,104.399 kWh at the same moment. In hybrid
+  mode the overlay puts that figure on the entity that feeds the energy
+  dashboard. Cloud-only setups were never affected.
+- A device the cloud reports no control template for was asked for its control
+  field list once per refresh for as long as the entry stayed loaded, each
+  attempt logging a warning. A grid-tie collector has no template at all and
+  answers `ERR_NO_RECORD` every time (#62). An empty field list is now cached
+  as the answer it is, and repeated refusals are retired after twelve
+  revisions with one warning at the start and one at the end; reloading the
+  entry starts a new budget.
+- The maintainer tooling rejected every diagnostics download a reporter
+  actually attaches. Home Assistant writes the report a diagnostics hook
+  returns under a `data` key, beside the host metadata it adds itself, and
+  `tools/analysis_coverage.py` only understood the unwrapped shape, so it
+  answered "not a devcode analysis or support report" for the file the support
+  guide asks for (#62).
 - The support card and the diagnostics report counted readings two different
   ways in the same sentence: readings that reach an entity were counted as
   distinct entities while the total counted raw readings, so a collector that
@@ -226,6 +330,17 @@ report if it appears when it should not would help too.
   the committed analysis shows 220.5 V and 7.3 A on string 1 against a 1552 W
   total, and live hardware showed 265 V and 1.6 A against 424 W of export, both
   with a per-string power of 0. `Total PV power` carries the real figure (#58).
+
+### Upgrade notes: local total energy on PI18 and P17
+- Energy Total now reads a thousand times lower on local and hybrid setups with
+  a PI18 or P17 inverter, because the old value was a thousand times too high.
+  The corrected reading is the right one, and it matches what the vendor cloud
+  and the inverter's own display report.
+- Home Assistant keeps the inflated figure in long-term statistics, and reads
+  the drop as a meter reset, so the energy dashboard will show one historical
+  spike. Open **Developer tools > Statistics**, find the Energy Total sensor,
+  and use the fix offered for the drop, or delete its statistics and let them
+  rebuild. Nothing needs doing if the entity is not on your energy dashboard.
 
 ### Upgrade notes: devcode 6544 time and clock controls
 - Four schedule controls move from `number` to `time`, and Inverter Date moves

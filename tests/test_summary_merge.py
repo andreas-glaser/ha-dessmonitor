@@ -41,6 +41,7 @@ CASES = [
         id="devcode_6515",
     ),
     pytest.param(2449, "Today generation", "Total generation", id="devcode_2449"),
+    pytest.param(684, "today energy", "total energy", id="devcode_684"),
 ]
 
 

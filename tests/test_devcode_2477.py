@@ -1,4 +1,9 @@
-"""Telemetry and mixed battery-voltage options reported in issue #40."""
+"""Telemetry and mixed battery-voltage options reported in issue #40.
+
+The nameplate ratings, declared settings and status texts below come from the
+diagnostics download in ``docs/evidence/devcodes/analysis_2477.json`` (#61),
+taken on a 24 V / 3 kW unit where #40's was 48 V / 5 kW.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +15,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.dessmonitor.api import DessMonitorAPI
-from custom_components.dessmonitor.const import DOMAIN
+from custom_components.dessmonitor.const import DOMAIN, SENSOR_TYPES
+from custom_components.dessmonitor.device_support import is_setting_reading
+from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
 from custom_components.dessmonitor.device_support.device_registry import (
     apply_devcode_transformations,
     is_devcode_supported,
@@ -299,3 +306,111 @@ async def test_other_controls_and_devcodes_keep_api_options(devcode, param_id):
     entity = (await _async_build_select_entities(coordinator, set()))[0]
     assert entity.options == list(options.values())
     assert entity.available
+
+
+def _resolved_key(title: str) -> str | None:
+    """Return the sensor key a raw title reaches through this devcode."""
+    mapped = apply_devcode_transformations(2477, {"title": title, "val": "1"})
+    return resolve_sensor_key(mapped.get("title"), title)
+
+
+@pytest.mark.parametrize(
+    ("title", "expected_key"),
+    [
+        ("Nonimal Output Active Power", "rated power"),
+        ("Nonimal Output Apparent Power", "rated apparent power"),
+        ("Nominal Output Current", "rated current"),
+        ("Nominal Output Frequency", "rated frequency"),
+        ("Nominal Output Voltage", "rated voltage"),
+        ("Nominal AC Voltage", "grid rated voltage"),
+        ("Nominal AC Current", "grid rated current"),
+        ("Rated Battery Voltage", "battery rated voltage"),
+    ],
+)
+def test_nameplate_ratings_reach_a_diagnostic_sensor(title, expected_key):
+    """A rating carries a unit, so it is a reading, and it never changes."""
+    key = _resolved_key(title)
+
+    assert key == expected_key
+    assert SENSOR_TYPES[key]["entity_category"] == "diagnostic"
+
+
+@pytest.mark.parametrize(
+    ("title", "expected_key"),
+    [
+        ("Battery Status", "Battery Status"),
+        ("PV Status", "PV Status"),
+        ("Mains Status", "Grid Status"),
+        ("Load Status", "Load Status"),
+    ],
+)
+def test_status_texts_reach_a_sensor_without_an_enum(title, expected_key):
+    """The vendor's full set of strings per field is unknown.
+
+    Declaring options would mark every string not listed invalid, so these
+    stay plain text sensors as Inverter Status does.
+    """
+    key = _resolved_key(title)
+
+    assert key == expected_key
+    assert "options" not in SENSOR_TYPES[key]
+    assert SENSOR_TYPES[key].get("device_class") is None
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        # The setpoints that carry a unit, which the support report counted as
+        # readings reaching no entity and reported missing (#61).
+        "Battery Equalization Interval",
+        "Battery Equalization Voltage",
+        "Battery Equalized Time",
+        "Battery Equalized Timeout",
+        "Bulk Charging Voltage",
+        "Comeback Battery Mode Voltage Point Under (SBU Priority)",
+        "Comeback Utility Mode Voltage Point Under (SBU Priority)",
+        "Floating Charging Voltage",
+        "Low Battery Cut-off Voltage",
+        "Max Total Charge Current",
+        "Max Utility Charge Current",
+        # And the switch-like ones it sends without a unit.
+        "AC Input Range",
+        "Battery Type",
+        "Buzzer Alarm",
+        "Record Fault Code",
+    ],
+)
+def test_setpoints_are_declared_settings_rather_than_sensors(title):
+    """A setting must not become a second entity for the same value."""
+    assert is_setting_reading(2477, title) is True
+    assert _resolved_key(title) is None
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Beeps While Primary Source Interupt",
+        "Transfer To Bypass @ Overload",
+        "Auto Return To Default Display Screen",
+    ],
+)
+def test_a_setting_is_declared_from_the_title_the_collector_reports(title):
+    """The reading titles and the control names are not spelled the same.
+
+    This collector reports "Beeps While Primary Source Interupt" as a reading
+    and "...Interrupt" as a control, and names the bypass setting "Transfer To
+    Bypass @ Overload" against the control's "Transfer To Bypass Overload", so
+    a declaration taken from the control template would miss all three.
+    """
+    assert is_setting_reading(2477, title) is True
+
+
+def test_a_live_reading_keeps_its_sensor_where_a_setting_shares_its_title():
+    """Output Voltage and Output Frequency arrive twice: live, then as setpoints.
+
+    Both are also controls on this devcode. Declaring either a setting would
+    take away the live sensor, so neither is declared and the reading wins.
+    """
+    for title in ("Output Voltage", "Output Frequency"):
+        assert is_setting_reading(2477, title) is False
+        assert _resolved_key(title) == title

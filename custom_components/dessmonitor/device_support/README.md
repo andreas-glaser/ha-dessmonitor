@@ -8,6 +8,7 @@ This directory contains device profiles for inverters connected through DessMoni
 
 - **devcode 518**: Known to pair with BYD BYD-S-1P5K-2M through Q0025-series collectors on ShineMonitor; local protocol and writes are not verified.
 - **devcode 632**: Grid-connected PV inverter with up to three strings and an optional export meter, on ShineMonitor; inverter brand and model not yet confirmed. No battery, charger or priority readings. `DCI`, `GFCI` and `ISO` stay unmapped because the analysis records no unit for them.
+- **devcode 684**: Known to pair with a 3 kW single-phase Panther Solar grid-connected PV inverter with two strings, on ShineMonitor. No battery, charger or priority readings, and the platform reports no control template for it, so it publishes sensors only. The seven `fault information` words stay unmapped: they are raw bitmasks and no report carries the vendor fault table for this protocol.
 - **devcode 4743**: Single-phase grid-connected PV inverter with up to three strings, on ShineMonitor; inverter brand and model not yet confirmed. No battery readings. The R phase is mapped to the grid sensors; the S and T phases and the line voltages stay unmapped until a three-phase unit is reported.
 
 - **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
@@ -16,8 +17,8 @@ This directory contains device profiles for inverters connected through DessMoni
 - **devcode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **devcode 2428**: Known to pair with Hybrid inverter
-- **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded)
-- **devcode 2477**: Contributor-reported 48 V / 5 kW unit; inverter brand/model not yet confirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating.
+- **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded). Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`, five of which the account also publishes as controls.
+- **devcode 2477**: Known to pair with Novopal NP35PEU24 (3500 VA, 24 V, 230 V / 50 Hz), confirmed from the nameplate in #61; also reported as a 48 V / 5 kW unit in #40, whose model is still unconfirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating. Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`; its reading titles and control-field names are not spelled the same.
 - **devcode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
 - **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter, Aninerel 6.2KW 48V, and Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module). Reports each output leg (L1/L2) alongside the summed output.

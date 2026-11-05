@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+from binascii import crc_hqx
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -470,3 +471,36 @@ async def test_a_local_failure_still_publishes_the_cloud_snapshot(
         assert points["Data Source"] == "Cloud"
     finally:
         await coordinator.async_shutdown()
+
+
+def test_local_total_energy_overlays_the_cloud_counter_in_kilowatt_hours() -> None:
+    """Local and cloud must agree on the scale of the lifetime counter (#53).
+
+    The diagnostics in #53 show the PI18 ``ET`` query answering 10104399 for an
+    inverter whose cloud account reported 10104.399 kWh at the same moment. The
+    overlay puts the local figure on the Energy Total entity, so a unit
+    mismatch in the driver reaches the energy dashboard as a thousandfold jump
+    every time local telemetry becomes healthy.
+    """
+    from custom_components.dessmonitor.local.profile import parse_command_response
+
+    content = b"^D01110104399"
+    frame = content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
+    local_total = parse_command_response("ET", frame, protocol_id="18")["Energy Total"]
+
+    cloud = _cloud_payload()
+    cloud["CLOUD-SERIAL"]["data"].append(
+        {"title": "Total generation", "val": 10104.399, "unit": "kWh"}
+    )
+    local = _local_payload()
+    local["CLOUD-SERIAL"] = local.pop("LOCAL-SERIAL")
+    local["CLOUD-SERIAL"]["data"].append(
+        {"title": "Energy Total", "val": local_total, "unit": "kWh"}
+    )
+
+    merged = merge_cloud_and_local(cloud, local, local_available=True)
+    points = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+
+    assert points["Data Source"] == "Local"
+    assert points["Energy Total"] == 10104.399
+    assert "Total generation" not in points

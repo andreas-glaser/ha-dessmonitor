@@ -1,0 +1,916 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.7.0-rc.1",
+      "connection_type": "cloud",
+      "local_mode": "prefer_local",
+      "api_profile": "dessmonitor_ess"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 4,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": true
+    },
+    "local": {
+      "setup_errors": [],
+      "transports": [
+        {
+          "connected": true,
+          "last_update_success": true,
+          "device_code": 258,
+          "devices": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "report_version": 5,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.7.0-rc.1",
+        "devcode": 2452,
+        "device_identity": "sha256:d34d34378853",
+        "collector_identity": "sha256:bb2f6616b39c",
+        "device_address": 1,
+        "support": {
+          "status": "partial",
+          "profile": "Eybond Data Collector (devcode 2452)",
+          "known_inverters": [
+            "Axpert (PI18 protocol, rebranded)"
+          ],
+          "resolved": 25,
+          "total": 49,
+          "sensors": 25,
+          "unresolved_with_unit": [
+            {
+              "title": "AC output rating active power",
+              "unit": "W",
+              "sample": "6000"
+            },
+            {
+              "title": "AC output rating apparent power",
+              "unit": "VA",
+              "sample": "6000"
+            },
+            {
+              "title": "AC Output Rating Current",
+              "unit": "A",
+              "sample": "26.0"
+            },
+            {
+              "title": "AC Output Rating Voltage",
+              "unit": "V",
+              "sample": "230.0"
+            },
+            {
+              "title": "AC Output Rating Voltage",
+              "unit": "V",
+              "sample": "230.0"
+            },
+            {
+              "title": "AC rated frequency",
+              "unit": "Hz",
+              "sample": "50.0"
+            },
+            {
+              "title": "Back To Discharge Voltage",
+              "unit": "V",
+              "sample": "52.0"
+            },
+            {
+              "title": "Battery bulk voltage",
+              "unit": "V",
+              "sample": "56.5"
+            },
+            {
+              "title": "Battery float voltage",
+              "unit": "V",
+              "sample": "56.5"
+            },
+            {
+              "title": "Battery Rating Voltage",
+              "unit": "V",
+              "sample": "48.0"
+            },
+            {
+              "title": "Battery recharge voltage",
+              "unit": "V",
+              "sample": "54.0"
+            },
+            {
+              "title": "Battery under voltage",
+              "unit": "V",
+              "sample": "48.0"
+            },
+            {
+              "title": "Grid Rating Current",
+              "unit": "A",
+              "sample": "26.0"
+            },
+            {
+              "title": "Low DC cut off voltage on second output",
+              "unit": "V",
+              "sample": "48.0"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Date Time",
+            "id",
+            "Machine type",
+            "Main CPU version",
+            "Scheduled time for 2nd AC output off",
+            "Scheduled time for 2nd AC output on",
+            "Setting discharge time on the 2nd output",
+            "Slave 1 CPU version",
+            "SN",
+            "Whether the second route is enabled"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-04T16:40:26.415361+00:00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "SN",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Date Time",
+            "value": "2026-11-04 21:35:15",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Machine type",
+            "value": "Off Grid Tie",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Main CPU version",
+            "value": "06937",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Slave 1 CPU version",
+            "value": "08114",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Output Rating Voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid Rating Current",
+            "value": "26.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Output Rating Voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Output Rating Current",
+            "value": "26.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "AC rated frequency",
+            "value": "50.0",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "AC output rating active power",
+            "value": "6000",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "AC output rating apparent power",
+            "value": "6000",
+            "unit": "VA",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery Rating Voltage",
+            "value": "48.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery recharge voltage",
+            "value": "54.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Back To Discharge Voltage",
+            "value": "52.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery under voltage",
+            "value": "48.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery bulk voltage",
+            "value": "56.5",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery float voltage",
+            "value": "56.5",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "241.9",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "Grid Frequency",
+            "value": "50.1",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "PV1 Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "PV1 Voltage"
+          },
+          {
+            "title": "PV1 Charger Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "PV1 Charger Power"
+          },
+          {
+            "title": "PV2 Charger Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "PV2 Charger Power"
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "53.1",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "State of Charge",
+            "value": "82",
+            "unit": "%",
+            "resolved_key": "State of Charge"
+          },
+          {
+            "title": "Battery Discharge Current",
+            "value": "3",
+            "unit": "A",
+            "resolved_key": "Battery Discharge Current"
+          },
+          {
+            "title": "Battery Charging Current",
+            "value": "0",
+            "unit": "A",
+            "resolved_key": "Battery Charging Current"
+          },
+          {
+            "title": "Output Voltage",
+            "value": "230.5",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Output Frequency",
+            "value": "50.0",
+            "unit": "Hz",
+            "resolved_key": "Output Frequency"
+          },
+          {
+            "title": "Second AC output voltage",
+            "value": "230.5",
+            "unit": "V",
+            "resolved_key": "Second Output Voltage"
+          },
+          {
+            "title": "Second AC output frequency",
+            "value": "50.1",
+            "unit": "Hz",
+            "resolved_key": "Second Output Frequency"
+          },
+          {
+            "title": "Load Percent",
+            "value": "3",
+            "unit": "%",
+            "resolved_key": "Load Percent"
+          },
+          {
+            "title": "Output Active Power",
+            "value": "138",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "Output Apparent Power",
+            "value": "184",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "Low DC cut off voltage on second output",
+            "value": "48.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Setting discharge time on the 2nd output",
+            "value": "Disable",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Scheduled time for 2nd AC output on",
+            "value": "00:00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Scheduled time for 2nd AC output off",
+            "value": "00:00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Whether the second route is enabled",
+            "value": "The second route opens",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Today generation",
+            "value": "11762",
+            "unit": "Wh",
+            "resolved_key": "Energy Today"
+          },
+          {
+            "title": "Month generation",
+            "value": "50389",
+            "unit": "Wh",
+            "resolved_key": "Energy Month"
+          },
+          {
+            "title": "Year generation",
+            "value": "4370034",
+            "unit": "Wh",
+            "resolved_key": "Energy Year"
+          },
+          {
+            "title": "Energy Total",
+            "value": "10104399",
+            "unit": "kWh",
+            "resolved_key": "Energy Total"
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "Inverter Heat Sink Temperature",
+            "value": "45",
+            "unit": "°C",
+            "resolved_key": "Inverter Heat Sink Temperature"
+          },
+          {
+            "title": "Operating mode",
+            "value": "Battery",
+            "unit": "",
+            "resolved_key": "Operating mode"
+          },
+          {
+            "title": "PV2 Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "PV2 Voltage"
+          },
+          {
+            "title": "Data Source",
+            "value": "Local",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "AC Output Rating Frequency",
+            "value": "50.0",
+            "unit": "",
+            "options": [
+              "50: 50.0",
+              "60: 60.0"
+            ],
+            "id": "gd_bse_output_frequency"
+          },
+          {
+            "name": "AC Output Rating Voltage",
+            "value": "230.0",
+            "unit": "",
+            "options": [
+              "2200: 220.0",
+              "2300: 230.0",
+              "2400: 240.0"
+            ],
+            "id": "gd_bse_input_voltage"
+          },
+          {
+            "name": "alarm on when primary source interrupt",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_primary_source_alarm_ctrl_g"
+          },
+          {
+            "name": "Back To Discharge Voltage",
+            "value": "52.0",
+            "unit": "",
+            "options": [
+              "000: FULL",
+              "480: 48.0",
+              "490: 49.0",
+              "500: 50.0",
+              "510: 51.0",
+              "520: 52.0",
+              "530: 53.0",
+              "540: 54.0",
+              "550: 55.0",
+              "560: 56.0",
+              "570: 57.0",
+              "580: 58.0"
+            ],
+            "id": "bat_battery_dischargevoltage"
+          },
+          {
+            "name": "Back To Grid Voltage",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "440: 44.0",
+              "450: 45.0",
+              "460: 46.0",
+              "470: 47.0",
+              "480: 48.0",
+              "490: 49.0",
+              "500: 50.0",
+              "510: 51.0"
+            ],
+            "id": "bat_battery_charging_voltage"
+          },
+          {
+            "name": "backlight on",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_backlight_function_ctrl_f"
+          },
+          {
+            "name": "Battery bulk voltage",
+            "value": "56.5",
+            "unit": "",
+            "id": "bat_charging_bulk_voltage"
+          },
+          {
+            "name": "Battery Cut off Voltage",
+            "value": "48.0",
+            "unit": "V",
+            "id": "bat_battery_cut_off_voltage"
+          },
+          {
+            "name": "Battery float voltage",
+            "value": "56.5",
+            "unit": "",
+            "id": "bat_charging_float_voltage"
+          },
+          {
+            "name": "Battery type",
+            "value": "LIC",
+            "unit": "",
+            "options": [
+              "0: AGM",
+              "1: Flooded",
+              "2: User",
+              "3: Pylontech",
+              "5: WECO",
+              "6: Soltaro",
+              "8: LIB",
+              "9: LIC"
+            ],
+            "id": "bat_battery_type"
+          },
+          {
+            "name": "Brightness of RGB LED",
+            "value": "Low",
+            "unit": "",
+            "options": [
+              "48: Low",
+              "49: Normal",
+              "50: High"
+            ],
+            "id": "sled_scrolling_speed_for_rgb"
+          },
+          {
+            "name": "Buzzer beep",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_buzzer_ctrl_a"
+          },
+          {
+            "name": "Charger source priority",
+            "value": "Only solar",
+            "unit": "",
+            "options": [
+              "0: Solar first",
+              "1: Solar and Utility",
+              "2: Only solar"
+            ],
+            "id": "bat_charging_source"
+          },
+          {
+            "name": "Color of RGB LED1",
+            "value": "Yellow",
+            "unit": "",
+            "options": [
+              "1: Other",
+              "000000255: Blue",
+              "000139139: Sky Blue",
+              "000255000: Green",
+              "148000255: Purple",
+              "255020147: Pink",
+              "255069000: Orange",
+              "255180000: Yellow",
+              "255255255: White"
+            ],
+            "id": "sled_color_of_led1_rgb"
+          },
+          {
+            "name": "Color of RGB LED2",
+            "value": "Sky Blue",
+            "unit": "",
+            "options": [
+              "1: Other",
+              "000000255: Blue",
+              "000139139: Sky Blue",
+              "000255000: Green",
+              "148000255: Purple",
+              "255020147: Pink",
+              "255069000: Orange",
+              "255180000: Yellow",
+              "255255255: White"
+            ],
+            "id": "sled_color_of_led2_rgb"
+          },
+          {
+            "name": "Color of RGB LED3",
+            "value": "Other",
+            "unit": "",
+            "options": [
+              "1: Other",
+              "000000255: Blue",
+              "000139139: Sky Blue",
+              "000255000: Green",
+              "148000255: Purple",
+              "255020147: Pink",
+              "255069000: Orange",
+              "255180000: Yellow",
+              "255255255: White"
+            ],
+            "id": "sled_color_of_led3_rgb"
+          },
+          {
+            "name": "Country Customized Regulations",
+            "value": "Gemany",
+            "unit": "",
+            "options": [
+              "0: India",
+              "1: Gemany",
+              "2: South American"
+            ],
+            "id": "cts_regulations_state"
+          },
+          {
+            "name": "Data Presentation of data color",
+            "value": "Load percentage",
+            "unit": "",
+            "options": [
+              "48: Solar input power in watt",
+              "49: Battery capacity percentage",
+              "50: Load percentage",
+              "51: Energy source",
+              "52: Battery charge/discharge status"
+            ],
+            "id": "sled_data_presentation_of_data_color"
+          },
+          {
+            "name": "display escape to default page after 1min timeout",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_lcd_return_to_default_display_ctrl_c"
+          },
+          {
+            "name": "Ending Time For Enable AC Charger Working",
+            "value": "00:00",
+            "unit": "",
+            "id": "cts_endin_time_for_enable_ac_charger_working"
+          },
+          {
+            "name": "Ending time for enable AC supply the load",
+            "value": "00:00",
+            "unit": "",
+            "id": "cts_scheduled_time_for_ac_output_off"
+          },
+          {
+            "name": "fault code record",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_fault_code_record_ctrl_h"
+          },
+          {
+            "name": "Input voltage range",
+            "value": "APL",
+            "unit": "",
+            "options": [
+              "0: APL",
+              "1: UPS"
+            ],
+            "id": "bse_input_voltage_range"
+          },
+          {
+            "name": "Li-Battrey Immediately Turnon",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_battrey_immediately_turnon_ctrl_j"
+          },
+          {
+            "name": "Li-BattreyAuto Turnon",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_battrey_auto_turnon_ctrl_k"
+          },
+          {
+            "name": "Lighting speed of RGB LED",
+            "value": "Normal",
+            "unit": "",
+            "options": [
+              "48: Low",
+              "49: Normal",
+              "50: High"
+            ],
+            "id": "sled_brightness_for_rgb"
+          },
+          {
+            "name": "Max AC Charging Current",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "002: 2.0",
+              "010: 10.0",
+              "020: 20.0",
+              "030: 30.0",
+              "040: 40.0",
+              "050: 50.0",
+              "060: 60.0",
+              "070: 70.0",
+              "080: 80.0",
+              "090: 90.0",
+              "100: 100.0",
+              "110: 110.0",
+              "120: 120.0",
+              "130: 130.0",
+              "140: 140.0"
+            ],
+            "id": "bat_ac_charging_current"
+          },
+          {
+            "name": "Max Charging Current",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "010: 10.0",
+              "020: 20.0",
+              "030: 30.0",
+              "040: 40.0",
+              "050: 50.0",
+              "060: 60.0",
+              "070: 70.0",
+              "080: 80.0",
+              "090: 90.0",
+              "100: 100.0",
+              "110: 110.0",
+              "120: 120.0",
+              "130: 130.0",
+              "140: 140.0"
+            ],
+            "id": "bat_max_charging_current"
+          },
+          {
+            "name": "On-Off control for RGB LED",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "48: Disable",
+              "49: Enable"
+            ],
+            "id": "sled_on_off_control_for_rgb"
+          },
+          {
+            "name": "Output source priority",
+            "value": "Solar-Battery-Utility",
+            "unit": "",
+            "options": [
+              "0: Solar-Utility-Battery",
+              "1: Solar-Battery-Utility"
+            ],
+            "id": "bse_output_source_priority"
+          },
+          {
+            "name": "over temperature restart",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_temperature_restart_ctrl_e"
+          },
+          {
+            "name": "overload bypass function",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_overload_bypass_ctrl_b"
+          },
+          {
+            "name": "overload restart",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_overload_restart_ctrl_d"
+          },
+          {
+            "name": "Reset PV energy storaget",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Reset"
+            ],
+            "id": "cts_reset_pv_energy_storage"
+          },
+          {
+            "name": "Restore To The Default",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "49: Restore To The Default"
+            ],
+            "id": "sys_set_default"
+          },
+          {
+            "name": "RGB LED effects",
+            "value": "Power chasing",
+            "unit": "",
+            "options": [
+              "48: Power cycling",
+              "49: Power wheel",
+              "50: Power chasing",
+              "51: Solid on"
+            ],
+            "id": "sled_scrolling_style_for_rgb"
+          },
+          {
+            "name": "Set Date Time",
+            "value": "2026-11-04 21:29:38",
+            "unit": "",
+            "id": "cts_set_date_time"
+          },
+          {
+            "name": "Solar Feed To Gird",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_power_for_grid_frequency_ctrl_i"
+          },
+          {
+            "name": "Solar Supply Priority",
+            "value": "Load-Battery-Utility",
+            "unit": "",
+            "options": [
+              "0: Battery-Load-Utility",
+              "1: Load-Battery-Utility"
+            ],
+            "id": "cts_power_priority"
+          },
+          {
+            "name": "Start Time For Enable AC Charger Working",
+            "value": "00:00",
+            "unit": "",
+            "id": "cts_start_time_for_enable_ac_charger_working"
+          },
+          {
+            "name": "Start time for enable AC supply the load",
+            "value": "00:00",
+            "unit": "",
+            "id": "cts_scheduled_time_for_ac_output_on"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Second AC output frequency",
+            "value": "50.2",
+            "unit": "Hz",
+            "id": "bt_input2_current"
+          },
+          {
+            "name": "Second AC output voltage",
+            "value": "230.3",
+            "unit": "V",
+            "id": "bt_input1_current"
+          },
+          {
+            "name": "Total generation",
+            "value": "10104.399",
+            "unit": "kWh",
+            "id": "energy_total"
+          }
+        ],
+        "checksum": "ed3f561a400818369c87a853293eeee3bee0582390f86a4fd7cd4136832a6a3f",
+        "data_source": "Local",
+        "last_update": "2026-11-04T16:40:26.415361+00:00"
+      }
+    ]
+  }
+}
