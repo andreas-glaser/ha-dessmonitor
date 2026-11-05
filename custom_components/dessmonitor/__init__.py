@@ -52,22 +52,26 @@ from .control_values import (
     cloud_control_snapshot,
     control_value,
     find_control_value,
+    first_control_value,
+    option_key_for,
     setting_value,
 )
 from .data_sources import snapshot_with_data_source
 from .device_support import (
+    control_value_reading,
     get_parameter_sensor_names,
     is_devcode_supported,
     map_sensor_title,
     needs_parameter_fetch,
 )
-from .sensor_titles import normalize_sensor_title, sensor_display_name
+from .sensor_titles import sensor_display_name
 from .support_report import PARTIAL as SUPPORT_PARTIAL
 from .support_report import SUPPORTED as SUPPORT_SUPPORTED
 from .support_report import UNSUPPORTED as SUPPORT_UNSUPPORTED
 from .support_report import (
     build_support_report,
     device_support_status,
+    is_attribute_reading,
     report_checksum,
     resolved_key_for,
     short_identity,
@@ -642,9 +646,15 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             return
         self._ctrl_cloud_samples[sn] = stamp
         values = self.ctrl_value_cache.setdefault(sn, {})
+        devcode = (self.data or {}).get(sn, {}).get("device", {}).get("devcode")
         for name, config in controls.items():
             field_id = config.get("id")
-            value = setting_value(config, find_control_value(points, name))
+            # A profile may name the reading that carries this control's value,
+            # where the collector answers the control's own name with a live
+            # measurement instead.
+            declared = control_value_reading(devcode, field_id)
+            titles = (declared, name) if declared else (name,)
+            value = setting_value(config, first_control_value(points, *titles))
             if field_id and value is not None:
                 values[field_id] = value
 
@@ -1518,7 +1528,10 @@ async def _fetch_control_details(
         return {}, {}, str(err)
 
     formatted_fields = _format_control_fields(
-        control_fields, device_data, _known_control_values(coordinator, device_sn)
+        control_fields,
+        device_data,
+        _known_control_values(coordinator, device_sn),
+        device_meta.get("devcode"),
     )
     _LOGGER.debug(
         "Added %d control fields and %d parameters to diagnostics for device %s",
@@ -1560,6 +1573,7 @@ def _format_control_fields(
     control_fields: dict[str, Any],
     device_data: list[dict[str, Any]],
     known_values: Mapping[str, str] | None = None,
+    devcode: Any = None,
 ) -> dict[str, Any]:
     """Format control field metadata for diagnostics output."""
     formatted: dict[str, Any] = {}
@@ -1568,7 +1582,7 @@ def _format_control_fields(
     for field_name, field_data in control_fields.items():
         if field_data.get("type") == "options":
             formatted[field_name] = _format_option_field(
-                field_name, field_data, device_data, known_values
+                field_name, field_data, device_data, known_values, devcode
             )
         else:
             formatted[field_name] = _format_numeric_field(
@@ -1583,9 +1597,13 @@ def _format_option_field(
     field_data: dict[str, Any],
     device_data: list[dict[str, Any]],
     known_values: Mapping[str, str] | None = None,
+    devcode: Any = None,
 ) -> dict[str, Any]:
     """Format control fields that expose selectable options."""
+    declared = control_value_reading(devcode, field_data.get("id"))
     sensor_value = _extract_sensor_value(device_data, field_name)
+    if declared:
+        sensor_value = _extract_sensor_value(device_data, declared, sensor_value)
     current_value = _resolve_option_value(
         field_name, field_data, sensor_value, device_data, known_values or {}
     )
@@ -1640,21 +1658,16 @@ def _resolve_option_value(
         if desired_key is not None:
             return _lookup_option_value(field_data, desired_key)
 
-    if sensor_value:
-        return sensor_value
-
-    if field_name == "Output Voltage":
-        output_voltage = _extract_sensor_value(device_data, "Output Voltage")
-        if output_voltage is not None:
-            try:
-                voltage_key = str(float(output_voltage))
-            except (TypeError, ValueError):
-                voltage_key = str(output_voltage)
-            return _lookup_option_value(
-                field_data,
-                voltage_key,
-                fallback=f"{output_voltage} V (Custom)",
-            )
+    # Only a value that corresponds to one of the control's options is
+    # reported. A collector answers a control's name with a live measurement on
+    # some devcodes - devcode 2376 reports 229.8 V for an Output Voltage whose
+    # options are 220, 230 and 240 - and the file used to present that as the
+    # control's value while the entity, which checks, showed none.
+    telemetry = control_value(sensor_value)
+    if telemetry is not None:
+        option_key = option_key_for(field_data.get("options", {}), telemetry)
+        if option_key is not None:
+            return _lookup_option_value(field_data, option_key)
 
     # Most controls never appear in telemetry. Their value comes from an
     # explicit read, which the coordinator caches by field id.
@@ -1694,12 +1707,6 @@ def _extract_sensor_value(
     return default
 
 
-# Readings the integration deliberately publishes as an entity attribute
-# rather than as a sensor of their own. They are not dropped, so they do not
-# belong in the summary's list of readings that reach nothing.
-_READINGS_PUBLISHED_AS_ATTRIBUTES = {"timestamp"}
-
-
 def _build_diagnostics_summary(
     devcode: Any,
     device_data: list[dict[str, Any]],
@@ -1728,7 +1735,7 @@ def _build_diagnostics_summary(
         key = resolved_key_for(devcode, data_point)
         if key:
             resolved.add(key)
-        elif normalize_sensor_title(title) not in _READINGS_PUBLISHED_AS_ATTRIBUTES:
+        elif not is_attribute_reading(title):
             unresolved.append(title.strip())
 
     return {

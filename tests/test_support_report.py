@@ -68,11 +68,28 @@ def test_a_profile_whose_readings_all_resolve_is_supported() -> None:
 
     assert report["support"]["status"] == SUPPORTED
     assert report["support"]["resolved"] == 2
-    # Timestamp is published as an attribute of every sensor, so it is not a
-    # reading that could reach one and is not counted among them.
-    assert report["support"]["total"] == len(_readings()) - 1
-    # Settings and identity fields are listed, not counted as dropped readings.
+    # Timestamp is published as an attribute of every sensor and a serial
+    # number names the hardware rather than measuring it, so neither is a
+    # reading that could reach a sensor and neither is counted among them.
+    assert report["support"]["total"] == len(_readings()) - 2
+    assert report["support"]["excluded"]["attribute_readings"] == 2
+    # A setting is listed, rather than counted as a dropped reading.
     assert "Protocol Number" in report["support"]["unresolved_without_unit"]
+
+
+def test_an_identity_reading_is_not_reported_as_dropped() -> None:
+    """A serial number reaches no sensor and never should (#61).
+
+    It was counted among the readings that reach nothing, which on devcode
+    2376 made a fully mapped collector report three.
+    """
+    report = build_support_report(devcode=6515, readings=_readings())
+
+    assert "Devise serial number" not in report["support"]["unresolved_without_unit"]
+    assert all(
+        item["title"] != "Devise serial number"
+        for item in report["support"]["unresolved_with_unit"]
+    )
 
 
 def test_a_reading_published_as_an_attribute_is_not_reported_as_dropped() -> None:

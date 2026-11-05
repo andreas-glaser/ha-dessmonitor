@@ -51,6 +51,19 @@ UNSUPPORTED = "unsupported"
 _ATTRIBUTE_READINGS = {"timestamp"}
 
 
+def is_attribute_reading(title: str) -> bool:
+    """Return whether a reading reaches Home Assistant as other than a sensor.
+
+    The Timestamp is published as an attribute of every entity, and an
+    identity field names the hardware rather than measuring it. Neither is a
+    reading being dropped, so neither belongs in a count of readings that
+    reach nothing: devcode 2376 reports "devise serial number" beside its
+    telemetry and the report counted it among three readings it said reached
+    no entity, of which only one really did.
+    """
+    return title.strip().casefold() in _ATTRIBUTE_READINGS or is_identifier_name(title)
+
+
 def short_identity(value: Any) -> str:
     """Return the correlation form of an identifier, never the identifier.
 
@@ -137,7 +150,7 @@ def build_support_report(
         if key:
             resolved_keys.add(key)
             resolved_rows += 1
-        elif title.casefold() in _ATTRIBUTE_READINGS:
+        elif is_attribute_reading(title):
             attribute_rows += 1
             continue
         elif is_setting_reading(devcode, title):

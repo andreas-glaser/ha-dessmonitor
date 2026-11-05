@@ -216,6 +216,33 @@ def _temporal_controls(devcode: Any) -> dict[str, str]:
     return controls if isinstance(controls, dict) else {}
 
 
+def control_value_reading(devcode: Any, field_id: Any) -> str | None:
+    """Return the reading title that carries a control's value, if declared.
+
+    A collector may answer a control's own name with a live measurement rather
+    than the setting: devcode 2376 reports 229.8 V for the Output Voltage
+    control while the setpoint sits in its "Output Voltage Setting" reading
+    (#61). Seeding from the measurement would show a setting the inverter does
+    not have, and seeding from nothing leaves the field on the list of values
+    to read again on every cloud revision, each read a live request over the
+    collector's single-transaction link.
+
+    The profile that reported the collector declares the title, from committed
+    evidence. A value found this way is still checked against the control's
+    options before it reaches an entity, so a wrong declaration leaves the
+    control unread rather than showing a value the inverter never had.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config or not isinstance(field_id, str):
+        return None
+    declared = config.get("control_value_readings")
+    if not isinstance(declared, dict):
+        return None
+    title = declared.get(field_id)
+    return title if isinstance(title, str) and title.strip() else None
+
+
 def filter_control_options(
     devcode: int,
     param_id: str,

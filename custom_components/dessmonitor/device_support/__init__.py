@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .device_registry import (
     apply_devcode_transformations,
+    control_value_reading,
     devcode_has_temporal_controls,
     get_all_charger_priorities,
     get_all_operating_modes,
@@ -40,6 +41,7 @@ __all__ = [
     "get_parameter_sensor_names",
     "get_supported_devcodes",
     "is_devcode_supported",
+    "control_value_reading",
     "is_setting_reading",
     "map_charger_priority",
     "map_operating_mode",
