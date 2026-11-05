@@ -28,7 +28,7 @@ DEVICE_INFO = {
     "name": "Eybond Data Collector (devcode 2477)",
     "description": "Eybond data collector/gateway",
     "manufacturer": "Eybond",
-    "known_inverters": [],
+    "known_inverters": ["Novopal NP35PEU24"],
     "supported_features": [
         "real_time_monitoring",
         "battery_management",

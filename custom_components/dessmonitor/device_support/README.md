@@ -18,7 +18,7 @@ This directory contains device profiles for inverters connected through DessMoni
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **devcode 2428**: Known to pair with Hybrid inverter
 - **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded). Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`, five of which the account also publishes as controls.
-- **devcode 2477**: Reported as a 48 V / 5 kW unit (#40) and a 24 V / 3 kW one (#61); inverter brand/model not yet confirmed on either. Battery-voltage dropdowns use the reported 24 V / 48 V rating. Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`; its reading titles and control-field names are not spelled the same.
+- **devcode 2477**: Known to pair with Novopal NP35PEU24 (3500 VA, 24 V, 230 V / 50 Hz), confirmed from the nameplate in #61; also reported as a 48 V / 5 kW unit in #40, whose model is still unconfirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating. Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`; its reading titles and control-field names are not spelled the same.
 - **devcode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
 - **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter, Aninerel 6.2KW 48V, and Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module). Reports each output leg (L1/L2) alongside the summed output.
