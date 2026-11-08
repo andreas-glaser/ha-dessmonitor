@@ -143,6 +143,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an empty record while the cards the previous instance raised are still
   registered, so a devcode an update had since taught the integration to map
   fully kept a card saying it was not supported (#53, #60).
+- A single unanswered PI18/P17 status query no longer makes local mode report
+  that the inverter is unsupported. Discovery identified the inverter, parsing
+  its protocol version, serial, firmware and ratings, and was then discarded
+  because the status query that follows timed out once. On the hardware in #53
+  that spent the remaining two drivers' timeouts - 115 seconds with no local
+  telemetry - and logged "no supported read-only local protocol was identified
+  (p17: success=9, timeout=1, ...)", which reads as missing device support and
+  is what the issue was first reported as. A timeout says nothing about which
+  protocol a collector speaks, so an identified inverter is kept and the
+  coordinator reports a status-only failure as what it is; a status query the
+  inverter refuses still rejects the driver (#53).
 - The diagnostics download says whether a control without a value is still
   being read for or was given up on, with how many rounds recovered nothing,
   how many are allowed and whether the last round went unanswered. An unknown

@@ -132,7 +132,23 @@ class P17Driver:
                 firmware=str(inverter.metadata.get("VFW", "")),
                 metadata=dict(inverter.metadata),
             )
-            device.values.update(await self.poll(send, device, cycle=0))
+            try:
+                device.values.update(await self.poll(send, device, cycle=0))
+            except TimeoutError:
+                # Identification is already complete here: PI, ID, VFW and
+                # PIRI all parsed as P17. A status query that times out is
+                # evidence about the inverter's link, not about which protocol
+                # the collector speaks, so rejecting the driver for one threw
+                # away an identified inverter, spent every remaining driver's
+                # timeouts, and reported "no supported read-only local
+                # protocol was identified" with nine successful P17 queries in
+                # the same line (#53). The coordinator polls again straight
+                # away and reports a status-only failure as what it is.
+                _LOGGER.debug(
+                    "Local p17 status poll timed out at inverter address %d "
+                    "during discovery; keeping the identified inverter",
+                    device.device_address,
+                )
             devices.append(device)
         return tuple(devices)
 
