@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.dessmonitor import (
+    CONTROL_VALUE_REFRESH_PER_ROUND,
     MAX_CONTROL_FIELD_RETRIES,
     MAX_CONTROL_VALUE_RETRIES,
     MAX_UNANSWERED_CONTROL_VALUE_RETRIES,
@@ -755,4 +756,199 @@ async def test_a_fresh_field_list_forgets_what_matched_nothing(hass):
 
     assert await coordinator._async_cache_control_fields("PN", 6544, 1, "TEST")
     assert "TEST" not in coordinator.ctrl_unmatched_values
+    await coordinator.async_shutdown()
+
+
+async def test_a_setting_changed_outside_home_assistant_is_read_again(hass):
+    """A known control value was read once and then frozen (#53).
+
+    The retry rounds read only the fields with no value, and ordinary
+    telemetry refreshes only those a collector repeats among its readings. So
+    the account in #53 showed Back To Grid Voltage at 46 V while the vendor
+    app showed 48, and Max Charging Current at 40 A against 100, with nothing
+    in the integration able to notice either.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "460"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        "Back To Grid Voltage": {
+            "type": "options",
+            "id": "bat_battery_charging_voltage",
+            "options": {"460": "46.0", "480": "48.0"},
+        }
+    }
+
+    _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    assert values["bat_battery_charging_voltage"] == "460"
+
+    # The owner sets 48.0 V in the vendor app.
+    coordinator.api.get_device_control_value.return_value = {"val": "480"}
+    coordinator._ctrl_value_read_at[("TEST", "bat_battery_charging_voltage")] = 0.0
+    coordinator.cloud_revision += 1
+
+    _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    assert values["bat_battery_charging_voltage"] == "480"
+    await coordinator.async_shutdown()
+
+
+async def test_a_refresh_is_held_off_a_field_just_written(hass):
+    """Reading a field back before the inverter has acted on it bounces it."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "460"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        "Back To Grid Voltage": {
+            "type": "options",
+            "id": "bat_battery_charging_voltage",
+            "options": {"460": "46.0", "480": "48.0"},
+        }
+    }
+    coordinator.record_control_write("TEST", "bat_battery_charging_voltage", "480")
+    coordinator._ctrl_value_read_at[("TEST", "bat_battery_charging_voltage")] = 0.0
+    coordinator.cloud_revision += 1
+
+    _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    assert values["bat_battery_charging_voltage"] == "480"
+    coordinator.api.get_device_control_value.assert_not_awaited()
+    await coordinator.async_shutdown()
+
+
+async def test_a_refresh_never_reads_a_field_telemetry_already_carries(hass):
+    """Those refresh themselves on every cloud sample, so a read buys nothing.
+
+    This is the difference between a few reads an hour and a permanent
+    trickle of them down a link that carries one transaction at a time (#61).
+    """
+    coordinator = _coordinator(
+        hass, _cloud("first", _point("Main Output Priority", "SBU"))
+    )
+    (select,) = await _async_build_select_entities(coordinator, set())
+    assert select.current_option == "SBU"
+    coordinator.api.get_device_control_value.reset_mock()
+    coordinator._ctrl_value_read_at[("TEST", "priority")] = 0.0
+    coordinator.cloud_revision += 1
+
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    assert "priority" not in [
+        call.args[-1] for call in coordinator.api.get_device_control_value.await_args_list
+    ]
+    await coordinator.async_shutdown()
+
+
+async def test_a_refresh_keeps_the_value_the_entity_shows_when_a_read_fails(hass):
+    """A failed or unmatched read must not blank a setting that reads fine."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "460"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        "Back To Grid Voltage": {
+            "type": "options",
+            "id": "bat_battery_charging_voltage",
+            "options": {"460": "46.0", "480": "48.0"},
+        }
+    }
+    _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    assert values["bat_battery_charging_voltage"] == "460"
+
+    for answer, side_effect in (
+        ({"val": "540"}, None),
+        (None, DessMonitorError("ERR_TIMEOUT", 2)),
+    ):
+        coordinator.api.get_device_control_value.return_value = answer
+        coordinator.api.get_device_control_value.side_effect = side_effect
+        coordinator._ctrl_value_read_at[("TEST", "bat_battery_charging_voltage")] = 0.0
+        coordinator.cloud_revision += 1
+        _, values = await coordinator.async_get_controls_with_values(
+            "PN", 6544, 1, "TEST"
+        )
+        assert values["bat_battery_charging_voltage"] == "460"
+
+    assert (
+        coordinator.ctrl_unmatched_values["TEST"]["bat_battery_charging_voltage"]
+        == "540"
+    )
+    await coordinator.async_shutdown()
+
+
+async def test_a_refresh_reads_no_more_than_its_cap_per_revision(hass):
+    """The rotation is the whole reason this costs little; cap it (#61)."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "1"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        f"Setting {index}": {
+            "type": "options",
+            "id": f"field_{index}",
+            "options": {"1": "On", "2": "Off"},
+        }
+        for index in range(8)
+    }
+    coordinator.ctrl_value_cache["TEST"] = {
+        f"field_{index}": "1" for index in range(8)
+    }
+    for index in range(8):
+        coordinator._ctrl_value_read_at[("TEST", f"field_{index}")] = 0.0
+    coordinator.cloud_revision += 1
+
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    assert coordinator.api.get_device_control_value.await_count == (
+        CONTROL_VALUE_REFRESH_PER_ROUND
+    )
+    await coordinator.async_shutdown()
+
+
+async def test_a_device_still_missing_values_spends_nothing_on_refreshing(hass):
+    """Recovery keeps priority, so startup behaviour is unchanged."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "null"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        "Known": {"type": "options", "id": "known", "options": {"1": "On", "2": "Off"}},
+        "Unknown": {
+            "type": "options",
+            "id": "unknown",
+            "options": {"1": "On", "2": "Off"},
+        },
+    }
+    coordinator.ctrl_value_cache["TEST"] = {"known": "1"}
+    coordinator._ctrl_value_read_at[("TEST", "known")] = 0.0
+    coordinator.cloud_revision += 1
+
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    read = [
+        call.args[-1]
+        for call in coordinator.api.get_device_control_value.await_args_list
+    ]
+    assert read == ["unknown"]
+    await coordinator.async_shutdown()
+
+
+async def test_a_field_read_recently_is_not_read_again(hass):
+    """The minimum age is what keeps a small control set from being re-read
+    on every cloud revision, which would be twelve live reads an hour for a
+    setting nobody changes (#53)."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "460"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        "Back To Grid Voltage": {
+            "type": "options",
+            "id": "bat_battery_charging_voltage",
+            "options": {"460": "46.0", "480": "48.0"},
+        }
+    }
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    coordinator.api.get_device_control_value.reset_mock()
+
+    for _ in range(5):
+        coordinator.cloud_revision += 1
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    coordinator.api.get_device_control_value.assert_not_awaited()
     await coordinator.async_shutdown()

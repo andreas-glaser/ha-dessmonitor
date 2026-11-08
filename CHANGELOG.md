@@ -119,6 +119,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A setting changed in the vendor app, or on the inverter's own panel, is
+  picked up instead of staying as Home Assistant first read it. A control
+  value only ever reached the cache once: the retry rounds read the fields
+  with no value, and ordinary telemetry refreshes only those a collector
+  repeats among its readings, so every other setting was frozen for the life
+  of the config entry. The account in #53 showed Back To Grid Voltage at 46 V
+  against the vendor app's 48, and Max Charging Current at 40 A against 100.
+  A read reaches the inverter live over the same single-transaction collector
+  link local mode uses, so the rotation is deliberately slow: the two
+  longest-unread settings per cloud refresh, never a field read inside the
+  last half hour, never one ordinary telemetry already carries, never one
+  Home Assistant has just written, and never a device whose payload this
+  cycle retained. A read that fails or answers outside the control's options
+  leaves the value the entity is showing alone (#53).
 - A Repairs card no longer counts a reading the hardware behind the collector
   never fills among the readings that are missing. Devcode 4743 reports the S
   and T phases of a unit whose own `InverterType` reads `Single-phase

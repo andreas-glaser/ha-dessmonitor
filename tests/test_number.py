@@ -283,7 +283,9 @@ async def test_successful_write_updates_state_and_cache() -> None:
         value="25",
     )
     assert entity.native_value == 25.0
-    assert coordinator.ctrl_value_cache["SN-1"]["bat_current"] == "25"
+    # The coordinator owns the cache, so that it can also hold the refresh
+    # rotation off a field Home Assistant has just written (#53).
+    coordinator.record_control_write.assert_called_once_with("SN-1", "bat_current", "25")
     write_state.assert_called_once_with()
 
 

@@ -8,6 +8,10 @@ import ipaddress
 import logging
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
+
+# Bound directly: this package has a time.py platform module, and importing
+# it rebinds the name `time` in this module's namespace.
+from time import monotonic
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -116,6 +120,30 @@ MAX_CONTROL_FIELD_RETRIES = 12
 # leave every control on the account unavailable meanwhile. Reads still in
 # flight at the deadline are abandoned and retried on a later revision.
 CONTROL_VALUE_ROUND_TIMEOUT_SECONDS = 60
+
+# A control value only ever reached the cache once: the retry rounds read the
+# fields that have no value, and ordinary telemetry refreshes only the ones a
+# collector repeats among its readings. A setting changed in the vendor app or
+# on the inverter's own panel therefore stayed as this integration first read
+# it for the life of the config entry, which is how the account in #53 came to
+# show Back To Grid Voltage at 46 V against the app's 48 and Max Charging
+# Current at 40 A against 100.
+#
+# Re-reading is not free: each field is a separate request that reaches the
+# inverter live, over the same single-transaction collector link local mode
+# occupies, and a burst of them is what left every control on an account
+# unavailable in #61. So the rotation is deliberately slow - a couple of the
+# longest-unread fields per cloud revision, and never the same field twice
+# inside the minimum age. A device with forty controls comes round in a few
+# hours; a device with three costs three reads per half hour.
+CONTROL_VALUE_REFRESH_PER_ROUND = 2
+CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS = 1800
+
+# How long after Home Assistant writes a setting its own value is trusted
+# without being read back. An accepted write is not proof the inverter applied
+# it, but reading the field back before the inverter has acted on it would
+# bounce the entity to the old value and back for no reason.
+CONTROL_VALUE_WRITE_GRACE_SECONDS = 300
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -364,6 +392,14 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._ctrl_value_retries: dict[str, int] = {}
         self._ctrl_value_unanswered: dict[str, bool] = {}
         self._ctrl_cloud_samples: dict[str, object] = {}
+        # When each field was last read explicitly, and when Home Assistant
+        # last wrote it, both on the monotonic clock. The refresh rotation
+        # orders by the first and holds off on the second.
+        self._ctrl_value_read_at: dict[tuple[str, str], float] = {}
+        self._ctrl_write_at: dict[tuple[str, str], float] = {}
+        # Fields ordinary telemetry carries for this device. They refresh for
+        # free on every cloud sample, so re-reading them buys nothing.
+        self._ctrl_cloud_refreshed: dict[str, set[str]] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
         # Every serial whose payload in the current snapshot was fetched by an
@@ -622,6 +658,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                         )
                         continue
                     unmatched.pop(field_id, None)
+                    self._ctrl_value_read_at[(sn, field_id)] = monotonic()
                     if setting_value(by_id[field_id], values.get(field_id)) is None:
                         values[field_id] = normalized
                 self._sync_control_values_from_cloud(sn)
@@ -649,12 +686,106 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                             self._ctrl_value_retries[sn],
                             "did not answer" if unanswered else "answered with none",
                         )
+            else:
+                await self._refresh_known_control_values(
+                    pn, devcode, devaddr, sn, controls, by_id, values
+                )
             changed = values != before
         if changed:
             # Existing entities also need to see late read recovery. Preserve
             # the independent cloud refresh timer and revision counter.
             self.async_update_listeners()
         return controls, values
+
+    async def _refresh_known_control_values(
+        self,
+        pn: str,
+        devcode: int,
+        devaddr: int,
+        sn: str,
+        controls: dict[str, Any],
+        by_id: dict[str, Any],
+        values: dict[str, str],
+    ) -> None:
+        """Re-read settings this integration already has a value for.
+
+        Nothing else does. The retry rounds read only the fields with no
+        value, and ordinary telemetry refreshes only those a collector repeats
+        among its readings, so a setting changed anywhere other than Home
+        Assistant stayed as it was first read for the life of the entry (#53).
+
+        Only a revision that spent no round recovering unknown values gets
+        here, so startup is unchanged: recovery keeps priority, and a device
+        still missing values spends nothing on refreshing the ones it has.
+        """
+        if sn in self.stale_cloud_serials:
+            # This device's payload is a retained one, so a live read of its
+            # settings would almost certainly spend the round's deadline.
+            return
+        if self._ctrl_value_attempts.get(sn) == self.cloud_revision:
+            return
+
+        now = monotonic()
+        covered = self._ctrl_cloud_refreshed.get(sn, set())
+        candidates: list[tuple[float, str]] = []
+        for config in controls.values():
+            field_id = config.get("id")
+            if not field_id or field_id in covered:
+                continue
+            if setting_value(config, values.get(field_id)) is None:
+                # No value to refresh; this field belongs to the retry rounds.
+                continue
+            if (
+                now - self._ctrl_write_at.get((sn, field_id), 0.0)
+                < CONTROL_VALUE_WRITE_GRACE_SECONDS
+            ):
+                continue
+            age = now - self._ctrl_value_read_at.get((sn, field_id), 0.0)
+            if age < CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS:
+                continue
+            candidates.append((age, field_id))
+
+        if not candidates:
+            return
+
+        candidates.sort(reverse=True)
+        field_ids = [
+            field_id for _, field_id in candidates[:CONTROL_VALUE_REFRESH_PER_ROUND]
+        ]
+        self._ctrl_value_attempts[sn] = self.cloud_revision
+        fetched, _unanswered = await self._fetch_all_control_values(
+            pn, devcode, devaddr, sn, field_ids
+        )
+        unmatched = self.ctrl_unmatched_values.setdefault(sn, {})
+        for field_id, value in fetched.items():
+            self._ctrl_value_read_at[(sn, field_id)] = monotonic()
+            normalized = setting_value(by_id[field_id], value)
+            if normalized is None:
+                # Keep the value the entity is showing: an answer outside the
+                # option list is not a reason to blank a setting that reads.
+                unmatched[field_id] = value
+                continue
+            unmatched.pop(field_id, None)
+            if normalized != values.get(field_id):
+                _LOGGER.debug(
+                    "Control %s on device %s changed to %s outside Home Assistant",
+                    field_id,
+                    sn,
+                    normalized,
+                )
+                values[field_id] = normalized
+
+    def record_control_write(self, sn: str, field_id: str, value: str) -> None:
+        """Record a setting Home Assistant has just written.
+
+        The entity shows the written value straight away, and the refresh
+        rotation leaves the field alone until the inverter has had time to act
+        on it. An accepted write is still not proof that it did.
+        """
+        if not sn or not field_id:
+            return
+        self.ctrl_value_cache.setdefault(sn, {})[field_id] = value
+        self._ctrl_write_at[(sn, field_id)] = monotonic()
 
     def _control_value_budget(self, sn: str) -> int:
         """Return how many fruitless read rounds this device still gets.
@@ -677,6 +808,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             return
         self._ctrl_cloud_samples[sn] = stamp
         values = self.ctrl_value_cache.setdefault(sn, {})
+        covered = self._ctrl_cloud_refreshed.setdefault(sn, set())
         devcode = (self.data or {}).get(sn, {}).get("device", {}).get("devcode")
         for name, config in controls.items():
             field_id = config.get("id")
@@ -688,6 +820,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             value = setting_value(config, first_control_value(points, *titles))
             if field_id and value is not None:
                 values[field_id] = value
+                # This one refreshes itself on every cloud sample, so the
+                # refresh rotation can spend its reads elsewhere.
+                covered.add(field_id)
 
     async def _fetch_all_control_values(
         self,

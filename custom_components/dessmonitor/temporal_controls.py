@@ -226,9 +226,7 @@ class DessMonitorTemporalControl(CoordinatorEntity[DessMonitorDataUpdateCoordina
         self._last_cloud_sample = cloud_control_snapshot(
             self.coordinator, self._serial
         )[0]
-        self.coordinator.ctrl_value_cache.setdefault(self._serial, {})[
-            self._field_id
-        ] = raw
+        self.coordinator.record_control_write(self._serial, self._field_id, raw)
         self._last_raw_value = raw
         self._attr_native_value = value
         self.async_write_ha_state()
