@@ -211,3 +211,37 @@ async def test_an_entry_less_coordinator_raises_nothing(
     )
 
     assert not ir.async_get(hass).issues
+
+
+async def test_a_reload_withdraws_a_card_the_previous_instance_raised(
+    hass: HomeAssistant,
+) -> None:
+    """A card outlives the coordinator that raised it, not the condition.
+
+    Reloading the config entry builds a new coordinator, whose record of the
+    cards it raised is empty while the registry still holds them. The
+    diagnostics in #53 still carried ``devcode_support_2452`` after the update
+    that taught the integration to map that devcode fully.
+    """
+    dropping = {
+        "SN-1": _payload(
+            6515,
+            [
+                {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+                {"title": "Daily Generation", "val": "10.2", "unit": "kWh"},
+            ],
+        )
+    }
+    _coordinator(hass)._async_update_support_issues(dropping)
+    assert _issue(hass, 6515) is not None
+
+    reloaded = _coordinator(hass)
+    assert reloaded._support_issues == set()
+    reloaded._async_update_support_issues(
+        {
+            "SN-1": _payload(
+                6515, [{"title": "Battery Voltage", "val": "53.1", "unit": "V"}]
+            )
+        }
+    )
+    assert _issue(hass, 6515) is None

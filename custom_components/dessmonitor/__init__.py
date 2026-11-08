@@ -424,12 +424,14 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             return
 
         worst: dict[int, dict[str, Any]] = {}
+        evaluated: set[int] = set()
         for payload in data.values():
             raw_devcode = payload.get("device", {}).get("devcode")
             try:
                 devcode = int(raw_devcode)
             except (TypeError, ValueError):
                 continue
+            evaluated.add(devcode)
             support = device_support_status(raw_devcode, payload.get("data", []))
             if support["status"] == SUPPORT_SUPPORTED:
                 continue
@@ -440,7 +442,13 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             ):
                 worst[devcode] = support
 
-        stale = self._support_issues - set(worst)
+        # Every devcode evaluated here, not only those this instance raised a
+        # card for: reloading the entry builds a new coordinator with an empty
+        # set while the card a previous one raised is still registered, so a
+        # devcode that an update has since taught us to map would keep a card
+        # saying it is not supported. Deleting an issue that does not exist is
+        # a no-op, so the wider sweep costs nothing.
+        stale = (self._support_issues | evaluated) - set(worst)
         for devcode in stale:
             ir.async_delete_issue(
                 self.hass, DOMAIN, f"{_SUPPORT_ISSUE_PREFIX}{devcode}"

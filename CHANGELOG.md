@@ -138,6 +138,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   option list is fixed and the question has been answered, and named in the
   download with the value the platform gave. One account in #53 spent three
   rounds per device on exactly this (#53, #61).
+- A Repairs card is withdrawn after a config-entry reload. The coordinator
+  only deleted cards it had raised itself, and a reload builds a new one with
+  an empty record while the cards the previous instance raised are still
+  registered, so a devcode an update had since taught the integration to map
+  fully kept a card saying it was not supported (#53, #60).
 - The diagnostics download says whether a control without a value is still
   being read for or was given up on, with how many rounds recovered nothing,
   how many are allowed and whether the last round went unanswered. An unknown
