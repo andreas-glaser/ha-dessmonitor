@@ -295,10 +295,10 @@ def test_a_setting_declared_by_another_devcode_is_still_a_dropped_reading() -> N
 def test_the_counts_add_up_even_when_rows_are_excluded() -> None:
     """A reader must be able to reconstruct "maps N of M readings".
 
-    Three classes of row are left out of ``total``: an attribute of another
-    entity, a declared setting, and a blank title. Without the breakdown the
-    numbers simply did not add up, which is the complaint that produced report
-    version 5 in the first place (#60).
+    Four classes of row are left out of ``total``: an attribute of another
+    entity, a declared setting, a reading the hardware never fills, and a blank
+    title. Without the breakdown the numbers simply did not add up, which is
+    the complaint that produced report version 5 in the first place (#60).
     """
     readings = [
         {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
@@ -315,7 +315,11 @@ def test_the_counts_add_up_even_when_rows_are_excluded() -> None:
 
     assert support["resolved"] + support["unresolved"] == support["total"]
     assert support["total"] == 4
-    assert support["excluded"] == {"attribute_readings": 1, "declared_settings": 0}
+    assert support["excluded"] == {
+        "attribute_readings": 1,
+        "declared_settings": 0,
+        "declared_absent": 0,
+    }
     assert support["unresolved_without_unit"] == ["Mystery Reading"]
     assert support["sensors"] == 1
 
@@ -330,8 +334,59 @@ def test_a_declared_setting_is_counted_under_its_own_exclusion() -> None:
 
     support = build_support_report(devcode=2452, readings=readings)["support"]
 
-    assert support["excluded"] == {"attribute_readings": 1, "declared_settings": 1}
+    assert support["excluded"] == {
+        "attribute_readings": 1,
+        "declared_settings": 1,
+        "declared_absent": 0,
+    }
     assert support["resolved"] + support["unresolved"] == support["total"] == 1
+
+
+def test_a_reading_the_hardware_never_fills_is_not_a_missing_reading() -> None:
+    """An idle phase carries a unit and is not a reading going astray (#58).
+
+    Devcode 4743 reports the S and T phases of a unit whose own
+    ``InverterType`` reads ``Single-phase Grid-Connected Inverter``, and a
+    per-string PV power it leaves at 0 while the string produces. Every
+    reading in a diagnostics download carries its unit, so these counted as
+    readings that reached no entity: the owner in #58 saw a Repairs card
+    saying sixteen readings were missing while every sensor he looked at
+    worked.
+    """
+    readings = [
+        {"title": "Inverter R-phase voltage", "val": "248.4", "unit": "V"},
+        {"title": "Total PV power", "val": "424", "unit": "W"},
+        {"title": "Inverter S-phase voltage", "val": "0.0", "unit": "V"},
+        {"title": "Inverter T-phase voltage", "val": "0.0", "unit": "V"},
+        {"title": "Load S-phase voltage", "val": "0.0", "unit": "V"},
+        {"title": "PV1 power", "val": "0", "unit": "W"},
+    ]
+
+    support = build_support_report(devcode=4743, readings=readings)["support"]
+
+    assert support["status"] == "supported"
+    assert support["unresolved_with_unit"] == []
+    assert support["excluded"]["declared_absent"] == 4
+    assert support["resolved"] + support["unresolved"] == support["total"] == 2
+
+
+def test_a_declaration_cannot_hide_a_reading_that_is_simply_dropped() -> None:
+    """Only the declared titles are excused, not their neighbours.
+
+    The declaration is per title and from evidence, so a reading nobody has
+    looked at still raises the card it should.
+    """
+    readings = [
+        {"title": "Inverter S-phase voltage", "val": "0.0", "unit": "V"},
+        {"title": "Something Nobody Mapped", "val": "7", "unit": "A"},
+    ]
+
+    support = build_support_report(devcode=4743, readings=readings)["support"]
+
+    assert support["status"] == "partial"
+    assert support["unresolved_with_unit"] == [
+        {"title": "Something Nobody Mapped", "unit": "A", "sample": "7"}
+    ]
 
 
 def test_a_normalized_download_carries_the_device_control_names() -> None:

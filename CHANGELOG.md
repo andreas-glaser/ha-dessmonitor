@@ -119,6 +119,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A Repairs card no longer counts a reading the hardware behind the collector
+  never fills among the readings that are missing. Devcode 4743 reports the S
+  and T phases of a unit whose own `InverterType` reads `Single-phase
+  Grid-Connected Inverter`, and a per-string PV power it leaves at 0 while the
+  string produces 1552 W. Every reading in a diagnostics download carries its
+  unit, so all sixteen counted as readings that reached no entity, and the
+  owner was told sixteen readings were missing while every sensor he looked at
+  worked. A profile now declares them in `ABSENT_READINGS` with what was
+  measured, the Repairs evaluation, the diagnostics download, the coverage
+  guard and `tools/analysis_coverage.py` all read that one declaration, and a
+  title nobody has looked at still raises the card it should (#58).
 - A cumulative counter can no longer step backwards when its source changes in
   hybrid mode. The local driver reads the lifetime counter once a minute and
   the cloud reports its own every five, so whichever is publishing can be

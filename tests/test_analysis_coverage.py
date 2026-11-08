@@ -16,7 +16,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from custom_components.dessmonitor.device_support import (
+    absent_reading_reason,
     apply_devcode_transformations,
+    is_absent_reading,
     is_setting_reading,
 )
 from custom_components.dessmonitor.sensor import _build_sensor_entities
@@ -74,19 +76,11 @@ def _sensor_entities(devcode: int, points: list[dict[str, Any]], hass) -> list[A
     return _build_sensor_entities(coordinator, set())
 
 
-# Readings a collector labels with a unit but never populates. Mapping one
-# publishes a sensor that reads zero forever, so each entry here is a decision
-# with evidence behind it rather than a title nobody noticed.
-DELIBERATELY_UNMAPPED: dict[int, dict[str, str]] = {
-    4743: {
-        title: (
-            "the collector reports 0 while the string produces: 220.5 V and "
-            "7.3 A on string 1 against a 1552 W total in this analysis, and "
-            "265 V and 1.6 A against 424 W of export on live hardware (#58)"
-        )
-        for title in ("PV1 power", "PV2 power", "PV3 power")
-    },
-}
+# Readings a collector labels with a unit but never populates live in the
+# profile's own ABSENT_READINGS, where the Repairs evaluation and the
+# diagnostics download read them too: this table used to hold them, and the
+# runtime knew nothing about it, so an owner whose readings all worked was told
+# sixteen were missing (#58).
 
 
 def test_analysis_reports_are_committed() -> None:
@@ -104,11 +98,10 @@ def _assert_every_reading_resolves(path: Path, record: dict[str, Any]) -> None:
     devcode = record["devcode"]
     units = dict(record["units"])
 
-    excluded = DELIBERATELY_UNMAPPED.get(devcode, {})
     unmapped = {
         title: unit
         for title, unit in units.items()
-        if title not in excluded
+        if not is_absent_reading(devcode, title)
         and not is_setting_reading(devcode, title)
         and resolve_sensor_key(
             apply_devcode_transformations(devcode, {"title": title}).get("title"),
@@ -126,17 +119,19 @@ def _assert_every_reading_resolves(path: Path, record: dict[str, Any]) -> None:
 
 @pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
 def test_exclusions_still_describe_an_unmapped_reading(path: Path) -> None:
-    """An exclusion must stop applying once the title is mapped.
+    """A declared-absent reading must stop being declared once it is mapped.
 
-    Otherwise a stale entry keeps a reading excluded after someone maps it, and
-    the guard quietly stops watching a sensor that now exists.
+    Otherwise a stale declaration keeps a reading excluded after someone maps
+    it, and the guard quietly stops watching a sensor that now exists. The
+    declaration also has to name its evidence, because a guess here hides the
+    gap this guard exists to catch.
     """
     for record in _records(path):
         devcode = record["devcode"]
-        for title in DELIBERATELY_UNMAPPED.get(devcode, {}):
+        for title in _declared_absent(devcode):
             assert title in record["titles"], (
-                f"devcode {devcode} no longer reports {title!r}; remove the "
-                "exclusion in DELIBERATELY_UNMAPPED"
+                f"devcode {devcode} no longer reports {title!r}; remove it "
+                f"from ABSENT_READINGS in device_support/devcode_{devcode}.py"
             )
             assert (
                 resolve_sensor_key(
@@ -147,9 +142,24 @@ def test_exclusions_still_describe_an_unmapped_reading(path: Path) -> None:
                 )
                 is None
             ), (
-                f"{title!r} now resolves for devcode {devcode}; remove the "
-                "exclusion in DELIBERATELY_UNMAPPED"
+                f"{title!r} now resolves for devcode {devcode}; remove it from "
+                f"ABSENT_READINGS in device_support/devcode_{devcode}.py"
             )
+            reason = absent_reading_reason(devcode, title)
+            assert reason and len(reason) > 20, (
+                f"{title!r} is declared absent on devcode {devcode} without "
+                "saying what was measured"
+            )
+
+
+def _declared_absent(devcode: int) -> list[str]:
+    """Return the titles this devcode's profile declares the hardware never fills."""
+    from custom_components.dessmonitor.device_support.device_registry import (
+        get_devcode_config,
+    )
+
+    config = get_devcode_config(devcode) or {}
+    return list(config.get("absent_readings") or {})
 
 
 @pytest.mark.parametrize(
