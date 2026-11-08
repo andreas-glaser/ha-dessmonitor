@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   @yurkila for the diagnostics download). The download is committed under
   `docs/evidence/devcodes/`.
 - Device support for devcode 684, a single-phase grid-connected PV inverter
-  reported through ShineMonitor and sold as Panther Solar. It adds both string
+  reported through ShineMonitor and sold as the Panther Solar PES-3000TL-SS. It adds both string
   voltages and currents, grid voltage and current, the daily and lifetime
   energy counters, the radiator, inductor and enclosure temperatures, the
   nameplate power and voltage ratings and the work mode: 22 of its 39 readings

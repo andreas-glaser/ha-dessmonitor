@@ -1,9 +1,19 @@
 """Eybond Data Collector (devcode 684).
 
 Mappings come from the redacted diagnostics download in
-``docs/evidence/devcodes/analysis_684.json`` (#62), taken on a 3 kW
-single-phase unit sold as Panther Solar and reported through the SmartClient
-for Solar app, i.e. the ShineMonitor platform.
+``docs/evidence/devcodes/analysis_684.json`` (#62), taken on a Panther Solar
+PES-3000TL-SS reported through the SmartClient for Solar app, i.e. the
+ShineMonitor platform. The reporter's nameplate photograph agrees with what
+the collector reports about itself: 3000 W nominal AC against ``rate power``
+3000 W, 230 V nominal grid voltage against ``rate voltage`` 230.0 V, and a
+single MPP tracker (100 to 450 V, 14 A) against ``MPPT channel`` 1 and
+``device type`` "single channel single phase inverter". The reporter also
+confirmed Energy Total, PV1 Voltage and Grid Voltage against the app.
+
+``DC voltage 2`` and ``DC current 2`` stay mapped even though they read 0 on
+that unit, which has one tracker: this profile serves the devcode rather than
+one inverter, and a two-string unit reporting the same titles would lose real
+readings.
 
 Like devcodes 518, 632 and 4743 this is a grid-connected PV inverter with no
 battery: its telemetry carries no battery, charger or priority readings, and
@@ -35,7 +45,7 @@ DEVICE_INFO = {
         "with two strings, reported through ShineMonitor"
     ),
     "manufacturer": "Eybond",
-    "known_inverters": ["Panther Solar 3kW single-phase"],
+    "known_inverters": ["Panther Solar PES-3000TL-SS"],
     "supported_features": [
         "real_time_monitoring",
         "energy_tracking",
