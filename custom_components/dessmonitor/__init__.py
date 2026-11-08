@@ -353,6 +353,10 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.api = api
         self.ctrl_field_cache: dict[str, dict[str, Any]] = {}
         self.ctrl_value_cache: dict[str, dict[str, str]] = {}
+        # Values the API answered a control read with that none of that
+        # control's own options matches. They are not values the entities can
+        # show, and they are not an absence either.
+        self.ctrl_unmatched_values: dict[str, dict[str, str]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_field_failures: dict[str, int] = {}
@@ -531,6 +535,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
 
         self._ctrl_field_failures.pop(sn, None)
         self.ctrl_field_cache[sn] = controls
+        # A fresh field list may offer options the old one did not, so what
+        # matched nothing under the previous list says nothing under this one.
+        self.ctrl_unmatched_values.pop(sn, None)
         return True
 
     async def async_get_controls_with_values(
@@ -563,11 +570,15 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             before = dict(values)
             self._sync_control_values_from_cloud(sn)
             by_id = {cfg["id"]: cfg for cfg in controls.values() if cfg.get("id")}
+            unmatched = self.ctrl_unmatched_values.setdefault(sn, {})
             missing = [
                 cfg["id"]
                 for cfg in controls.values()
-                if cfg.get("id")
-                and setting_value(cfg, values.get(cfg["id"])) is None
+                if cfg.get("id") and setting_value(cfg, values.get(cfg["id"])) is None
+                # The API already answered this one with a value none of its
+                # options matches. The option list is fixed, so asking again
+                # spends the whole budget on a question already answered.
+                and cfg["id"] not in unmatched
                 and not (
                     cfg.get("type") == "options" and len(cfg.get("options", {})) == 1
                 )
@@ -588,10 +599,22 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 # while these reads were in flight. Do not overwrite it.
                 for field_id, value in fetched.items():
                     normalized = setting_value(by_id[field_id], value)
-                    if (
-                        normalized is not None
-                        and setting_value(by_id[field_id], values.get(field_id)) is None
-                    ):
+                    if normalized is None:
+                        # Read, and the answer is outside what this control
+                        # offers. Discarding it silently reported the field as
+                        # never read and re-read it for the whole budget, while
+                        # the log counted the round as a success (#53).
+                        unmatched[field_id] = value
+                        _LOGGER.debug(
+                            "Control %s on device %s answered %s, which is not "
+                            "one of its options",
+                            field_id,
+                            sn,
+                            value,
+                        )
+                        continue
+                    unmatched.pop(field_id, None)
+                    if setting_value(by_id[field_id], values.get(field_id)) is None:
                         values[field_id] = normalized
                 self._sync_control_values_from_cloud(sn)
                 # Spend the budget only on rounds that recovered nothing, so a
@@ -1537,6 +1560,9 @@ STATUS_KEYWORDS = {"status", "operating mode", "state", "online", "connectivity"
 # A control this integration has no value for. It is not the same as a value
 # of zero or an empty setting, and a support file has to say which it means.
 _UNREAD = "Not read"
+# Nor is it the same as a control the API answered for with a value the
+# control's own options do not offer, which no entity can display.
+_UNMATCHED = "not one of the options offered"
 
 PRIORITY_MAPPINGS = {
     "Output priority": {"SBU": 2, "UTI": 0, "SOL": 1, "SUB": 3},
@@ -1622,18 +1648,28 @@ async def _fetch_control_details(
 def _known_control_values(
     coordinator: DessMonitorDataUpdateCoordinator, device_sn: str
 ) -> Mapping[str, str]:
-    """Return the control values this device has been read for, by field id.
+    """Return what this device's controls have been read as, by field id.
 
     Most control fields never appear in ordinary telemetry, so a diagnostics
     file built from the telemetry payload alone claimed no value for controls
     Home Assistant was displaying one for. The coordinator's cache is where an
     explicit read lands, and it is the same value the entities show.
+
+    A control the API answered with a value outside its own option list is
+    neither of those. The entities cannot show it, so it is reported as what
+    was read rather than as "Not read": the reporter in #53 had a control the
+    cloud answered on every round while the file said it had never been read,
+    which is the opposite diagnosis (#61 asked the file to tell those apart).
     """
     cache = getattr(coordinator, "ctrl_value_cache", None)
-    if not isinstance(cache, dict):
-        return {}
-    values = cache.get(device_sn)
-    return values if isinstance(values, dict) else {}
+    values = cache.get(device_sn) if isinstance(cache, dict) else None
+    reported = dict(values) if isinstance(values, dict) else {}
+    unmatched = getattr(coordinator, "ctrl_unmatched_values", None)
+    answers = unmatched.get(device_sn) if isinstance(unmatched, dict) else None
+    if isinstance(answers, dict):
+        for field_id, answer in answers.items():
+            reported.setdefault(field_id, f"{answer} ({_UNMATCHED})")
+    return reported
 
 
 def _read_control_value(

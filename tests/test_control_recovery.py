@@ -703,3 +703,56 @@ async def test_the_download_says_whether_reads_have_been_given_up_on(hass):
     state = await _state()
     assert state["still_trying"] is False
     assert state["without_a_value"] == state["fields"]
+
+
+async def test_an_answer_outside_the_options_is_not_asked_for_again(hass):
+    """A control the API answers outside its option list is answered, not unread.
+
+    The log in #53 read "Fetched 1/2 control values" on three consecutive
+    rounds while both controls stayed unknown and the diagnostics file said
+    "Not read" for them. The answer was being discarded because none of the
+    control's options matched it, so the field looked as though it had never
+    been read and was re-read for the whole budget.
+    """
+    coordinator = _coordinator(hass, _cloud())
+
+    async def read(_pn, _devcode, _address, _sn, field):
+        # 9 is not one of this control's options, which are 1 and 2.
+        return {"val": "9"} if field == "priority" else {"val": "17A"}
+
+    coordinator.api.get_device_control_value.side_effect = read
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    reads = coordinator.api.get_device_control_value.await_count
+    assert coordinator.ctrl_unmatched_values["TEST"] == {"priority": "9"}
+
+    for revision in range(2, 6):
+        coordinator.cloud_revision = revision
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    assert coordinator.api.get_device_control_value.await_count == reads
+    await coordinator.async_shutdown()
+
+
+async def test_the_diagnostics_file_says_what_was_read(hass):
+    """"Not read" and "read, and no option matches" are opposite diagnoses."""
+    from custom_components.dessmonitor import _known_control_values
+
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.ctrl_unmatched_values["TEST"] = {"priority": "9"}
+    coordinator.ctrl_value_cache["TEST"] = {"current": "17A"}
+
+    reported = _known_control_values(coordinator, "TEST")
+
+    assert reported["current"] == "17A"
+    assert reported["priority"].startswith("9 (")
+    assert "not one of the options" in reported["priority"]
+    await coordinator.async_shutdown()
+
+
+async def test_a_fresh_field_list_forgets_what_matched_nothing(hass):
+    """A new option list can offer what the old one did not."""
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.ctrl_unmatched_values["TEST"] = {"priority": "9"}
+
+    assert await coordinator._async_cache_control_fields("PN", 6544, 1, "TEST")
+    assert "TEST" not in coordinator.ctrl_unmatched_values
+    await coordinator.async_shutdown()

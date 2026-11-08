@@ -129,6 +129,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is the one a source reported rather than a synthesised value; a drop of more
   than a tenth is a genuine reset - midnight on a daily counter, or replaced
   hardware - and is published as reported (#53).
+- A control the platform answers with a value none of that control's own
+  options offers is reported as what was read instead of as never read. The
+  answer was discarded, so the field looked as though no read had reached it:
+  the log counted the round as a success, the diagnostics download said
+  "Not read", and the field was re-read on every cloud revision for the whole
+  retry budget. It is now recorded, excluded from the retry set because the
+  option list is fixed and the question has been answered, and named in the
+  download with the value the platform gave. One account in #53 spent three
+  rounds per device on exactly this (#53, #61).
 - The diagnostics download says whether a control without a value is still
   being read for or was given up on, with how many rounds recovered nothing,
   how many are allowed and whether the last round went unanswered. An unknown
