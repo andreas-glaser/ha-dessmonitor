@@ -119,6 +119,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A cumulative counter can no longer step backwards when its source changes in
+  hybrid mode. The local driver reads the lifetime counter once a minute and
+  the cloud reports its own every five, so whichever is publishing can be
+  behind the other, and Home Assistant reads a decrease on a
+  `total_increasing` sensor as a meter reset. The reporter in #53 saw Energy
+  Total step from 10113.896 to 10113.801 kWh and Home Assistant log the entity
+  for it. The counter now holds the higher of the two figures, and that figure
+  is the one a source reported rather than a synthesised value; a drop of more
+  than a tenth is a genuine reset - midnight on a daily counter, or replaced
+  hardware - and is published as reported (#53).
 - The diagnostics download says whether a control without a value is still
   being read for or was given up on, with how many rounds recovered nothing,
   how many are allowed and whether the last round went unanswered. An unknown
