@@ -119,6 +119,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account held on another portal cannot be configured.
 
 ### Fixed
+- A text or enum sensor appears in the logbook and draws a state timeline.
+  Home Assistant decides a sensor is a continuous measurement by testing
+  whether the `unit_of_measurement` attribute is present rather than whether
+  it holds anything, and these sensors published an empty one, so Data Source,
+  Operating mode, the priorities and the status readings were skipped by the
+  logbook, filtered out of the query behind the historical view, and drew an
+  empty numeric chart where a timeline belongs. They now publish no unit at
+  all. Power Factor is the one unitless reading that really is continuous and
+  says so with its state class, so nothing starts logging a value per refresh
+  (#53).
 - A setting changed in the vendor app, or on the inverter's own panel, is
   picked up instead of staying as Home Assistant first read it. A control
   value only ever reached the cache once: the retry rounds read the fields
