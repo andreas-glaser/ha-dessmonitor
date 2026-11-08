@@ -129,6 +129,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all. Power Factor is the one unitless reading that really is continuous and
   says so with its state class, so nothing starts logging a value per refresh
   (#53).
+- A control the hardware moves on its own is followed closely, while a setting
+  nobody touches is read less and less. The inverter in #53 negotiates Max
+  Charging Current with the battery BMS, which changed it four times in one
+  evening, against forty settings on the same device that change perhaps twice
+  a year. Each field now earns its own interval: a read that finds a new value
+  drops it to one cloud refresh, a read that finds the same value doubles it
+  up to a day, and a round still reads at most two fields however many a
+  device has (#53).
 - A setting changed in the vendor app, or on the inverter's own panel, is
   picked up instead of staying as Home Assistant first read it. A control
   value only ever reached the cache once: the retry rounds read the fields

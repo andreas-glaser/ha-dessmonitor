@@ -132,12 +132,25 @@ CONTROL_VALUE_ROUND_TIMEOUT_SECONDS = 60
 # Re-reading is not free: each field is a separate request that reaches the
 # inverter live, over the same single-transaction collector link local mode
 # occupies, and a burst of them is what left every control on an account
-# unavailable in #61. So the rotation is deliberately slow - a couple of the
-# longest-unread fields per cloud revision, and never the same field twice
-# inside the minimum age. A device with forty controls comes round in a few
-# hours; a device with three costs three reads per half hour.
+# unavailable in #61. So a round reads at most CONTROL_VALUE_REFRESH_PER_ROUND
+# fields however many a device has, and that cap is the whole cost guarantee.
+#
+# Which fields those are is learned rather than configured, because a control
+# is not necessarily a setting somebody chose. The inverter in #53 negotiates
+# Max Charging Current with the battery BMS and moves it on its own, while the
+# forty settings around it change perhaps twice a year. Each field therefore
+# carries its own interval: a read that finds a new value drops it to
+# CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS, a read that finds the same
+# value doubles it up to CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS, and a
+# round spends its reads on whichever fields are furthest past their own
+# interval. A field nobody touches settles at one read a day; one the hardware
+# moves is followed within a cloud refresh or two; neither can raise the cost
+# of a round, and a field starved by a busier neighbour overtakes it as its
+# own ratio climbs.
 CONTROL_VALUE_REFRESH_PER_ROUND = 2
-CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS = 1800
+CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS = 1800
+CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS = 300
+CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS = 86400
 
 # How long after Home Assistant writes a setting its own value is trusted
 # without being read back. An accepted write is not proof the inverter applied
@@ -400,6 +413,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         # read and freshly written for the host's first half hour.
         self._ctrl_value_read_at: dict[tuple[str, str], float] = {}
         self._ctrl_write_at: dict[tuple[str, str], float] = {}
+        # How long each field has earned between reads, by how often reading
+        # it has found anything new.
+        self._ctrl_refresh_interval: dict[tuple[str, str], float] = {}
         # Fields ordinary telemetry carries for this device. They refresh for
         # free on every cloud sample, so re-reading them buys nothing.
         self._ctrl_cloud_refreshed: dict[str, set[str]] = {}
@@ -748,14 +764,22 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             # Never read explicitly: the value came from telemetry that has
             # since stopped carrying it, or from a write. Oldest there is.
             age = float("inf") if read_at is None else now - read_at
-            if age < CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS:
+            interval = self._ctrl_refresh_interval.get(
+                (sn, field_id), CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS
+            )
+            if age < interval:
                 continue
-            candidates.append((age, field_id))
+            # How far past its own interval, so that a field the hardware
+            # moves is followed closely without starving the rest: a stable
+            # field overtakes it once it is twice as overdue.
+            candidates.append((age / interval, field_id))
 
         if not candidates:
             return
 
-        candidates.sort(reverse=True)
+        # Most overdue first, and by field id where that ties, so a round is
+        # reproducible rather than dependent on dictionary order.
+        candidates.sort(key=lambda item: (-item[0], item[1]))
         field_ids = [
             field_id for _, field_id in candidates[:CONTROL_VALUE_REFRESH_PER_ROUND]
         ]
@@ -781,6 +805,17 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     normalized,
                 )
                 values[field_id] = normalized
+                self._ctrl_refresh_interval[(sn, field_id)] = (
+                    CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS
+                )
+            else:
+                self._ctrl_refresh_interval[(sn, field_id)] = min(
+                    self._ctrl_refresh_interval.get(
+                        (sn, field_id), CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS
+                    )
+                    * 2,
+                    CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS,
+                )
 
     def record_control_write(self, sn: str, field_id: str, value: str) -> None:
         """Record a setting Home Assistant has just written.

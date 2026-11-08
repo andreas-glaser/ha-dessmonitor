@@ -8,7 +8,9 @@ import pytest
 
 from custom_components import dessmonitor
 from custom_components.dessmonitor import (
-    CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS,
+    CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS,
+    CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS,
+    CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS,
     CONTROL_VALUE_REFRESH_PER_ROUND,
     MAX_CONTROL_FIELD_RETRIES,
     MAX_CONTROL_VALUE_RETRIES,
@@ -46,14 +48,14 @@ def _point(title, value):
 
 
 def _age_field(coordinator, serial, field_id):
-    """Make a field look long unread, whatever the host's uptime.
+    """Make a field look overdue, whatever the host's uptime.
 
     The monotonic clock counts from boot, so 0.0 is "half an hour ago" only
     on a machine that has been up for half an hour: these tests passed on a
     developer box and failed on a freshly booted CI runner.
     """
     coordinator._ctrl_value_read_at[(serial, field_id)] = (
-        dessmonitor.monotonic() - CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS - 1
+        dessmonitor.monotonic() - CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS - 1
     )
 
 
@@ -965,4 +967,88 @@ async def test_a_field_read_recently_is_not_read_again(hass):
         await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
 
     coordinator.api.get_device_control_value.assert_not_awaited()
+    await coordinator.async_shutdown()
+
+
+async def test_a_control_the_hardware_moves_is_followed_closely(hass):
+    """Not every control is a setting somebody chose (#53).
+
+    The inverter negotiates Max Charging Current with the battery BMS and
+    moves it on its own, so the reporter saw 40 A against the app's 100 while
+    the forty settings around it had not changed in months. A fixed rotation
+    is wrong for both: each field earns its own interval from whether reading
+    it has found anything new.
+    """
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "040"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        "Max Charging Current": {
+            "type": "options",
+            "id": "bat_max_charging_current",
+            "options": {"040": "40.0", "100": "100.0"},
+        }
+    }
+    field = ("TEST", "bat_max_charging_current")
+
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+    assert coordinator.ctrl_value_cache["TEST"]["bat_max_charging_current"] == "040"
+
+    # The BMS raises the limit, and the next refresh finds it.
+    coordinator.api.get_device_control_value.return_value = {"val": "100"}
+    _age_field(coordinator, *field)
+    coordinator.cloud_revision += 1
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    assert coordinator.ctrl_value_cache["TEST"]["bat_max_charging_current"] == "100"
+    assert (
+        coordinator._ctrl_refresh_interval[field]
+        == CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS
+    )
+
+    # It is now read on the short interval rather than the base one.
+    coordinator._ctrl_value_read_at[field] = (
+        dessmonitor.monotonic() - CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS - 1
+    )
+    coordinator.api.get_device_control_value.reset_mock()
+    coordinator.cloud_revision += 1
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    coordinator.api.get_device_control_value.assert_awaited_once()
+    await coordinator.async_shutdown()
+
+
+async def test_a_control_nobody_touches_is_read_less_and_less(hass):
+    """A read that finds nothing new earns the field a longer interval.
+
+    Otherwise forty unchanging settings would cost the same live reads for
+    the life of the entry, down a link that carries one transaction at a
+    time (#61).
+    """
+    coordinator = _coordinator(hass, _cloud())
+    coordinator.api.get_device_control_value.side_effect = None
+    coordinator.api.get_device_control_value.return_value = {"val": "040"}
+    coordinator.ctrl_field_cache["TEST"] = {
+        "Max Charging Current": {
+            "type": "options",
+            "id": "bat_max_charging_current",
+            "options": {"040": "40.0", "100": "100.0"},
+        }
+    }
+    field = ("TEST", "bat_max_charging_current")
+    await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+
+    intervals = []
+    for _ in range(4):
+        _age_field(coordinator, *field)
+        coordinator._ctrl_value_read_at[field] -= (
+            CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS
+        )
+        coordinator.cloud_revision += 1
+        await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
+        intervals.append(coordinator._ctrl_refresh_interval[field])
+
+    assert intervals == sorted(intervals)
+    assert intervals[0] == CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS * 2
+    assert intervals[-1] <= CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS
     await coordinator.async_shutdown()
