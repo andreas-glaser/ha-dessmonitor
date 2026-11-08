@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components import dessmonitor
 from custom_components.dessmonitor import (
+    CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS,
     CONTROL_VALUE_REFRESH_PER_ROUND,
     MAX_CONTROL_FIELD_RETRIES,
     MAX_CONTROL_VALUE_RETRIES,
@@ -41,6 +43,18 @@ def _cloud(stamp="first", *points):
 
 def _point(title, value):
     return {"title": title, "val": value, "unit": ""}
+
+
+def _age_field(coordinator, serial, field_id):
+    """Make a field look long unread, whatever the host's uptime.
+
+    The monotonic clock counts from boot, so 0.0 is "half an hour ago" only
+    on a machine that has been up for half an hour: these tests passed on a
+    developer box and failed on a freshly booted CI runner.
+    """
+    coordinator._ctrl_value_read_at[(serial, field_id)] = (
+        dessmonitor.monotonic() - CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS - 1
+    )
 
 
 def _coordinator(hass, data):
@@ -784,7 +798,7 @@ async def test_a_setting_changed_outside_home_assistant_is_read_again(hass):
 
     # The owner sets 48.0 V in the vendor app.
     coordinator.api.get_device_control_value.return_value = {"val": "480"}
-    coordinator._ctrl_value_read_at[("TEST", "bat_battery_charging_voltage")] = 0.0
+    _age_field(coordinator, "TEST", "bat_battery_charging_voltage")
     coordinator.cloud_revision += 1
 
     _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
@@ -806,7 +820,7 @@ async def test_a_refresh_is_held_off_a_field_just_written(hass):
         }
     }
     coordinator.record_control_write("TEST", "bat_battery_charging_voltage", "480")
-    coordinator._ctrl_value_read_at[("TEST", "bat_battery_charging_voltage")] = 0.0
+    _age_field(coordinator, "TEST", "bat_battery_charging_voltage")
     coordinator.cloud_revision += 1
 
     _, values = await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
@@ -828,7 +842,7 @@ async def test_a_refresh_never_reads_a_field_telemetry_already_carries(hass):
     (select,) = await _async_build_select_entities(coordinator, set())
     assert select.current_option == "SBU"
     coordinator.api.get_device_control_value.reset_mock()
-    coordinator._ctrl_value_read_at[("TEST", "priority")] = 0.0
+    _age_field(coordinator, "TEST", "priority")
     coordinator.cloud_revision += 1
 
     await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
@@ -860,7 +874,7 @@ async def test_a_refresh_keeps_the_value_the_entity_shows_when_a_read_fails(hass
     ):
         coordinator.api.get_device_control_value.return_value = answer
         coordinator.api.get_device_control_value.side_effect = side_effect
-        coordinator._ctrl_value_read_at[("TEST", "bat_battery_charging_voltage")] = 0.0
+        _age_field(coordinator, "TEST", "bat_battery_charging_voltage")
         coordinator.cloud_revision += 1
         _, values = await coordinator.async_get_controls_with_values(
             "PN", 6544, 1, "TEST"
@@ -891,7 +905,7 @@ async def test_a_refresh_reads_no_more_than_its_cap_per_revision(hass):
         f"field_{index}": "1" for index in range(8)
     }
     for index in range(8):
-        coordinator._ctrl_value_read_at[("TEST", f"field_{index}")] = 0.0
+        _age_field(coordinator, "TEST", f"field_{index}")
     coordinator.cloud_revision += 1
 
     await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")
@@ -916,7 +930,7 @@ async def test_a_device_still_missing_values_spends_nothing_on_refreshing(hass):
         },
     }
     coordinator.ctrl_value_cache["TEST"] = {"known": "1"}
-    coordinator._ctrl_value_read_at[("TEST", "known")] = 0.0
+    _age_field(coordinator, "TEST", "known")
     coordinator.cloud_revision += 1
 
     await coordinator.async_get_controls_with_values("PN", 6544, 1, "TEST")

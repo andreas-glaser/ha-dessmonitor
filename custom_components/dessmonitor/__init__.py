@@ -395,6 +395,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         # When each field was last read explicitly, and when Home Assistant
         # last wrote it, both on the monotonic clock. The refresh rotation
         # orders by the first and holds off on the second.
+        # A missing entry means never, not long ago: the monotonic clock counts
+        # from boot, so a default of 0.0 would make every field look freshly
+        # read and freshly written for the host's first half hour.
         self._ctrl_value_read_at: dict[tuple[str, str], float] = {}
         self._ctrl_write_at: dict[tuple[str, str], float] = {}
         # Fields ordinary telemetry carries for this device. They refresh for
@@ -735,12 +738,16 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             if setting_value(config, values.get(field_id)) is None:
                 # No value to refresh; this field belongs to the retry rounds.
                 continue
+            written_at = self._ctrl_write_at.get((sn, field_id))
             if (
-                now - self._ctrl_write_at.get((sn, field_id), 0.0)
-                < CONTROL_VALUE_WRITE_GRACE_SECONDS
+                written_at is not None
+                and now - written_at < CONTROL_VALUE_WRITE_GRACE_SECONDS
             ):
                 continue
-            age = now - self._ctrl_value_read_at.get((sn, field_id), 0.0)
+            read_at = self._ctrl_value_read_at.get((sn, field_id))
+            # Never read explicitly: the value came from telemetry that has
+            # since stopped carrying it, or from a write. Oldest there is.
+            age = float("inf") if read_at is None else now - read_at
             if age < CONTROL_VALUE_REFRESH_MIN_AGE_SECONDS:
                 continue
             candidates.append((age, field_id))
