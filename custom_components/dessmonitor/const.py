@@ -1037,6 +1037,95 @@ SENSOR_TYPES = {
         "icon": "mdi:battery-charging",
         "entity_category": "diagnostic",
     },
+    # Readings first reported on devcode 6489, a JSD Solar hybrid behind an
+    # Eybond collector (#66). Each is live telemetry the collector labels with
+    # a unit and none of them had a canonical key, so every one of them was
+    # being dropped in silence.
+    "Output Current Percentage": {
+        "name": "Output Current Percentage",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:gauge",
+    },
+    "Battery Charging Voltage": {
+        "name": "Battery Charging Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
+    "Output Half Wave Apparent Power": {
+        "name": "Output Half Wave Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+        "entity_category": "diagnostic",
+    },
+    "Fan Speed": {
+        "name": "Fan Speed",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:fan",
+        "entity_category": "diagnostic",
+    },
+    # The daily counterparts of Accumulated Mains Load Energy and Accumulated
+    # Load Energy above, as Daily Battery Charge Ah is of the accumulated one.
+    "Daily Mains Load Energy": {
+        "name": "Daily Mains Load Energy",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:transmission-tower-import",
+    },
+    "Daily Load Energy": {
+        "name": "Daily Load Energy",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:home-lightning-bolt",
+    },
+    # A text sensor for the same reason as the status readings above: the
+    # charger names its stage ("Stop charging", "Discharge soft start") and no
+    # report carries the vendor's full set of strings, which an enum would
+    # need in order not to mark the rest invalid.
+    "Charge Mode": {
+        "name": "Charge Mode",
+        "unit": "",
+        "icon": "mdi:battery-charging-medium",
+    },
+    # What a battery's own BMS reports about itself, beside the inverter's
+    # measurements of the same pack. The two limits are the BMS telling the
+    # inverter what it will accept, not inverter settings, so they are
+    # diagnostic sensors rather than controls.
+    "BMS Remaining Capacity": {
+        "name": "BMS Remaining Capacity",
+        "unit": "Ah",
+        "state_class": "measurement",
+        "icon": "mdi:battery-70",
+    },
+    "BMS Rated Capacity": {
+        "name": "BMS Rated Capacity",
+        "unit": "Ah",
+        "state_class": "measurement",
+        "icon": "mdi:battery",
+        "entity_category": "diagnostic",
+    },
+    "BMS Max Charge Current": {
+        "name": "BMS Max Charge Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+        "entity_category": "diagnostic",
+    },
+    "BMS CV Point Voltage": {
+        "name": "BMS CV Point Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+        "entity_category": "diagnostic",
+    },
 }
 
 # Binary sensor types from API data points

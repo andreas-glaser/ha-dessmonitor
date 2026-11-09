@@ -53,6 +53,9 @@ ENUM_SENSOR_TITLES = {
 # them the enum device class would reject any word not in an option list.
 TEXT_SENSOR_TITLES = {
     "Inverter Status",
+    # Devcode 6489 names the charger's stage ("Stop charging") rather than
+    # measuring it, and no report carries the vendor's full set of strings.
+    "Charge Mode",
 }
 
 DIAGNOSTIC_SENSOR_TITLES = {
@@ -63,6 +66,15 @@ DIAGNOSTIC_SENSOR_TITLES = {
     "charger work enable",
     "rated power",
     "Battery Type",
+    # Devcode 6489 (#66): the fan, the half-wave apparent power and the three
+    # figures the BMS reports about its own limits rather than the pack's
+    # state. A sensor is diagnostic here and in SENSOR_TYPES both, as
+    # "rated power" above is.
+    "Output Half Wave Apparent Power",
+    "Fan Speed",
+    "BMS Rated Capacity",
+    "BMS Max Charge Current",
+    "BMS CV Point Voltage",
 }
 
 

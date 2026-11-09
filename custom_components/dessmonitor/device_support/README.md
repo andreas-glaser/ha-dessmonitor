@@ -25,6 +25,7 @@ This directory contains device profiles for inverters connected through DessMoni
 - **devcode 6515**: Known to pair with ANENJI ANJ-HHS-11KW-48V-WIFI and Maxsky EM11000 11kW 48V, the latter reported with an Eybond WiFi datalogger
 - **devcode 6544**: Known to pair with ANENJI ANJ-HHS-11KW-48V and ANENJI ANJ-11KW-48V-W-P. Read-only Modbus protocol-number 4 samples are verified for the latter; see the [local guide](../../../docs/LOCAL_MODE.md).
 - **devcode 2507**: Known to pair with ANENJI ANJ-6200W-48PL-WIFI
+- **devcode 6489**: Known to pair with a JSD Solar 5.5 kW 48 V hybrid inverter behind a `WFBLE.RTU.Bar` collector on firmware 7.6.5.11, on DessMonitor. This collector leads with a short dashboard block and then repeats the measurements in full sections, so `Output voltage` and the mains frequency each arrive twice and land on one sensor. The BMS reports its own voltage, current, temperature, SOC, capacity and charge limits beside the inverter's measurements of the same pack. Twenty setpoints it returns among the readings are declared in `SETTING_READINGS`, only one of which (`Maximum charging current`) is also a control. `BMS status`, the two BMS code words and `DCDC control status` stay unmapped: they carry no unit and no report says what their values mean. `system time` and `Power generation statistics time` are clock-shaped controls whose read format is still unobserved, so `TEMPORAL_CONTROLS` does not yet classify them.
 
 ### Device Metadata
 

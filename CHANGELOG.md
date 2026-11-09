@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Support for devcode 6489 (JSD Solar 5.5 kW 48 V hybrid behind a
+  `WFBLE.RTU.Bar` collector) with the mains, battery, AC output, PV and BMS
+  sections of its telemetry mapped: 45 of its 71 readings resolve now against
+  21 before, every reading that carries a unit reaches a sensor, and the
+  twenty setpoints it returns among the readings are declared settings rather
+  than counted as readings that reach no entity (#66, thanks to @pivanet for
+  the diagnostics download).
+- Eleven sensor readings that had no canonical name: output current
+  percentage, battery charging voltage, output half-wave apparent power, fan
+  speed, the daily mains and load energy counters beside the accumulated ones,
+  the charger's own stage, and what a battery's BMS reports about its
+  remaining and rated capacity, its charge-current limit and its CV point.
+  They are additions, so nothing an installation already publishes changes.
+
 ### Fixed
 - A local setup error in the diagnostics download printed the address it
   failed to bind, so a reporter's LAN address reached a public attachment
