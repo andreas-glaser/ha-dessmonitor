@@ -288,11 +288,23 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         | UnitOfElectricPotential
         | UnitOfElectricCurrent
         | UnitOfFrequency
-        | UnitOfTemperature,
+        | UnitOfTemperature
+        | None,
         SensorDeviceClass | None,
         int | None,
     ]:
         """Return (native_unit, device_class, precision) for a given unit string."""
+        if not unit.strip():
+            # None, not "": Home Assistant tests for the presence of the
+            # unit_of_measurement attribute rather than for a value, so an
+            # empty string made every text and enum sensor we publish look
+            # like a continuous measurement. The logbook skips those, and its
+            # historical query filters them out, so Data Source and Operating
+            # mode had no Activity at all and drew an empty numeric chart
+            # instead of a state timeline (#53). Power Factor is the only
+            # unitless reading that really is continuous, and it says so with
+            # its state class.
+            return None, None, None
         if unit == UNITS["POWER"]:
             return UnitOfPower.WATT, SensorDeviceClass.POWER, None
         if unit == UNITS["POWER_KW"]:

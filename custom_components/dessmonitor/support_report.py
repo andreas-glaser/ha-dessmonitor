@@ -117,7 +117,7 @@ def build_support_report(
     analysis records one only for the first twenty, so a report built from this
     is the better evidence for the coverage guard (#60).
     """
-    from .device_support import is_setting_reading
+    from .device_support import is_absent_reading, is_setting_reading
 
     reading_rows: list[dict[str, Any]] = []
     unresolved_with_unit: list[dict[str, str]] = []
@@ -131,6 +131,7 @@ def build_support_report(
     # number of rows the collector sent.
     attribute_rows = 0
     setting_rows = 0
+    absent_rows = 0
     unresolved_rows = 0
 
     for point in readings:
@@ -155,6 +156,13 @@ def build_support_report(
             continue
         elif is_setting_reading(devcode, title):
             setting_rows += 1
+            continue
+        elif is_absent_reading(devcode, title):
+            # A field the protocol defines that this hardware never fills: an
+            # unused phase, or a per-string power the collector leaves at zero.
+            # Counting it as a reading that reaches no entity told the owner in
+            # #58 that sixteen readings were missing when none were.
+            absent_rows += 1
             continue
         elif unit:
             unresolved_rows += 1
@@ -181,10 +189,11 @@ def build_support_report(
             # Rows, so that resolved + unresolved == total exactly, even where
             # a collector repeats a title and the lists below deduplicate it.
             "unresolved": unresolved_rows,
-            "total": len(reading_rows) - attribute_rows - setting_rows,
+            "total": len(reading_rows) - attribute_rows - setting_rows - absent_rows,
             "excluded": {
                 "attribute_readings": attribute_rows,
                 "declared_settings": setting_rows,
+                "declared_absent": absent_rows,
             },
             "sensors": len(resolved_keys),
             "unresolved_with_unit": sorted(

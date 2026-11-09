@@ -369,10 +369,9 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
             self._last_cloud_sample = cloud_control_snapshot(
                 coordinator, self._device_sn
             )[0]
-            if self._device_sn in coordinator.ctrl_value_cache:
-                coordinator.ctrl_value_cache[self._device_sn][
-                    self._param_id
-                ] = serialized
+            coordinator.record_control_write(
+                self._device_sn, self._param_id, serialized
+            )
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set value for %s: %s", self._attr_unique_id, err)

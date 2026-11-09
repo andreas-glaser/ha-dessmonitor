@@ -287,8 +287,7 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
                 coordinator, self._device_sn
             )[0]
             self._attr_current_option = option
-            if self._device_sn in coordinator.ctrl_value_cache:
-                coordinator.ctrl_value_cache[self._device_sn][self._param_id] = option
+            coordinator.record_control_write(self._device_sn, self._param_id, option)
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set option for %s: %s", self._attr_unique_id, err)

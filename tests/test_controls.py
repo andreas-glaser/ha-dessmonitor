@@ -92,7 +92,9 @@ async def test_select_write_remains_cloud_backed_in_hybrid() -> None:
         value="0",
     )
     assert entity.current_option == "Utility"
-    assert coordinator.ctrl_value_cache["DEVICE-SERIAL"]["mode"] == "Utility"
+    coordinator.record_control_write.assert_called_once_with(
+        "DEVICE-SERIAL", "mode", "Utility"
+    )
     write_state.assert_called_once_with()
 
 

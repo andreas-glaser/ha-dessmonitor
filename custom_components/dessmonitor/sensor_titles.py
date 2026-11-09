@@ -85,3 +85,18 @@ def sensor_unit(title: str) -> str:
     if key is None:
         return ""
     return str(cast(dict[str, Any], SENSOR_TYPES[key]).get("unit", ""))
+
+
+def cumulative_sensor_key(*candidates: str | None) -> str | None:
+    """Return the canonical key of a reading that only ever counts upwards.
+
+    A ``total_increasing`` reading is the only kind whose value Home Assistant
+    reads a decrease in as a meter reset, so callers that arbitrate between two
+    sources for the same reading need to know which ones those are, and need
+    one name per reading rather than per spelling.
+    """
+    key = resolve_sensor_key(*candidates)
+    if key is None:
+        return None
+    config = cast(dict[str, Any], SENSOR_TYPES[key])
+    return key if config.get("state_class") == "total_increasing" else None

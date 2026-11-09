@@ -8,6 +8,8 @@ collector speaks, and a driver that already worked for it is.
 
 from __future__ import annotations
 
+from binascii import crc_hqx
+
 import pytest
 
 from custom_components.dessmonitor.local.diagnostics import ProbeDiagnostics
@@ -140,3 +142,63 @@ async def test_a_driver_with_mixed_outcomes_reports_all_of_them() -> None:
             int(part.split("=")[1]) for part in reported.split(", ") if "=" in part
         )
         assert counted == sum(diagnostics.protocol_outcomes(driver_key).values())
+
+
+def _pi18_collector(status_outcome: str):
+    """A PI18 collector that identifies itself and mishandles GS only.
+
+    ``status_outcome`` is ``"timeout"`` for a status query the inverter never
+    answers, or ``"refused"`` for one it rejects.
+    """
+    identification = {
+        "PI": "18",
+        "ID": "080123450000000000000000",
+        "VFW": "12345,67890,00000",
+        "PIRI": (
+            "2300,100,2300,500,100,5000,4500,480,440,420,460,560,540,"
+            "2,10,060,0,1,2,1,0,0,0,1,2"
+        ),
+    }
+    commands: list[str] = []
+
+    async def send(payload: bytes, _code: int, _address: int) -> bytes:
+        command = payload[5:-3].decode("ascii")
+        commands.append(command)
+        if command in identification:
+            data = identification[command]
+            content = f"^D{len(data) + 3:03d}{data}".encode("ascii")
+            return content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
+        if command == "GS" and status_outcome == "timeout":
+            raise TimeoutError("inverter did not answer the status query")
+        return b"^0\x8b\xa6\r"
+
+    return send, commands
+
+
+async def test_a_status_timeout_keeps_the_identified_p17_inverter() -> None:
+    """One unanswered GS discarded an inverter that had just identified itself.
+
+    The reporter in #53 saw "no supported read-only local protocol was
+    identified (p17: success=9, timeout=1, ...)" on a collector whose PI, ID,
+    VFW and PIRI had all parsed. The driver was rejected for the status query
+    alone, which then cost the other two drivers' timeouts - 115 seconds with
+    no local telemetry - before the next attempt succeeded unchanged.
+    """
+    send, commands = _pi18_collector("timeout")
+    diagnostics = ProbeDiagnostics()
+
+    driver, (device,) = await _discover(send, diagnostics)
+
+    assert driver.key == "p17"
+    assert device.serial == "01234500"
+    assert device.values == {}
+    assert {attempt.protocol for attempt in diagnostics.attempts} == {"p17"}
+    assert "GS" in commands
+
+
+async def test_a_refused_status_query_still_rejects_p17() -> None:
+    """A refusal is evidence about the protocol where a timeout is not."""
+    send, _ = _pi18_collector("refused")
+
+    with pytest.raises(DiscoveryError):
+        await _discover(send, ProbeDiagnostics())

@@ -124,7 +124,8 @@ async def test_reported_telemetry_through_api_and_sensor_platform(cloud_transpor
     await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
     entities = {entity.unique_id: entity for entity in added.call_args.args[0]}
     expected = {
-        "operating_mode": ("Line", ""),
+        # None, not "": an empty unit hides a sensor from the logbook (#53).
+        "operating_mode": ("Line", None),
         "grid_voltage": (244.8, "V"),
         "grid_frequency": (49.9, "Hz"),
         "pv_voltage": (359.6, "V"),

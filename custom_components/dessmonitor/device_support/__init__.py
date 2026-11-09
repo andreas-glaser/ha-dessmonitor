@@ -12,6 +12,7 @@ To add support for a new devcode:
 from __future__ import annotations
 
 from .device_registry import (
+    absent_reading_reason,
     apply_devcode_transformations,
     control_value_reading,
     devcode_has_temporal_controls,
@@ -21,6 +22,7 @@ from .device_registry import (
     get_device_model_name,
     get_parameter_sensor_names,
     get_supported_devcodes,
+    is_absent_reading,
     is_devcode_supported,
     is_setting_reading,
     map_charger_priority,
@@ -32,6 +34,7 @@ from .device_registry import (
 )
 
 __all__ = [
+    "absent_reading_reason",
     "apply_devcode_transformations",
     "devcode_has_temporal_controls",
     "get_all_charger_priorities",
@@ -40,6 +43,7 @@ __all__ = [
     "get_device_model_name",
     "get_parameter_sensor_names",
     "get_supported_devcodes",
+    "is_absent_reading",
     "is_devcode_supported",
     "control_value_reading",
     "is_setting_reading",

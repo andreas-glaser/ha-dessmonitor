@@ -424,6 +424,41 @@ def is_setting_reading(devcode: Any, title: str) -> bool:
     return _normalize_title(title) in {_normalize_title(name) for name in declared}
 
 
+def absent_reading_reason(devcode: Any, title: str) -> str | None:
+    """Return why a profile declares this title carries no reading, or None.
+
+    Several collectors report every field their protocol defines whether the
+    hardware fills it or not: devcode 4743 reports the S and T phases of a unit
+    whose own ``InverterType`` reads ``Single-phase Grid-Connected Inverter``,
+    and a per-string PV power that stays at 0 while the string produces 1552 W.
+    They carry a unit, so the support report counted them among the readings
+    that reach no entity and told the owner that sixteen readings were missing
+    when none were (#58).
+
+    Mapping them instead would publish sensors that read zero forever, which is
+    worse than no sensor. So the profile states the decision and the evidence
+    for it, in one place the Repairs evaluation, the diagnostics download,
+    ``tools/analysis_coverage.py`` and the coverage guard all read. A guess
+    would hide a genuine gap, which is the failure this guard exists to catch,
+    so each entry names what was measured.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config:
+        return None
+    declared = config.get("absent_readings") or {}
+    normalized = _normalize_title(title)
+    for name, reason in declared.items():
+        if _normalize_title(name) == normalized:
+            return str(reason)
+    return None
+
+
+def is_absent_reading(devcode: Any, title: str) -> bool:
+    """Return whether a profile declares this title carries no reading."""
+    return absent_reading_reason(devcode, title) is not None
+
+
 def _normalize_title(title: Any) -> str:
     """Compare titles the way the shared sensor resolver does."""
     return " ".join(str(title).split()).casefold()

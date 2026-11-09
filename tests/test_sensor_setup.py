@@ -85,3 +85,67 @@ async def test_apparent_power_uses_each_readings_unit(
         ]
         assert entity.native_value == 450
         assert entity.native_unit_of_measurement == "VA"
+
+
+@pytest.mark.parametrize(
+    ("title", "value"),
+    [
+        ("Data Source", "Local"),
+        ("Operating mode", "Battery"),
+        ("Inverter Status", "Normal"),
+    ],
+)
+async def test_a_text_sensor_publishes_no_unit_at_all(title: str, value: str) -> None:
+    """An empty unit is not the same as no unit (#53).
+
+    Home Assistant decides a sensor is a continuous measurement by testing
+    whether the unit_of_measurement attribute is *present*, not whether it
+    holds anything. Publishing "" therefore kept every text and enum sensor
+    out of the logbook, and out of the query behind the historical view, so
+    the reporter's Data Source had no Activity at all and drew an empty
+    numeric chart where a state timeline belongs.
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-SERIAL": {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"devcode": 2452, "devaddr": 1, "alias": "Inverter"},
+            "data": [{"title": title, "val": value, "unit": ""}],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+    (entity,) = added.call_args.args[0]
+
+    assert entity.native_unit_of_measurement is None
+    assert "unit_of_measurement" not in (entity.capability_attributes or {})
+    assert entity.state_class is None
+
+
+async def test_power_factor_stays_continuous_without_a_unit() -> None:
+    """The one unitless reading that is a measurement says so another way.
+
+    Power Factor carries no unit either, and it must keep being treated as
+    continuous or every refresh would add a logbook entry for it. Its state
+    class is what does that, so dropping the empty unit is safe for it.
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-SERIAL": {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"devcode": 684, "devaddr": 1, "alias": "Inverter"},
+            "data": [{"title": "power factor", "val": "1.000", "unit": ""}],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+    (entity,) = added.call_args.args[0]
+
+    assert entity.native_unit_of_measurement is None
+    assert entity.state_class == "measurement"

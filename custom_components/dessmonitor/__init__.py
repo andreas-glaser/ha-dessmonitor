@@ -8,6 +8,10 @@ import ipaddress
 import logging
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
+
+# Bound directly: this package has a time.py platform module, and importing
+# it rebinds the name `time` in this module's namespace.
+from time import monotonic
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -116,6 +120,43 @@ MAX_CONTROL_FIELD_RETRIES = 12
 # leave every control on the account unavailable meanwhile. Reads still in
 # flight at the deadline are abandoned and retried on a later revision.
 CONTROL_VALUE_ROUND_TIMEOUT_SECONDS = 60
+
+# A control value only ever reached the cache once: the retry rounds read the
+# fields that have no value, and ordinary telemetry refreshes only the ones a
+# collector repeats among its readings. A setting changed in the vendor app or
+# on the inverter's own panel therefore stayed as this integration first read
+# it for the life of the config entry, which is how the account in #53 came to
+# show Back To Grid Voltage at 46 V against the app's 48 and Max Charging
+# Current at 40 A against 100.
+#
+# Re-reading is not free: each field is a separate request that reaches the
+# inverter live, over the same single-transaction collector link local mode
+# occupies, and a burst of them is what left every control on an account
+# unavailable in #61. So a round reads at most CONTROL_VALUE_REFRESH_PER_ROUND
+# fields however many a device has, and that cap is the whole cost guarantee.
+#
+# Which fields those are is learned rather than configured, because a control
+# is not necessarily a setting somebody chose. The inverter in #53 negotiates
+# Max Charging Current with the battery BMS and moves it on its own, while the
+# forty settings around it change perhaps twice a year. Each field therefore
+# carries its own interval: a read that finds a new value drops it to
+# CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS, a read that finds the same
+# value doubles it up to CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS, and a
+# round spends its reads on whichever fields are furthest past their own
+# interval. A field nobody touches settles at one read a day; one the hardware
+# moves is followed within a cloud refresh or two; neither can raise the cost
+# of a round, and a field starved by a busier neighbour overtakes it as its
+# own ratio climbs.
+CONTROL_VALUE_REFRESH_PER_ROUND = 2
+CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS = 1800
+CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS = 300
+CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS = 86400
+
+# How long after Home Assistant writes a setting its own value is trusted
+# without being read back. An accepted write is not proof the inverter applied
+# it, but reading the field back before the inverter has acted on it would
+# bounce the entity to the old value and back for no reason.
+CONTROL_VALUE_WRITE_GRACE_SECONDS = 300
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -353,6 +394,10 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self.api = api
         self.ctrl_field_cache: dict[str, dict[str, Any]] = {}
         self.ctrl_value_cache: dict[str, dict[str, str]] = {}
+        # Values the API answered a control read with that none of that
+        # control's own options matches. They are not values the entities can
+        # show, and they are not an absence either.
+        self.ctrl_unmatched_values: dict[str, dict[str, str]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_field_failures: dict[str, int] = {}
@@ -360,6 +405,20 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._ctrl_value_retries: dict[str, int] = {}
         self._ctrl_value_unanswered: dict[str, bool] = {}
         self._ctrl_cloud_samples: dict[str, object] = {}
+        # When each field was last read explicitly, and when Home Assistant
+        # last wrote it, both on the monotonic clock. The refresh rotation
+        # orders by the first and holds off on the second.
+        # A missing entry means never, not long ago: the monotonic clock counts
+        # from boot, so a default of 0.0 would make every field look freshly
+        # read and freshly written for the host's first half hour.
+        self._ctrl_value_read_at: dict[tuple[str, str], float] = {}
+        self._ctrl_write_at: dict[tuple[str, str], float] = {}
+        # How long each field has earned between reads, by how often reading
+        # it has found anything new.
+        self._ctrl_refresh_interval: dict[tuple[str, str], float] = {}
+        # Fields ordinary telemetry carries for this device. They refresh for
+        # free on every cloud sample, so re-reading them buys nothing.
+        self._ctrl_cloud_refreshed: dict[str, set[str]] = {}
         self.param_cache: dict[str, dict[str, Any]] = {}
         self.cloud_revision = 0
         # Every serial whose payload in the current snapshot was fetched by an
@@ -420,12 +479,14 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             return
 
         worst: dict[int, dict[str, Any]] = {}
+        evaluated: set[int] = set()
         for payload in data.values():
             raw_devcode = payload.get("device", {}).get("devcode")
             try:
                 devcode = int(raw_devcode)
             except (TypeError, ValueError):
                 continue
+            evaluated.add(devcode)
             support = device_support_status(raw_devcode, payload.get("data", []))
             if support["status"] == SUPPORT_SUPPORTED:
                 continue
@@ -436,7 +497,13 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             ):
                 worst[devcode] = support
 
-        stale = self._support_issues - set(worst)
+        # Every devcode evaluated here, not only those this instance raised a
+        # card for: reloading the entry builds a new coordinator with an empty
+        # set while the card a previous one raised is still registered, so a
+        # devcode that an update has since taught us to map would keep a card
+        # saying it is not supported. Deleting an issue that does not exist is
+        # a no-op, so the wider sweep costs nothing.
+        stale = (self._support_issues | evaluated) - set(worst)
         for devcode in stale:
             ir.async_delete_issue(
                 self.hass, DOMAIN, f"{_SUPPORT_ISSUE_PREFIX}{devcode}"
@@ -531,6 +598,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
 
         self._ctrl_field_failures.pop(sn, None)
         self.ctrl_field_cache[sn] = controls
+        # A fresh field list may offer options the old one did not, so what
+        # matched nothing under the previous list says nothing under this one.
+        self.ctrl_unmatched_values.pop(sn, None)
         return True
 
     async def async_get_controls_with_values(
@@ -563,11 +633,15 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             before = dict(values)
             self._sync_control_values_from_cloud(sn)
             by_id = {cfg["id"]: cfg for cfg in controls.values() if cfg.get("id")}
+            unmatched = self.ctrl_unmatched_values.setdefault(sn, {})
             missing = [
                 cfg["id"]
                 for cfg in controls.values()
-                if cfg.get("id")
-                and setting_value(cfg, values.get(cfg["id"])) is None
+                if cfg.get("id") and setting_value(cfg, values.get(cfg["id"])) is None
+                # The API already answered this one with a value none of its
+                # options matches. The option list is fixed, so asking again
+                # spends the whole budget on a question already answered.
+                and cfg["id"] not in unmatched
                 and not (
                     cfg.get("type") == "options" and len(cfg.get("options", {})) == 1
                 )
@@ -588,10 +662,23 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 # while these reads were in flight. Do not overwrite it.
                 for field_id, value in fetched.items():
                     normalized = setting_value(by_id[field_id], value)
-                    if (
-                        normalized is not None
-                        and setting_value(by_id[field_id], values.get(field_id)) is None
-                    ):
+                    if normalized is None:
+                        # Read, and the answer is outside what this control
+                        # offers. Discarding it silently reported the field as
+                        # never read and re-read it for the whole budget, while
+                        # the log counted the round as a success (#53).
+                        unmatched[field_id] = value
+                        _LOGGER.debug(
+                            "Control %s on device %s answered %s, which is not "
+                            "one of its options",
+                            field_id,
+                            sn,
+                            value,
+                        )
+                        continue
+                    unmatched.pop(field_id, None)
+                    self._ctrl_value_read_at[(sn, field_id)] = monotonic()
+                    if setting_value(by_id[field_id], values.get(field_id)) is None:
                         values[field_id] = normalized
                 self._sync_control_values_from_cloud(sn)
                 # Spend the budget only on rounds that recovered nothing, so a
@@ -618,12 +705,129 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                             self._ctrl_value_retries[sn],
                             "did not answer" if unanswered else "answered with none",
                         )
+            else:
+                await self._refresh_known_control_values(
+                    pn, devcode, devaddr, sn, controls, by_id, values
+                )
             changed = values != before
         if changed:
             # Existing entities also need to see late read recovery. Preserve
             # the independent cloud refresh timer and revision counter.
             self.async_update_listeners()
         return controls, values
+
+    async def _refresh_known_control_values(
+        self,
+        pn: str,
+        devcode: int,
+        devaddr: int,
+        sn: str,
+        controls: dict[str, Any],
+        by_id: dict[str, Any],
+        values: dict[str, str],
+    ) -> None:
+        """Re-read settings this integration already has a value for.
+
+        Nothing else does. The retry rounds read only the fields with no
+        value, and ordinary telemetry refreshes only those a collector repeats
+        among its readings, so a setting changed anywhere other than Home
+        Assistant stayed as it was first read for the life of the entry (#53).
+
+        Only a revision that spent no round recovering unknown values gets
+        here, so startup is unchanged: recovery keeps priority, and a device
+        still missing values spends nothing on refreshing the ones it has.
+        """
+        if sn in self.stale_cloud_serials:
+            # This device's payload is a retained one, so a live read of its
+            # settings would almost certainly spend the round's deadline.
+            return
+        if self._ctrl_value_attempts.get(sn) == self.cloud_revision:
+            return
+
+        now = monotonic()
+        covered = self._ctrl_cloud_refreshed.get(sn, set())
+        candidates: list[tuple[float, str]] = []
+        for config in controls.values():
+            field_id = config.get("id")
+            if not field_id or field_id in covered:
+                continue
+            if setting_value(config, values.get(field_id)) is None:
+                # No value to refresh; this field belongs to the retry rounds.
+                continue
+            written_at = self._ctrl_write_at.get((sn, field_id))
+            if (
+                written_at is not None
+                and now - written_at < CONTROL_VALUE_WRITE_GRACE_SECONDS
+            ):
+                continue
+            read_at = self._ctrl_value_read_at.get((sn, field_id))
+            # Never read explicitly: the value came from telemetry that has
+            # since stopped carrying it, or from a write. Oldest there is.
+            age = float("inf") if read_at is None else now - read_at
+            interval = self._ctrl_refresh_interval.get(
+                (sn, field_id), CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS
+            )
+            if age < interval:
+                continue
+            # How far past its own interval, so that a field the hardware
+            # moves is followed closely without starving the rest: a stable
+            # field overtakes it once it is twice as overdue.
+            candidates.append((age / interval, field_id))
+
+        if not candidates:
+            return
+
+        # Most overdue first, and by field id where that ties, so a round is
+        # reproducible rather than dependent on dictionary order.
+        candidates.sort(key=lambda item: (-item[0], item[1]))
+        field_ids = [
+            field_id for _, field_id in candidates[:CONTROL_VALUE_REFRESH_PER_ROUND]
+        ]
+        self._ctrl_value_attempts[sn] = self.cloud_revision
+        fetched, _unanswered = await self._fetch_all_control_values(
+            pn, devcode, devaddr, sn, field_ids
+        )
+        unmatched = self.ctrl_unmatched_values.setdefault(sn, {})
+        for field_id, value in fetched.items():
+            self._ctrl_value_read_at[(sn, field_id)] = monotonic()
+            normalized = setting_value(by_id[field_id], value)
+            if normalized is None:
+                # Keep the value the entity is showing: an answer outside the
+                # option list is not a reason to blank a setting that reads.
+                unmatched[field_id] = value
+                continue
+            unmatched.pop(field_id, None)
+            if normalized != values.get(field_id):
+                _LOGGER.debug(
+                    "Control %s on device %s changed to %s outside Home Assistant",
+                    field_id,
+                    sn,
+                    normalized,
+                )
+                values[field_id] = normalized
+                self._ctrl_refresh_interval[(sn, field_id)] = (
+                    CONTROL_VALUE_REFRESH_FAST_INTERVAL_SECONDS
+                )
+            else:
+                self._ctrl_refresh_interval[(sn, field_id)] = min(
+                    self._ctrl_refresh_interval.get(
+                        (sn, field_id), CONTROL_VALUE_REFRESH_BASE_INTERVAL_SECONDS
+                    )
+                    * 2,
+                    CONTROL_VALUE_REFRESH_MAX_INTERVAL_SECONDS,
+                )
+
+    def record_control_write(self, sn: str, field_id: str, value: str) -> None:
+        """Record a setting Home Assistant has just written.
+
+        The entity shows the written value straight away, and the refresh
+        rotation leaves the field alone until the inverter has had time to act
+        on it. An accepted write is still not proof that it did.
+        """
+        if not sn or not field_id:
+            return
+        self.ctrl_value_cache.setdefault(sn, {})[field_id] = value
+        self._ctrl_write_at[(sn, field_id)] = monotonic()
 
     def _control_value_budget(self, sn: str) -> int:
         """Return how many fruitless read rounds this device still gets.
@@ -646,6 +850,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             return
         self._ctrl_cloud_samples[sn] = stamp
         values = self.ctrl_value_cache.setdefault(sn, {})
+        covered = self._ctrl_cloud_refreshed.setdefault(sn, set())
         devcode = (self.data or {}).get(sn, {}).get("device", {}).get("devcode")
         for name, config in controls.items():
             field_id = config.get("id")
@@ -657,6 +862,9 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             value = setting_value(config, first_control_value(points, *titles))
             if field_id and value is not None:
                 values[field_id] = value
+                # This one refreshes itself on every cloud sample, so the
+                # refresh rotation can spend its reads elsewhere.
+                covered.add(field_id)
 
     async def _fetch_all_control_values(
         self,
@@ -1361,6 +1569,18 @@ async def async_get_config_entry_diagnostics(
                     "last_update_success": local.last_update_success,
                     "device_code": local.device_code,
                     "devices": len(local.data or {}),
+                    # What the local side actually saw. The hybrid overlay
+                    # matches a local device to a cloud one by serial, or by
+                    # collector and RS485 address together, and a device that
+                    # matches nothing stays on cloud telemetry in silence. The
+                    # file recorded only that a transport was connected, so a
+                    # mismatch between an inverter answering locally at one
+                    # address and the cloud listing it at another could not be
+                    # seen in it at all (#61).
+                    "devices_seen": [
+                        _local_device_facts(serial, payload)
+                        for serial, payload in sorted((local.data or {}).items())
+                    ],
                 }
                 for local in getattr(coordinator, "locals", ())
             ],
@@ -1371,6 +1591,70 @@ async def async_get_config_entry_diagnostics(
         for serial, payload in sorted((coordinator.data or {}).items())
     ]
     return report
+
+
+def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Describe one locally seen device, without naming it.
+
+    Identities are the same correlation hashes the device reports carry, so a
+    local device and a cloud one can be told apart and compared across a file
+    without a serial number or a collector product number appearing in it.
+    """
+    device = payload.get("device") or {}
+    collector = payload.get("collector") or {}
+    return {
+        "device_identity": short_identity(serial),
+        "collector_identity": short_identity(collector.get("pn")),
+        "device_address": device.get("devaddr"),
+        "address_verified": device.get("local_address_verified"),
+        "protocol": device.get("local_protocol"),
+        "readings": len(payload.get("data") or []),
+    }
+
+
+def _control_read_state(
+    coordinator: DessMonitorDataUpdateCoordinator,
+    serial: str,
+    control_fields: dict[str, Any],
+) -> dict[str, Any]:
+    """Say whether a control without a value is still being read for.
+
+    A control that reads unknown looks identical whether the next refresh will
+    ask again or the retry budget ran out rounds ago, and that is the first
+    question behind a control that never recovers (#60, #61). The budget is
+    three rounds that recover nothing when the API answered and had no value,
+    and twelve when it never answered, because a read that times out says
+    nothing about the field.
+    """
+    retries = _int_for(getattr(coordinator, "_ctrl_value_retries", None), serial)
+    budget_for = getattr(coordinator, "_control_value_budget", None)
+    budget = budget_for(serial) if callable(budget_for) else None
+    if not isinstance(budget, int) or isinstance(budget, bool):
+        budget = None
+    unanswered = getattr(coordinator, "_ctrl_value_unanswered", None)
+    unread = sum(
+        1
+        for field in control_fields.values()
+        if isinstance(field, dict) and field.get("value") == _UNREAD
+    )
+    return {
+        "fields": len(control_fields),
+        "without_a_value": unread,
+        "rounds_that_recovered_nothing": retries,
+        "rounds_allowed": budget,
+        "still_trying": budget is None or retries < budget,
+        "last_round_went_unanswered": bool(
+            unanswered.get(serial, False) if isinstance(unanswered, dict) else False
+        ),
+    }
+
+
+def _int_for(mapping: Any, key: str) -> int:
+    """Return a counter a coordinator keeps per device, or zero."""
+    if not isinstance(mapping, dict):
+        return 0
+    value = mapping.get(key, 0)
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 async def _build_device_support_report(
@@ -1410,6 +1694,7 @@ async def _build_device_support_report(
         api_profile=resolve_api_profile(dict(entry.data)),
         integration_version=VERSION,
     )
+    report["control_reads"] = _control_read_state(coordinator, serial, control_fields)
     report["data_source"] = _extract_sensor_value(readings, "Data Source")
     report["last_update"] = _extract_sensor_value(readings, "Timestamp", "Unknown")
     if control_error:
@@ -1460,6 +1745,9 @@ STATUS_KEYWORDS = {"status", "operating mode", "state", "online", "connectivity"
 # A control this integration has no value for. It is not the same as a value
 # of zero or an empty setting, and a support file has to say which it means.
 _UNREAD = "Not read"
+# Nor is it the same as a control the API answered for with a value the
+# control's own options do not offer, which no entity can display.
+_UNMATCHED = "not one of the options offered"
 
 PRIORITY_MAPPINGS = {
     "Output priority": {"SBU": 2, "UTI": 0, "SOL": 1, "SUB": 3},
@@ -1545,18 +1833,28 @@ async def _fetch_control_details(
 def _known_control_values(
     coordinator: DessMonitorDataUpdateCoordinator, device_sn: str
 ) -> Mapping[str, str]:
-    """Return the control values this device has been read for, by field id.
+    """Return what this device's controls have been read as, by field id.
 
     Most control fields never appear in ordinary telemetry, so a diagnostics
     file built from the telemetry payload alone claimed no value for controls
     Home Assistant was displaying one for. The coordinator's cache is where an
     explicit read lands, and it is the same value the entities show.
+
+    A control the API answered with a value outside its own option list is
+    neither of those. The entities cannot show it, so it is reported as what
+    was read rather than as "Not read": the reporter in #53 had a control the
+    cloud answered on every round while the file said it had never been read,
+    which is the opposite diagnosis (#61 asked the file to tell those apart).
     """
     cache = getattr(coordinator, "ctrl_value_cache", None)
-    if not isinstance(cache, dict):
-        return {}
-    values = cache.get(device_sn)
-    return values if isinstance(values, dict) else {}
+    values = cache.get(device_sn) if isinstance(cache, dict) else None
+    reported = dict(values) if isinstance(values, dict) else {}
+    unmatched = getattr(coordinator, "ctrl_unmatched_values", None)
+    answers = unmatched.get(device_sn) if isinstance(unmatched, dict) else None
+    if isinstance(answers, dict):
+        for field_id, answer in answers.items():
+            reported.setdefault(field_id, f"{answer} ({_UNMATCHED})")
+    return reported
 
 
 def _read_control_value(

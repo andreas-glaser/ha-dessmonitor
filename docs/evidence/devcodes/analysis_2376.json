@@ -1,0 +1,2621 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.7.0-rc.2",
+      "connection_type": "cloud",
+      "local_mode": "prefer_local",
+      "api_profile": "dessmonitor_ess"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 1,
+      "devices_in_snapshot": 4,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": true
+    },
+    "local": {
+      "setup_errors": [],
+      "transports": [
+        {
+          "connected": true,
+          "last_update_success": true,
+          "device_code": 1,
+          "devices": 1
+        },
+        {
+          "connected": true,
+          "last_update_success": true,
+          "device_code": 1,
+          "devices": 1
+        },
+        {
+          "connected": true,
+          "last_update_success": true,
+          "device_code": 1,
+          "devices": 1
+        },
+        {
+          "connected": true,
+          "last_update_success": true,
+          "device_code": 1,
+          "devices": 1
+        }
+      ]
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.7.0-rc.2",
+        "devcode": 2376,
+        "device_identity": "sha256:36a80b9fc925",
+        "collector_identity": "sha256:fa0979a878ef",
+        "device_address": 1,
+        "support": {
+          "status": "supported",
+          "profile": "Eybond Data Collector (devcode 2376)",
+          "known_inverters": [
+            "POW-HVM6.2K-48V-LIP"
+          ],
+          "resolved": 33,
+          "unresolved": 1,
+          "total": 34,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0
+          },
+          "sensors": 33,
+          "unresolved_with_unit": [],
+          "unresolved_without_unit": [
+            "inverter"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-05T07:48:16.667063+00:00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "inverter",
+            "value": "1E00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "devise serial number",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Operating mode",
+            "value": "Off-Grid Mode",
+            "unit": "",
+            "resolved_key": "Operating mode"
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "Grid Frequency",
+            "value": "0.0",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Grid Power"
+          },
+          {
+            "title": "AC charging power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "AC charging power"
+          },
+          {
+            "title": "Output Voltage",
+            "value": "228.5",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Output Current",
+            "value": "2.4",
+            "unit": "A",
+            "resolved_key": "Output Current"
+          },
+          {
+            "title": "Output Frequency",
+            "value": "60.0",
+            "unit": "Hz",
+            "resolved_key": "Output Frequency"
+          },
+          {
+            "title": "Output Active Power",
+            "value": "531",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "Output Apparent Power",
+            "value": "548",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "54.4",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "Battery Current",
+            "value": "1.4",
+            "unit": "A",
+            "resolved_key": "Battery Current"
+          },
+          {
+            "title": "Battery Power",
+            "value": "76",
+            "unit": "W",
+            "resolved_key": "Battery Power"
+          },
+          {
+            "title": "PV Voltage",
+            "value": "381.7",
+            "unit": "V",
+            "resolved_key": "PV Voltage"
+          },
+          {
+            "title": "PV Current",
+            "value": "1.7",
+            "unit": "A",
+            "resolved_key": "PV Current"
+          },
+          {
+            "title": "PV Power",
+            "value": "682",
+            "unit": "W",
+            "resolved_key": "PV Power"
+          },
+          {
+            "title": "PV Charge Power",
+            "value": "76",
+            "unit": "W",
+            "resolved_key": "PV Charge Power"
+          },
+          {
+            "title": "Load Percent",
+            "value": "9",
+            "unit": "%",
+            "resolved_key": "Load Percent"
+          },
+          {
+            "title": "DC Module Termperature",
+            "value": "35",
+            "unit": "°C",
+            "resolved_key": "DC Module Termperature"
+          },
+          {
+            "title": "INV Module Termperature",
+            "value": "42",
+            "unit": "°C",
+            "resolved_key": "INV Module Termperature"
+          },
+          {
+            "title": "AC charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "AC charging current"
+          },
+          {
+            "title": "PV charging current",
+            "value": "1.3",
+            "unit": "A",
+            "resolved_key": "PV charging current"
+          },
+          {
+            "title": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "resolved_key": "Output priority"
+          },
+          {
+            "title": "Output Voltage Setting",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": "Output Voltage Setting"
+          },
+          {
+            "title": "Charger Source Priority",
+            "value": "PV is at the same level as mains",
+            "unit": "",
+            "resolved_key": "Charger Source Priority"
+          },
+          {
+            "title": "State of Charge",
+            "value": "86",
+            "unit": "%",
+            "resolved_key": "State of Charge"
+          },
+          {
+            "title": "energyToday",
+            "value": "15.3983",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "7810.5587",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Battery Charging Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Charging Current"
+          },
+          {
+            "title": "Inverter Current",
+            "value": "3.6",
+            "unit": "A",
+            "resolved_key": "Inverter Current"
+          },
+          {
+            "title": "Inverter Voltage",
+            "value": "228.5",
+            "unit": "V",
+            "resolved_key": "Inverter Voltage"
+          },
+          {
+            "title": "Inverter frequency",
+            "value": "60.0",
+            "unit": "Hz",
+            "resolved_key": "Inverter frequency"
+          },
+          {
+            "title": "Data Source",
+            "value": "Local",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "Auto AC Output",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Disable With Power Switch OFF",
+              "1: Enable With Power Switch ON"
+            ],
+            "id": "sys_eybond_ctrl_82"
+          },
+          {
+            "name": "Auto Restart When Over Temperature Occurs",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_57"
+          },
+          {
+            "name": "Auto Restart When Overload Occurs",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_56"
+          },
+          {
+            "name": "Auto Return To Default Display Screen",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Stay At Latest Screen",
+              "1: Return To Default Display Screen"
+            ],
+            "id": "sys_eybond_ctrl_54"
+          },
+          {
+            "name": "Backlight Control",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Backlight Timing Off",
+              "1: Backlight On"
+            ],
+            "id": "sys_eybond_ctrl_53"
+          },
+          {
+            "name": "Battery EQ Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_60"
+          },
+          {
+            "name": "Battery Type",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: AGM",
+              "1: FLD",
+              "2: USER",
+              "3: Li1",
+              "4: Li2",
+              "5: Li3",
+              "6: Li4"
+            ],
+            "id": "bat_eybond_ctrl_66"
+          },
+          {
+            "name": "Beeps While Primary Source Is Interrupted",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON"
+            ],
+            "id": "sys_eybond_ctrl_52"
+          },
+          {
+            "name": "Boot method",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Can be powered on locally or remotely",
+              "1: Only boot locally",
+              "2: Only remote boot"
+            ],
+            "id": "sys_eybond_ctrl_98"
+          },
+          {
+            "name": "Bulk Charging Voltage (C.V Voltage)",
+            "value": "Not read",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_68"
+          },
+          {
+            "name": "Buzzer Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON",
+              "2: Mute when input source changes",
+              "3: Beeps only in fault mode"
+            ],
+            "id": "sys_eybond_ctrl_51"
+          },
+          {
+            "name": "Charger Source Priority",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Utility First",
+              "1: PV First",
+              "2: PV Is At The Same Level As Utility",
+              "3: Only PV"
+            ],
+            "id": "bat_eybond_ctrl_75"
+          },
+          {
+            "name": "Clear Record",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Clear Record"
+            ],
+            "id": "sys_eybond_ctrl_95"
+          },
+          {
+            "name": "EQ Charing Time",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_eybond_ctrl_79"
+          },
+          {
+            "name": "EQ Charing Voltage",
+            "value": "Not read",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_78"
+          },
+          {
+            "name": "EQ Interval Time",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_eybond_ctrl_81"
+          },
+          {
+            "name": "EQ Timeout Exit time",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_eybond_ctrl_80"
+          },
+          {
+            "name": "Exit Fault Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Exit Fault Mode"
+            ],
+            "id": "sys_exit_fault_mode"
+          },
+          {
+            "name": "Floating Charging Voltage",
+            "value": "Not read",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_69"
+          },
+          {
+            "name": "Forced EQ Charging",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Forced EQ Charging Once"
+            ],
+            "id": "sys_forced_eq_charging"
+          },
+          {
+            "name": "High DC Protection Voltage",
+            "value": "Not read",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_67"
+          },
+          {
+            "name": "Input Voltage Range",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Appliances",
+              "1: UPS",
+              "2: Generator"
+            ],
+            "id": "bse_eybond_ctrl_50"
+          },
+          {
+            "name": "Low DC Protection SOC In Grid Mode",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_eybond_ctrl_82"
+          },
+          {
+            "name": "Low DC Protection Voltage In Mains Mode",
+            "value": "Not read",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_71"
+          },
+          {
+            "name": "Low DC Protection Voltage In Off-Grid Mode",
+            "value": "Not read",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_73"
+          },
+          {
+            "name": "Max.AC.Charging Current",
+            "value": "Not read",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_77"
+          },
+          {
+            "name": "Max.Charging Current",
+            "value": "Not read",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_76"
+          },
+          {
+            "name": "Off grid mode battery discharge SOC protection value",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_eybond_ctrl_84"
+          },
+          {
+            "name": "Output control",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "sys_eybond_ctrl_97"
+          },
+          {
+            "name": "Output Frequency",
+            "value": "60Hz",
+            "unit": "",
+            "options": [
+              "50.00: 50Hz",
+              "60.00: 60Hz"
+            ],
+            "id": "bse_eybond_ctrl_65"
+          },
+          {
+            "name": "Output Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Single",
+              "1: Parallel",
+              "2: 3P1",
+              "3: 3P2",
+              "4: 3P3",
+              "5: 2P1",
+              "6: 2P2"
+            ],
+            "id": "bse_eybond_ctrl_48"
+          },
+          {
+            "name": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "options": [
+              "0: UTI",
+              "1: SOL",
+              "2: SBU",
+              "3: SUB"
+            ],
+            "id": "bse_eybond_ctrl_49"
+          },
+          {
+            "name": "Output Voltage",
+            "value": "230Vac",
+            "unit": "",
+            "options": [
+              "220.0: 220Vac",
+              "230.0: 230Vac",
+              "240.0: 240Vac"
+            ],
+            "id": "bse_eybond_ctrl_64"
+          },
+          {
+            "name": "Overload Bypass",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_58"
+          },
+          {
+            "name": "Power Saving Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Saving Mode Disable",
+              "1: Saving Mode Enable"
+            ],
+            "id": "sys_eybond_ctrl_55"
+          },
+          {
+            "name": "Recovery Voltage Back To Mains Mode",
+            "value": "Not read",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_70"
+          },
+          {
+            "name": "Reset User Settings",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Reset User Settings"
+            ],
+            "id": "sys_eybond_ctrl_96"
+          },
+          {
+            "name": "SOC recovery value of battery discharge in mains mode",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_eybond_ctrl_83"
+          },
+          {
+            "name": "Time from C.V to Floating Charge",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_eybond_ctrl_74"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Battery percentage",
+            "value": "90",
+            "unit": "%",
+            "id": "bt_battery_capacity"
+          },
+          {
+            "name": "Grid Frequency",
+            "value": "0",
+            "unit": "Hz",
+            "id": "gd_eybond_read_16"
+          },
+          {
+            "name": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "id": "gd_grid_active_power"
+          },
+          {
+            "name": "Grid Voltage",
+            "value": "0",
+            "unit": "V",
+            "id": "gd_eybond_read_15"
+          },
+          {
+            "name": "PV Current",
+            "value": "1.9",
+            "unit": "A",
+            "id": "pv_eybond_read_33"
+          },
+          {
+            "name": "PV Power",
+            "value": "754",
+            "unit": "W",
+            "id": "pv_output_power"
+          },
+          {
+            "name": "PV Voltage",
+            "value": "380.6",
+            "unit": "V",
+            "id": "pv_eybond_read_32"
+          }
+        ],
+        "checksum": "1f84a4ac56e181a250c88455d0669650367a18c215ecb874e99f3d6135d35cfb",
+        "data_source": "Local",
+        "last_update": "2026-11-05T07:48:16.667063+00:00"
+      },
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.7.0-rc.2",
+        "devcode": 2376,
+        "device_identity": "sha256:58548e198aaa",
+        "collector_identity": "sha256:465cd2bc3b21",
+        "device_address": 1,
+        "support": {
+          "status": "supported",
+          "profile": "Eybond Data Collector (devcode 2376)",
+          "known_inverters": [
+            "POW-HVM6.2K-48V-LIP"
+          ],
+          "resolved": 33,
+          "unresolved": 1,
+          "total": 34,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0
+          },
+          "sensors": 33,
+          "unresolved_with_unit": [],
+          "unresolved_without_unit": [
+            "inverter"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-05T07:48:13.342072+00:00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "inverter",
+            "value": "1E00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "devise serial number",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Operating mode",
+            "value": "Off-Grid Mode",
+            "unit": "",
+            "resolved_key": "Operating mode"
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "Grid Frequency",
+            "value": "0.0",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Grid Power"
+          },
+          {
+            "title": "AC charging power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "AC charging power"
+          },
+          {
+            "title": "Output Voltage",
+            "value": "230.2",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Output Current",
+            "value": "2.2",
+            "unit": "A",
+            "resolved_key": "Output Current"
+          },
+          {
+            "title": "Output Frequency",
+            "value": "60.01",
+            "unit": "Hz",
+            "resolved_key": "Output Frequency"
+          },
+          {
+            "title": "Output Active Power",
+            "value": "472",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "Output Apparent Power",
+            "value": "506",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "54.4",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "Battery Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Current"
+          },
+          {
+            "title": "Battery Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Battery Power"
+          },
+          {
+            "title": "PV Voltage",
+            "value": "402.8",
+            "unit": "V",
+            "resolved_key": "PV Voltage"
+          },
+          {
+            "title": "PV Current",
+            "value": "1.3",
+            "unit": "A",
+            "resolved_key": "PV Current"
+          },
+          {
+            "title": "PV Power",
+            "value": "535",
+            "unit": "W",
+            "resolved_key": "PV Power"
+          },
+          {
+            "title": "PV Charge Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "PV Charge Power"
+          },
+          {
+            "title": "Load Percent",
+            "value": "8",
+            "unit": "%",
+            "resolved_key": "Load Percent"
+          },
+          {
+            "title": "DC Module Termperature",
+            "value": "34",
+            "unit": "°C",
+            "resolved_key": "DC Module Termperature"
+          },
+          {
+            "title": "INV Module Termperature",
+            "value": "41",
+            "unit": "°C",
+            "resolved_key": "INV Module Termperature"
+          },
+          {
+            "title": "AC charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "AC charging current"
+          },
+          {
+            "title": "PV charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "PV charging current"
+          },
+          {
+            "title": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "resolved_key": "Output priority"
+          },
+          {
+            "title": "Output Voltage Setting",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": "Output Voltage Setting"
+          },
+          {
+            "title": "Charger Source Priority",
+            "value": "PV is at the same level as mains",
+            "unit": "",
+            "resolved_key": "Charger Source Priority"
+          },
+          {
+            "title": "State of Charge",
+            "value": "100",
+            "unit": "%",
+            "resolved_key": "State of Charge"
+          },
+          {
+            "title": "energyToday",
+            "value": "16.9770",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "8994.0625",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Battery Charging Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Charging Current"
+          },
+          {
+            "title": "Inverter Current",
+            "value": "3.1",
+            "unit": "A",
+            "resolved_key": "Inverter Current"
+          },
+          {
+            "title": "Inverter Voltage",
+            "value": "230.2",
+            "unit": "V",
+            "resolved_key": "Inverter Voltage"
+          },
+          {
+            "title": "Inverter frequency",
+            "value": "60.0",
+            "unit": "Hz",
+            "resolved_key": "Inverter frequency"
+          },
+          {
+            "title": "Data Source",
+            "value": "Local",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "Auto AC Output",
+            "value": "Enable With Power Switch ON",
+            "unit": "",
+            "options": [
+              "0: Disable With Power Switch OFF",
+              "1: Enable With Power Switch ON"
+            ],
+            "id": "sys_eybond_ctrl_82"
+          },
+          {
+            "name": "Auto Restart When Over Temperature Occurs",
+            "value": "Auto Restart Enable",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_57"
+          },
+          {
+            "name": "Auto Restart When Overload Occurs",
+            "value": "Auto Restart Enable",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_56"
+          },
+          {
+            "name": "Auto Return To Default Display Screen",
+            "value": "Return To Default Display Screen",
+            "unit": "",
+            "options": [
+              "0: Stay At Latest Screen",
+              "1: Return To Default Display Screen"
+            ],
+            "id": "sys_eybond_ctrl_54"
+          },
+          {
+            "name": "Backlight Control",
+            "value": "Backlight On",
+            "unit": "",
+            "options": [
+              "0: Backlight Timing Off",
+              "1: Backlight On"
+            ],
+            "id": "sys_eybond_ctrl_53"
+          },
+          {
+            "name": "Battery EQ Mode",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_60"
+          },
+          {
+            "name": "Battery Type",
+            "value": "USER",
+            "unit": "",
+            "options": [
+              "0: AGM",
+              "1: FLD",
+              "2: USER",
+              "3: Li1",
+              "4: Li2",
+              "5: Li3",
+              "6: Li4"
+            ],
+            "id": "bat_eybond_ctrl_66"
+          },
+          {
+            "name": "Beeps While Primary Source Is Interrupted",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON"
+            ],
+            "id": "sys_eybond_ctrl_52"
+          },
+          {
+            "name": "Boot method",
+            "value": "Can be powered on locally or remotely",
+            "unit": "",
+            "options": [
+              "0: Can be powered on locally or remotely",
+              "1: Only boot locally",
+              "2: Only remote boot"
+            ],
+            "id": "sys_eybond_ctrl_98"
+          },
+          {
+            "name": "Bulk Charging Voltage (C.V Voltage)",
+            "value": "56.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_68"
+          },
+          {
+            "name": "Buzzer Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON",
+              "2: Mute when input source changes",
+              "3: Beeps only in fault mode"
+            ],
+            "id": "sys_eybond_ctrl_51"
+          },
+          {
+            "name": "Charger Source Priority",
+            "value": "PV Is At The Same Level As Utility",
+            "unit": "",
+            "options": [
+              "0: Utility First",
+              "1: PV First",
+              "2: PV Is At The Same Level As Utility",
+              "3: Only PV"
+            ],
+            "id": "bat_eybond_ctrl_75"
+          },
+          {
+            "name": "Clear Record",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Clear Record"
+            ],
+            "id": "sys_eybond_ctrl_95"
+          },
+          {
+            "name": "EQ Charing Time",
+            "value": "60",
+            "unit": "",
+            "id": "bat_eybond_ctrl_79"
+          },
+          {
+            "name": "EQ Charing Voltage",
+            "value": "56.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_78"
+          },
+          {
+            "name": "EQ Interval Time",
+            "value": "30",
+            "unit": "",
+            "id": "bat_eybond_ctrl_81"
+          },
+          {
+            "name": "EQ Timeout Exit time",
+            "value": "120",
+            "unit": "",
+            "id": "bat_eybond_ctrl_80"
+          },
+          {
+            "name": "Exit Fault Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Exit Fault Mode"
+            ],
+            "id": "sys_exit_fault_mode"
+          },
+          {
+            "name": "Floating Charging Voltage",
+            "value": "54.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_69"
+          },
+          {
+            "name": "Forced EQ Charging",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Forced EQ Charging Once"
+            ],
+            "id": "sys_forced_eq_charging"
+          },
+          {
+            "name": "High DC Protection Voltage",
+            "value": "58.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_67"
+          },
+          {
+            "name": "Input Voltage Range",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Appliances",
+              "1: UPS",
+              "2: Generator"
+            ],
+            "id": "bse_eybond_ctrl_50"
+          },
+          {
+            "name": "Low DC Protection SOC In Grid Mode",
+            "value": "50",
+            "unit": "",
+            "id": "bat_eybond_ctrl_82"
+          },
+          {
+            "name": "Low DC Protection Voltage In Mains Mode",
+            "value": "51.8",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_71"
+          },
+          {
+            "name": "Low DC Protection Voltage In Off-Grid Mode",
+            "value": "49.1",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_73"
+          },
+          {
+            "name": "Max.AC.Charging Current",
+            "value": "5.0",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_77"
+          },
+          {
+            "name": "Max.Charging Current",
+            "value": "80.0",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_76"
+          },
+          {
+            "name": "Off grid mode battery discharge SOC protection value",
+            "value": "20",
+            "unit": "",
+            "id": "bat_eybond_ctrl_84"
+          },
+          {
+            "name": "Output control",
+            "value": "ON",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "sys_eybond_ctrl_97"
+          },
+          {
+            "name": "Output Frequency",
+            "value": "60Hz",
+            "unit": "",
+            "options": [
+              "50.00: 50Hz",
+              "60.00: 60Hz"
+            ],
+            "id": "bse_eybond_ctrl_65"
+          },
+          {
+            "name": "Output Mode",
+            "value": "Parallel",
+            "unit": "",
+            "options": [
+              "0: Single",
+              "1: Parallel",
+              "2: 3P1",
+              "3: 3P2",
+              "4: 3P3",
+              "5: 2P1",
+              "6: 2P2"
+            ],
+            "id": "bse_eybond_ctrl_48"
+          },
+          {
+            "name": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "options": [
+              "0: UTI",
+              "1: SOL",
+              "2: SBU",
+              "3: SUB"
+            ],
+            "id": "bse_eybond_ctrl_49"
+          },
+          {
+            "name": "Output Voltage",
+            "value": "230Vac",
+            "unit": "",
+            "options": [
+              "220.0: 220Vac",
+              "230.0: 230Vac",
+              "240.0: 240Vac"
+            ],
+            "id": "bse_eybond_ctrl_64"
+          },
+          {
+            "name": "Overload Bypass",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_58"
+          },
+          {
+            "name": "Power Saving Mode",
+            "value": "Saving Mode Disable",
+            "unit": "",
+            "options": [
+              "0: Saving Mode Disable",
+              "1: Saving Mode Enable"
+            ],
+            "id": "sys_eybond_ctrl_55"
+          },
+          {
+            "name": "Recovery Voltage Back To Mains Mode",
+            "value": "53.5",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_70"
+          },
+          {
+            "name": "Reset User Settings",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Reset User Settings"
+            ],
+            "id": "sys_eybond_ctrl_96"
+          },
+          {
+            "name": "SOC recovery value of battery discharge in mains mode",
+            "value": "92",
+            "unit": "",
+            "id": "bat_eybond_ctrl_83"
+          },
+          {
+            "name": "Time from C.V to Floating Charge",
+            "value": "10",
+            "unit": "",
+            "id": "bat_eybond_ctrl_74"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Battery percentage",
+            "value": "100",
+            "unit": "%",
+            "id": "bt_battery_capacity"
+          },
+          {
+            "name": "Grid Frequency",
+            "value": "0",
+            "unit": "Hz",
+            "id": "gd_eybond_read_16"
+          },
+          {
+            "name": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "id": "gd_grid_active_power"
+          },
+          {
+            "name": "Grid Voltage",
+            "value": "0",
+            "unit": "V",
+            "id": "gd_eybond_read_15"
+          },
+          {
+            "name": "PV Current",
+            "value": "1.1",
+            "unit": "A",
+            "id": "pv_eybond_read_33"
+          },
+          {
+            "name": "PV Power",
+            "value": "479",
+            "unit": "W",
+            "id": "pv_output_power"
+          },
+          {
+            "name": "PV Voltage",
+            "value": "404.6",
+            "unit": "V",
+            "id": "pv_eybond_read_32"
+          }
+        ],
+        "checksum": "cea2e9fc092270d75f683a4c36054ddc3ec8fa63882069457adfbb51150fb4fc",
+        "data_source": "Local",
+        "last_update": "2026-11-05T07:48:13.342072+00:00"
+      },
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.7.0-rc.2",
+        "devcode": 2376,
+        "device_identity": "sha256:d90bcd3bad07",
+        "collector_identity": "sha256:97b6612d6a59",
+        "device_address": 1,
+        "support": {
+          "status": "supported",
+          "profile": "Eybond Data Collector (devcode 2376)",
+          "known_inverters": [
+            "POW-HVM6.2K-48V-LIP"
+          ],
+          "resolved": 33,
+          "unresolved": 1,
+          "total": 34,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0
+          },
+          "sensors": 33,
+          "unresolved_with_unit": [],
+          "unresolved_without_unit": [
+            "inverter"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-05T07:48:13.340245+00:00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "inverter",
+            "value": "1E00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "devise serial number",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Operating mode",
+            "value": "Off-Grid Mode",
+            "unit": "",
+            "resolved_key": "Operating mode"
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "Grid Frequency",
+            "value": "0.0",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Grid Power"
+          },
+          {
+            "title": "AC charging power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "AC charging power"
+          },
+          {
+            "title": "Output Voltage",
+            "value": "229.5",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Output Current",
+            "value": "2.4",
+            "unit": "A",
+            "resolved_key": "Output Current"
+          },
+          {
+            "title": "Output Frequency",
+            "value": "60.0",
+            "unit": "Hz",
+            "resolved_key": "Output Frequency"
+          },
+          {
+            "title": "Output Active Power",
+            "value": "519",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "Output Apparent Power",
+            "value": "550",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "54.7",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "Battery Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Current"
+          },
+          {
+            "title": "Battery Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Battery Power"
+          },
+          {
+            "title": "PV Voltage",
+            "value": "395.2",
+            "unit": "V",
+            "resolved_key": "PV Voltage"
+          },
+          {
+            "title": "PV Current",
+            "value": "1.1",
+            "unit": "A",
+            "resolved_key": "PV Current"
+          },
+          {
+            "title": "PV Power",
+            "value": "449",
+            "unit": "W",
+            "resolved_key": "PV Power"
+          },
+          {
+            "title": "PV Charge Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "PV Charge Power"
+          },
+          {
+            "title": "Load Percent",
+            "value": "8",
+            "unit": "%",
+            "resolved_key": "Load Percent"
+          },
+          {
+            "title": "DC Module Termperature",
+            "value": "36",
+            "unit": "°C",
+            "resolved_key": "DC Module Termperature"
+          },
+          {
+            "title": "INV Module Termperature",
+            "value": "42",
+            "unit": "°C",
+            "resolved_key": "INV Module Termperature"
+          },
+          {
+            "title": "AC charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "AC charging current"
+          },
+          {
+            "title": "PV charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "PV charging current"
+          },
+          {
+            "title": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "resolved_key": "Output priority"
+          },
+          {
+            "title": "Output Voltage Setting",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": "Output Voltage Setting"
+          },
+          {
+            "title": "Charger Source Priority",
+            "value": "PV is at the same level as mains",
+            "unit": "",
+            "resolved_key": "Charger Source Priority"
+          },
+          {
+            "title": "State of Charge",
+            "value": "100",
+            "unit": "%",
+            "resolved_key": "State of Charge"
+          },
+          {
+            "title": "energyToday",
+            "value": "14.9957",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "8441.7875",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Battery Charging Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Charging Current"
+          },
+          {
+            "title": "Inverter Current",
+            "value": "3.6",
+            "unit": "A",
+            "resolved_key": "Inverter Current"
+          },
+          {
+            "title": "Inverter Voltage",
+            "value": "229.5",
+            "unit": "V",
+            "resolved_key": "Inverter Voltage"
+          },
+          {
+            "title": "Inverter frequency",
+            "value": "60.01",
+            "unit": "Hz",
+            "resolved_key": "Inverter frequency"
+          },
+          {
+            "title": "Data Source",
+            "value": "Local",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "Auto AC Output",
+            "value": "Enable With Power Switch ON",
+            "unit": "",
+            "options": [
+              "0: Disable With Power Switch OFF",
+              "1: Enable With Power Switch ON"
+            ],
+            "id": "sys_eybond_ctrl_82"
+          },
+          {
+            "name": "Auto Restart When Over Temperature Occurs",
+            "value": "Auto Restart Enable",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_57"
+          },
+          {
+            "name": "Auto Restart When Overload Occurs",
+            "value": "Auto Restart Enable",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_56"
+          },
+          {
+            "name": "Auto Return To Default Display Screen",
+            "value": "Return To Default Display Screen",
+            "unit": "",
+            "options": [
+              "0: Stay At Latest Screen",
+              "1: Return To Default Display Screen"
+            ],
+            "id": "sys_eybond_ctrl_54"
+          },
+          {
+            "name": "Backlight Control",
+            "value": "Backlight On",
+            "unit": "",
+            "options": [
+              "0: Backlight Timing Off",
+              "1: Backlight On"
+            ],
+            "id": "sys_eybond_ctrl_53"
+          },
+          {
+            "name": "Battery EQ Mode",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_60"
+          },
+          {
+            "name": "Battery Type",
+            "value": "USER",
+            "unit": "",
+            "options": [
+              "0: AGM",
+              "1: FLD",
+              "2: USER",
+              "3: Li1",
+              "4: Li2",
+              "5: Li3",
+              "6: Li4"
+            ],
+            "id": "bat_eybond_ctrl_66"
+          },
+          {
+            "name": "Beeps While Primary Source Is Interrupted",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON"
+            ],
+            "id": "sys_eybond_ctrl_52"
+          },
+          {
+            "name": "Boot method",
+            "value": "Can be powered on locally or remotely",
+            "unit": "",
+            "options": [
+              "0: Can be powered on locally or remotely",
+              "1: Only boot locally",
+              "2: Only remote boot"
+            ],
+            "id": "sys_eybond_ctrl_98"
+          },
+          {
+            "name": "Bulk Charging Voltage (C.V Voltage)",
+            "value": "56.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_68"
+          },
+          {
+            "name": "Buzzer Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON",
+              "2: Mute when input source changes",
+              "3: Beeps only in fault mode"
+            ],
+            "id": "sys_eybond_ctrl_51"
+          },
+          {
+            "name": "Charger Source Priority",
+            "value": "PV Is At The Same Level As Utility",
+            "unit": "",
+            "options": [
+              "0: Utility First",
+              "1: PV First",
+              "2: PV Is At The Same Level As Utility",
+              "3: Only PV"
+            ],
+            "id": "bat_eybond_ctrl_75"
+          },
+          {
+            "name": "Clear Record",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Clear Record"
+            ],
+            "id": "sys_eybond_ctrl_95"
+          },
+          {
+            "name": "EQ Charing Time",
+            "value": "60",
+            "unit": "",
+            "id": "bat_eybond_ctrl_79"
+          },
+          {
+            "name": "EQ Charing Voltage",
+            "value": "56.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_78"
+          },
+          {
+            "name": "EQ Interval Time",
+            "value": "30",
+            "unit": "",
+            "id": "bat_eybond_ctrl_81"
+          },
+          {
+            "name": "EQ Timeout Exit time",
+            "value": "120",
+            "unit": "",
+            "id": "bat_eybond_ctrl_80"
+          },
+          {
+            "name": "Exit Fault Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Exit Fault Mode"
+            ],
+            "id": "sys_exit_fault_mode"
+          },
+          {
+            "name": "Floating Charging Voltage",
+            "value": "54.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_69"
+          },
+          {
+            "name": "Forced EQ Charging",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Forced EQ Charging Once"
+            ],
+            "id": "sys_forced_eq_charging"
+          },
+          {
+            "name": "High DC Protection Voltage",
+            "value": "58.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_67"
+          },
+          {
+            "name": "Input Voltage Range",
+            "value": "UPS",
+            "unit": "",
+            "options": [
+              "0: Appliances",
+              "1: UPS",
+              "2: Generator"
+            ],
+            "id": "bse_eybond_ctrl_50"
+          },
+          {
+            "name": "Low DC Protection SOC In Grid Mode",
+            "value": "50",
+            "unit": "",
+            "id": "bat_eybond_ctrl_82"
+          },
+          {
+            "name": "Low DC Protection Voltage In Mains Mode",
+            "value": "51.8",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_71"
+          },
+          {
+            "name": "Low DC Protection Voltage In Off-Grid Mode",
+            "value": "49.1",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_73"
+          },
+          {
+            "name": "Max.AC.Charging Current",
+            "value": "5.0",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_77"
+          },
+          {
+            "name": "Max.Charging Current",
+            "value": "80.0",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_76"
+          },
+          {
+            "name": "Off grid mode battery discharge SOC protection value",
+            "value": "20",
+            "unit": "",
+            "id": "bat_eybond_ctrl_84"
+          },
+          {
+            "name": "Output control",
+            "value": "ON",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "sys_eybond_ctrl_97"
+          },
+          {
+            "name": "Output Frequency",
+            "value": "60Hz",
+            "unit": "",
+            "options": [
+              "50.00: 50Hz",
+              "60.00: 60Hz"
+            ],
+            "id": "bse_eybond_ctrl_65"
+          },
+          {
+            "name": "Output Mode",
+            "value": "Parallel",
+            "unit": "",
+            "options": [
+              "0: Single",
+              "1: Parallel",
+              "2: 3P1",
+              "3: 3P2",
+              "4: 3P3",
+              "5: 2P1",
+              "6: 2P2"
+            ],
+            "id": "bse_eybond_ctrl_48"
+          },
+          {
+            "name": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "options": [
+              "0: UTI",
+              "1: SOL",
+              "2: SBU",
+              "3: SUB"
+            ],
+            "id": "bse_eybond_ctrl_49"
+          },
+          {
+            "name": "Output Voltage",
+            "value": "230Vac",
+            "unit": "",
+            "options": [
+              "220.0: 220Vac",
+              "230.0: 230Vac",
+              "240.0: 240Vac"
+            ],
+            "id": "bse_eybond_ctrl_64"
+          },
+          {
+            "name": "Overload Bypass",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_58"
+          },
+          {
+            "name": "Power Saving Mode",
+            "value": "Saving Mode Disable",
+            "unit": "",
+            "options": [
+              "0: Saving Mode Disable",
+              "1: Saving Mode Enable"
+            ],
+            "id": "sys_eybond_ctrl_55"
+          },
+          {
+            "name": "Recovery Voltage Back To Mains Mode",
+            "value": "53.5",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_70"
+          },
+          {
+            "name": "Reset User Settings",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Reset User Settings"
+            ],
+            "id": "sys_eybond_ctrl_96"
+          },
+          {
+            "name": "SOC recovery value of battery discharge in mains mode",
+            "value": "92",
+            "unit": "",
+            "id": "bat_eybond_ctrl_83"
+          },
+          {
+            "name": "Time from C.V to Floating Charge",
+            "value": "10",
+            "unit": "",
+            "id": "bat_eybond_ctrl_74"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Battery percentage",
+            "value": "100",
+            "unit": "%",
+            "id": "bt_battery_capacity"
+          },
+          {
+            "name": "Grid Frequency",
+            "value": "0",
+            "unit": "Hz",
+            "id": "gd_eybond_read_16"
+          },
+          {
+            "name": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "id": "gd_grid_active_power"
+          },
+          {
+            "name": "Grid Voltage",
+            "value": "0",
+            "unit": "V",
+            "id": "gd_eybond_read_15"
+          },
+          {
+            "name": "PV Current",
+            "value": "1",
+            "unit": "A",
+            "id": "pv_eybond_read_33"
+          },
+          {
+            "name": "PV Power",
+            "value": "432",
+            "unit": "W",
+            "id": "pv_output_power"
+          },
+          {
+            "name": "PV Voltage",
+            "value": "396.5",
+            "unit": "V",
+            "id": "pv_eybond_read_32"
+          }
+        ],
+        "checksum": "3c91882146ae972538b3ee7474dc8c0ab66ea8376e2f9d039a25585e419cdc32",
+        "data_source": "Local",
+        "last_update": "2026-11-05T07:48:13.340245+00:00"
+      },
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.7.0-rc.2",
+        "devcode": 2376,
+        "device_identity": "sha256:31ad0ce4897e",
+        "collector_identity": "sha256:cd72f126df69",
+        "device_address": 1,
+        "support": {
+          "status": "supported",
+          "profile": "Eybond Data Collector (devcode 2376)",
+          "known_inverters": [
+            "POW-HVM6.2K-48V-LIP"
+          ],
+          "resolved": 33,
+          "unresolved": 1,
+          "total": 34,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0
+          },
+          "sensors": 33,
+          "unresolved_with_unit": [],
+          "unresolved_without_unit": [
+            "inverter"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-05T07:48:14.118833+00:00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "inverter",
+            "value": "1E00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "devise serial number",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Operating mode",
+            "value": "Off-Grid Mode",
+            "unit": "",
+            "resolved_key": "Operating mode"
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "Grid Frequency",
+            "value": "0.0",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Grid Power"
+          },
+          {
+            "title": "AC charging power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "AC charging power"
+          },
+          {
+            "title": "Output Voltage",
+            "value": "230.5",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Output Current",
+            "value": "2.3",
+            "unit": "A",
+            "resolved_key": "Output Current"
+          },
+          {
+            "title": "Output Frequency",
+            "value": "60.06",
+            "unit": "Hz",
+            "resolved_key": "Output Frequency"
+          },
+          {
+            "title": "Output Active Power",
+            "value": "429",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "Output Apparent Power",
+            "value": "530",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "54.7",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "Battery Current",
+            "value": "0.7",
+            "unit": "A",
+            "resolved_key": "Battery Current"
+          },
+          {
+            "title": "Battery Power",
+            "value": "38",
+            "unit": "W",
+            "resolved_key": "Battery Power"
+          },
+          {
+            "title": "PV Voltage",
+            "value": "385.2",
+            "unit": "V",
+            "resolved_key": "PV Voltage"
+          },
+          {
+            "title": "PV Current",
+            "value": "0.6",
+            "unit": "A",
+            "resolved_key": "PV Current"
+          },
+          {
+            "title": "PV Power",
+            "value": "264",
+            "unit": "W",
+            "resolved_key": "PV Power"
+          },
+          {
+            "title": "PV Charge Power",
+            "value": "38",
+            "unit": "W",
+            "resolved_key": "PV Charge Power"
+          },
+          {
+            "title": "Load Percent",
+            "value": "8",
+            "unit": "%",
+            "resolved_key": "Load Percent"
+          },
+          {
+            "title": "DC Module Termperature",
+            "value": "36",
+            "unit": "°C",
+            "resolved_key": "DC Module Termperature"
+          },
+          {
+            "title": "INV Module Termperature",
+            "value": "44",
+            "unit": "°C",
+            "resolved_key": "INV Module Termperature"
+          },
+          {
+            "title": "AC charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "AC charging current"
+          },
+          {
+            "title": "PV charging current",
+            "value": "0.6",
+            "unit": "A",
+            "resolved_key": "PV charging current"
+          },
+          {
+            "title": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "resolved_key": "Output priority"
+          },
+          {
+            "title": "Output Voltage Setting",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": "Output Voltage Setting"
+          },
+          {
+            "title": "Charger Source Priority",
+            "value": "PV is at the same level as mains",
+            "unit": "",
+            "resolved_key": "Charger Source Priority"
+          },
+          {
+            "title": "State of Charge",
+            "value": "100",
+            "unit": "%",
+            "resolved_key": "State of Charge"
+          },
+          {
+            "title": "energyToday",
+            "value": "14.6057",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "6867.9185",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Battery Charging Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Charging Current"
+          },
+          {
+            "title": "Inverter Current",
+            "value": "3.9",
+            "unit": "A",
+            "resolved_key": "Inverter Current"
+          },
+          {
+            "title": "Inverter Voltage",
+            "value": "230.5",
+            "unit": "V",
+            "resolved_key": "Inverter Voltage"
+          },
+          {
+            "title": "Inverter frequency",
+            "value": "60.15",
+            "unit": "Hz",
+            "resolved_key": "Inverter frequency"
+          },
+          {
+            "title": "Data Source",
+            "value": "Local",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "Auto AC Output",
+            "value": "Enable With Power Switch ON",
+            "unit": "",
+            "options": [
+              "0: Disable With Power Switch OFF",
+              "1: Enable With Power Switch ON"
+            ],
+            "id": "sys_eybond_ctrl_82"
+          },
+          {
+            "name": "Auto Restart When Over Temperature Occurs",
+            "value": "Auto Restart Enable",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_57"
+          },
+          {
+            "name": "Auto Restart When Overload Occurs",
+            "value": "Auto Restart Enable",
+            "unit": "",
+            "options": [
+              "0: Auto Restart Disable",
+              "1: Auto Restart Enable"
+            ],
+            "id": "sys_eybond_ctrl_56"
+          },
+          {
+            "name": "Auto Return To Default Display Screen",
+            "value": "Return To Default Display Screen",
+            "unit": "",
+            "options": [
+              "0: Stay At Latest Screen",
+              "1: Return To Default Display Screen"
+            ],
+            "id": "sys_eybond_ctrl_54"
+          },
+          {
+            "name": "Backlight Control",
+            "value": "Backlight On",
+            "unit": "",
+            "options": [
+              "0: Backlight Timing Off",
+              "1: Backlight On"
+            ],
+            "id": "sys_eybond_ctrl_53"
+          },
+          {
+            "name": "Battery EQ Mode",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_60"
+          },
+          {
+            "name": "Battery Type",
+            "value": "USER",
+            "unit": "",
+            "options": [
+              "0: AGM",
+              "1: FLD",
+              "2: USER",
+              "3: Li1",
+              "4: Li2",
+              "5: Li3",
+              "6: Li4"
+            ],
+            "id": "bat_eybond_ctrl_66"
+          },
+          {
+            "name": "Beeps While Primary Source Is Interrupted",
+            "value": "Beeps OFF",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON"
+            ],
+            "id": "sys_eybond_ctrl_52"
+          },
+          {
+            "name": "Boot method",
+            "value": "Can be powered on locally or remotely",
+            "unit": "",
+            "options": [
+              "0: Can be powered on locally or remotely",
+              "1: Only boot locally",
+              "2: Only remote boot"
+            ],
+            "id": "sys_eybond_ctrl_98"
+          },
+          {
+            "name": "Bulk Charging Voltage (C.V Voltage)",
+            "value": "56.4",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_68"
+          },
+          {
+            "name": "Buzzer Mode",
+            "value": "Beeps only in fault mode",
+            "unit": "",
+            "options": [
+              "0: Beeps OFF",
+              "1: Beeps ON",
+              "2: Mute when input source changes",
+              "3: Beeps only in fault mode"
+            ],
+            "id": "sys_eybond_ctrl_51"
+          },
+          {
+            "name": "Charger Source Priority",
+            "value": "PV Is At The Same Level As Utility",
+            "unit": "",
+            "options": [
+              "0: Utility First",
+              "1: PV First",
+              "2: PV Is At The Same Level As Utility",
+              "3: Only PV"
+            ],
+            "id": "bat_eybond_ctrl_75"
+          },
+          {
+            "name": "Clear Record",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Clear Record"
+            ],
+            "id": "sys_eybond_ctrl_95"
+          },
+          {
+            "name": "EQ Charing Time",
+            "value": "60",
+            "unit": "",
+            "id": "bat_eybond_ctrl_79"
+          },
+          {
+            "name": "EQ Charing Voltage",
+            "value": "56.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_78"
+          },
+          {
+            "name": "EQ Interval Time",
+            "value": "30",
+            "unit": "",
+            "id": "bat_eybond_ctrl_81"
+          },
+          {
+            "name": "EQ Timeout Exit time",
+            "value": "120",
+            "unit": "",
+            "id": "bat_eybond_ctrl_80"
+          },
+          {
+            "name": "Exit Fault Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Exit Fault Mode"
+            ],
+            "id": "sys_exit_fault_mode"
+          },
+          {
+            "name": "Floating Charging Voltage",
+            "value": "54.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_69"
+          },
+          {
+            "name": "Forced EQ Charging",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Forced EQ Charging Once"
+            ],
+            "id": "sys_forced_eq_charging"
+          },
+          {
+            "name": "High DC Protection Voltage",
+            "value": "58.0",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_67"
+          },
+          {
+            "name": "Input Voltage Range",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Appliances",
+              "1: UPS",
+              "2: Generator"
+            ],
+            "id": "bse_eybond_ctrl_50"
+          },
+          {
+            "name": "Low DC Protection SOC In Grid Mode",
+            "value": "50",
+            "unit": "",
+            "id": "bat_eybond_ctrl_82"
+          },
+          {
+            "name": "Low DC Protection Voltage In Mains Mode",
+            "value": "51.8",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_71"
+          },
+          {
+            "name": "Low DC Protection Voltage In Off-Grid Mode",
+            "value": "49.1",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_73"
+          },
+          {
+            "name": "Max.AC.Charging Current",
+            "value": "5.0",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_77"
+          },
+          {
+            "name": "Max.Charging Current",
+            "value": "80.0",
+            "unit": "A",
+            "id": "bat_eybond_ctrl_76"
+          },
+          {
+            "name": "Off grid mode battery discharge SOC protection value",
+            "value": "20",
+            "unit": "",
+            "id": "bat_eybond_ctrl_84"
+          },
+          {
+            "name": "Output control",
+            "value": "ON",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "sys_eybond_ctrl_97"
+          },
+          {
+            "name": "Output Frequency",
+            "value": "60Hz",
+            "unit": "",
+            "options": [
+              "50.00: 50Hz",
+              "60.00: 60Hz"
+            ],
+            "id": "bse_eybond_ctrl_65"
+          },
+          {
+            "name": "Output Mode",
+            "value": "Parallel",
+            "unit": "",
+            "options": [
+              "0: Single",
+              "1: Parallel",
+              "2: 3P1",
+              "3: 3P2",
+              "4: 3P3",
+              "5: 2P1",
+              "6: 2P2"
+            ],
+            "id": "bse_eybond_ctrl_48"
+          },
+          {
+            "name": "Output priority",
+            "value": "SUB",
+            "unit": "",
+            "options": [
+              "0: UTI",
+              "1: SOL",
+              "2: SBU",
+              "3: SUB"
+            ],
+            "id": "bse_eybond_ctrl_49"
+          },
+          {
+            "name": "Output Voltage",
+            "value": "230Vac",
+            "unit": "",
+            "options": [
+              "220.0: 220Vac",
+              "230.0: 230Vac",
+              "240.0: 240Vac"
+            ],
+            "id": "bse_eybond_ctrl_64"
+          },
+          {
+            "name": "Overload Bypass",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "sys_eybond_ctrl_58"
+          },
+          {
+            "name": "Power Saving Mode",
+            "value": "Saving Mode Disable",
+            "unit": "",
+            "options": [
+              "0: Saving Mode Disable",
+              "1: Saving Mode Enable"
+            ],
+            "id": "sys_eybond_ctrl_55"
+          },
+          {
+            "name": "Recovery Voltage Back To Mains Mode",
+            "value": "53.5",
+            "unit": "V",
+            "id": "bat_eybond_ctrl_70"
+          },
+          {
+            "name": "Reset User Settings",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "170: Reset User Settings"
+            ],
+            "id": "sys_eybond_ctrl_96"
+          },
+          {
+            "name": "SOC recovery value of battery discharge in mains mode",
+            "value": "92",
+            "unit": "",
+            "id": "bat_eybond_ctrl_83"
+          },
+          {
+            "name": "Time from C.V to Floating Charge",
+            "value": "10",
+            "unit": "",
+            "id": "bat_eybond_ctrl_74"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Battery percentage",
+            "value": "100",
+            "unit": "%",
+            "id": "bt_battery_capacity"
+          },
+          {
+            "name": "Grid Frequency",
+            "value": "0",
+            "unit": "Hz",
+            "id": "gd_eybond_read_16"
+          },
+          {
+            "name": "Grid Power",
+            "value": "0",
+            "unit": "W",
+            "id": "gd_grid_active_power"
+          },
+          {
+            "name": "Grid Voltage",
+            "value": "0",
+            "unit": "V",
+            "id": "gd_eybond_read_15"
+          },
+          {
+            "name": "PV Current",
+            "value": "0.7",
+            "unit": "A",
+            "id": "pv_eybond_read_33"
+          },
+          {
+            "name": "PV Power",
+            "value": "304",
+            "unit": "W",
+            "id": "pv_output_power"
+          },
+          {
+            "name": "PV Voltage",
+            "value": "387.6",
+            "unit": "V",
+            "id": "pv_eybond_read_32"
+          }
+        ],
+        "checksum": "c0d2e875740f546d76bb39b5671cb8165032938fe48c7d215371143c9e2d5c2f",
+        "data_source": "Local",
+        "last_update": "2026-11-05T07:48:14.118833+00:00"
+      }
+    ]
+  }
+}

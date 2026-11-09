@@ -310,6 +310,70 @@ async def test_the_hub_report_is_json_serializable(hass: HomeAssistant) -> None:
     )
 
 
+async def test_a_local_transport_reports_the_devices_it_saw(
+    hass: HomeAssistant,
+) -> None:
+    """A local device that matches no cloud device stays invisible otherwise.
+
+    The overlay matches by serial, or by collector and RS485 address together.
+    When it matches nothing the device keeps cloud telemetry and says so only
+    as "Cloud" on the Data Source sensor, and the file recorded nothing about
+    what the local side had seen, so the mismatch could not be diagnosed from
+    it (#61).
+    """
+    coordinator = MagicMock()
+    coordinator.is_hybrid = True
+    coordinator.last_update_success = True
+    coordinator.cloud_revision = 2
+    coordinator.stale_cloud_serials = frozenset()
+    coordinator.update_interval = timedelta(seconds=300)
+    coordinator.local_setup_errors = []
+    local = MagicMock()
+    local.connected = True
+    local.last_update_success = True
+    local.device_code = 258
+    local.data = {
+        "LOCAL-SN": {
+            "collector": {"pn": "PN-1"},
+            "device": {
+                "devaddr": 1,
+                "local_address_verified": False,
+                "local_protocol": "pi30",
+            },
+            "data": [{"title": "Battery Voltage", "val": "26.6", "unit": "V"}],
+        }
+    }
+    coordinator.locals = (local,)
+    # The cloud lists the same collector's inverter at another address.
+    coordinator.data = {
+        "CLOUD-SN": {
+            "collector": {"pn": "PN-1"},
+            "device": {"devcode": 2477, "devaddr": 5, "alias": "Solar"},
+            "data": [{"title": "Battery Voltage", "val": "26.6", "unit": "V"}],
+        }
+    }
+    coordinator.api.get_device_control_fields = AsyncMock(return_value={})
+    coordinator.api.get_device_parameters = AsyncMock(return_value={})
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = {"username": "u", "password": "p"}
+    entry.options = {}
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    (seen,) = json.loads(json.dumps(report))["local"]["transports"][0]["devices_seen"]
+    assert seen["device_address"] == 1
+    assert seen["address_verified"] is False
+    assert seen["protocol"] == "pi30"
+    assert seen["readings"] == 1
+    # Comparable to the cloud device's own entry, and naming neither.
+    assert seen["device_identity"] == short_identity("LOCAL-SN")
+    assert seen["collector_identity"] == short_identity("PN-1")
+    assert "LOCAL-SN" not in json.dumps(report)
+    assert "PN-1" not in json.dumps(report)
+
+
 async def test_control_fields_format_the_shape_the_api_returns(
     cloud_transport,
 ) -> None:

@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from custom_components.dessmonitor.device_support import (  # noqa: E402
     apply_devcode_transformations,
     is_devcode_supported,
+    is_absent_reading,
     is_setting_reading,
 )
 from custom_components.dessmonitor.sensor_titles import (  # noqa: E402
@@ -75,12 +76,16 @@ class Coverage:
         which reaches Home Assistant through another platform or not at all.
         One with a unit is a reading that is being dropped - unless the profile
         declares it a setting, which is how a collector that returns its own
-        setpoints among the telemetry is handled (#53).
+        setpoints among the telemetry is handled (#53), or declares that this
+        hardware never fills it, which is how an idle phase on a single-phase
+        inverter is handled (#58).
         """
         return [
             (title, self.units[title])
             for title in self.unresolved
-            if title in self.units and not is_setting_reading(self.devcode, title)
+            if title in self.units
+            and not is_setting_reading(self.devcode, title)
+            and not is_absent_reading(self.devcode, title)
         ]
 
     @property
@@ -112,6 +117,13 @@ class Coverage:
             title
             for title in self.unresolved
             if is_setting_reading(self.devcode, title)
+        ]
+
+    @property
+    def declared_absent(self) -> list[str]:
+        """Unresolved titles the profile declares this hardware never fills."""
+        return [
+            title for title in self.unresolved if is_absent_reading(self.devcode, title)
         ]
 
 
@@ -188,16 +200,20 @@ def _report_one(
 
     with_units = result.unmapped_readings
     settings = set(result.declared_settings)
+    absent = set(result.declared_absent)
     print(
         f"  unresolved {len(result.unresolved)}, "
         f"of which {len(with_units)} carry a unit"
         + (f" and {len(settings)} are declared settings" if settings else "")
+        + (f" and {len(absent)} are declared absent" if absent else "")
     )
     controls = {normalize_sensor_title(name) for name in result.controls}
     for title in result.unresolved:
         unit = result.units.get(title)
         if title in settings:
             marker = "  (setting)"
+        elif title in absent:
+            marker = "  (declared absent on this hardware)"
         elif normalize_sensor_title(title) in controls:
             marker = "  (control on this device)"
         else:
