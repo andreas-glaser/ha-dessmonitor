@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They are additions, so nothing an installation already publishes changes.
 
 ### Fixed
+- A device could publish two entities with the same name. Several readings are
+  defined twice on purpose, once per vendor spelling - `SOC` beside `State of
+  Charge`, `Batt Current` beside `Battery Current`, `energyToday` beside
+  `Energy Today` - and a collector that reports both resolved them to two
+  separate sensors. Only the summary endpoint's pair was guarded, and only
+  there. A device now gets one entity per name, keeping the reading that
+  arrives first, which is the measured one rather than a summary field the
+  vendor may never set (#58).
 - Eight sensors that declare themselves diagnostic were published as ordinary
   sensors: Rated Current, Rated Frequency, Rated Voltage, Rated Apparent
   Power, Battery Rated Voltage, Grid Rated Current, Grid Rated Voltage and
@@ -35,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   while the same address was described rather than printed everywhere else in
   the file. Addresses in those messages now get the same subnet description,
   and the errno and port are kept (#66).
+
+### Upgrade notes: a duplicated sensor name stops being published
+- If a device of yours already shows two entities with one name, the one that
+  was created second stops being published and will show as unavailable until
+  you delete it. It is the one that was reading a field the vendor leaves
+  unset, typically 0. The reading you want keeps its entity id and its
+  history.
 
 ### Upgrade notes: eight rating sensors move into Diagnostics
 - Rated Current, Rated Frequency, Rated Voltage, Rated Apparent Power, Battery

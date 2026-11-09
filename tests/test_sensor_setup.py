@@ -149,3 +149,83 @@ async def test_power_factor_stays_continuous_without_a_unit() -> None:
 
     assert entity.native_unit_of_measurement is None
     assert entity.state_class == "measurement"
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "unique_id"),
+    [
+        # Each pair is two keys carrying one display name on purpose, one per
+        # vendor spelling. The id is the one the first of the two publishes.
+        ("SOC", "State of Charge", "TEST-SERIAL_soc"),
+        ("Batt Current", "Battery Current", "TEST-SERIAL_batt_current"),
+        ("batt power", "Battery Power", "TEST-SERIAL_batt_power"),
+        ("work state", "Operating mode", "TEST-SERIAL_work_state"),
+        ("energyToday", "Energy Today", "TEST-SERIAL_energytoday"),
+        ("energyTotal", "Energy Total", "TEST-SERIAL_energytotal"),
+    ],
+)
+async def test_a_device_gets_one_entity_per_name(
+    first: str, second: str, unique_id: str
+) -> None:
+    """Two keys with one name must not become two entities on one device.
+
+    The alias pairs exist so either vendor spelling reaches a sensor. A
+    collector that reports both resolves them to different keys, so the
+    per-key check lets both through and the owner sees two entities with the
+    same name, the second reading whatever the vendor left in its field. That
+    is how an Energy Today sensor fed by an unset summary field read 0 kWh
+    beside a working one (#58); only the summary merge guarded against it, and
+    only for the pair that comes through the summary endpoint.
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-SERIAL": {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"devcode": 6514, "devaddr": 1},
+            "data": [
+                {"title": first, "val": "11", "unit": ""},
+                {"title": second, "val": "0", "unit": ""},
+            ],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+
+    # One entity, not two, and it is the one the first reading publishes:
+    # on a real payload that is the measured one, because a merged summary
+    # field is appended after it.
+    (entity,) = added.call_args.args[0]
+    assert entity.unique_id == unique_id
+    assert entity.native_value in (11, 11.0, "11")
+
+
+async def test_the_reading_a_summary_field_duplicates_is_the_one_kept() -> None:
+    """The order matters, because one of the two is the broken one.
+
+    A collector's own counter arrives in the telemetry and the summary
+    endpoint's copy is appended to it, so keeping the first keeps the reading
+    the inverter reported rather than the field the vendor may never set.
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-SERIAL": {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"devcode": 684, "devaddr": 1},
+            "data": [
+                {"title": "today energy", "val": "7.65", "unit": "kWh"},
+                {"title": "energyToday", "val": "0.0000", "unit": "kWh"},
+            ],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+
+    (entity,) = added.call_args.args[0]
+    assert entity.unique_id == "TEST-SERIAL_energy_today"
+    assert entity.native_value == 7.65
