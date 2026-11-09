@@ -63,6 +63,11 @@ TEXT_SENSOR_TITLES = {
 }
 
 
+# How many values one enum sensor may collect beyond the registered ones.
+# A vendor's state set is small; a number misread as an enumeration is not.
+_MAX_ENUM_OPTIONS = 64
+
+
 def _name_marker(device_sn: str, sensor_type: str) -> str:
     """Return the per-device marker two sensor types sharing a name collide on.
 
@@ -494,10 +499,43 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         return self._coerce_numeric_value(value)
 
     def _coerce_enum_value(self, value: Any) -> str:
-        """Coerce enumerated values to strings with fallbacks."""
-        if value is not None and value != "":
-            return str(value)
-        return "Unknown"
+        """Coerce an enumerated value to a string the option list can carry.
+
+        Home Assistant rejects an enum state that is not in the entity's
+        options, and the options are built once from what every devcode maps
+        plus the value the entity starts with. A vendor that names a state no
+        profile registered therefore took the whole sensor down rather than
+        showing one unfamiliar word: devcode 6489's download observed only
+        "Battery mode", because the reporter's mains was out when they took
+        it, and "Mains mode" would have made the sensor unavailable the moment
+        the grid came back (#66). The list is extended instead, bounded so a
+        reading misclassified as an enum cannot grow it without end.
+        """
+        if value is None or value == "":
+            return "Unknown"
+
+        text = str(value)
+        options = self._attr_options
+        if options is None or text in options:
+            return text
+        if len(options) >= _MAX_ENUM_OPTIONS:
+            _LOGGER.warning(
+                "Sensor %s reports %r and already offers %d options, so it "
+                "reads Unknown; this reading is probably not an enumeration",
+                self._attr_unique_id,
+                text,
+                len(options),
+            )
+            return "Unknown"
+
+        options.append(text)
+        _LOGGER.info(
+            "Sensor %s reports %r, which no devcode registers; adding it to "
+            "the options this entity offers",
+            self._attr_unique_id,
+            text,
+        )
+        return text
 
     @staticmethod
     def _coerce_text_value(value: Any) -> str | None:

@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They are additions, so nothing an installation already publishes changes.
 
 ### Fixed
+- An enum sensor went unavailable the first time its collector reported a
+  state no devcode registers. Home Assistant rejects an enum state outside
+  the entity's option list, and the list was fixed when the entity was built,
+  so one unfamiliar word took down the whole sensor - Operating Mode, a
+  priority or the charger state - rather than showing that word. The list now
+  carries a state first seen later, bounded so a reading misclassified as an
+  enumeration cannot grow it without end (#66).
 - A device could publish two entities with the same name. Several readings are
   defined twice on purpose, once per vendor spelling - `SOC` beside `State of
   Charge`, `Batt Current` beside `Battery Current`, `energyToday` beside
