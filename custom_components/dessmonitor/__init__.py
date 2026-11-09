@@ -6,6 +6,7 @@ import asyncio
 import copy
 import ipaddress
 import logging
+import re
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
 
@@ -1477,6 +1478,38 @@ def _network_label(value: Any, subnets: dict[str, int]) -> str:
     return f"{scope} ipv{address.version} in subnet {label}"
 
 
+# An address literal anywhere in free text. The IPv6 alternative also matches
+# a clock ("10:32:34"), which is why every candidate is validated below before
+# anything is replaced.
+_ADDRESS_LITERAL = re.compile(
+    r"(?<![\w.:])"
+    r"(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7})"
+    r"(?![\w.])"
+)
+
+
+def _redacted_message(text: Any, subnets: dict[str, int]) -> str:
+    """Return a free-text message with any address in it described, not printed.
+
+    The allowlist below covers the configured values, and a local setup error
+    carries the same addresses in prose: an exception from binding the listen
+    socket reports "error while attempting to bind on address ('A.B.C.D',
+    8899)", so a reporter's LAN address reached a public issue through the one
+    field in the download that was passed through verbatim. The rest of the
+    message is the diagnostic value and is kept, including the port.
+    """
+
+    def _describe(match: re.Match[str]) -> str:
+        literal = match.group(0)
+        try:
+            ipaddress.ip_address(literal)
+        except ValueError:
+            return literal
+        return _network_label(literal, subnets)
+
+    return _ADDRESS_LITERAL.sub(_describe, str(text))
+
+
 def _redacted_entry_values(
     values: Mapping[str, Any], subnets: dict[str, int] | None = None
 ) -> dict[str, Any]:
@@ -1562,7 +1595,10 @@ async def async_get_config_entry_diagnostics(
 
     if getattr(coordinator, "is_hybrid", False):
         report["local"] = {
-            "setup_errors": list(getattr(coordinator, "local_setup_errors", [])),
+            "setup_errors": [
+                _redacted_message(error, subnets)
+                for error in getattr(coordinator, "local_setup_errors", ())
+            ],
             "transports": [
                 {
                     "connected": local.connected,

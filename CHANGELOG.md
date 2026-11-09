@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A local setup error in the diagnostics download printed the address it
+  failed to bind, so a reporter's LAN address reached a public attachment
+  while the same address was described rather than printed everywhere else in
+  the file. Addresses in those messages now get the same subnet description,
+  and the errno and port are kept (#66).
+
 ## [2.7.0] - 2026-11-09
 
 This stable release includes all changes since 2.6.0, including everything

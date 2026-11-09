@@ -13,7 +13,7 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from custom_components.dessmonitor import _format_control_fields
 from custom_components.dessmonitor import diagnostics as diagnostics_platform
 from custom_components.dessmonitor.api import DessMonitorAPI
-from custom_components.dessmonitor.const import DOMAIN
+from custom_components.dessmonitor.const import CONF_LOCAL_LISTEN_IP, DOMAIN
 from custom_components.dessmonitor.support_report import short_identity
 
 
@@ -527,6 +527,57 @@ async def test_hub_diagnostics_do_not_disclose_local_network_addresses(
         "private ipv4 in subnet 2",
     ]
     assert options["local_poll_interval"] == 10
+
+
+async def test_a_local_setup_error_does_not_print_an_address(
+    hass: HomeAssistant,
+) -> None:
+    """The one field in the download that was passed through verbatim.
+
+    Binding the listen socket fails with the address in the message - "error
+    while attempting to bind on address (\'192.168.0.72\', 8899)" in the #66
+    download - so a reporter's LAN address reached a public attachment while
+    the same address was described rather than printed in the options block.
+    The port and the errno are the diagnostic value and stay.
+    """
+    coordinator = MagicMock()
+    coordinator.is_hybrid = True
+    coordinator.last_update_success = True
+    coordinator.cloud_revision = 1
+    coordinator.stale_cloud_serials = frozenset()
+    coordinator.update_interval = timedelta(seconds=300)
+    coordinator.local_setup_errors = [
+        "[Errno 98] error while attempting to bind on address "
+        "('192.168.0.72', 8899): [errno 98] address in use"
+    ]
+    coordinator.locals = ()
+    coordinator.data = {}
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = {}
+    entry.options = {CONF_LOCAL_LISTEN_IP: "192.168.0.72"}
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    (error,) = report["local"]["setup_errors"]
+    assert "192.168.0.72" not in json.dumps(report)
+    assert "private ipv4 in subnet 1" in error
+    # The subnet numbering is shared with the options, so a reader can still
+    # see that the failing bind and the configured listen address are one.
+    assert report["entry_options"][CONF_LOCAL_LISTEN_IP] == (
+        "private ipv4 in subnet 1"
+    )
+    assert "8899" in error and "Errno 98" in error
+
+
+def test_a_message_without_an_address_is_left_alone() -> None:
+    """A timestamp is not an address, and the IPv6 pattern matches one."""
+    from custom_components.dessmonitor import _redacted_message
+
+    text = "two routes could not start, first occurred: 10:32:34"
+
+    assert _redacted_message(text, {}) == text
 
 
 def test_every_config_key_is_classified() -> None:
