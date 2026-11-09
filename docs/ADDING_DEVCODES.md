@@ -423,7 +423,43 @@ Two rules:
   sends `Output Voltage` and `Output Frequency` twice, once measured and once
   as the setpoint; declaring either would take away the sensor.
 
-### 4.10 Configuration
+### 4.10 `ABSENT_READINGS`
+
+A collector reports every field its protocol defines, whether the hardware
+behind it fills that field or not, and the empty ones carry units too. Devcode
+4743 reports the S and T phase voltages, currents, powers and frequencies on a
+single-phase inverter, and three string powers on a unit with one string
+connected, all at zero. They looked exactly like dropped readings, so the
+support report counted sixteen of them and the Repairs card told an owner whose
+sensors all worked that sixteen readings were missing (#58).
+
+List such titles here with the reason the hardware leaves them empty, spelled
+as the collector titles them. They then count as neither resolved nor dropped,
+the coverage tool marks them `(declared absent on this hardware)`, and the
+committed-evidence guard stops demanding a sensor for them:
+
+```python
+_IDLE_PHASE = "single-phase hardware leaves the S and T phases unfilled"
+
+ABSENT_READINGS: dict[str, str] = {
+    "Inverter S phase voltage": _IDLE_PHASE,
+    "Inverter T phase voltage": _IDLE_PHASE,
+}
+```
+
+Two rules:
+
+- Declare absence, not ignorance. A reading you have not worked out yet is a
+  reading to map, and declaring it here hides it from the guard that exists to
+  find it. The reason string is read by a human reviewing the profile, so write
+  what the evidence shows rather than a restatement of the title.
+- A field one owner's hardware leaves empty may be filled on another's. Zero on
+  a three-phase title is evidence about *that* reporter's inverter, so declare
+  it only where the devcode's hardware cannot fill it, and map it the moment a
+  report shows a value. The resolver is unaffected either way: a declared title
+  that does start arriving with a value still needs a mapping to reach a sensor.
+
+### 4.11 Configuration
 
 ```python
 DEVCODE_CONFIG = {
@@ -437,6 +473,7 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
+    "absent_readings": ABSENT_READINGS,
 }
 ```
 
@@ -658,6 +695,7 @@ Before opening a PR:
 - [ ] `SENSOR_TITLE_MAPPINGS` only contains titles that fail the shared resolver
 - [ ] `PARAMETER_SENSOR_NAMES` set iff the reporter needs a sensor from the parameters endpoint
 - [ ] `SETTING_READINGS` lists every setpoint the collector returns among the readings, and no nameplate rating
+- [ ] `ABSENT_READINGS` lists only titles this hardware cannot fill, each with the reason, and no title awaiting a mapping
 - [ ] `TEMPORAL_CONTROLS` lists every advertised clock-valued field whose read format the analysis shows, and nothing else
 - [ ] `tools/analysis_coverage.py` reports no unresolved title carrying a unit
 - [ ] Redacted analysis committed under `docs/evidence/devcodes/` and `verify` passes
