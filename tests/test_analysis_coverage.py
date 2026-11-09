@@ -15,9 +15,18 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.dessmonitor.device_support import apply_devcode_transformations
+from custom_components.dessmonitor.device_support import (
+    absent_reading_reason,
+    apply_devcode_transformations,
+    is_absent_reading,
+    is_setting_reading,
+)
 from custom_components.dessmonitor.sensor import _build_sensor_entities
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
+from custom_components.dessmonitor.support_report import (
+    normalized_reports,
+    scale_disagreements,
+)
 
 ANALYSIS_FILES = sorted(
     Path(__file__)
@@ -26,27 +35,30 @@ ANALYSIS_FILES = sorted(
     .rglob("analysis_*.json")
 )
 
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_committed_analysis_is_intact(path: Path) -> None:
+    """A committed analysis is the authority for a devcode's mappings.
 
-def _load(path: Path) -> dict[str, Any]:
-    """Return the analysis payload of a committed CLI report."""
-    with path.open("r", encoding="utf-8") as handle:
-        return dict(json.load(handle)["analysis"])
-
-
-def _titles_with_units(analysis: dict[str, Any]) -> dict[str, str]:
-    """Return observed units by raw title, which marks a title as a reading.
-
-    A title without a unit is a setting, an identity field or a timestamp, and
-    those reach Home Assistant through the number, select and button platforms.
+    The CLI signs each report over its redacted contents, so a file edited
+    after the fact no longer matches. Without this the mappings could be
+    justified by evidence nobody can check.
     """
-    units: dict[str, str] = {}
-    for section, label in (("sample_data", "title"), ("parameters", "name")):
-        for point in analysis.get(section, []):
-            title = point.get(label)
-            unit = (point.get("unit") or "").strip()
-            if title and unit:
-                units[str(title)] = unit
-    return units
+    for record in _records(path):
+        assert record["checksum"], f"{path.name} carries no checksum"
+        assert record["checksum_valid"], (
+            f"{path.name} does not match its own checksum; regenerate it from "
+            "the CLI or the diagnostics download rather than editing it by hand"
+        )
+
+
+def _records(path: Path) -> list[dict[str, Any]]:
+    """Return one normalized record per device, for either committed shape.
+
+    Evidence arrives as a CLI analysis or as a diagnostics download, and a
+    devcode is guarded the same way whichever produced it (#60).
+    """
+    with path.open("r", encoding="utf-8") as handle:
+        return normalized_reports(json.load(handle))
 
 
 def _sensor_entities(devcode: int, points: list[dict[str, Any]], hass) -> list[Any]:
@@ -64,20 +76,34 @@ def _sensor_entities(devcode: int, points: list[dict[str, Any]], hass) -> list[A
     return _build_sensor_entities(coordinator, set())
 
 
+# Readings a collector labels with a unit but never populates live in the
+# profile's own ABSENT_READINGS, where the Repairs evaluation and the
+# diagnostics download read them too: this table used to hold them, and the
+# runtime knew nothing about it, so an owner whose readings all worked was told
+# sixteen were missing (#58).
+
+
 def test_analysis_reports_are_committed() -> None:
     assert ANALYSIS_FILES, "no analysis reports found under docs/evidence"
 
 
 @pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
 def test_every_reading_with_a_unit_resolves_to_a_sensor(path: Path) -> None:
-    analysis = _load(path)
-    devcode = analysis["devcode"]
-    units = _titles_with_units(analysis)
+    for record in _records(path):
+        _assert_every_reading_resolves(path, record)
+
+
+def _assert_every_reading_resolves(path: Path, record: dict[str, Any]) -> None:
+    """Fail when a reading that carries a unit reaches no sensor."""
+    devcode = record["devcode"]
+    units = dict(record["units"])
 
     unmapped = {
         title: unit
         for title, unit in units.items()
-        if resolve_sensor_key(
+        if not is_absent_reading(devcode, title)
+        and not is_setting_reading(devcode, title)
+        and resolve_sensor_key(
             apply_devcode_transformations(devcode, {"title": title}).get("title"),
             title,
         )
@@ -89,6 +115,51 @@ def test_every_reading_with_a_unit_resolves_to_a_sensor(path: Path) -> None:
         "Map them in device_support/devcode_"
         f"{devcode}.py or add a SENSOR_TYPES entry."
     )
+
+
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_exclusions_still_describe_an_unmapped_reading(path: Path) -> None:
+    """A declared-absent reading must stop being declared once it is mapped.
+
+    Otherwise a stale declaration keeps a reading excluded after someone maps
+    it, and the guard quietly stops watching a sensor that now exists. The
+    declaration also has to name its evidence, because a guess here hides the
+    gap this guard exists to catch.
+    """
+    for record in _records(path):
+        devcode = record["devcode"]
+        for title in _declared_absent(devcode):
+            assert title in record["titles"], (
+                f"devcode {devcode} no longer reports {title!r}; remove it "
+                f"from ABSENT_READINGS in device_support/devcode_{devcode}.py"
+            )
+            assert (
+                resolve_sensor_key(
+                    apply_devcode_transformations(devcode, {"title": title}).get(
+                        "title"
+                    ),
+                    title,
+                )
+                is None
+            ), (
+                f"{title!r} now resolves for devcode {devcode}; remove it from "
+                f"ABSENT_READINGS in device_support/devcode_{devcode}.py"
+            )
+            reason = absent_reading_reason(devcode, title)
+            assert reason and len(reason) > 20, (
+                f"{title!r} is declared absent on devcode {devcode} without "
+                "saying what was measured"
+            )
+
+
+def _declared_absent(devcode: int) -> list[str]:
+    """Return the titles this devcode's profile declares the hardware never fills."""
+    from custom_components.dessmonitor.device_support.device_registry import (
+        get_devcode_config,
+    )
+
+    config = get_devcode_config(devcode) or {}
+    return list(config.get("absent_readings") or {})
 
 
 @pytest.mark.parametrize(
@@ -162,3 +233,142 @@ def test_existing_unique_ids_are_unchanged(hass) -> None:
         "TEST-SN_battery_voltage",
         "TEST-SN_output_active_power",
     }
+
+
+def test_a_diagnostics_report_is_guarded_like_a_cli_analysis() -> None:
+    """Either shape can be committed as evidence for a devcode (#60).
+
+    A diagnostics download records a unit for every reading, where a CLI
+    analysis records one for the sampled readings only, so committing one of
+    those closes the blind spot in this guard rather than widening it.
+    """
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    readings = [
+        {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+        {"title": "Daily Generation", "val": "10.2", "unit": "kWh"},
+        {"title": "Protocol Number", "val": "3", "unit": ""},
+    ]
+    report = build_support_report(devcode=6515, readings=readings)
+
+    (record,) = normalized_reports({"devices": [report]})
+
+    assert record["devcode"] == 6515
+    assert record["source"] == "integration_diagnostics"
+    assert record["checksum_valid"] is True
+    assert record["units"] == {"Battery Voltage": "V", "Daily Generation": "kWh"}
+    assert "Protocol Number" in record["titles"]
+
+    # And the guard still catches the dropped reading in it.
+    with pytest.raises(AssertionError, match="Daily Generation"):
+        _assert_every_reading_resolves(Path("downloaded.json"), record)
+
+
+def test_an_edited_report_fails_its_checksum() -> None:
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    report = build_support_report(
+        devcode=6515, readings=[{"title": "SOC", "val": "37", "unit": "%"}]
+    )
+    report["devcode"] = 6544
+
+    (record,) = normalized_reports(report)
+
+    assert record["checksum_valid"] is False
+
+
+def test_a_diagnostics_download_is_read_as_home_assistant_writes_it() -> None:
+    """Home Assistant wraps a diagnostics report under ``data`` (#62).
+
+    That envelope, not the bare report, is what a reporter attaches to an
+    issue, and the coverage tooling rejected every one of those files as "not a
+    devcode analysis or support report".
+    """
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    report = build_support_report(
+        devcode=684,
+        readings=[
+            {"title": "today energy", "val": "7.65", "unit": "kWh"},
+            {"title": "work mode", "val": "normal", "unit": ""},
+        ],
+    )
+
+    for payload in (
+        # The config-entry hook, which reports every device on the account.
+        {"home_assistant": {"version": "2026.10.4"}, "data": {"devices": [report]}},
+        # The per-device hook, which reports one.
+        {"home_assistant": {"version": "2026.10.4"}, "data": report},
+    ):
+        (record,) = normalized_reports(payload)
+
+        assert record["devcode"] == 684
+        assert record["source"] == "integration_diagnostics"
+        assert record["checksum_valid"] is True
+        assert record["units"] == {"today energy": "kWh"}
+
+
+# Scale disagreements a committed file *records*, rather than ones the
+# integration still has. A hybrid download carries the local reading and the
+# cloud's own figure for the same sensor, so a file taken before a unit fix
+# preserves the evidence of it. Each entry names the fix that closed it, and
+# the test below removes the entry's excuse once the file no longer shows it.
+RECORDED_DISAGREEMENTS: dict[tuple[int, str], str] = {
+    (2452, "Energy Total"): (
+        "taken before the PI18 ET unit fix: the local query answered in "
+        "watt-hours against the cloud's kWh, 10104399 against 10104.399 (#53)"
+    ),
+}
+
+
+@pytest.mark.parametrize("path", ANALYSIS_FILES, ids=lambda path: path.stem)
+def test_two_sources_agree_on_the_scale_of_a_reading(path: Path) -> None:
+    """A hybrid download measures the same reading twice; they must agree.
+
+    `SENSOR_TYPES` declares a unit, local drivers emit numbers, and nothing
+    compared the two until the PI18 lifetime energy counter was found reading a
+    thousand times too high in a file we already had (#53). Where a committed
+    download carries both a local reading and the cloud's parameter for one
+    sensor, an order of magnitude between them is a unit mistake.
+    """
+    for device in _device_reports(path):
+        devcode = device.get("devcode")
+        for key, (local, cloud) in scale_disagreements(device).items():
+            assert (devcode, key) in RECORDED_DISAGREEMENTS, (
+                f"{path.name}: devcode {devcode} reports {key} as {local} "
+                f"locally and {cloud} from the cloud. One of the two is scaled "
+                "wrongly; fix the driver or the mapping, or record the entry in "
+                "RECORDED_DISAGREEMENTS with the reason."
+            )
+
+
+def test_recorded_disagreements_still_describe_a_committed_file() -> None:
+    """An entry must lose its excuse once the evidence stops showing it.
+
+    Otherwise a stale entry keeps a real disagreement excused after someone
+    replaces the file with one taken on fixed code.
+    """
+    seen: set[tuple[int, str]] = set()
+    for path in ANALYSIS_FILES:
+        for device in _device_reports(path):
+            devcode = device.get("devcode")
+            for key in scale_disagreements(device):
+                seen.add((devcode, key))
+
+    stale = sorted(set(RECORDED_DISAGREEMENTS) - seen)
+    assert not stale, (
+        f"no committed file shows these disagreements any more: {stale}. "
+        "Remove them from RECORDED_DISAGREEMENTS."
+    )
+
+
+def _device_reports(path: Path) -> list[dict[str, Any]]:
+    """Return the device reports in a committed diagnostics download.
+
+    A CLI analysis has no second source to compare against, so it yields none.
+    """
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    data = payload.get("data", payload)
+    devices = data.get("devices") if isinstance(data, dict) else None
+    return [device for device in devices or [] if isinstance(device, dict)]

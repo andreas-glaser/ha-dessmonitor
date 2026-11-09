@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "2.6.0"
+VERSION: Final = "2.7.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -289,6 +289,28 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:current-dc",
     },
+    # Grid-tie inverters report a per-string current with no charger behind it.
+    "PV1 Current": {
+        "name": "PV1 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "PV2 Current": {
+        "name": "PV2 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "PV3 Current": {
+        "name": "PV3 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
     "grid current": {
         "name": "Grid Current",
         "unit": UNITS["CURRENT"],
@@ -302,13 +324,6 @@ SENSOR_TYPES = {
         "device_class": "current",
         "state_class": "measurement",
         "icon": "mdi:current-ac",
-    },
-    "Output frequency": {
-        "name": "Output Frequency",
-        "unit": UNITS["FREQUENCY"],
-        "device_class": "frequency",
-        "state_class": "measurement",
-        "icon": "mdi:sine-wave",
     },
     "Output Frequency": {
         "name": "Output Frequency",
@@ -344,13 +359,6 @@ SENSOR_TYPES = {
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash",
-    },
-    "Grid frequency": {
-        "name": "Grid Frequency",
-        "unit": UNITS["FREQUENCY"],
-        "device_class": "frequency",
-        "state_class": "measurement",
-        "icon": "mdi:sine-wave",
     },
     "Load Percent": {
         "name": "Load Percentage",
@@ -426,8 +434,31 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:thermometer",
     },
+    "Ambient Temperature": {
+        "name": "Ambient Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
     "Transformer temperature": {
         "name": "Transformer Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
+    # Reported beside the radiator and transformer readings by the grid-tie
+    # collectors (devcode 684, #62).
+    "Inductor Temperature": {
+        "name": "Inductor Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+    },
+    "Inside Temperature": {
+        "name": "Inside Temperature",
         "unit": UNITS["TEMPERATURE"],
         "device_class": "temperature",
         "state_class": "measurement",
@@ -487,6 +518,36 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:solar-power",
     },
+    "PV3 Voltage": {
+        "name": "PV3 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    # The DC bus sits between the strings and the inverter bridge. Collectors
+    # report it as one voltage, or split into its positive and negative rails.
+    "Bus Voltage": {
+        "name": "Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "Positive Bus Voltage": {
+        "name": "Positive Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    "Negative Bus Voltage": {
+        "name": "Negative Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
     "AC charging power": {
         "name": "AC Charging Power",
         "unit": UNITS["POWER"],
@@ -505,6 +566,28 @@ SENSOR_TYPES = {
         "unit": UNITS["APPARENT_POWER"],
         "state_class": "measurement",
         "icon": "mdi:flash",
+    },
+    # Grid-tie inverters report reactive power in the unit their apparent power
+    # uses, so it is kept in VA rather than converted to var.
+    "Output Reactive Power": {
+        "name": "Output Reactive Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+    },
+    "Power Factor": {
+        "name": "Power Factor",
+        "unit": "",
+        "state_class": "measurement",
+        "icon": "mdi:angle-acute",
+    },
+    # An external meter the inverter reads for export limiting.
+    "Meter Power": {
+        "name": "Meter Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:gauge",
     },
     # Split-phase collectors report each output leg alongside the totals.
     "Output L1 Active Power": {
@@ -815,10 +898,117 @@ SENSOR_TYPES = {
         "icon": "mdi:chip",
         "entity_category": "diagnostic",
     },
+    # A grid-tie inverter reports its own status text rather than the operating
+    # mode enum the battery inverters use, so it is not an enum sensor.
+    "Inverter Status": {
+        "name": "Inverter Status",
+        "unit": "",
+        "icon": "mdi:information-outline",
+    },
+    # Per-subsystem status texts, first reported on devcode 2477 (#61). A
+    # collector sends them without a unit and each names a state rather than
+    # measuring one ("PV Undervoltage", "Load On (Normal)"), so they are plain
+    # text sensors like Inverter Status above: no report carries a vendor's
+    # full set of strings for a field, and an enum would mark the rest invalid.
+    # A devcode whose own spelling differs maps onto these in its own profile,
+    # as 2477 maps its "Mains Status" onto Grid Status.
+    "Battery Status": {
+        "name": "Battery Status",
+        "unit": "",
+        "icon": "mdi:battery-heart-variant",
+    },
+    "PV Status": {
+        "name": "PV Status",
+        "unit": "",
+        "icon": "mdi:solar-power-variant",
+    },
+    "Grid Status": {
+        "name": "Grid Status",
+        "unit": "",
+        "icon": "mdi:transmission-tower",
+    },
+    "Load Status": {
+        "name": "Load Status",
+        "unit": "",
+        "icon": "mdi:power-plug",
+    },
+    "Grid Reconnect Waiting Time": {
+        "name": "Grid Reconnect Waiting Time",
+        "unit": "s",
+        "device_class": "duration",
+        "state_class": "measurement",
+        "icon": "mdi:timer-sand",
+        "entity_category": "diagnostic",
+    },
+    "Operating Time": {
+        "name": "Operating Time",
+        "unit": "h",
+        "device_class": "duration",
+        "state_class": "total_increasing",
+        "icon": "mdi:clock-outline",
+    },
     "rated power": {
         "name": "Rated Power",
         "unit": UNITS["POWER"],
         "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    # Nameplate ratings devcode 2452 reports beside its telemetry (#53). They
+    # are facts about the hardware rather than settings, so they are sensors,
+    # and diagnostic ones because they never change.
+    "rated current": {
+        "name": "Rated Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "rated frequency": {
+        "name": "Rated Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "rated apparent power": {
+        "name": "Rated Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+        "entity_category": "diagnostic",
+    },
+    "battery rated voltage": {
+        "name": "Battery Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery",
+        "entity_category": "diagnostic",
+    },
+    "grid rated current": {
+        "name": "Grid Rated Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+        "entity_category": "diagnostic",
+    },
+    "grid rated voltage": {
+        "name": "Grid Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+        "entity_category": "diagnostic",
+    },
+    "rated voltage": {
+        "name": "Rated Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:flash",
         "entity_category": "diagnostic",

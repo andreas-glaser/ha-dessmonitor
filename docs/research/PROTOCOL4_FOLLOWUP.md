@@ -38,13 +38,13 @@ only established protocol 4.
 
 A separate public source records a captured protocol-3/model-29440 fingerprint
 for ANENJI HHS 11kW without parallel:
-[EyeBond Local model catalogue at dcad8ac](https://github.com/groove-max/ha-eybond-local/blob/dcad8ac934b7741a161d5aaf3b8658678446dc9d/catalog/inverter_models/models/anenji_hhs_11kw_wifi_no_parallel.json).
+[Eybond Local model catalogue at dcad8ac](https://github.com/groove-max/ha-eybond-local/blob/dcad8ac934b7741a161d5aaf3b8658678446dc9d/catalog/inverter_models/models/anenji_hhs_11kw_wifi_no_parallel.json).
 It reports partial telemetry validation and no hardware-validated local writes
 for that model. This is an external example of non-4 hardware, not a prevalence
 estimate, a claim of our own testing, or proof the old DessMonitor legacy map
 decoded that unit correctly. No additional layout is enabled by this PR.
 
-## Direct DessMonitor / EyeBond observations
+## Direct DessMonitor / Eybond observations
 
 On October 15, a roughly 6m46s Local-5s window contained 655 matched replies,
 about 96 requests/minute, median RTT 191ms, p95 557ms and maximum 1927ms.
@@ -54,7 +54,7 @@ That short window does not establish an indefinitely safe polling frequency.
 
 Two October 16 captures cover 12:08:57–13:23:09 and 13:23:34–16:29:10 UTC+3,
 about 4h20m in total. They contain five incoming FC03 replies with valid Modbus
-CRC and byte count but no expected eight-byte EyeBond envelope. Interpreting
+CRC and byte count but no expected eight-byte Eybond envelope. Interpreting
 their register data as the missing transport header reproduces the exact
 invalid-length warnings. The same captures have no relevant TCP sequence gaps
 or conflicting retransmitted bytes at those transitions.
@@ -79,7 +79,7 @@ Native identity reads again returned protocol 4 and model 32771.
 
 However, it uses an intercepted outgoing collector connection on port 18899:
 AT identification followed by **raw Modbus RTU over TCP**, rather than the
-direct Local EyeBond envelope/heartbeat path. It is not Modbus TCP with an MBAP
+direct Local Eybond envelope/heartbeat path. It is not Modbus TCP with an MBAP
 header. Only one telemetry polling owner is active; the second collector
 channel is passive after admission. Additional settings/clock reads share the
 implementation's transaction scheduling.

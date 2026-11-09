@@ -30,6 +30,31 @@ python3 dessmonitor_cli.py auth --username YOUR_USERNAME --company-key YOUR_COMP
 
 ## Commands
 
+### `report` - One-command contributor report
+
+Analyse every device on the account and write one redacted report each. This is
+the command to give a reporter: it needs no PN, no serial number and no second
+step, and it tells them what their own hardware covers.
+
+```bash
+python3 dessmonitor_cli.py report --username USER
+```
+
+It prompts for the password, then for each collector and device writes
+`analysis_<devcode>.json` (`_2`, `_3` and so on when an account holds several
+devices of one devcode), prints that device's sensor coverage, and ends with a
+summary block to paste into a GitHub issue. The block and the files carry no
+serial number, collector alias or identifying sample value.
+
+Options: `--api-profile shinemonitor_solar` for a ShineMonitor account,
+`--company-key` if an installer supplied one, `--output-dir` to write elsewhere,
+and `--password` which exists for scripting and is better omitted.
+
+Coverage needs the integration beside the CLI, which it is in a checkout or an
+extracted ZIP. Run from a copy without it and the reports are still written,
+without the coverage lines.
+
+
 ### `auth` - Authentication
 Choose the platform and store credentials for subsequent commands. DessMonitor remains the default; existing credential files continue to use it.
 
@@ -201,7 +226,7 @@ for legacy-report limitations and checksum output.
 
 ### `local-scan` - Bounded Collector Discovery
 
-Find callback-capable EyeBond collectors on one private `/24` or smaller. This
+Find callback-capable Eybond collectors on one private `/24` or smaller. This
 command does not use cloud credentials.
 
 ```bash

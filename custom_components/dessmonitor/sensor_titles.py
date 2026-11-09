@@ -62,9 +62,41 @@ def resolve_sensor_key(*candidates: str | None) -> str | None:
     return None
 
 
+def sensor_display_name(title: str) -> str:
+    """Return the normalised entity name a title publishes, or "" for none.
+
+    Two definitions can carry the same friendly name while being separate keys:
+    ``energyToday`` and ``Energy Today`` are both shown as "Energy Today".
+    Comparing keys treats them as different sensors, so a device that reports
+    one of each publishes two entities with one name, which is a duplicate to
+    the person reading it.
+    """
+    key = resolve_sensor_key(title)
+    if key is None:
+        return ""
+    config = cast(dict[str, Any], SENSOR_TYPES[key])
+    name = config.get("name")
+    return normalize_sensor_title(str(name) if isinstance(name, str) else key)
+
+
 def sensor_unit(title: str) -> str:
     """Return the canonical unit configured for a title, or an empty string."""
     key = resolve_sensor_key(title)
     if key is None:
         return ""
     return str(cast(dict[str, Any], SENSOR_TYPES[key]).get("unit", ""))
+
+
+def cumulative_sensor_key(*candidates: str | None) -> str | None:
+    """Return the canonical key of a reading that only ever counts upwards.
+
+    A ``total_increasing`` reading is the only kind whose value Home Assistant
+    reads a decrease in as a meter reset, so callers that arbitrate between two
+    sources for the same reading need to know which ones those are, and need
+    one name per reading rather than per spelling.
+    """
+    key = resolve_sensor_key(*candidates)
+    if key is None:
+        return None
+    config = cast(dict[str, Any], SENSOR_TYPES[key])
+    return key if config.get("state_class") == "total_increasing" else None

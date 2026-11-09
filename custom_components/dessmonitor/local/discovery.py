@@ -16,7 +16,7 @@ from .protocol import ProtocolError, build_p17_poll
 
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
 
-# These are EyeBond *tunnel* codes observed for PI18/P17. They are not the
+# These are Eybond *tunnel* codes observed for PI18/P17. They are not the
 # cloud API's device-family codes, which describe a different layer and must
 # not be sprayed onto the local bus as guesses.
 KNOWN_DEVICE_CODES = (2452, 258)

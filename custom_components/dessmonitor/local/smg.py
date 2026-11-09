@@ -1,4 +1,4 @@
-"""Read-only SMG-family Modbus driver over the EyeBond tunnel.
+"""Read-only SMG-family Modbus driver over the Eybond tunnel.
 
 The register blocks and scaling follow the published ``Modbus_RTU RS232
 communication protocol, Version 1.0 (Nov 2021)``.  This module deliberately
@@ -29,7 +29,7 @@ SMG_PROTOCOL = "smg_modbus"
 SMG_CLOUD_DEVICE_CODE = 2376
 SMG_TUNNEL_DEVICE_CODE = 1
 SMG_TUNNEL_COLLECTOR_ADDRESS = 0xFF
-# Observed EyeBond heartbeat codes for collectors tunnelling the standard SMG
+# Observed Eybond heartbeat codes for collectors tunnelling the standard SMG
 # Modbus protocol. They are routing hints only; strict function-03 response
 # validation is still required before the driver is selected.
 SMG_REPORTED_COLLECTOR_CODES = (1, 258)
@@ -52,7 +52,7 @@ _OPERATING_MODES = {
 
 @dataclass(frozen=True, slots=True)
 class SmgRoute:
-    """Exact EyeBond tunnel and Modbus slave route."""
+    """Exact Eybond tunnel and Modbus slave route."""
 
     device_code: int
     collector_address: int

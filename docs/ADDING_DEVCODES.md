@@ -9,29 +9,70 @@ device-specific mappings for that code. It continues using raw sensor titles and
 values, but some sensors may be missing or need name, unit, or operating-mode
 mappings. The warning is logged once per devcode until Home Assistant restarts.
 
-You do not need to write Python code to request support:
+You do not need to install anything to request support, and you do not need to
+type your password anywhere.
 
 1. [Search existing issues](https://github.com/andreas-glaser/ha-dessmonitor/issues)
-   for the devcode shown in your warning.
-2. [Generate an analysis JSON](#1-produce-the-analysis-contributor-side) on a
-   computer with Python installed, following the commands below.
-3. Attach the JSON to the matching issue, or
-   [open a support request](https://github.com/andreas-glaser/ha-dessmonitor/issues/new).
-   Include your devcode, inverter brand and model, integration version, account
-   platform, and any missing or incorrect readings or settings compared with
-   that platform's website or mobile app.
+   for your devcode.
+2. In Home Assistant, open **Settings > Devices & services > DessMonitor**, use
+   the three-dot menu on the integration entry itself, and choose **Download
+   diagnostics**.
+3. Open a [device support request](https://github.com/andreas-glaser/ha-dessmonitor/issues/new?template=device_support.yml)
+   and attach that file, or attach it to the matching existing issue.
 
-Share only the analysis JSON, never your password or the CLI credentials file
-(`.dessmonitor_cli_config.json`). Use `--redacted`, as shown in every analysis example,
-to blank `device_sn`, `collector_alias`, and known identifying values in telemetry,
-parameters, and unit-pattern samples before sharing on GitHub or with an AI
-assistant. This includes `devise serial number` and record IDs. The CLI computes
-a valid checksum after redaction. Regenerate older reports whose nested sample
-values were not redacted.
-Review the file for other identifying information; if you redact more,
+That download covers every inverter on the account in one file. For each one it
+records the devcode, whether it is `supported`, `partial` or `unsupported`, how
+many of its readings reach an entity, and the title and unit of every reading
+that reaches none, which is the list a maintainer works from. It also carries
+the control fields, so settings can be mapped from the same file.
+
+**It contains no credentials and no identifiers.** The username, password,
+company key and token are redacted, and serial numbers, collector aliases and
+collector product numbers appear only as a `sha256:` correlation hash, so two
+downloads of the same account can still be compared without disclosing either.
+Review it before attaching it, as you should with any diagnostics file.
+
+If Home Assistant shows a **Repairs** card saying a devcode has no mappings or
+is missing readings, that card is raised by this check and links here.
+
+### If the integration will not set up at all
+
+Then there is no diagnostics download to take, and the CLI below is the way to
+produce the same evidence from a computer. It is also what to use when a cloud
+write needs testing, which the integration cannot do for you.
+
+```bash
+cd tools/cli
+pip install -r requirements.txt
+python3 dessmonitor_cli.py report --username YOUR_USERNAME
+```
+
+Add `--api-profile shinemonitor_solar` if your account is on ShineMonitor; omit
+it for DessMonitor, the default. Use the same username as your Home Assistant
+integration, and a company key only if your installer gave you one
+(`--company-key`). The command prompts for your password rather than taking it
+on the command line, where your shell would record it.
+
+It lists the collectors on the account, analyses every inverter behind them,
+writes one redacted `analysis_<devcode>.json` per device, and prints what each
+one covers, for example:
+
+```
+   Wrote analysis_6515.json (devcode 6515)
+   Coverage: 34 of 79 titles reach Home Assistant as sensors (already supported)
+   Every reading this collector labels with a unit already reaches Home Assistant.
+```
+
+Attach the JSON files, and paste the summary block the command prints at the
+end. Share only those files, never your password or the CLI credentials file
+(`.dessmonitor_cli_config.json`). The report is redacted before it is written:
+`device_sn`, `collector_alias` and known identifying values in telemetry,
+parameters and unit-pattern samples are blanked, including `devise serial
+number` and record IDs, and the checksum is computed after redaction.
+Review the file for anything else identifying; if you redact more,
 mention that in the issue so the maintainer can account for checksum changes.
 
-The analysis lets a maintainer check the mappings and prepare a dev build for you
+Either file lets a maintainer check the mappings and prepare a dev build for you
 to test. To contribute the mappings yourself, continue with the workflow below.
 
 ## Background
@@ -64,12 +105,27 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 
 ## 1. Produce the analysis (contributor side)
 
-Download the [dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
-extract it, and open a terminal in the extracted repository folder. Run:
+One command covers the whole account. Download the
+[dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
+extract it, and open a terminal in the extracted repository folder:
 
 ```bash
 cd tools/cli
 pip install -r requirements.txt
+python3 dessmonitor_cli.py report --username YOUR_USERNAME
+```
+
+It authenticates, enumerates collectors and devices, writes one redacted
+`analysis_<devcode>.json` per device into the current directory, prints each
+one's sensor coverage, and ends with a summary to paste into the issue. A
+device that fails to answer is reported and the others still get written.
+Add `--api-profile shinemonitor_solar` for a ShineMonitor account and
+`--output-dir` to write somewhere other than the current directory.
+
+The step-by-step equivalent is still there when you need a single device, a
+non-redacted report for your own debugging, or the generated template:
+
+```bash
 python3 dessmonitor_cli.py auth \
     --username YOUR_USERNAME --company-key YOUR_COMPANY_KEY
 
@@ -82,13 +138,13 @@ python3 dessmonitor_cli.py analyze --redacted \
 Use the same username and company key as your Home Assistant integration. The
 `auth` command prompts for your password. Replace `COLLECTOR_PN` with the PN from
 `collectors`, then use the serial number for the matching devcode from `devices`
-as `DEVICE_SN`. Replace `XXXX` in the output filename with your devcode.
+as `DEVICE_SN`. Replace `XXXX` in the output filename with your devcode. For
+ShineMonitor, add `--api-profile shinemonitor_solar` to `auth`; the CLI
+remembers the chosen profile for subsequent commands.
 
-For ShineMonitor, add `--api-profile shinemonitor_solar`
-to `auth`. Omit it for DessMonitor, the default. The CLI prompts for
-the password and remembers the chosen profile for subsequent commands.
-
-The `analyze` command writes a structured JSON file containing sensor titles, observed operating mode / priority values, unit patterns, a sample of live data, device control fields, and an HMAC checksum. The reporter should attach that file to the GitHub issue or PR.
+Either way the analysis is a structured JSON file containing sensor titles,
+observed operating mode and priority values, unit patterns, a sample of live
+data, device control fields, and an HMAC checksum.
 
 ## 2. Verify the analysis file
 
@@ -238,7 +294,64 @@ collectors, for example, report `Output L1 Active Power` and
 `Output L2 Active Power` next to the summed `Total Output Active Power`; mapping
 both legs onto one key would silently drop the second.
 
-### 4.5 `VALUE_TRANSFORMATIONS`
+### 4.5 `CONTROL_FIELD_MAPPINGS`
+
+Control field names come from the `control_fields` section of the analysis and
+are used verbatim as the entity name. Add a mapping only where the collector
+reports a setting under an internal identifier, as devcode 6515 does with
+`bat_eq_time`, or where the name is misspelled. Leading, trailing and doubled
+whitespace is trimmed for every devcode, so a name such as `" Inverter Time"`
+needs no mapping.
+
+```python
+CONTROL_FIELD_MAPPINGS: dict[str, str] = {
+    "bat_eq_time": "Eq charging time",
+}
+```
+
+A control entity's unique id is derived from its display name, so a mapping
+changes that identity. `async_migrate_control_unique_ids` carries the existing
+registry entry over, which keeps automations working, but it runs once: choose
+the final name rather than renaming across releases.
+
+### 4.6 `TEMPORAL_CONTROLS`
+
+Some collectors advertise settings whose value is a clock: the secondary
+charging and output priority boundaries read as `16:32`, and the inverter's own
+date reads as a calendar string. A number entity cannot carry either. With no
+range hint from the API, Home Assistant publishes such a control with its
+default 0-100 range, and a write sends `50` into a schedule field, which the
+API accepts without an error. A control of that shape that no profile declares
+is therefore not published at all, on any devcode.
+
+List the field id from the `control_fields` section of the analysis against the
+platform it belongs on:
+
+```python
+TEMPORAL_CONTROLS: dict[str, str] = {
+    "bat_eybond_read_61": "time",    # HH:MM, minute resolution
+    "sys_eybond_read_95": "text",    # YYYY-MM-DD HH:MM:SS, no timezone
+}
+```
+
+Two rules, both from #48 and #57:
+
+- Declare a `time` field only when the committed analysis shows it reading as
+  `HH:MM`. The id alone is not enough: the same id means something else on
+  another devcode, which is why each profile declares its own.
+- Declare a `text` clock only when a write to it has been confirmed on
+  hardware for that devcode, or when its read format is at least observed. A
+  calendar string in the wrong format sets the inverter clock rather than being
+  rejected, and the schedules depend on that clock. Devcode 6515 advertises
+  such a field, `sys_eybond_read_95`, and it stayed out of this list until a
+  reported read showed the same 19-character `YYYY-MM-DD HH:MM:SS` string as
+  6544's `sys_eybond_read_44023`.
+
+Moving a field from `number` to `time` or `text` changes its entity id, so it
+ships in a minor release with an upgrade note. The old number entity is
+disabled once and kept, never deleted.
+
+### 4.7 `VALUE_TRANSFORMATIONS`
 
 Use when the API delivers a value in the wrong unit or with wrong scaling. Keys are the *post-title-mapping* title (the canonical name), values are callables.
 
@@ -260,7 +373,7 @@ VALUE_TRANSFORMATIONS: dict = {
 
 Callables must be tolerant of unparseable input and return something the sensor can display (the original value is a safe fallback).
 
-### 4.6 `PARAMETER_SENSOR_NAMES`
+### 4.8 `PARAMETER_SENSOR_NAMES`
 
 Most sensors arrive via `queryDeviceLastData`. A minority (notably SOC on devcode 2376) only appear under `queryDeviceParsEs`. The analysis lists these in the `parameters` section.
 
@@ -272,7 +385,81 @@ PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
 The coordinator will fetch `queryDeviceParsEs` in parallel and merge the parameters into the device data (deduplicated). Leave empty otherwise.
 
-### 4.7 Configuration
+### 4.9 `SETTING_READINGS`
+
+Some collectors return the inverter's own setpoints in the telemetry call.
+Devcode 2452 reports the battery recharge, bulk and float voltages, the
+back-to-discharge voltage and the second output's schedule beside the live
+readings, and five of those are the values of controls the same account
+publishes as number and select entities. They carry a unit, so the support
+report counted them among the readings that reach no entity and the Repairs
+card told the owner that fourteen readings were missing while none were (#53).
+
+List such titles here, exactly as the collector spells them. They then count as
+neither resolved nor dropped, the coverage tool marks them `(setting)`, and the
+committed-evidence guard stops demanding a sensor for them:
+
+```python
+SETTING_READINGS: set[str] = {
+    "Battery bulk voltage",
+    "Battery float voltage",
+}
+```
+
+Two rules:
+
+- A setting is not a sensor. Mapping one onto a `SENSOR_TYPES` key publishes a
+  second entity for a value the number or select entity already owns.
+- Declare only what the committed evidence shows, and only where the reading
+  really is a setting. A nameplate rating is not: it is a read-only fact about
+  the hardware, so it becomes a diagnostic sensor, as `rated power` and
+  `battery rated voltage` do on this devcode.
+- Spell each entry as the *reading* is titled, not as the control template
+  names it. A collector does not always spell the two the same: devcode 2477
+  reports "Beeps While Primary Source Interupt" and "Transfer To Bypass @
+  Overload" as readings against a "...Interrupt" and a "Transfer To Bypass
+  Overload" control (#61).
+- A title that also arrives as a live reading is not declared. Devcode 2477
+  sends `Output Voltage` and `Output Frequency` twice, once measured and once
+  as the setpoint; declaring either would take away the sensor.
+
+### 4.10 `ABSENT_READINGS`
+
+A collector reports every field its protocol defines, whether the hardware
+behind it fills that field or not, and the empty ones carry units too. Devcode
+4743 reports the S and T phase voltages, currents, powers and frequencies on a
+single-phase inverter, and three string powers on a unit with one string
+connected, all at zero. They looked exactly like dropped readings, so the
+support report counted sixteen of them and the Repairs card told an owner whose
+sensors all worked that sixteen readings were missing (#58).
+
+List such titles here with the reason the hardware leaves them empty, spelled
+as the collector titles them. They then count as neither resolved nor dropped,
+the coverage tool marks them `(declared absent on this hardware)`, and the
+committed-evidence guard stops demanding a sensor for them:
+
+```python
+_IDLE_PHASE = "single-phase hardware leaves the S and T phases unfilled"
+
+ABSENT_READINGS: dict[str, str] = {
+    "Inverter S phase voltage": _IDLE_PHASE,
+    "Inverter T phase voltage": _IDLE_PHASE,
+}
+```
+
+Two rules:
+
+- Declare absence, not ignorance. A reading you have not worked out yet is a
+  reading to map, and declaring it here hides it from the guard that exists to
+  find it. The reason string is read by a human reviewing the profile, so write
+  what the evidence shows rather than a restatement of the title.
+- A field one owner's hardware leaves empty may be filled on another's. Zero on
+  a three-phase title is evidence about *that* reporter's inverter, so declare
+  it only where the devcode's hardware cannot fill it, and map it the moment a
+  report shows a value. The resolver is unaffected either way: a declared title
+  that does start arriving with a value still needs a mapping to reach a sensor.
+
+### 4.11 Configuration
 
 ```python
 DEVCODE_CONFIG = {
@@ -281,8 +468,12 @@ DEVCODE_CONFIG = {
     "charger_priority_mapping": CHARGER_PRIORITY_MAPPING,
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
+    "control_field_mappings": CONTROL_FIELD_MAPPINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
+    "setting_readings": SETTING_READINGS,
+    "absent_readings": ABSENT_READINGS,
 }
 ```
 
@@ -321,9 +512,26 @@ Run the coverage report against the analysis:
 .venv/bin/python tools/analysis_coverage.py path/to/analysis_XXXX.json
 ```
 
+The `report` command prints a summary of the same thing on the reporter's own
+machine, so an issue may already name the readings that resolve to nothing. This
+is the detailed form of it, and it is the one to work from.
+
+Both shapes of evidence are accepted: a CLI `analysis_<devcode>.json` and a
+diagnostics download. The tool prints which produced the file, and a download
+records a unit for *every* reading where a CLI analysis records one for the
+sampled readings only, so a committed download guards more of a devcode than a
+committed analysis does. A download is read exactly as the reporter attached
+it: Home Assistant wraps the report under a `data` key, and the tool unwraps
+that envelope itself (#62).
+
 It prints every raw title with the canonical key it resolves to, then the
-unresolved ones, marking those the collector labelled with a unit. A unit means
-the title is a reading and should become a sensor; unresolved titles without one
+unresolved ones, marking those the collector labelled with a unit, those a
+profile declares a setting, and those the same report lists in the device's
+control template - a title marked `(control on this device)` is a setting to
+declare rather than a reading being dropped. Pass `--controls` to also list the
+control fields whose names no reading title matches, which is where a collector
+that spells a reading and its control differently shows up. A unit means the title is a reading and should
+become a sensor, unless it is a setting; unresolved titles without one
 are settings, identity fields and timestamps, which reach Home Assistant through
 the number, select and button platforms instead. Work through the marked titles
 until none remain, then re-run the report.
@@ -337,7 +545,31 @@ under `docs/evidence/` and fails when a reading that carries a unit no longer
 resolves, which keeps a later `const.py` or mapping edit from silently dropping
 one.
 
-Only commit a report produced with `--redacted`, and confirm `device_sn` and
+A diagnostics download is committed under the same `analysis_XXXX.json` name,
+because that is what the test globs for. One command does it:
+
+```bash
+.venv/bin/python tools/evidence_from_diagnostics.py ~/Downloads/config_entry-dessmonitor-01ABC.json
+```
+
+It keeps the integration's own sections verbatim, because their checksums cover
+them, drops the host and config-entry sections that say nothing about the
+devcode, verifies every device checksum, refuses to write if one fails, and
+writes one file per devcode the download covers. Add `--dry-run` to look first
+and `--force` to replace existing evidence.
+
+To see what an issue's attachments say before any of that:
+
+```bash
+.venv/bin/python tools/triage.py 62
+```
+
+It reads the issue and its comments, downloads each attached report into a
+temporary directory, and prints each devcode's coverage, the readings that
+carry a unit and reach no entity, and any reading whose local and cloud
+figures disagree about scale.
+
+Only commit a CLI report produced with `--redacted`, and confirm `device_sn` and
 `collector_alias` are empty before adding it. If the reporter supplied an
 unredacted file, redact it first:
 
@@ -462,6 +694,9 @@ Before opening a PR:
 - [ ] Operating mode targets are in `OPERATING_MODES` or explicitly added via the mapping
 - [ ] `SENSOR_TITLE_MAPPINGS` only contains titles that fail the shared resolver
 - [ ] `PARAMETER_SENSOR_NAMES` set iff the reporter needs a sensor from the parameters endpoint
+- [ ] `SETTING_READINGS` lists every setpoint the collector returns among the readings, and no nameplate rating
+- [ ] `ABSENT_READINGS` lists only titles this hardware cannot fill, each with the reason, and no title awaiting a mapping
+- [ ] `TEMPORAL_CONTROLS` lists every advertised clock-valued field whose read format the analysis shows, and nothing else
 - [ ] `tools/analysis_coverage.py` reports no unresolved title carrying a unit
 - [ ] Redacted analysis committed under `docs/evidence/devcodes/` and `verify` passes
 - [ ] Root `README.md`, `device_support/README.md`, `CHANGELOG.md` all updated

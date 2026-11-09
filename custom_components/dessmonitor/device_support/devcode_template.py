@@ -1,4 +1,4 @@
-"""Device support template for DessMonitor devcode XXXX.
+"""Device support template for Eybond devcode XXXX.
 
 COPY THIS FILE TO CREATE SUPPORT FOR A NEW DEVCODE:
 1. Copy this file to devcode_XXXX.py (replace XXXX with your devcode number)
@@ -18,7 +18,7 @@ from __future__ import annotations
 DEVICE_INFO = {
     "name": "Your Data Collector Model (devcode XXXX)",
     "description": "Description of your data collector/gateway device",
-    "manufacturer": "DessMonitor",  # or actual manufacturer
+    "manufacturer": "Eybond",  # the collector maker, not the monitoring portal
     "known_inverters": [
         # Optional: list confirmed inverter models this devcode has been tested with
         # "Example Inverter Model 1",
@@ -79,6 +79,17 @@ SENSOR_TITLE_MAPPINGS: dict = {
     # "energyToday": "Daily Energy",  # More readable
 }
 
+# Control Field Mappings
+# Map API control field names to cleaner display names. Use this only where the
+# collector reports a setting under an internal identifier such as
+# "bat_eq_time", or where its name is misspelled. Padding and doubled spaces are
+# trimmed for every devcode, so they never need a mapping.
+# Renaming a control changes its entity identity; the integration migrates the
+# existing registry entry, so pick the final name rather than iterating.
+CONTROL_FIELD_MAPPINGS: dict = {
+    # "bat_eq_time": "Eq charging time",
+}
+
 # Sensor Value Transformations
 # Define functions to transform sensor values if needed
 # This is for more complex transformations than simple mappings
@@ -97,6 +108,19 @@ PARAMETER_SENSOR_NAMES: set[str] = set()
 # Example:
 # PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
+# Temporal Controls
+# Cloud control ids whose value is a clock rather than a number. A number
+# entity cannot carry "16:32": with no API range hint Home Assistant would
+# publish it 0-100 and a write would send "50" into a schedule field, so an
+# unlisted field of this shape is not published at all. List one here only with
+# a read of it in the committed analysis, and "text" only with a confirmed
+# write, since a calendar string in the wrong format sets the inverter clock
+# rather than being rejected. See docs/ADDING_DEVCODES.md section 4.6.
+TEMPORAL_CONTROLS: dict[str, str] = {
+    # "bat_eybond_read_61": "time",   # HH:MM schedule boundary
+    # "sys_eybond_read_95": "text",   # YYYY-MM-DD HH:MM:SS inverter clock
+}
+
 # Export all mappings in standardized structure
 # DO NOT MODIFY THIS PART - just update the mappings above
 DEVCODE_CONFIG = {
@@ -105,6 +129,8 @@ DEVCODE_CONFIG = {
     "charger_priority_mapping": CHARGER_PRIORITY_MAPPING,
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
+    "control_field_mappings": CONTROL_FIELD_MAPPINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

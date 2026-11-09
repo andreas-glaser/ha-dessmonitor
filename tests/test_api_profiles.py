@@ -6,12 +6,17 @@ Each profile keeps its host, signature, and cached authentication state isolated
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.dessmonitor.api import MAX_COLLECTOR_PAGES, DessMonitorAPI
+from custom_components.dessmonitor.api import (
+    MAX_COLLECTOR_PAGES,
+    DessMonitorAPI,
+    DessMonitorError,
+)
 from custom_components.dessmonitor.const import (
     API_PROFILE_DESSMONITOR_ESS,
     API_PROFILE_SHINEMONITOR_SOLAR,
@@ -347,3 +352,68 @@ async def test_pagination_cannot_loop_forever_on_full_pages() -> None:
     collectors = await api._fetch_collectors_for_project(1)
     assert len(calls) == MAX_COLLECTOR_PAGES
     assert len(collectors) == MAX_COLLECTOR_PAGES * 50
+
+
+async def test_control_field_without_a_name_or_id_is_skipped(cloud_transport) -> None:
+    """A field the integration cannot identify never becomes a nameless entity."""
+    session, connector = cloud_transport
+    connector.payload = {
+        "err": 0,
+        "dat": {
+            "field": [
+                {"name": "Maximum charging current", "id": "bat_current"},
+                {"name": "", "id": "bat_orphan"},
+                {"name": "Nameless control", "id": ""},
+            ]
+        },
+    }
+    api = DessMonitorAPI("test-user", "test-password", session=session)
+    api.token, api.secret = "test-token", "test-secret"
+
+    controls = await api.get_device_control_fields("test-pn", 6515, 1, "test-sn")
+
+    assert list(controls) == ["Maximum charging current"]
+
+
+async def test_a_control_read_failure_is_not_logged_as_an_error(caplog) -> None:
+    """The coordinator owns these failures and reports them itself (#61).
+
+    A control read has to reach the inverter live over a collector link that
+    carries one transaction at a time, so a busy collector refuses it. The
+    coordinator retries on a bounded budget and says what happened once, while
+    this layer logged every attempt at error level: one account collected twenty
+    red log entries in an hour for a condition handled as designed.
+    """
+    session = _CapturingSession({"err": 2, "desc": "ERR_TIMEOUT"})
+    api = DessMonitorAPI("user", "pw", session=session)
+    api.token = "t"
+    api.token_expire = 0
+
+    with caplog.at_level(logging.DEBUG, logger="custom_components.dessmonitor.api"):
+        with pytest.raises(DessMonitorError):
+            await api.get_device_control_value("PN", 2452, 1, "SN", "bat_type")
+
+    records = [
+        record for record in caplog.records if "ERR_TIMEOUT" in record.getMessage()
+    ]
+    assert records, "the failure must still be recorded"
+    assert all(record.levelno == logging.DEBUG for record in records)
+
+
+async def test_an_ordinary_request_failure_is_still_logged_as_an_error(caplog) -> None:
+    """Only the reads whose caller reports the outcome are quiet."""
+    session = _CapturingSession({"err": 2, "desc": "ERR_TIMEOUT"})
+    api = DessMonitorAPI("user", "pw", session=session)
+    api.token = "t"
+    api.token_expire = 0
+
+    with caplog.at_level(logging.DEBUG, logger="custom_components.dessmonitor.api"):
+        with pytest.raises(DessMonitorError):
+            await api.get_collectors()
+
+    records = [
+        record
+        for record in caplog.records
+        if record.getMessage().startswith("API returned error 2 for action 'queryPlants'")
+    ]
+    assert [record.levelno for record in records] == [logging.ERROR]

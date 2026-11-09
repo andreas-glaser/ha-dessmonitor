@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import BINARY_SENSOR_TYPES, DOMAIN
+from .sensor_titles import normalize_sensor_title
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -104,6 +105,9 @@ class DessMonitorBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._device_meta = device_meta
         self._collector_meta = collector_meta
         self._sensor_type = sensor_type
+        # Compared in its normalized form, as everywhere else: the cloud
+        # and a local driver can spell one reading differently (#53).
+        self._normalized_sensor_type = normalize_sensor_title(sensor_type)
         self._attr_name = f"{device_meta.get('alias', 'DessMonitor')} {BINARY_SENSOR_TYPES[sensor_type]['name']}"
         self._attr_unique_id = (
             f"{device_sn}_{sensor_type.lower().replace(' ', '_')}_binary"
@@ -136,7 +140,11 @@ class DessMonitorBinarySensor(CoordinatorEntity, BinarySensorEntity):
         device_data = device_info.get("data", [])
 
         for data_point in device_data:
-            if data_point.get("title") == self._sensor_type:
+            title = data_point.get("title")
+            if (
+                isinstance(title, str)
+                and normalize_sensor_title(title) == self._normalized_sensor_type
+            ):
                 value = data_point.get("val", "").lower()
 
                 if self._sensor_type == "Operating mode":

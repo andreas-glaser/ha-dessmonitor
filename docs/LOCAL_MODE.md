@@ -2,7 +2,7 @@
 
 The integration can monitor inverter readings and change supported settings
 through DessMonitor or ShineMonitor. Local telemetry adds a read-only path from
-an EyeBond-compatible Wi-Fi collector to Home Assistant. It does not require
+an Eybond-compatible Wi-Fi collector to Home Assistant. It does not require
 inverter firmware changes. Settings changes continue to use the cloud API.
 
 ## Choose a mode
@@ -103,6 +103,63 @@ Numeric controls reporting a non-numeric format (for example a time or date)
 show `value_status: unsupported_format`; retrying the connection cannot turn
 such a value into a numeric setting.
 
+### Schedule times and inverter clock
+
+The advertised Secondary Charging and Output Priority Start/End Time controls
+are `time` entities, on devcode 6544 and on devcode 6515. They use the
+inverter's local wall-clock time in `HH:MM` format; seconds must be zero. They
+do not activate a priority mode or impose ordering on start and end times. That
+permissive input validation does not establish whether the device supports
+overnight or equal-boundary schedules.
+
+On devcode 6544, `Inverter Date` is a **text** control accepting a valid
+calendar timestamp in `YYYY-MM-DD HH:MM:SS` format. The API value has no
+timezone. A timezone-aware `datetime` entity would require knowing the
+inverter's timezone; the integration does not assume that it equals Home
+Assistant's timezone or convert the entered clock value. There is no automatic
+clock synchronization. Devcode 6515 advertises a clock field too, and it is
+deliberately not exposed: nobody has reported a read of it, and a calendar
+string written in the wrong format would set the inverter clock rather than be
+rejected.
+
+Each devcode profile declares its own fields, in `TEMPORAL_CONTROLS` in
+`device_support/devcode_<n>.py`, and only fields the cloud API advertises become
+entities. A setting of this shape that no profile declares is not published at
+all: a number entity cannot carry `16:32`, and with no range hint from the API
+it would appear with Home Assistant's default 0-100 range, where a write would
+send `50` into a schedule field. If such a value arrives after the entity
+exists, the control reports `value_status: unsupported_format` and refuses the
+write rather than sending a number.
+
+Both platforms share the existing control cache and recovery path; they do not
+add local writes or an independent polling loop. Empty or malformed readings
+never become midnight or a fabricated date. A successful cloud API response
+updates the displayed value; hardware readback is still required to confirm the
+inverter applied it.
+
+These five controls were `number` entities in 2.6.0 and earlier. On upgrade
+the old `number` entries are disabled once and kept, so their history survives;
+the decision is recorded on each old registry entry, so re-enabling one
+yourself survives rediscovery and a restart. A re-enabled old entry keeps its
+history but gains no numeric implementation. Update dashboard references and
+automations to the new `time` and `text` entity IDs and to `time.set_value` or
+`text.set_value`. Other numbers and entries you had disabled are untouched.
+
+The serializers follow the official web client's string round-trip behavior and
+the observed device read formats. One write of each shape is confirmed on
+hardware: a secondary charging start time, agreed by the owner's inverter display
+and by an independent cloud read almost four minutes later, and an inverter
+clock offset, held by independent reads 1 and 14 minutes after the write and
+by a later ordinary cloud sample. The other three schedule fields go through
+the same serialization and the same cloud call and are not individually
+qualified. A successful API response is still not proof that the inverter
+applied a setting, and native Modbus writes are a different interface. Both
+sessions recorded a restoration API error against a setting that separate reads
+showed restored; the timelines, including that, are in the
+[hardware](evidence/temporal_controls/HARDWARE_20261031.md) and
+[calendar](evidence/temporal_controls/CALENDAR_20261101.md) evidence, with the
+[research and migration notes](research/TEMPORAL_CONTROLS.md).
+
 The `Data Source` sensor shows `Local`, `Cloud`, or `Cached Cloud`. Hybrid only
 overlays a local device after matching it to canonical API or cached metadata;
 it never invents a second entity identity. Disabling preferred-local mode
@@ -155,6 +212,19 @@ entries without the setting retain automatic discovery.
   per inverter address and retains it for subsequent polling. Local controls
   are not provided. Sustained polling and reconnects still require hardware
   verification after installing this change.
+
+PI30 reads its 17 or 21-field `QPIGS` status, and on a dual-MPPT inverter it
+also reads `QPIGS2` for the second string's current, voltage and charging
+power. That inquiry is optional: a collector that refuses it is never asked
+again, and one that stays silent is retried three times and then once every
+twelfth cycle, so an inverter that gains the command after a firmware update
+still recovers. While it fails, the per-string powers are withdrawn rather
+than left stale, and hybrid mode falls back to the cloud values for them. The
+first string keeps the generic `PV Charging Current` and `PV Voltage` names it
+has always published, so a dual-PV inverter reports `PV2 Charger Current` and
+`PV2 Voltage` beside them rather than a matching `PV1` pair; its power is
+published under both `PV Charge Power` and `PV1 Charger Power` so that
+existing single-PV entities keep working.
 
 PI18 uses its 28-field `GS` response for battery charging current and both PV
 inputs, including PV2 voltage. It does not poll P17-only `GMN` or `GS2` commands.
@@ -283,9 +353,15 @@ then start it again; the configured integration reconnects automatically.
   itself dropped the session and the integration is waiting for its next
   callback. The two have different causes: the first points at the link between
   collector and inverter, the second at the collector or the network. If the
-  first one dominates, raising the local polling interval is worth trying,
-  since the collector shares one serial link between its own cloud uploads and
-  these queries.
+  first one dominates, raising the local polling interval is worth trying.
+  A collector answers a query the inverter ignores several seconds after the
+  integration has stopped waiting for it, and its link to the inverter carries
+  one transaction at a time: on a PI18 collector measured in #53, replies to
+  unanswered queries arrived 8 to 11 seconds after the request against a 3
+  second request timeout. The next query is now held back until that reply
+  lands, so a single unanswered poll no longer takes the rounds behind it with
+  it, but a longer interval still leaves the collector more room for its own
+  cloud uploads.
 
 Debug logging:
 

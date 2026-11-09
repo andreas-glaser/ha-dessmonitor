@@ -23,6 +23,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import stat
 import sys
 import time
@@ -56,6 +57,45 @@ if "--debug" in sys.argv:
     sys.argv.remove("--debug")  # Remove it so argparse doesn't complain
 logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+
+
+_UNIT_TOKENS = ("kWh", "Wh", "W", "VA", "V", "A", "Hz", "°C", "°F", "%")
+_MEASUREMENT = re.compile(
+    r"^-?\d+(?:\.\d+)?\s*(" + "|".join(re.escape(u) for u in _UNIT_TOKENS) + r")$"
+)
+_SCHEDULE_WORDS = ("start time", "end time")
+
+
+def observed_unit(value: Any) -> str | None:
+    """Return the unit a reading carries, or None when the value is not one.
+
+    A plain substring search treats a setting such as ``"Always on"`` or the
+    input mode ``"APL"`` as an amperage, which published them under
+    ``unit_patterns`` as though a devcode author had to map a reading. Only a
+    number followed by a unit is a measurement.
+    """
+    match = _MEASUREMENT.match(str(value).strip())
+    return match.group(1) if match else None
+
+
+def priority_bucket(title: str) -> str | None:
+    """Return which priority enum a title contributes an observed value to.
+
+    A schedule boundary such as ``"Secondary Output Priority Start Time"``
+    names a priority but carries a clock value, so counting it enumerated
+    ``16:32`` as an output priority and ``generate_devcode_template`` wrote
+    that clock into OUTPUT_PRIORITY_MAPPING for the next devcode author.
+    """
+    title_lower = title.lower()
+    if "priority" not in title_lower:
+        return None
+    if any(word in title_lower for word in _SCHEDULE_WORDS):
+        return None
+    if "output" in title_lower:
+        return "output"
+    if "charg" in title_lower:
+        return "charger"
+    return None
 
 
 def _write_private_file(path_value: str | Path, content: str) -> Path:
@@ -861,32 +901,22 @@ DEVCODE_CONFIG = {
 
                     potential_typos.append({"original": title, "suggested": suggested})
 
-            # Detect units in values (W, V, A, Hz, °C, %, kWh, etc.)
+            # Record a value that carries a unit, so the devcode author
+            # sees which titles are readings rather than settings.
             value_str = str(value)
-            if any(
-                unit in value_str
-                for unit in ["W", "V", "A", "Hz", "°C", "°F", "%", "kWh", "Wh"]
-            ):
-                if title not in unit_patterns:
-                    unit_patterns[title] = []
-                unit_patterns[title].append(value_str)
+            if observed_unit(value_str):
+                unit_patterns.setdefault(title, []).append(value_str)
 
             # Check for operating modes
             if "operating" in title_lower and "mode" in title_lower:
                 mode_val = str(value)
                 operating_modes[mode_val] = operating_modes.get(mode_val, 0) + 1
 
-            # Check for priorities
-            if "priority" in title_lower:
-                priority_val = str(value)
-                if "output" in title_lower:
-                    output_priorities[priority_val] = (
-                        output_priorities.get(priority_val, 0) + 1
-                    )
-                elif "charg" in title_lower:
-                    charger_priorities[priority_val] = (
-                        charger_priorities.get(priority_val, 0) + 1
-                    )
+            bucket = priority_bucket(title)
+            if bucket == "output":
+                output_priorities[value_str] = output_priorities.get(value_str, 0) + 1
+            elif bucket == "charger":
+                charger_priorities[value_str] = charger_priorities.get(value_str, 0) + 1
 
         control_entries: List[Dict[str, Any]] = []
         parameter_entries: List[Dict[str, Any]] = []
@@ -1091,6 +1121,37 @@ def setup_argparser() -> argparse.ArgumentParser:
         help="Inverter address to select from the local report (default: 1)",
     )
 
+    # One-command contributor report: analyse every device on the account.
+    report_parser = subparsers.add_parser(
+        "report",
+        help="Analyze every device on the account and write redacted reports",
+    )
+    report_parser.add_argument(
+        "--username",
+        help="Account username (omit to reuse the session from a previous auth)",
+    )
+    report_parser.add_argument(
+        "--password",
+        help="Account password (omit to enter it without shell-history exposure)",
+    )
+    report_parser.add_argument(
+        "--company-key",
+        default=_CONSTANTS.DEFAULT_COMPANY_KEY,
+        help="Company key (keep the default unless supplied by your installer)",
+    )
+    report_parser.add_argument(
+        "--api-profile",
+        choices=list(_CONSTANTS.API_PROFILES),
+        default=_CONSTANTS.DEFAULT_API_PROFILE,
+        help="Account platform: dessmonitor_ess = DessMonitor (default); "
+        "shinemonitor_solar = ShineMonitor",
+    )
+    report_parser.add_argument(
+        "--output-dir",
+        default=".",
+        help="Directory for the analysis files (default: current directory)",
+    )
+
     # Verify command
     verify_parser = subparsers.add_parser(
         "verify", help="Verify integrity of an analysis JSON file"
@@ -1100,7 +1161,7 @@ def setup_argparser() -> argparse.ArgumentParser:
     # Local, read-only collector probe. This command does not use cloud credentials.
     local_parser = subparsers.add_parser(
         "local-probe",
-        help="Probe one EyeBond collector locally using read-only inverter requests",
+        help="Probe one Eybond collector locally using read-only inverter requests",
     )
     local_parser.add_argument(
         "--listen-ip", required=True, help="LAN IPv4 address of this host"
@@ -1147,7 +1208,7 @@ def setup_argparser() -> argparse.ArgumentParser:
 
     scan_parser = subparsers.add_parser(
         "local-scan",
-        help="Find EyeBond collectors with one bounded LAN callback scan",
+        help="Find Eybond collectors with one bounded LAN callback scan",
     )
     scan_parser.add_argument(
         "--listen-ip", required=True, help="LAN IPv4 address of this host"
@@ -1224,6 +1285,176 @@ async def _resolve_analysis_device_sn(
             "provide --device-sn explicitly"
         )
     return matches[0]
+
+
+def _integration_version() -> str | None:
+    """Read the version of the checkout this CLI was run from, if it is one."""
+    manifest = (
+        Path(__file__).resolve().parents[2]
+        / "custom_components"
+        / "dessmonitor"
+        / "manifest.json"
+    )
+    try:
+        with manifest.open("r", encoding="utf-8") as handle:
+            return str(json.load(handle)["version"])
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _coverage_of(analysis: Dict[str, Any]) -> Any:
+    """Resolve an analysis against this checkout's mappings, or None.
+
+    The CLI is also run from a copy with no integration beside it, and a
+    reporter who cannot be told what their analysis covers must still get the
+    file. So a missing or unloadable integration is not an error here.
+    """
+    tools_dir = str(Path(__file__).resolve().parents[1])
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    try:
+        from analysis_coverage import coverage, normalized_reports
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug("Coverage summary unavailable: %s", err)
+        return None
+    try:
+        (record,) = normalized_reports({"analysis": analysis})
+        return coverage(record)
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug("Coverage summary failed: %s", err)
+        return None
+
+
+def _print_coverage(analysis: Dict[str, Any]) -> None:
+    """Tell the reporter what their own collector is and is not missing."""
+    result = _coverage_of(analysis)
+    if result is None:
+        return
+
+    state = "already supported" if result.registered else "NOT YET SUPPORTED"
+    print(
+        f"   Coverage: {len(result.resolved)} of {result.total} titles "
+        f"reach Home Assistant as sensors ({state})"
+    )
+    unmapped = result.unmapped_readings
+    if not result.registered:
+        print(
+            "   This devcode has no profile yet, so its readings keep the "
+            "vendor's own titles."
+        )
+    elif unmapped:
+        print(f"   {len(unmapped)} reading(s) carry a unit but reach nothing:")
+        for title, unit in unmapped:
+            print(f"     - {title} [{unit}]")
+        print("   Mention these in the issue; they are the ones worth mapping.")
+    else:
+        print(
+            "   Every reading this collector labels with a unit already "
+            "reaches Home Assistant."
+        )
+
+
+def _report_filename(devcode: Any, seen: Dict[str, int]) -> str:
+    """Name one analysis file per device, without overwriting a sibling."""
+    base = f"analysis_{devcode}"
+    seen[base] = seen.get(base, 0) + 1
+    suffix = "" if seen[base] == 1 else f"_{seen[base]}"
+    return f"{base}{suffix}.json"
+
+
+async def _run_report(cli: Any, args: Any) -> None:
+    """Produce one redacted analysis per device, then summarise them.
+
+    This is the whole contributor path in one command: it enumerates the
+    account, analyses every inverter it finds, redacts each report and prints
+    both the coverage and a summary with no account or device identifiers in
+    it, ready to paste into an issue.
+    """
+    from evidence import redact_analysis
+
+    output_dir = Path(args.output_dir).expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print("Listing the collectors on this account ...")
+    collectors = await cli.get_collectors()
+    if not collectors:
+        print("No data collectors on this account.")
+        return
+    print(f"Found {len(collectors)} data collector(s).")
+
+    written: List[Dict[str, Any]] = []
+    seen: Dict[str, int] = {}
+    for collector in collectors:
+        product_number = str(collector.get("pn", ""))
+        if not product_number:
+            continue
+        devices = (await cli.get_devices(product_number)).get("dev", [])
+        print(f"Collector {product_number}: {len(devices)} device(s).")
+        for device in devices:
+            device_sn = device.get("sn")
+            if not device_sn:
+                continue
+            print(
+                f"  Analyzing device {device_sn} "
+                "(a few requests, up to 30 seconds each) ..."
+            )
+            try:
+                analysis = redact_analysis(
+                    await cli.analyze_device_for_devcode(str(device_sn))
+                )
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error("  Analysis failed for this device: %s", err)
+                continue
+
+            devcode = analysis.get("devcode", "unknown")
+            name = _report_filename(devcode, seen)
+            _write_private_json(
+                output_dir / name,
+                {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "analysis": analysis,
+                },
+            )
+            print(f"   Wrote {name} (devcode {devcode})")
+            _print_coverage(analysis)
+            written.append({"file": name, "analysis": analysis})
+
+    if not written:
+        print("\nNo device could be analyzed. Nothing was written.")
+        return
+
+    print("\n" + "=" * 68)
+    print("Attach these file(s) to your GitHub issue:")
+    for entry in written:
+        print(f"  {output_dir / entry['file']}")
+    print(
+        "\nThey are redacted: no serial number, collector alias or identifying\n"
+        f"sample value. Do not attach your password or {cli.config_file.name}."
+    )
+    print("\nPaste this summary into the issue:")
+    print("-" * 68)
+    version = _integration_version()
+    if version:
+        print(f"Integration version in this checkout: {version}")
+    print(f"Account platform: {cli.api_profile}")
+    for entry in written:
+        analysis = entry["analysis"]
+        result = _coverage_of(analysis)
+        line = (
+            f"{entry['file']}: devcode {analysis.get('devcode')}, "
+            f"{analysis.get('total_sensors')} titles"
+        )
+        if result is not None:
+            line += (
+                f", {len(result.resolved)} resolved, "
+                f"{len(result.unmapped_readings)} unmapped reading(s) with a unit"
+                f", profile {'present' if result.registered else 'MISSING'}"
+            )
+        print(line)
+    print("Inverter brand and model: ")
+    print("Collector model and firmware: ")
+    print("Readings or settings missing in Home Assistant: ")
+    print("-" * 68)
 
 
 async def main():
@@ -1427,6 +1658,15 @@ async def main():
                             print(f"Analysis saved to {args.output}")
                         else:
                             print(json.dumps(output_data, indent=2))
+
+            elif args.command == "report":
+                if args.username:
+                    password = args.password or getpass.getpass("Account password: ")
+                    if not await cli.authenticate(
+                        args.username, password, args.company_key
+                    ):
+                        sys.exit(1)
+                await _run_report(cli, args)
 
             elif args.command == "verify":
                 from evidence import analysis_checksum

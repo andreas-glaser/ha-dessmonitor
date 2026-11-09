@@ -1,4 +1,4 @@
-"""Strict EyeBond transport and P17/PI18 framing helpers.
+"""Strict Eybond transport and P17/PI18 framing helpers.
 
 The collector transport is an eight-byte, big-endian header followed by a
 bounded payload. P17 payloads carry their own length and CRC. Parsing is kept
@@ -39,8 +39,8 @@ class ProtocolError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
-class EyeBondHeader:
-    """Decoded EyeBond transport header."""
+class EybondHeader:
+    """Decoded Eybond transport header."""
 
     transaction_id: int
     device_code: int
@@ -92,7 +92,7 @@ def encode_header(
     device_address: int,
     function_code: int,
 ) -> bytes:
-    """Encode a validated EyeBond transport header."""
+    """Encode a validated Eybond transport header."""
     _validate_uint(transaction_id, 16, "transaction_id")
     _validate_uint(device_code, 16, "device_code")
     _validate_uint(device_address, 8, "device_address")
@@ -111,15 +111,15 @@ def encode_header(
     )
 
 
-def decode_header(data: bytes) -> EyeBondHeader:
-    """Decode and validate one complete EyeBond header."""
+def decode_header(data: bytes) -> EybondHeader:
+    """Decode and validate one complete Eybond header."""
     if len(data) != HEADER_SIZE:
         raise ProtocolError(f"header must be exactly {HEADER_SIZE} bytes")
 
     transaction_id, device_code, wire_length, device_address, function_code = (
         struct.unpack(">HHHBB", data)
     )
-    header = EyeBondHeader(
+    header = EybondHeader(
         transaction_id,
         device_code,
         wire_length,
@@ -133,7 +133,7 @@ def decode_header(data: bytes) -> EyeBondHeader:
     return header
 
 
-def parse_transport_frame(data: bytes) -> tuple[EyeBondHeader, bytes]:
+def parse_transport_frame(data: bytes) -> tuple[EybondHeader, bytes]:
     """Validate a complete transport frame and return its payload."""
     if len(data) < HEADER_SIZE:
         raise ProtocolError("transport frame is shorter than its header")
@@ -193,7 +193,7 @@ def build_forward_request(
     device_code: int,
     device_address: int,
 ) -> bytes:
-    """Wrap an inverter command in an EyeBond forward-to-device frame."""
+    """Wrap an inverter command in an Eybond forward-to-device frame."""
     total_length = HEADER_SIZE + len(payload)
     return (
         encode_header(
@@ -238,7 +238,7 @@ def build_p17_poll(command: str, *, escape_crc: bool = True) -> bytes:
 
 def build_pi30_poll(command: str) -> bytes:
     """Encode only the PI30 inquiries implemented by the read-only driver."""
-    if command not in {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QMOD"}:
+    if command not in {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QPIGS2", "QMOD"}:
         raise ProtocolError("unsupported PI30 read-only command")
     content = command.encode("ascii")
     return content + _encode_crc(content) + b"\r"

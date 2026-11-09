@@ -1,16 +1,49 @@
-"""Combine cloud and local evidence into reviewable devcode support data."""
+"""Combine cloud and local evidence into reviewable devcode support data.
+
+Redaction, identity hashing and the checksum live in the integration's
+``support_report`` module, which the integration's own diagnostics download
+uses too, so a report produced here and one produced in Home Assistant are
+sanitized and signed identically (#60). That module is loaded by path: this CLI
+runs on reporters' machines where the integration package cannot be imported,
+because importing it would pull in Home Assistant.
+"""
 
 from __future__ import annotations
 
 import copy
 import hashlib
-import hmac
+import importlib.util
 import json
 import re
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 _MAX_REPORT_BYTES = 1_000_000
+
+
+def _load_support_report() -> ModuleType:
+    """Load the integration's report helpers without importing the package."""
+    path = (
+        Path(__file__)
+        .resolve()
+        .parents[2]
+        .joinpath("custom_components", "dessmonitor", "support_report.py")
+    )
+    spec = importlib.util.spec_from_file_location("dessmonitor_support_report", path)
+    if spec is None or spec.loader is None:  # pragma: no cover - packaging error
+        raise ImportError(f"cannot load the support report helpers from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_SUPPORT_REPORT = _load_support_report()
+
+analysis_checksum = _SUPPORT_REPORT.analysis_checksum
+redact_analysis = _SUPPORT_REPORT.redact_analysis
+short_identity = _SUPPORT_REPORT.short_identity
+_is_identifier_name = _SUPPORT_REPORT.is_identifier_name
 
 
 def load_local_report(path_value: str) -> dict[str, Any]:
@@ -112,61 +145,6 @@ def combine_evidence(
     return analysis
 
 
-def redact_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
-    """Copy an analysis, blank known identifiers, and checksum the sanitized data."""
-    redacted = copy.deepcopy(analysis)
-    redacted["device_sn"] = ""
-    redacted["collector_alias"] = ""
-    for section, label in (("sample_data", "title"), ("parameters", "name")):
-        for point in redacted.get(section, []):
-            if _is_identifier_name(point.get(label, "")):
-                point["value"] = ""
-    for title in redacted.get("unit_patterns", {}):
-        if _is_identifier_name(title):
-            redacted["unit_patterns"][title] = []
-    # Nested values remain covered by the checksum; redact before signing.
-    redacted["checksum"] = analysis_checksum(redacted)
-    return redacted
-
-
-def _is_identifier_name(name: str) -> bool:
-    """Recognize vendor identity labels, including 'devise serial number'."""
-    normalized = re.sub(r"[^a-z0-9]", "", name.casefold())
-    return normalized in {
-        "id",
-        "recordid",
-        "deviceid",
-        "collectorid",
-        "inverterid",
-        "plantid",
-        "stationid",
-        "sn",
-        "devicesn",
-        "collectorsn",
-        "invertersn",
-        "pn",
-        "collectorpn",
-        "mac",
-        "ip",
-        "username",
-        "email",
-    } or normalized.endswith(
-        (
-            "serialnumber",
-            "serialno",
-            "serial",
-            "alias",
-            "productnumber",
-            "macaddress",
-            "ipaddress",
-            "ssid",
-            "password",
-            "token",
-            "secret",
-        )
-    )
-
-
 def correlate_sensor_titles(
     cloud_points: list[dict[str, Any]], local_sensors: dict[str, Any]
 ) -> list[dict[str, str]]:
@@ -192,24 +170,6 @@ def correlate_sensor_titles(
             }
         )
     return sorted(matches, key=lambda item: item["cloud_title"].lower())
-
-
-def analysis_checksum(
-    analysis: dict[str, Any], *, include_collector_alias: bool = False
-) -> str:
-    """Hash report data while allowing personal identifiers to be redacted.
-
-    Including the alias is only for verifying reports from older CLI versions.
-    """
-    excluded = {"device_sn", "checksum"}
-    if not include_collector_alias:
-        excluded.add("collector_alias")
-    hashable = {key: value for key, value in analysis.items() if key not in excluded}
-    return hmac.new(
-        b"dessmonitor-analysis-v2",
-        json.dumps(hashable, sort_keys=True, separators=(",", ":")).encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
 
 
 def _identity_match(cloud_serial: str, local_serial: str) -> str:

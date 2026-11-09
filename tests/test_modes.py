@@ -6,11 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.dessmonitor import (
-    DessMonitorDataUpdateCoordinator,
     LOCAL_PLATFORMS,
     PLATFORMS,
+    DessMonitorDataUpdateCoordinator,
     async_reload_entry,
     async_setup_entry,
 )
@@ -21,7 +22,6 @@ from custom_components.dessmonitor.const import (
     DOMAIN,
     LOCAL_MODE_PREFER_LOCAL,
 )
-from homeassistant.helpers.update_coordinator import UpdateFailed
 
 
 def _entry(*, data: dict | None = None, options: dict | None = None) -> MagicMock:
@@ -79,9 +79,7 @@ async def test_existing_api_entry_can_enable_hybrid_in_place(
     coordinator = MagicMock()
 
     with (
-        patch(
-            "custom_components.dessmonitor._create_api_client", return_value=api
-        ),
+        patch("custom_components.dessmonitor._create_api_client", return_value=api),
         patch(
             "custom_components.dessmonitor._authenticate_api_client",
             new=AsyncMock(),
@@ -115,9 +113,7 @@ async def test_local_only_skips_api_and_write_platforms(
             "custom_components.dessmonitor._async_setup_local_entry",
             new=AsyncMock(return_value=True),
         ) as setup_local,
-        patch(
-            "custom_components.dessmonitor._create_api_client"
-        ) as create_api,
+        patch("custom_components.dessmonitor._create_api_client") as create_api,
     ):
         assert await async_setup_entry(hass, entry)
 
@@ -126,7 +122,13 @@ async def test_local_only_skips_api_and_write_platforms(
     assert LOCAL_PLATFORMS == [Platform.SENSOR, Platform.BINARY_SENSOR]
     assert all(
         platform not in LOCAL_PLATFORMS
-        for platform in (Platform.BUTTON, Platform.NUMBER, Platform.SELECT)
+        for platform in (
+            Platform.BUTTON,
+            Platform.NUMBER,
+            Platform.SELECT,
+            Platform.TIME,
+            Platform.TEXT,
+        )
     )
 
 
@@ -148,9 +150,7 @@ async def test_api_only_retains_explicit_cached_snapshot_on_outage(
     )
 
     result = await coordinator._async_update_data()
-    points = {
-        point["title"]: point["val"] for point in result["API-SERIAL"]["data"]
-    }
+    points = {point["title"]: point["val"] for point in result["API-SERIAL"]["data"]}
     assert points["Grid Voltage"] == 230
     assert points["Data Source"] == "Cached Cloud"
 

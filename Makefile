@@ -64,7 +64,9 @@ check:
 	@.venv/bin/mypy $(PYTHON_PATHS) --ignore-missing-imports; \
 	status=$$?; \
 	if [ $$status -eq 0 ]; then echo "✅ mypy: PASSED"; \
-	elif [ $$status -eq 1 ]; then echo "⚠️  mypy: type warnings (not blocking)"; \
+	elif [ $$status -eq 1 ]; then \
+		echo "❌ mypy: type errors (CI fails on these too)"; \
+		exit 1; \
 	else \
 		echo "❌ mypy: did not run (exit $$status)"; \
 		echo "   A stale or unwritable .mypy_cache is the usual cause:"; \

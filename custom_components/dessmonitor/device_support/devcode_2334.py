@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 2334)"""
+"""Eybond Data Collector (devcode 2334)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 2334)",
-    "description": "DessMonitor data collector/gateway",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 2334)",
+    "description": "Eybond data collector/gateway",
+    "manufacturer": "Eybond",
     "known_inverters": ["EASUN 6.2KW Hybrid Solar Inverter"],
     "supported_features": [
         "real_time_monitoring",

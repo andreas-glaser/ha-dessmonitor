@@ -137,7 +137,7 @@ async def test_discovery_and_poll_send_only_function_three_reads() -> None:
 
 
 async def test_reported_collector_code_258_prefers_standard_smg_tunnel() -> None:
-    """Known EyeBond SMG heartbeats avoid slow unrelated P17/tunnel probes."""
+    """Known Eybond SMG heartbeats avoid slow unrelated P17/tunnel probes."""
     routes: list[tuple[int, int]] = []
 
     async def send(payload: bytes, device_code: int, collector_address: int) -> bytes:

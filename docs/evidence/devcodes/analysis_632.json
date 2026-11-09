@@ -1,0 +1,338 @@
+{
+  "timestamp": "2026-10-31 15:44:00",
+  "analysis": {
+    "api_profile": "shinemonitor_solar",
+    "analysis_version": 3,
+    "devcode": 632,
+    "device_sn": "",
+    "device_identity": "sha256:f00b970dacb9",
+    "collector_identity": "sha256:355c42c5d3b9",
+    "device_address": 1,
+    "collector_alias": "",
+    "total_sensors": 39,
+    "operating_modes": [],
+    "output_priorities": [],
+    "charger_priorities": [],
+    "sensor_titles": [
+      "Custom standard",
+      "DCI",
+      "Energy today",
+      "Equipment type",
+      "GFCI",
+      "Grid R current",
+      "Grid R voltage",
+      "Grid S current",
+      "Grid S voltage",
+      "Grid T current",
+      "Grid T voltage",
+      "Grid frequency",
+      "Grid line voltage RS",
+      "Grid line voltage ST",
+      "Grid line voltage TR",
+      "ISO",
+      "Instrument power",
+      "Internal ambient temperature",
+      "Internal radiator temperature",
+      "Inverter status",
+      "Manufacturer's name",
+      "Output PF",
+      "Output Power",
+      "Output Q",
+      "Output S",
+      "PV1 current",
+      "PV1 voltage",
+      "PV2 current",
+      "PV2 voltage",
+      "PV3 current",
+      "PV3 voltage",
+      "SN",
+      "Security type",
+      "Timestamp",
+      "Waiting time",
+      "bus voltage",
+      "cumulative time",
+      "energy_total",
+      "id"
+    ],
+    "potential_typos": [],
+    "unit_patterns": {
+      "SN": []
+    },
+    "sample_data": [
+      {
+        "title": "id",
+        "value": "",
+        "unit": ""
+      },
+      {
+        "title": "Timestamp",
+        "value": "2026-10-31 15:39:24",
+        "unit": ""
+      },
+      {
+        "title": "Manufacturer's name",
+        "value": "20202020202020000000000000000000",
+        "unit": ""
+      },
+      {
+        "title": "SN",
+        "value": "",
+        "unit": ""
+      },
+      {
+        "title": "Equipment type",
+        "value": "0",
+        "unit": ""
+      },
+      {
+        "title": "Equipment type",
+        "value": "0",
+        "unit": ""
+      },
+      {
+        "title": "Security type",
+        "value": "IEC 61727",
+        "unit": ""
+      },
+      {
+        "title": "Custom standard",
+        "value": "Custom standard",
+        "unit": ""
+      },
+      {
+        "title": "Output Power",
+        "value": "1465",
+        "unit": "W"
+      },
+      {
+        "title": "Output S",
+        "value": "1466",
+        "unit": "VA"
+      },
+      {
+        "title": "Output Q",
+        "value": "54",
+        "unit": "VA"
+      },
+      {
+        "title": "Output PF",
+        "value": "0.99",
+        "unit": ""
+      },
+      {
+        "title": "Instrument power",
+        "value": "0",
+        "unit": "W"
+      },
+      {
+        "title": "Energy today",
+        "value": "16.0",
+        "unit": "kWh"
+      },
+      {
+        "title": "energy_total",
+        "value": "5289",
+        "unit": "kWh"
+      },
+      {
+        "title": "cumulative time",
+        "value": "4705",
+        "unit": "h"
+      },
+      {
+        "title": "Inverter status",
+        "value": "Normal",
+        "unit": ""
+      },
+      {
+        "title": "Waiting time",
+        "value": "0",
+        "unit": "S"
+      },
+      {
+        "title": "PV1 voltage",
+        "value": "225.6",
+        "unit": "V"
+      },
+      {
+        "title": "PV1 current",
+        "value": "6.9",
+        "unit": "A"
+      }
+    ],
+    "control_field_count": 20,
+    "control_fields": [
+      {
+        "name": "Active power control mode",
+        "type": "options",
+        "id": "eybond_ctrl_17",
+        "options": {
+          "0": "No used",
+          "1": "Fixed active power",
+          "2": "DRED",
+          "3": "Meter"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "First connection time",
+        "type": "value",
+        "id": "eybond_ctrl_20",
+        "options": null,
+        "unit": "S",
+        "hint": null
+      },
+      {
+        "name": "Meter limit power",
+        "type": "value",
+        "id": "eybond_ctrl_18",
+        "options": null,
+        "unit": "W",
+        "hint": null
+      },
+      {
+        "name": "Meter type",
+        "type": "options",
+        "id": "eybond_ctrl_19",
+        "options": {
+          "0": "SDM230",
+          "1": "SDM630"
+        },
+        "unit": null,
+        "hint": null
+      },
+      {
+        "name": "Over frequency  protection value 1",
+        "type": "value",
+        "id": "eybond_ctrl_7",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Over frequency  protection value 2",
+        "type": "value",
+        "id": "eybond_ctrl_8",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Over frequency  protection value 3",
+        "type": "value",
+        "id": "eybond_ctrl_9",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Over frequency recovery value",
+        "type": "value",
+        "id": "eybond_ctrl_15",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Over voltage  protection value 1",
+        "type": "value",
+        "id": "eybond_ctrl_1",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Over voltage  protection value 2",
+        "type": "value",
+        "id": "eybond_ctrl_2",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Over voltage  protection value 3",
+        "type": "value",
+        "id": "eybond_ctrl_3",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Over voltage  recovery value",
+        "type": "value",
+        "id": "eybond_ctrl_13",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Under frequency  protection value 1",
+        "type": "value",
+        "id": "eybond_ctrl_10",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Under frequency  protection value 2",
+        "type": "value",
+        "id": "eybond_ctrl_11",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Under frequency  protection value 3",
+        "type": "value",
+        "id": "eybond_ctrl_12",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Under frequency recovery value",
+        "type": "value",
+        "id": "eybond_ctrl_16",
+        "options": null,
+        "unit": "HZ",
+        "hint": null
+      },
+      {
+        "name": "Under voltage  protection value 1",
+        "type": "value",
+        "id": "eybond_ctrl_4",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Under voltage  protection value 2",
+        "type": "value",
+        "id": "eybond_ctrl_5",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Under voltage  protection value 3",
+        "type": "value",
+        "id": "eybond_ctrl_6",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      },
+      {
+        "name": "Under voltage  recovery value",
+        "type": "value",
+        "id": "eybond_ctrl_14",
+        "options": null,
+        "unit": "V",
+        "hint": null
+      }
+    ],
+    "parameter_count": 0,
+    "parameters": [],
+    "checksum": "00e0b8d885af4c85c3bef6b4363986fe2219136ced21d6a2e99067c8fb51364b"
+  }
+}

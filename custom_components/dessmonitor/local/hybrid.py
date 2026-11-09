@@ -6,6 +6,7 @@ import asyncio
 import copy
 import logging
 from collections.abc import Container
+from math import isfinite
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,9 +17,14 @@ from ..api import DessMonitorAPI
 from ..const import CONF_LOCAL_COLLECTOR_IP, CONF_LOCAL_COLLECTOR_IPS
 from ..data_sources import with_data_source
 from ..device_support import map_sensor_title
+from ..sensor_titles import cumulative_sensor_key
 from .coordinator import DessMonitorLocalCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# A cumulative counter that drops by less than this fraction is two sources
+# disagreeing about the same total; a larger drop is a real reset.
+_CUMULATIVE_RESET_RATIO = 0.9
 
 
 class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
@@ -65,6 +71,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         self._shutdown = False
         self._cloud_stale = False
         self._local_push_handle: asyncio.TimerHandle | None = None
+        self._cumulative_high: dict[tuple[str, str], tuple[float, Any]] = {}
 
     async def async_setup_local(self) -> None:
         """Start optional local services without weakening cloud availability."""
@@ -123,7 +130,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
                     err,
                 )
                 self._initial_refresh_completed = True
-                return merge_cloud_and_local(
+                return self._merge(
                     self._cached_cloud_data,
                     local_data,
                     local_available=True,
@@ -134,7 +141,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
                     "Both live transports are unavailable; retaining the last cloud snapshot"
                 )
                 self._initial_refresh_completed = True
-                return merge_cloud_and_local(
+                return self._merge(
                     self._cached_cloud_data,
                     local_data,
                     local_available=False,
@@ -145,7 +152,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
                     "Cloud is unavailable during hybrid startup; waiting for local telemetry"
                 )
                 self._initial_refresh_completed = True
-                return merge_cloud_and_local(
+                return self._merge(
                     self._cached_cloud_data,
                     local_data,
                     local_available=local_available,
@@ -157,12 +164,57 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         # Discovery/disconnection can finish while the cloud request awaits IO.
         # Do not overwrite a newer local push with the pre-request snapshot.
         local_data = self._current_local_data()
-        return merge_cloud_and_local(
+        return self._merge(
             cloud_data,
             local_data,
             local_available=bool(local_data),
             stale_serials=self.stale_cloud_serials,
         )
+
+    def _merge(
+        self,
+        cloud_data: dict[str, Any] | None,
+        local_data: dict[str, Any],
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Overlay local telemetry, then arbitrate the cumulative counters."""
+        return self._hold_cumulative_totals(
+            merge_cloud_and_local(cloud_data, local_data, **kwargs)
+        )
+
+    def _hold_cumulative_totals(self, merged: dict[str, Any]) -> dict[str, Any]:
+        """Keep a cumulative counter from stepping back when its source changes.
+
+        The local driver reads the lifetime counter once a minute and the cloud
+        reports its own every five, so the two are stale by different amounts
+        and whichever is publishing can be behind the other. Home Assistant
+        reads a decrease on a ``total_increasing`` sensor as a meter reset. The
+        reporter in #53 saw Energy Total step from 10113.896 to 10113.801 kWh
+        across a source switch and Home Assistant log the entity for it.
+
+        Only a small step back is held: a drop past
+        ``_CUMULATIVE_RESET_RATIO`` is a genuine reset - midnight on Energy
+        Today, or replaced hardware - and is published as reported. The value
+        held is the earlier source's own, so no reading is ever synthesised.
+        """
+        for serial, payload in merged.items():
+            devcode = payload.get("device", {}).get("devcode")
+            for point in payload.get("data", []):
+                key = _cumulative_key(devcode, point.get("title"))
+                if key is None:
+                    continue
+                value = _as_float(point.get("val"))
+                if value is None:
+                    continue
+                mark = (serial, key)
+                held = self._cumulative_high.get(mark)
+                if held is not None and (
+                    held[0] > value >= held[0] * _CUMULATIVE_RESET_RATIO
+                ):
+                    point["val"] = held[1]
+                    continue
+                self._cumulative_high[mark] = (value, point["val"])
+        return merged
 
     def _handle_local_update(self) -> None:
         """Coalesce near-simultaneous collector polls into one HA update."""
@@ -182,7 +234,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         if self._shutdown:
             return
         local_data = self._current_local_data()
-        merged = merge_cloud_and_local(
+        merged = self._merge(
             self._cached_cloud_data,
             local_data,
             local_available=bool(local_data),
@@ -234,6 +286,27 @@ def _configured_collector_ips(local_config: dict[str, Any]) -> tuple[str, ...]:
     if not result:
         raise ValueError("hybrid mode requires at least one collector IP")
     return result
+
+
+def _cumulative_key(raw_device_code: Any, title: Any) -> str | None:
+    """Return the canonical key of a reading that only ever counts upwards."""
+    if not isinstance(title, str) or not title.strip():
+        return None
+    try:
+        device_code = int(raw_device_code)
+    except (TypeError, ValueError):
+        device_code = 0
+    mapped = map_sensor_title(device_code, title) if device_code else title
+    return cumulative_sensor_key(mapped, title)
+
+
+def _as_float(value: Any) -> float | None:
+    """Return a finite float for a reading, or None when it is not numeric."""
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isfinite(parsed) else None
 
 
 def merge_cloud_and_local(

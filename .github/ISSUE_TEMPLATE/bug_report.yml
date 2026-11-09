@@ -1,0 +1,65 @@
+name: Bug report
+description: Entities unavailable or unknown, a control that reverts, a setup or local-mode failure
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens, and what you expected
+      description: Name the entity or entities, and when it started.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: "2.6.0"
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.10.4"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Monitoring mode
+      description: From the integration's options.
+      options:
+        - Cloud API
+        - Cloud API with preferred local telemetry (hybrid)
+        - Local only
+    validations:
+      required: true
+  - type: input
+    id: devcode
+    attributes:
+      label: Devcode and inverter model
+      placeholder: "6544, ANENJI ANJ-11KW-48V-W-P"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: |
+        Add this to `configuration.yaml`, restart, reproduce, then copy from
+        Settings > System > Logs:
+
+        ```yaml
+        logger:
+          default: info
+          logs:
+            custom_components.dessmonitor: debug
+        ```
+
+        Redact credentials, tokens and serial numbers before pasting.
+      render: text
+  - type: checkboxes
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      options:
+        - label: I can attach a diagnostics download (inverter device page > Download diagnostics), reviewed for serial numbers first.

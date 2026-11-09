@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Local monitoring setup and troubleshooting
+    url: https://github.com/andreas-glaser/ha-dessmonitor/blob/main/docs/LOCAL_MODE.md
+    about: How local mode works, what it needs, and what each log message means.
+  - name: Adding or extending a devcode yourself
+    url: https://github.com/andreas-glaser/ha-dessmonitor/blob/main/docs/ADDING_DEVCODES.md
+    about: The full contributor workflow, from analysis to pull request.

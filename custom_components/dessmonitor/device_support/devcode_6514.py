@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 6514)."""
+"""Eybond Data Collector (devcode 6514)."""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 6514)",
-    "description": "DessMonitor data collector/gateway for dual-output inverters",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 6514)",
+    "description": "Eybond data collector/gateway for dual-output inverters",
+    "manufacturer": "Eybond",
     "known_inverters": [
         "ANENJI 5KW 48V Hybrid Solar Inverter",
         "Aninerel 6.2KW 48V",
@@ -35,6 +35,10 @@ OUTPUT_PRIORITY_MAPPING: dict[str, str] = {
 CHARGER_PRIORITY_MAPPING: dict[str, str] = {
     "SNU": "Solar and Utility",
     "OSO": "Only Solar",
+    # The vendor manual for the Aninerel 4.2KW 24V names CSO solar-first
+    # charging: solar charges as priority and utility only steps in when solar
+    # is unavailable (#56).
+    "CSO": "Solar First",
 }
 
 OPERATING_MODE_MAPPING: dict[str, str] = {

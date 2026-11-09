@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 2376)"""
+"""Eybond Data Collector (devcode 2376)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 2376)",
-    "description": "DessMonitor data collector/gateway",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 2376)",
+    "description": "Eybond data collector/gateway",
+    "manufacturer": "Eybond",
     "known_inverters": ["POW-HVM6.2K-48V-LIP"],
     "supported_features": [
         "real_time_monitoring",
@@ -59,6 +59,14 @@ VALUE_TRANSFORMATIONS: dict = {}
 # SOC is only returned by queryDeviceParsEs, not queryDeviceLastData.
 PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
+# This collector answers the Output Voltage control with the live output
+# voltage - 229.8, 230.1, 230.3 and 231.3 V across the four inverters in the
+# download, against options of 220, 230 and 240 - while the setpoint it is
+# asking about is reported as its own reading (#61).
+CONTROL_VALUE_READINGS: dict[str, str] = {
+    "bse_eybond_ctrl_64": "Output Voltage Setting",
+}
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -67,4 +75,5 @@ DEVCODE_CONFIG = {
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
+    "control_value_readings": CONTROL_VALUE_READINGS,
 }

@@ -61,7 +61,7 @@ async def test_reported_telemetry_through_api_and_sensor_platform(
     expected = {
         "pv2_voltage": (0, "V"),
         "pv2_charger_power": (float(pv2_power), "W"),
-        "operating_mode": ("Battery", ""),
+        "operating_mode": ("Battery", None),
         "grid_voltage": (237.1, "V"),
         "grid_frequency": (49.9, "Hz"),
         "pv1_voltage": (315.5, "V"),
@@ -76,10 +76,13 @@ async def test_reported_telemetry_through_api_and_sensor_platform(
         "output_apparent_power": (874, "VA"),
         "output_active_power": (781, "W"),
         "load_percent": (14, "%"),
-        "output_priority": ("Solar - Battery - Utility", ""),
-        "charger_source_priority": ("Solar and Utility", ""),
+        "output_priority": ("Solar - Battery - Utility", None),
+        "charger_source_priority": ("Solar and Utility", None),
     }
     assert set(entities) == {f"TEST-INVERTER_{suffix}" for suffix in expected}
+    # The enum sensors expect None rather than "": Home Assistant tests for
+    # the presence of the unit attribute, so an empty one kept them out of the
+    # logbook and out of the historical view entirely (#53).
     for suffix, (value, unit) in expected.items():
         entity = entities[f"TEST-INVERTER_{suffix}"]
         assert entity.native_value == value, suffix

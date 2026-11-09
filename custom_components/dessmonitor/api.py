@@ -114,9 +114,23 @@ class DessMonitorAPI:
         return expired
 
     async def _make_request(
-        self, action: str, params: dict[str, Any] | None = None
+        self,
+        action: str,
+        params: dict[str, Any] | None = None,
+        *,
+        caller_reports_failure: bool = False,
     ) -> dict[str, Any]:
-        """Make API request."""
+        """Make API request.
+
+        ``caller_reports_failure`` lowers this layer's own logging to debug for
+        a request whose caller already decides what a failure means and says so
+        itself. Control reads are the case: the coordinator expects them to fail
+        on a busy collector, retries them on a bounded budget and reports the
+        outcome once, while this layer was logging every single attempt at error
+        level. One account in #61 collected twenty red log entries in an hour
+        for a condition the integration was handling as designed. The exception
+        is raised either way, so nothing is swallowed.
+        """
         self._ensure_session()
         await self._ensure_token(action)
 
@@ -129,8 +143,12 @@ class DessMonitorAPI:
             "Making %s request with %d parameters", action, len(params) if params else 0
         )
 
-        response_data = await self._fetch_json(action, url)
-        return self._validate_api_response(action, response_data)
+        response_data = await self._fetch_json(
+            action, url, caller_reports_failure=caller_reports_failure
+        )
+        return self._validate_api_response(
+            action, response_data, caller_reports_failure=caller_reports_failure
+        )
 
     def _ensure_session(self) -> None:
         """Ensure that an aiohttp session is available."""
@@ -175,10 +193,13 @@ class DessMonitorAPI:
             url += f"&token={self.token}"
         return f"{url}{action_string}"
 
-    async def _fetch_json(self, action: str, url: str) -> dict[str, Any]:
+    async def _fetch_json(
+        self, action: str, url: str, *, caller_reports_failure: bool = False
+    ) -> dict[str, Any]:
         """Execute HTTP GET and return JSON payload."""
         assert self._session is not None
         timeout_seconds = API_REQUEST_TIMEOUT_SECONDS
+        level = logging.DEBUG if caller_reports_failure else logging.ERROR
 
         try:
             async with async_timeout.timeout(timeout_seconds):
@@ -187,18 +208,22 @@ class DessMonitorAPI:
                     try:
                         return await response.json()
                     except (aiohttp.ContentTypeError, ValueError):
-                        _LOGGER.error("Invalid JSON response for action '%s'", action)
+                        _LOGGER.log(
+                            level, "Invalid JSON response for action '%s'", action
+                        )
                         # Content-type errors also carry the signed request URL.
                         raise DessMonitorError("Invalid response from server") from None
         except asyncio.TimeoutError as err:
-            _LOGGER.error(
+            _LOGGER.log(
+                level,
                 "API request for action '%s' timed out after %ss",
                 action,
                 timeout_seconds,
             )
             raise DessMonitorError("Request timed out") from err
         except aiohttp.ClientResponseError as err:
-            _LOGGER.error(
+            _LOGGER.log(
+                level,
                 "HTTP %s error for action '%s'",
                 err.status,
                 action,
@@ -208,18 +233,21 @@ class DessMonitorAPI:
             raise DessMonitorError(f"Server returned HTTP {err.status}") from None
         except aiohttp.ClientError as err:
             error_type = type(err).__name__
-            _LOGGER.error(
-                "HTTP request failed for action '%s' (%s)", action, error_type
+            _LOGGER.log(
+                level, "HTTP request failed for action '%s' (%s)", action, error_type
             )
             raise DessMonitorError(f"Request failed ({error_type})") from None
 
     @staticmethod
-    def _validate_api_response(action: str, data: dict[str, Any]) -> dict[str, Any]:
+    def _validate_api_response(
+        action: str, data: dict[str, Any], *, caller_reports_failure: bool = False
+    ) -> dict[str, Any]:
         """Validate API payload and raise errors when needed."""
         if data.get("err", 0) != 0:
             error_code = data.get("err")
             error_msg = data.get("desc", f"API error {error_code}")
-            _LOGGER.error(
+            _LOGGER.log(
+                logging.DEBUG if caller_reports_failure else logging.ERROR,
                 "API returned error %s for action '%s': %s",
                 error_code,
                 action,
@@ -672,7 +700,12 @@ class DessMonitorAPI:
     async def get_device_control_fields(
         self, pn: str, devcode: int, devaddr: int, sn: str
     ) -> dict[str, Any]:
-        """Get device control fields (configuration options)."""
+        """Get device control fields (configuration options).
+
+        A collector with no control template refuses this for the life of the
+        entry, so the coordinator bounds the attempts and warns once; this layer
+        keeps its own account of them at debug (#62).
+        """
         _LOGGER.debug("Fetching device control fields for device: %s", sn)
 
         response = await self._make_request(
@@ -685,6 +718,7 @@ class DessMonitorAPI:
                 "devaddr": devaddr,
                 "sn": sn,
             },
+            caller_reports_failure=True,
         )
 
         control_data = response.get("dat", {})
@@ -697,6 +731,15 @@ class DessMonitorAPI:
         for field in fields:
             field_name = field.get("name", "")
             field_id = field.get("id", "")
+
+            if not field_name or not field_id:
+                _LOGGER.warning(
+                    "Skipping control field for device %s: name %r, id %r",
+                    sn,
+                    field_name,
+                    field_id,
+                )
+                continue
 
             # Determine field type based on presence of options
             if "item" in field and field["item"]:
@@ -769,7 +812,13 @@ class DessMonitorAPI:
     async def get_device_control_value(
         self, pn: str, devcode: int, devaddr: int, sn: str, field_id: str
     ) -> dict[str, Any]:
-        """Get current value of a single control field (queryDeviceCtrlValue)."""
+        """Get current value of a single control field (queryDeviceCtrlValue).
+
+        This read has to reach the inverter live, over a collector link that
+        carries one transaction at a time, so a busy collector refuses or times
+        out and the coordinator retries on a bounded budget and reports the
+        outcome itself. The failures are therefore logged here at debug (#61).
+        """
         response = await self._make_request(
             "queryDeviceCtrlValue",
             {
@@ -781,6 +830,7 @@ class DessMonitorAPI:
                 "i18n": "en_US",
                 "source": self._source,
             },
+            caller_reports_failure=True,
         )
         return response.get("dat", {})
 

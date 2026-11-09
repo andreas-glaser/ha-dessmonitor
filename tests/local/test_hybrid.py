@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+from binascii import crc_hqx
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -88,6 +89,41 @@ def test_local_outage_falls_back_to_cloud_values() -> None:
     assert points["Grid voltage"] == 228
     assert points["AC output active power"] == 700
     assert points["Data Source"] == "Cloud"
+
+
+def test_dual_pv_local_overlay_and_cloud_fallback_keep_existing_titles() -> None:
+    """Local PV powers replace cloud values only while their query succeeds."""
+    cloud = {
+        "AXPERT": {
+            "collector": {"pn": "COLLECTOR-1"},
+            "device": {"devcode": 2449, "devaddr": 0},
+            "data": [
+                {"title": "PV1 Charging Power", "val": 100, "unit": "W"},
+                {"title": "PV2 Charging power", "val": 200, "unit": "W"},
+                {"title": "outpower", "val": 0.3, "unit": "kW"},
+            ],
+        }
+    }
+    local = {
+        "AXPERT": {
+            "collector": {"pn": "COLLECTOR-1"},
+            "device": {"devaddr": 0},
+            "data": [
+                {"title": "PV1 Charger Power", "val": 1088, "unit": "W"},
+                {"title": "PV2 Charger Power", "val": 1881, "unit": "W"},
+                {"title": "outpower", "val": 2.969, "unit": "kW"},
+            ],
+        }
+    }
+    overlay = merge_cloud_and_local(cloud, local, local_available=True)
+    active = {p["title"]: p["val"] for p in overlay["AXPERT"]["data"]}
+    assert (active["PV1 Charger Power"], active["PV2 Charger Power"]) == (1088, 1881)
+    assert active["outpower"] == 2.969
+
+    fallback = merge_cloud_and_local(cloud, {}, local_available=False)
+    stale = {p["title"]: p["val"] for p in fallback["AXPERT"]["data"]}
+    assert (stale["PV1 Charging Power"], stale["PV2 Charging power"]) == (100, 200)
+    assert stale["outpower"] == 0.3
 
 
 def test_unrelated_collector_is_not_overlaid() -> None:
@@ -435,3 +471,135 @@ async def test_a_local_failure_still_publishes_the_cloud_snapshot(
         assert points["Data Source"] == "Cloud"
     finally:
         await coordinator.async_shutdown()
+
+
+def test_local_total_energy_overlays_the_cloud_counter_in_kilowatt_hours() -> None:
+    """Local and cloud must agree on the scale of the lifetime counter (#53).
+
+    The diagnostics in #53 show the PI18 ``ET`` query answering 10104399 for an
+    inverter whose cloud account reported 10104.399 kWh at the same moment. The
+    overlay puts the local figure on the Energy Total entity, so a unit
+    mismatch in the driver reaches the energy dashboard as a thousandfold jump
+    every time local telemetry becomes healthy.
+    """
+    from custom_components.dessmonitor.local.profile import parse_command_response
+
+    content = b"^D01110104399"
+    frame = content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
+    local_total = parse_command_response("ET", frame, protocol_id="18")["Energy Total"]
+
+    cloud = _cloud_payload()
+    cloud["CLOUD-SERIAL"]["data"].append(
+        {"title": "Total generation", "val": 10104.399, "unit": "kWh"}
+    )
+    local = _local_payload()
+    local["CLOUD-SERIAL"] = local.pop("LOCAL-SERIAL")
+    local["CLOUD-SERIAL"]["data"].append(
+        {"title": "Energy Total", "val": local_total, "unit": "kWh"}
+    )
+
+    merged = merge_cloud_and_local(cloud, local, local_available=True)
+    points = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+
+    assert points["Data Source"] == "Local"
+    assert points["Energy Total"] == 10104.399
+    assert "Total generation" not in points
+
+
+def _with_total(payload: dict, serial: str, title: str, value: float) -> dict:
+    payload[serial]["data"].append({"title": title, "val": value, "unit": "kWh"})
+    return payload
+
+
+def _hybrid_merge(coordinator, cloud_total: float, local_total: float | None) -> float:
+    """Merge one snapshot through the coordinator and return Energy Total."""
+    cloud = _with_total(
+        _cloud_payload(), "CLOUD-SERIAL", "Total generation", cloud_total
+    )
+    local: dict = {}
+    if local_total is not None:
+        local = _local_payload()
+        local["CLOUD-SERIAL"] = local.pop("LOCAL-SERIAL")
+        _with_total(local, "CLOUD-SERIAL", "Energy Total", local_total)
+    merged = coordinator._merge(
+        cloud, local, local_available=bool(local), cloud_source="Cloud"
+    )
+    points = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+    # The cloud spells the counter "Total generation"; the local overlay
+    # replaces it with its own title, so whichever survives is the counter.
+    return points.get("Energy Total", points.get("Total generation"))
+
+
+def test_a_source_switch_cannot_walk_the_lifetime_counter_backwards(
+    hass: HomeAssistant,
+) -> None:
+    """Energy Total stepped from 10113.896 to 10113.801 kWh across a switch (#53).
+
+    The local driver reads the counter once a minute and the cloud reports its
+    own every five, so whichever is publishing can be behind the other. Home
+    Assistant reads a decrease on a total_increasing sensor as a meter reset.
+    """
+    coordinator = _hybrid_coordinator(hass)
+
+    assert _hybrid_merge(coordinator, 10113.896, 10113.896) == 10113.896
+    # Local is a minute stale and publishes the lower figure.
+    assert _hybrid_merge(coordinator, 10113.896, 10113.801) == 10113.896
+    # Local falls out; the cloud figure is five minutes stale.
+    assert _hybrid_merge(coordinator, 10113.700, None) == 10113.896
+    # Both sources move on together, so the counter follows them.
+    assert _hybrid_merge(coordinator, 10114.000, 10114.100) == 10114.100
+
+
+def test_a_real_counter_reset_is_published_as_reported(hass: HomeAssistant) -> None:
+    """Midnight on a daily counter, or replaced hardware, is not a disagreement."""
+    coordinator = _hybrid_coordinator(hass)
+
+    assert _hybrid_merge(coordinator, 10113.896, 10113.896) == 10113.896
+    assert _hybrid_merge(coordinator, 0.0, 0.0) == 0.0
+    assert _hybrid_merge(coordinator, 1.5, 1.5) == 1.5
+
+
+def test_only_cumulative_readings_are_held(hass: HomeAssistant) -> None:
+    """A measurement that legitimately falls must never be held at a high mark."""
+    coordinator = _hybrid_coordinator(hass)
+
+    def _voltage(value: float) -> float:
+        cloud = _cloud_payload()
+        cloud["CLOUD-SERIAL"]["data"] = [
+            {"title": "Grid voltage", "val": value, "unit": "V"}
+        ]
+        merged = coordinator._merge(cloud, {}, local_available=False)
+        return {
+            point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]
+        }["Grid voltage"]
+
+    assert _voltage(240.0) == 240.0
+    assert _voltage(236.0) == 236.0
+
+
+def test_holding_a_counter_does_not_touch_the_cached_cloud_snapshot(
+    hass: HomeAssistant,
+) -> None:
+    """The held value must never reach the snapshot the fallback reads back.
+
+    ``merge_cloud_and_local`` copies the cloud payload and the hold is applied
+    to that copy. If it were ever applied in place, the cached-cloud fallback
+    and the stored snapshot would carry a figure no source reported.
+    """
+    coordinator = _hybrid_coordinator(hass)
+    cached = _with_total(
+        _cloud_payload(), "CLOUD-SERIAL", "Total generation", 10113.896
+    )
+    coordinator._cached_cloud_data = cached
+    before = copy.deepcopy(cached)
+
+    local = _local_payload()
+    local["CLOUD-SERIAL"] = local.pop("LOCAL-SERIAL")
+    _with_total(local, "CLOUD-SERIAL", "Energy Total", 10113.896)
+    coordinator._merge(cached, local, local_available=True)
+    local["CLOUD-SERIAL"]["data"][-1]["val"] = 10113.801
+    merged = coordinator._merge(cached, local, local_available=True)
+
+    points = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+    assert points["Energy Total"] == 10113.896
+    assert coordinator._cached_cloud_data == before

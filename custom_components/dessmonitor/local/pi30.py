@@ -98,6 +98,20 @@ def parse_pi30_response(command: str, frame: bytes) -> dict[str, Any]:
         values.pop("BUS Voltage")
         values.pop("Battery Voltage from SCC")
         return values
+    if command == "QPIGS2":
+        # Axpert MAX PI30: PV2 input current (A), voltage (V), charging power (W).
+        # The tested logger appends a trailing space to this response. Vendor
+        # fields after those three are ignored rather than rejected, as they
+        # are for QPIGS: rejecting them would park the inquiry in its failure
+        # backoff and publish no PV2 reading at all (#50).
+        fields = data.split()
+        if len(fields) < 3:
+            raise ProtocolError("unsupported PI30 PV2 status field count")
+        return {
+            "PV2 Charger Current": _number(fields[0], 1000),
+            "PV2 Voltage": _number(fields[1], 1500),
+            "PV2 Charger Power": _number(fields[2], 150_000),
+        }
     if command == "QMOD":
         if data not in _MODES:
             raise ProtocolError("unsupported PI30 operating mode")

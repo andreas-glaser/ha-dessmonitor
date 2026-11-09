@@ -48,6 +48,7 @@ class LocalDevice:
     metadata: dict[str, Any] = field(default_factory=dict)
     values: dict[str, Any] = field(default_factory=dict)
     disabled_queries: set[str] = field(default_factory=set)
+    optional_query_failures: dict[str, int] = field(default_factory=dict)
     address_verified: bool = True
 
 
@@ -131,7 +132,23 @@ class P17Driver:
                 firmware=str(inverter.metadata.get("VFW", "")),
                 metadata=dict(inverter.metadata),
             )
-            device.values.update(await self.poll(send, device, cycle=0))
+            try:
+                device.values.update(await self.poll(send, device, cycle=0))
+            except TimeoutError:
+                # Identification is already complete here: PI, ID, VFW and
+                # PIRI all parsed as P17. A status query that times out is
+                # evidence about the inverter's link, not about which protocol
+                # the collector speaks, so rejecting the driver for one threw
+                # away an identified inverter, spent every remaining driver's
+                # timeouts, and reported "no supported read-only local
+                # protocol was identified" with nine successful P17 queries in
+                # the same line (#53). The coordinator polls again straight
+                # away and reports a status-only failure as what it is.
+                _LOGGER.debug(
+                    "Local p17 status poll timed out at inverter address %d "
+                    "during discovery; keeping the identified inverter",
+                    device.device_address,
+                )
             devices.append(device)
         return tuple(devices)
 
@@ -293,6 +310,45 @@ class Pi30Driver:
             device.device_address,
             "QPIGS",
         )
+        # Extended 21-field QPIGS contains PV1 power on this protocol variant.
+        # Only publish the separate PV powers when the PV2 inquiry succeeds;
+        # otherwise leave the cloud measurements available for hybrid fallback.
+        for title in (
+            "PV1 Charger Power",
+            "PV2 Charger Power",
+            "PV2 Charger Current",
+            "PV2 Voltage",
+            "outpower",
+        ):
+            device.values.pop(title, None)
+        qpigs2_failures = device.optional_query_failures.get("QPIGS2", 0)
+        # Silence is inconclusive: after three failed attempts, probe every
+        # twelfth cycle so a recovered inverter can regain live PV2 readings.
+        if (
+            "PV Charge Power" in values
+            and "QPIGS2" not in device.disabled_queries
+            and (qpigs2_failures < 3 or cycle % 12 == 0)
+        ):
+            try:
+                pv2 = await query_pi30(
+                    send,
+                    device.transport_device_code,
+                    device.collector_address,
+                    device.device_address,
+                    "QPIGS2",
+                )
+            except CommandNotSupported:
+                device.disabled_queries.add("QPIGS2")
+            except (TimeoutError, ProtocolError):
+                device.optional_query_failures["QPIGS2"] = min(qpigs2_failures + 1, 3)
+            else:
+                device.optional_query_failures.pop("QPIGS2", None)
+                # Keep the generic key for existing single-PV PI30 entities.
+                pv1_power = values["PV Charge Power"]
+                pv2_power = pv2["PV2 Charger Power"]
+                values.update(pv2)
+                values["PV1 Charger Power"] = pv1_power
+                values["outpower"] = round((pv1_power + pv2_power) / 1000, 3)
         if "QMOD" not in device.disabled_queries:
             try:
                 values.update(
@@ -392,12 +448,18 @@ def _driver_failure(
 ) -> str:
     """Describe why one driver failed, preferring what the probe observed.
 
-    ``ProtocolError`` defaults its reason to ``invalid_response``, so a driver
-    that never received a frame used to report a malformed one.
+    ``ProtocolError`` defaults its reason to ``invalid_response``, so the
+    exception alone reported a malformed frame for a driver whose queries had
+    mostly timed out. What the probe recorded is reported instead, in full: a
+    driver that timed out nine times and was refused once is not described by
+    either outcome on its own.
     """
-    if diagnostics.protocol_timed_out(driver.key):
-        return "timeout"
-    return failure_reason(err)
+    outcomes = diagnostics.protocol_outcomes(driver.key)
+    if not outcomes:
+        return failure_reason(err)
+    return ", ".join(
+        f"{outcome}={count}" for outcome, count in sorted(outcomes.items())
+    )
 
 
 def _discovery_failure(

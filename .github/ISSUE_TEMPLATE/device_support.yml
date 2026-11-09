@@ -1,0 +1,100 @@
+name: Device support request
+description: Sensors with raw vendor names, a missing reading, or an unsupported devcode
+title: "[Device Support] devcode NNNN: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **The quickest way is from Home Assistant itself.** Open
+        **Settings > Devices & services > DessMonitor**, use the three-dot menu
+        on the integration entry, and choose **Download diagnostics**. That file
+        covers every inverter on the account, says whether each devcode is
+        supported, partial or unsupported, and names every reading that reaches
+        no entity. Credentials are redacted and identifiers appear only as a
+        `sha256:` hash.
+
+        If the integration will not set up at all, produce the same evidence from
+        a computer with Python 3.11+ instead:
+        [download the dev branch ZIP](https://github.com/andreas-glaser/ha-dessmonitor/archive/refs/heads/dev.zip),
+        extract it, open a terminal in the extracted folder and run:
+
+        ```bash
+        cd tools/cli
+        pip install -r requirements.txt
+        python3 dessmonitor_cli.py report --username YOUR_USERNAME
+        ```
+
+        Add `--api-profile shinemonitor_solar` for a ShineMonitor account. It
+        prompts for your password, analyses every inverter on the account,
+        writes one redacted `analysis_<devcode>.json` per device, and prints a
+        summary to paste below. Attach the JSON files to this issue.
+
+        Never attach your password or `.dessmonitor_cli_config.json`. The
+        analysis files are already redacted: no serial number, no collector
+        alias, no identifying sample values.
+  - type: input
+    id: devcode
+    attributes:
+      label: Devcode
+      description: From the CLI summary, or from the "Unsupported devcode NNNN" warning in your log.
+      placeholder: "6515"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Inverter brand and model
+      description: As printed on the label, not as the app shows it.
+      placeholder: Maxsky EM11000 11kW 48V
+    validations:
+      required: true
+  - type: input
+    id: collector
+    attributes:
+      label: Collector model and firmware
+      description: The WiFi or 4G dongle, and its firmware version from the vendor app.
+      placeholder: Eybond WiFi datalogger, firmware 3.6.6.6
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      description: Settings > Devices & services > DessMonitor, or the HACS listing.
+      placeholder: "2.6.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Account platform
+      options:
+        - DessMonitor (dessmonitor.com)
+        - ShineMonitor (shinemonitor.com)
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: CLI summary
+      description: The block the `report` command printed, pasted as it is.
+      render: text
+  - type: textarea
+    id: missing
+    attributes:
+      label: Readings or settings that are missing or wrong
+      description: |
+        Name what the vendor app or website shows and Home Assistant does not,
+        or where a value or label differs. A screenshot of the app beside the
+        entity is useful. If nothing is missing and you are reporting a raw
+        name, say which entity.
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I will attach the diagnostics download, or the `analysis_<devcode>.json` file(s) the CLI wrote.
+          required: true
+        - label: The file came from this integration's CLI, not from another integration's diagnostics download.
+          required: true
+        - label: I am not attaching my password or `.dessmonitor_cli_config.json`.
+          required: true

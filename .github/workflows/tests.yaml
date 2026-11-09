@@ -46,13 +46,17 @@ jobs:
 
       - name: "Type checking with mypy"
         run: |
-          # Exit 1 is a type warning and stays non-blocking. Anything else
-          # means mypy did not run, which must not be reported as a pass.
-          mypy custom_components/dessmonitor --ignore-missing-imports; status=$?
+          # A type error fails the job, as it does in `make lint`. Exit codes
+          # above 1 mean mypy did not run at all, which must not be reported
+          # as a pass either, so both are fatal and only the message differs.
+          set +e
+          mypy custom_components/dessmonitor --ignore-missing-imports
+          status=$?
+          set -e
           if [ $status -gt 1 ]; then
             echo "mypy did not run (exit $status)"
-            exit 1
           fi
+          exit $status
 
       - name: "Check released changelog sections"
         run: |

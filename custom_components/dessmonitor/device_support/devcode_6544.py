@@ -1,11 +1,11 @@
-"""DessMonitor Data Collector (devcode 6544)"""
+"""Eybond Data Collector (devcode 6544)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 6544)",
-    "description": "DessMonitor data collector/gateway for split-phase inverters",
-    "manufacturer": "DessMonitor",
+    "name": "Eybond Data Collector (devcode 6544)",
+    "description": "Eybond data collector/gateway for split-phase inverters",
+    "manufacturer": "Eybond",
     "known_inverters": ["ANENJI ANJ-HHS-11KW-48V", "ANENJI ANJ-11KW-48V-W-P"],
     "supported_features": [
         "real_time_monitoring",
@@ -69,6 +69,19 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "Current charging priority": "Charger Source Priority",
 }
 
+# Cloud control ids, not local Modbus write addresses. Each entry moves the
+# field off the number platform, where a clock value cannot be represented.
+# Verified by the hardware writes and readbacks recorded in
+# docs/evidence/temporal_controls/ (#48).
+TEMPORAL_CONTROLS: dict[str, str] = {
+    "bat_eybond_read_43988": "time",
+    "bat_eybond_read_43989": "time",
+    "bse_eybond_read_43979": "time",
+    "bse_eybond_read_43980": "time",
+    "sys_eybond_read_44023": "text",
+}
+
+
 VALUE_TRANSFORMATIONS: dict = {}
 
 PARAMETER_SENSOR_NAMES: set[str] = set()
@@ -79,6 +92,7 @@ DEVCODE_CONFIG = {
     "charger_priority_mapping": CHARGER_PRIORITY_MAPPING,
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

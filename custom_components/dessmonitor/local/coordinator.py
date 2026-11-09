@@ -1,4 +1,4 @@
-"""Home Assistant coordinator for local EyeBond collector communication."""
+"""Home Assistant coordinator for local Eybond collector communication."""
 
 from __future__ import annotations
 

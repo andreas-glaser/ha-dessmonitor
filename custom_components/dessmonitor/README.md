@@ -16,12 +16,12 @@ For Android and iOS downloads, see the [platforms and mobile apps table](../../R
    - 1 minute: Requires "Detailed Data Collection Acceleration" from DessMonitor
 
 ## Key Features
-- Supported inverter configuration from dashboards and automations via select, number, and button entities (output priority, charger source, battery settings, buzzer mode, and more).
+- Supported inverter configuration from dashboards and automations via select, number, button, time, and text entities (output priority, charger source, battery settings, buzzer mode, schedule times, and more).
 - Multiple inverter support with automatic discovery.
 - Optional read-only local telemetry and preferred-local cloud fallback.
 - Sensors for power, voltages, currents, frequency, temperature, load %, operating mode.
 - Energy Dashboard support where suitable energy sensors are available; see the [energy and power sensor guidance](../../README.md#energy-dashboard).
-- Supported devcodes: 518, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2477, 2507, 6416, 6422, 6514, 6515, 6544.
+- Supported devcodes: 518, 632, 2334, 2361, 2376, 2428, 2449, 2451, 2452, 2477, 2507, 4743, 6416, 6422, 6514, 6515, 6544.
 - Diagnostic sensors available but disabled by default to avoid clutter.
 
 ## Device Configuration
@@ -41,6 +41,8 @@ Other controls retain their API options and ranges.
 - **Select entities**: Settings with predefined options (output priority, charger source priority, battery type, buzzer mode, etc.)
 - **Number entities**: Numeric settings with min/max ranges from the device (charging voltages, max currents, SOC protection values, EQ timers, etc.)
 - **Button entities**: One-shot actions (clear record, reset user settings, forced EQ charging, exit fault mode)
+- **Time entities**: Daily schedule boundaries in the inverter's own local time (secondary charging and output priority start and end)
+- **Text entities**: The inverter's wall clock as a validated `YYYY-MM-DD HH:MM:SS` calendar string
 
 Current values and available settings are fetched from the selected cloud platform. Changes are sent through that platform's API; available controls depend on the device.
 

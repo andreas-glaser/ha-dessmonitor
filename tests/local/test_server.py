@@ -1,4 +1,4 @@
-"""Async transport tests with a simulated EyeBond collector."""
+"""Async transport tests with a simulated Eybond collector."""
 
 from __future__ import annotations
 
@@ -495,4 +495,114 @@ async def test_a_second_connection_closes_a_session_that_stopped_answering() -> 
         writer2.close()
     finally:
         await collector.close()
+        await server.stop()
+
+
+def _forward_reply(transaction_id: int, payload: bytes) -> bytes:
+    """Build the collector's reply to one forwarded inverter request."""
+    return (
+        encode_header(
+            transaction_id,
+            2452,
+            HEADER_SIZE + len(payload),
+            1,
+            FC_FORWARD_TO_DEVICE,
+        )
+        + payload
+    )
+
+
+async def test_a_timeout_does_not_release_a_link_the_collector_still_holds() -> None:
+    """Our timeout frees this side only; the next query waits for the collector."""
+    ready = asyncio.Event()
+
+    async def on_ready(_identity):
+        ready.set()
+
+    server = CollectorServer(
+        "127.0.0.1",
+        0,
+        "127.0.0.1",
+        on_ready=on_ready,
+        request_timeout=0.05,
+        abandoned_reply_grace=5.0,
+    )
+    await server.start()
+    reader, writer = await asyncio.open_connection("127.0.0.1", server.listening_port)
+    try:
+        await _identify(reader, writer)
+        await asyncio.wait_for(ready.wait(), 1)
+
+        # One late reply is what proves this collector outlasts our timeout.
+        first = asyncio.create_task(
+            server.send_command(b"QUERY-1", device_code=2452, device_address=1)
+        )
+        first_header, _ = await _read_frame(reader)
+        with pytest.raises(TimeoutError):
+            await first
+        writer.write(_forward_reply(first_header.transaction_id, b"LATE-1"))
+        await writer.drain()
+        await asyncio.sleep(0.1)
+
+        second = asyncio.create_task(
+            server.send_command(b"QUERY-2", device_code=2452, device_address=1)
+        )
+        second_header, _ = await _read_frame(reader)
+        third = asyncio.create_task(
+            server.send_command(b"QUERY-3", device_code=2452, device_address=1)
+        )
+        await asyncio.sleep(0.3)
+
+        # The second query timed out long ago, but the third has not been sent.
+        assert not second.done()
+        assert not third.done()
+        with pytest.raises(TimeoutError):
+            await asyncio.wait_for(_read_frame(reader), 0.1)
+
+        writer.write(_forward_reply(second_header.transaction_id, b"LATE-2"))
+        await writer.drain()
+        with pytest.raises(TimeoutError):
+            await second
+        third_header, _ = await _read_frame(reader)
+        assert third_header.transaction_id != second_header.transaction_id
+        writer.write(_forward_reply(third_header.transaction_id, b"ANSWER-3"))
+        await writer.drain()
+        assert await third == b"ANSWER-3"
+    finally:
+        writer.close()
+        await writer.wait_closed()
+        await server.stop()
+
+
+async def test_a_collector_that_never_answers_late_still_fails_fast() -> None:
+    """Silence is not slowness: an unproven collector pays no drain."""
+    ready = asyncio.Event()
+
+    async def on_ready(_identity):
+        ready.set()
+
+    server = CollectorServer(
+        "127.0.0.1",
+        0,
+        "127.0.0.1",
+        on_ready=on_ready,
+        request_timeout=0.05,
+        abandoned_reply_grace=30.0,
+    )
+    await server.start()
+    reader, writer = await asyncio.open_connection("127.0.0.1", server.listening_port)
+    try:
+        await _identify(reader, writer)
+        await asyncio.wait_for(ready.wait(), 1)
+
+        for _ in range(3):
+            attempt = asyncio.create_task(
+                server.send_command(b"QUERY", device_code=2452, device_address=1)
+            )
+            await asyncio.wait_for(_read_frame(reader), 1)
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(attempt, 1)
+    finally:
+        writer.close()
+        await writer.wait_closed()
         await server.stop()

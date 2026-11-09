@@ -34,7 +34,7 @@ from .device_support import (
     get_all_output_priorities,
     is_devcode_supported,
 )
-from .sensor_titles import resolve_sensor_key
+from .sensor_titles import normalize_sensor_title, resolve_sensor_key
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,6 +46,13 @@ ENUM_SENSOR_TITLES = {
     "Charger Source Priority",
     "work state",
     "charger work enable",
+}
+
+# Readings whose value is free-form text rather than one of a fixed set of
+# states. Coercing these to a float would publish nothing at all, and giving
+# them the enum device class would reject any word not in an option list.
+TEXT_SENSOR_TITLES = {
+    "Inverter Status",
 }
 
 DIAGNOSTIC_SENSOR_TITLES = {
@@ -209,6 +216,17 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         self._collector_meta = collector_meta
         self._sensor_type = sensor_type
         self._source_titles = source_titles or {sensor_type}
+        # Compared in their normalized form. The cloud and a local driver can
+        # spell one reading differently: devcode 2452 reports "Grid frequency"
+        # while the PI18 profile emits "Grid Frequency", and the hybrid overlay
+        # replaces the cloud point with the local one, title included. Matching
+        # the raw spelling left the entity unknown for as long as local
+        # telemetry flowed, which is what #53 saw as holes in its history.
+        self._source_title_keys = frozenset(
+            normalize_sensor_title(title)
+            for title in self._source_titles
+            if isinstance(title, str)
+        )
 
         sensor_config: dict[str, Any] = cast(
             dict[str, Any], SENSOR_TYPES.get(sensor_type, {})
@@ -270,11 +288,23 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         | UnitOfElectricPotential
         | UnitOfElectricCurrent
         | UnitOfFrequency
-        | UnitOfTemperature,
+        | UnitOfTemperature
+        | None,
         SensorDeviceClass | None,
         int | None,
     ]:
         """Return (native_unit, device_class, precision) for a given unit string."""
+        if not unit.strip():
+            # None, not "": Home Assistant tests for the presence of the
+            # unit_of_measurement attribute rather than for a value, so an
+            # empty string made every text and enum sensor we publish look
+            # like a continuous measurement. The logbook skips those, and its
+            # historical query filters them out, so Data Source and Operating
+            # mode had no Activity at all and drew an empty numeric chart
+            # instead of a state timeline (#53). Power Factor is the only
+            # unitless reading that really is continuous, and it says so with
+            # its state class.
+            return None, None, None
         if unit == UNITS["POWER"]:
             return UnitOfPower.WATT, SensorDeviceClass.POWER, None
         if unit == UNITS["POWER_KW"]:
@@ -403,7 +433,10 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         for data_point in device_data:
             title = data_point.get("title")
-            if isinstance(title, str) and title.strip() in self._source_titles:
+            if (
+                isinstance(title, str)
+                and normalize_sensor_title(title) in self._source_title_keys
+            ):
                 return data_point, devcode
 
         _LOGGER.debug(
@@ -427,6 +460,8 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         """Coerce API value into Home Assistant native value format."""
         if self._sensor_type in ENUM_SENSOR_TITLES:
             return self._coerce_enum_value(value)
+        if self._sensor_type in TEXT_SENSOR_TITLES:
+            return self._coerce_text_value(value)
         return self._coerce_numeric_value(value)
 
     def _coerce_enum_value(self, value: Any) -> str:
@@ -434,6 +469,13 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if value is not None and value != "":
             return str(value)
         return "Unknown"
+
+    @staticmethod
+    def _coerce_text_value(value: Any) -> str | None:
+        """Return a free-form reading as text, or None when it is absent."""
+        if value is None or value == "":
+            return None
+        return str(value)
 
     def _coerce_numeric_value(self, value: Any) -> float | str | None:
         """Attempt to coerce sensor value into a float when possible."""

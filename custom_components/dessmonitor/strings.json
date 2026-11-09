@@ -49,7 +49,7 @@
       },
       "local": {
         "title": "DessMonitor Local",
-        "description": "Read directly from one EyeBond-compatible collector. Home Assistant must have a fixed private LAN address. The callback request can briefly interrupt the collector's cloud connection.",
+        "description": "Read directly from one Eybond-compatible collector. Home Assistant must have a fixed private LAN address. The callback request can briefly interrupt the collector's cloud connection.",
         "data": {
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ip": "Collector LAN IP",
@@ -75,7 +75,7 @@
       },
       "local_advanced": {
         "title": "DessMonitor Local Advanced Setup",
-        "description": "Override the tunnel code or standard EyeBond ports only when automatic discovery does not work.",
+        "description": "Override the tunnel code or standard Eybond ports only when automatic discovery does not work.",
         "data": {
           "local_listen_ip": "Home Assistant LAN IP",
           "local_collector_ip": "Collector LAN IP",
@@ -181,6 +181,16 @@
           "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
         }
       }
+    }
+  },
+  "issues": {
+    "devcode_unsupported": {
+      "title": "Devcode {devcode} has no device mappings",
+      "description": "DessMonitor has no profile for devcode {devcode}, so its readings keep the vendor's own titles and {dropped} reading(s) reach no entity at all.\n\nTo have it added: open this integration's entry, choose **Download diagnostics**, and attach the file to a device support request. It contains no serial number, collector identifier or credential."
+    },
+    "devcode_partial": {
+      "title": "Devcode {devcode} is missing {dropped} reading(s)",
+      "description": "DessMonitor has a profile for devcode {devcode} and maps {resolved} of {total} readings, but {dropped} reading(s) that your collector labels with a unit reach no entity.\n\nTo have them added: open this integration's entry, choose **Download diagnostics**, and attach the file to a device support request. It names the missing readings and contains no serial number, collector identifier or credential."
     }
   }
 }

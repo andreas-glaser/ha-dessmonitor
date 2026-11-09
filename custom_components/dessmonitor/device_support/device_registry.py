@@ -8,9 +8,14 @@ It explicitly imports supported devcode modules and provides a unified interface
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
+
+# Vendor control field names arrive padded or doubly spaced, for example the
+# " Inverter Time" that devcode 6515 reports.
+_WHITESPACE = re.compile(r"\s+")
 
 # Registry of all supported devcodes
 # This is populated by importing devcode modules below
@@ -91,6 +96,18 @@ def _load_device_configurations() -> None:
 
         _register_devcode(518, config_518)
 
+        from .devcode_632 import DEVCODE_CONFIG as config_632
+
+        _register_devcode(632, config_632)
+
+        from .devcode_684 import DEVCODE_CONFIG as config_684
+
+        _register_devcode(684, config_684)
+
+        from .devcode_4743 import DEVCODE_CONFIG as config_4743
+
+        _register_devcode(4743, config_4743)
+
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
 
@@ -141,16 +158,89 @@ def map_sensor_title(devcode: int, api_title: str) -> str:
 
 
 def map_control_field(devcode: int, api_field_name: str) -> str:
-    """Map API control field name to standardized display name based on devcode."""
+    """Map an API control field name to its display name for this devcode.
+
+    The name is trimmed and its internal whitespace collapsed first, so a
+    padded vendor name neither reaches an entity nor has to be matched with its
+    padding in a devcode mapping.
+    """
+    field_name = _WHITESPACE.sub(" ", api_field_name).strip()
     config = get_devcode_config(devcode)
     if not config:
-        return api_field_name
+        return field_name
 
-    # Get control mappings for this devcode
     control_mappings = config.get("control_field_mappings", {})
+    return control_mappings.get(field_name, field_name)
 
-    # Apply mapping if exists, otherwise use original
-    return control_mappings.get(api_field_name, api_field_name)
+
+def _as_devcode(devcode: Any) -> int | None:
+    """Return a devcode as the registry keys it, or None when it is not one.
+
+    The cloud payload carries the devcode as a number for some accounts and as
+    a string for others, and both reach these lookups.
+    """
+    try:
+        return int(devcode)
+    except (TypeError, ValueError):
+        return None
+
+
+def devcode_has_temporal_controls(devcode: Any) -> bool:
+    """Return whether this devcode declares any temporal control.
+
+    Discovery asks before fetching a device's control fields, so a devcode
+    with no temporal control costs no cloud request.
+    """
+    return bool(_temporal_controls(devcode))
+
+
+def temporal_control_kind(devcode: Any, field_id: Any) -> str | None:
+    """Return the platform a control field belongs on: time, text or neither.
+
+    Only fields a devcode profile declares are reclassified. A field id means
+    different things on different devcodes, so the profile that reported it
+    owns the mapping, and an unlisted field stays on the number platform.
+    """
+    if not isinstance(field_id, str):
+        return None
+    return _temporal_controls(devcode).get(field_id)
+
+
+def _temporal_controls(devcode: Any) -> dict[str, str]:
+    """Return the temporal control fields a devcode profile declares."""
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config:
+        return {}
+    controls = config.get("temporal_controls")
+    return controls if isinstance(controls, dict) else {}
+
+
+def control_value_reading(devcode: Any, field_id: Any) -> str | None:
+    """Return the reading title that carries a control's value, if declared.
+
+    A collector may answer a control's own name with a live measurement rather
+    than the setting: devcode 2376 reports 229.8 V for the Output Voltage
+    control while the setpoint sits in its "Output Voltage Setting" reading
+    (#61). Seeding from the measurement would show a setting the inverter does
+    not have, and seeding from nothing leaves the field on the list of values
+    to read again on every cloud revision, each read a live request over the
+    collector's single-transaction link.
+
+    The profile that reported the collector declares the title, from committed
+    evidence. A value found this way is still checked against the control's
+    options before it reaches an entity, so a wrong declaration leaves the
+    control unread rather than showing a value the inverter never had.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config or not isinstance(field_id, str):
+        return None
+    declared = config.get("control_value_readings")
+    if not isinstance(declared, dict):
+        return None
+    title = declared.get(field_id)
+    return title if isinstance(title, str) and title.strip() else None
 
 
 def filter_control_options(
@@ -308,6 +398,70 @@ def get_parameter_sensor_names(devcode: int) -> set[str]:
 def needs_parameter_fetch(devcode: int) -> bool:
     """Check whether a devcode requires an extra parameter fetch."""
     return bool(get_parameter_sensor_names(devcode))
+
+
+def is_setting_reading(devcode: Any, title: str) -> bool:
+    """Return whether a profile declares this title a setting, not a reading.
+
+    Several collectors return the inverter's own setpoints in the telemetry
+    call: devcode 2452 reports the battery recharge, bulk and float voltages
+    beside the live readings, and five of them are the values of controls the
+    account already publishes as number and select entities. They carry a unit,
+    so the support report counted them among the readings that reach no entity
+    and told the owner that fourteen readings were missing when none were (#53).
+
+    A profile declares them explicitly, from committed evidence, rather than
+    being guessed at from the control template: an account whose control
+    template cannot be read still gets the right answer.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config:
+        return False
+    declared = config.get("setting_readings")
+    if not declared:
+        return False
+    return _normalize_title(title) in {_normalize_title(name) for name in declared}
+
+
+def absent_reading_reason(devcode: Any, title: str) -> str | None:
+    """Return why a profile declares this title carries no reading, or None.
+
+    Several collectors report every field their protocol defines whether the
+    hardware fills it or not: devcode 4743 reports the S and T phases of a unit
+    whose own ``InverterType`` reads ``Single-phase Grid-Connected Inverter``,
+    and a per-string PV power that stays at 0 while the string produces 1552 W.
+    They carry a unit, so the support report counted them among the readings
+    that reach no entity and told the owner that sixteen readings were missing
+    when none were (#58).
+
+    Mapping them instead would publish sensors that read zero forever, which is
+    worse than no sensor. So the profile states the decision and the evidence
+    for it, in one place the Repairs evaluation, the diagnostics download,
+    ``tools/analysis_coverage.py`` and the coverage guard all read. A guess
+    would hide a genuine gap, which is the failure this guard exists to catch,
+    so each entry names what was measured.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config:
+        return None
+    declared = config.get("absent_readings") or {}
+    normalized = _normalize_title(title)
+    for name, reason in declared.items():
+        if _normalize_title(name) == normalized:
+            return str(reason)
+    return None
+
+
+def is_absent_reading(devcode: Any, title: str) -> bool:
+    """Return whether a profile declares this title carries no reading."""
+    return absent_reading_reason(devcode, title) is not None
+
+
+def _normalize_title(title: Any) -> str:
+    """Compare titles the way the shared sensor resolver does."""
+    return " ".join(str(title).split()).casefold()
 
 
 def get_all_operating_modes() -> list[str]:

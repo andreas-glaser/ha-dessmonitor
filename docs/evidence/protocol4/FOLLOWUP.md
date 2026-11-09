@@ -2,11 +2,11 @@
 
 - [transport_followup.json](transport_followup.json): direct DessMonitor Local
   observations. Five exact telemetry-only FC03 replies, packet/time references,
-  false EyeBond lengths, recovery delays and six distinct mixed-request pairs
+  false Eybond lengths, recovery delays and six distinct mixed-request pairs
   (including the non-failing pair). Also includes the short Local5s load window.
 - [bridge_soak.json](bridge_soak.json): the later24.178h raw-RTU bridge run,
   with8522 complete cycles,119 errors and three recovered availability gaps.
-  It is not a DessMonitor/EyeBond stability test.
+  It is not a DessMonitor/Eybond stability test.
 
 The five reply byte strings were checked against the original PCAP packet
 payloads; Modbus CRC, IPv4 and TCP checksums were independently recomputed before

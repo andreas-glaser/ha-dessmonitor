@@ -1,5 +1,7 @@
 # DessMonitor / ShineMonitor for Home Assistant
 
+**Local or cloud monitoring for Eybond-collector solar inverters.**
+
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
@@ -12,7 +14,7 @@ Monitor your solar inverter and configure supported settings in Home Assistant t
 - Track solar production, battery status, grid use, and inverter health across multiple devices.
 - Adjust supported charging priorities, battery settings, and current limits from dashboards and automations.
 - Discover devices on your cloud account and set up the integration through the UI.
-- Optionally use faster, read-only local monitoring on compatible hardware, with cloud fallback in hybrid mode.
+- Read telemetry **locally** off the collector on your own network, every few seconds, with no cloud round trip. Local monitoring is read-only and available on compatible hardware; hybrid mode keeps the cloud as a fallback and for settings.
 
 ## Contents
 
@@ -42,19 +44,23 @@ Choose **DessMonitor (default)** or **ShineMonitor** as the account platform dur
 
 SmartClient for Solar is listed as **SmartClient** on Google Play.
 
+**One vendor, two portals:** both platforms are run by Shenzhen Eybond, which also makes the Wi-Fi and GPRS collectors. [dessmonitor.com](https://www.dessmonitor.com/) is their SmartESS platform and [shinemonitor.com](https://www.shinemonitor.com/) their SmartClient platform, and the integration speaks one API against two hostnames. Your choice here selects which platform holds your account, not a different protocol or feature set.
+
+**Other Eybond platforms:** Eybond runs portals for other product lines too, such as SmartLamp (`lampmonitor.com`) for lighting and SmartValue (`valueclouds.com`) for brand-operated deployments. Only DessMonitor and ShineMonitor carry solar and storage accounts, and setup can reach only those two hostnames, so an account held anywhere else cannot be configured. If your app signs you in at some other website, please open an issue naming that site rather than assuming one of these two platforms.
+
 **Rebranded app compatibility:** For WatchPower (Wi-Fi), Energy-Mate, and Fronus Solar, first check that your account signs in at [dessmonitor.com](https://www.dessmonitor.com/) and shows your collector. If it does, choose DessMonitor in setup. The app name alone does not confirm compatibility. The WatchPower links above are for Wi-Fi monitoring, not the separate WatchPower BLE app.
 
 <a id="current-device-support"></a>
 
 ## Supported Inverters
 
-The device profiles include known models from ANENJI, Axpert, BYD, EASUN, MUST, PowMr, SRNE, and WKS.
+The device profiles include known models from ANENJI, Axpert, BYD, EASUN, MUST, Novopal, PowMr, SRNE, and WKS.
 
-**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, ANENJI ANJ-11KW-48V-W-P, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, Aninerel 6.2KW 48V, Aninerel 4.2KW 24V, MUST PH19-6048 EXP, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
+**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, ANENJI ANJ-11KW-48V-W-P, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, Maxsky EM11000 11kW 48V, Aninerel 6.2KW 48V, Aninerel 4.2KW 24V, MUST PH19-6048 EXP, Novopal NP35PEU24, Panther Solar PES-3000TL-SS, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
 
-Other profiles cover rebranded Axpert PI18 inverters and units whose exact model is not yet recorded. See the [device support reference](custom_components/dessmonitor/device_support/README.md#currently-supported-collectors) for the full devcode list and known pairings.
+Devcodes 632, 684 and 4743 cover grid-connected PV inverters, which report strings, AC export and energy counters but no battery, charger or priority settings. Other profiles cover rebranded Axpert PI18 inverters and units whose exact model is not yet recorded. See the [device support reference](custom_components/dessmonitor/device_support/README.md#currently-supported-collectors) for the full devcode list and known pairings.
 
-Sensors, cloud controls, and local monitoring depend on the inverter and collector model. A listed model does not imply support for every feature or local protocol. Unrecognized devices may expose basic readings without model-specific names or value mappings. To help add support for yours, follow the [support request guide](docs/ADDING_DEVCODES.md#request-support).
+Sensors, cloud controls, and local monitoring depend on the inverter and collector model. A listed model does not imply support for every feature or local protocol. Unrecognized devices may expose basic readings without model-specific names or value mappings. If a reading or a setting is missing, Home Assistant raises a **Repairs** card naming the devcode and how many readings are unmapped, and the integration's **Download diagnostics** produces the file needed to add them, with credentials and identifiers removed. See the [support request guide](docs/ADDING_DEVCODES.md#request-support).
 
 ## Installation
 
@@ -68,7 +74,7 @@ With [HACS](https://www.hacs.xyz/) installed, use this button to open the reposi
 
 Alternatively, add `https://github.com/andreas-glaser/ha-dessmonitor` as a custom repository in HACS with category **Integration**.
 
-1. Find **DessMonitor / ShineMonitor** in HACS and download the latest stable release.
+1. Find **DessMonitor / ShineMonitor (Local & Cloud)** in HACS and download the latest stable release.
 2. Restart Home Assistant.
 3. Continue with [Configuration](#configuration).
 
@@ -124,13 +130,15 @@ Diagnostic sensors can also show configured values such as output priority, char
 
 ### Device Configuration Entities
 
-In cloud and hybrid modes, supported settings appear as **select**, **number**, and **button** entities on the inverter's device page. You can also use them in dashboards and automations.
+In cloud and hybrid modes, supported settings appear as **select**, **number**, **button**, **time**, and **text** entities on the inverter's device page. You can also use them in dashboards and automations.
 
 | Entity type | Examples, when supported |
 |---|---|
 | Select | Output priority, charger source priority, battery type, buzzer, output voltage/frequency, backlight, and power saving |
 | Number | Charging voltage targets, maximum charging currents, low-voltage and SOC protection thresholds, and equalization timing |
 | Button | Clear records, reset user settings, start equalization charging, and exit fault mode |
+| Time | Daily schedule boundaries such as secondary charging and output priority start and end times, in the inverter's own local time |
+| Text | The inverter's wall clock, as a `YYYY-MM-DD HH:MM:SS` calendar string, with no timezone conversion |
 
 Available controls, options, and numeric ranges come from the device. Control discovery runs in the background, so settings may appear after the first sensor readings. Changes always use the cloud API, including in hybrid mode; local-only mode provides sensors without configuration controls.
 

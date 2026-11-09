@@ -1,12 +1,15 @@
-"""DessMonitor Data Collector (devcode 6515)"""
+"""Eybond Data Collector (devcode 6515)"""
 
 from __future__ import annotations
 
 DEVICE_INFO = {
-    "name": "DessMonitor Data Collector (devcode 6515)",
-    "description": "DessMonitor data collector/gateway for single-phase inverters (WiFi)",
-    "manufacturer": "DessMonitor",
-    "known_inverters": ["ANENJI ANJ-HHS-11KW-48V-WIFI"],
+    "name": "Eybond Data Collector (devcode 6515)",
+    "description": "Eybond data collector/gateway for single-phase inverters (WiFi)",
+    "manufacturer": "Eybond",
+    "known_inverters": [
+        "ANENJI ANJ-HHS-11KW-48V-WIFI",
+        "Maxsky EM11000 11kW 48V",
+    ],
     "supported_features": [
         "real_time_monitoring",
         "energy_tracking",
@@ -66,6 +69,25 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "Current charging priority": "Charger Source Priority",
 }
 
+CONTROL_FIELD_MAPPINGS: dict[str, str] = {
+    # The collector reports this setting under its internal identifier. Name it
+    # after the equalization settings it sits between.
+    "bat_eq_time": "Eq charging time",
+}
+
+# Cloud control ids, not local Modbus write addresses. The four schedule
+# boundaries read as HH:MM, and the clock reads the same 19-character
+# "YYYY-MM-DD HH:MM:SS" string as 6544's sys_eybond_read_44023, both confirmed
+# by hardware reads reported for #57.
+TEMPORAL_CONTROLS: dict[str, str] = {
+    "bat_eybond_read_61": "time",
+    "bat_eybond_read_62": "time",
+    "bse_eybond_read_52": "time",
+    "bse_eybond_read_53": "time",
+    "sys_eybond_read_95": "text",
+}
+
+
 VALUE_TRANSFORMATIONS: dict = {}
 
 PARAMETER_SENSOR_NAMES: set[str] = set()
@@ -76,6 +98,8 @@ DEVCODE_CONFIG = {
     "charger_priority_mapping": CHARGER_PRIORITY_MAPPING,
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
+    "control_field_mappings": CONTROL_FIELD_MAPPINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
 }

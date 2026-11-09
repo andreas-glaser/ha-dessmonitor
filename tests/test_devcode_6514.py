@@ -26,8 +26,10 @@ from custom_components.dessmonitor.sensor import _build_sensor_entities
         ("Output Priority", "SUF", "Solar → Utility First"),
         ("Charger Source Priority", "OSO", "Only Solar"),
         ("Charger Source Priority", "SNU", "Solar and Utility"),
-        # Meaning not established by the API, manual or an observed reading.
-        ("Charger Source Priority", "CSO", "CSO"),
+        # The reporter's manual settles CSO as solar-first charging (#56).
+        ("Charger Source Priority", "CSO", "Solar First"),
+        # A code no evidence covers is still shown as the collector sent it.
+        ("Charger Source Priority", "XYZ", "XYZ"),
         ("Operating mode", "OffgridMode", "Off-grid Mode"),
         ("Operating mode", "Unrecognized mode", "Unrecognized mode"),
     ],
@@ -43,6 +45,7 @@ def test_observed_values_are_labelled(title: str, raw: str, expected: str) -> No
     [
         ("Output Priority", "SBU", "Solar → Battery → Utility"),
         ("Charger Source Priority", "OSO", "Only Solar"),
+        ("Charger Source Priority", "CSO", "Solar First"),
         ("Operating mode", "OffgridMode", "Off-grid Mode"),
     ],
 )

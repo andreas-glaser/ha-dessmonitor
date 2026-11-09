@@ -14,10 +14,23 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
-from .control_values import cloud_control_snapshot, control_value, find_control_value
-from .device_support.device_registry import filter_control_options, map_control_field
+from .control_values import (
+    cloud_control_snapshot,
+    control_value,
+    first_control_value,
+    option_key_for,
+)
+from .device_support.device_registry import (
+    control_value_reading,
+    filter_control_options,
+    map_control_field,
+)
 from .entity_loader import async_setup_dynamic_entities
-from .utils import create_device_info
+from .utils import (
+    async_migrate_control_unique_ids,
+    control_entity_suffix,
+    create_device_info,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +51,9 @@ async def async_setup_entry(
     known_entities: set[str] = set()
 
     async def _build() -> list[SelectEntity]:
-        return await _async_build_select_entities(coordinator, known_entities)
+        entities = await _async_build_select_entities(coordinator, known_entities)
+        async_migrate_control_unique_ids(hass, config_entry, "select", entities)
+        return entities
 
     await async_setup_dynamic_entities(
         hass,
@@ -141,6 +156,14 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         self._param_id = param_id
         self._last_cloud_sample: object = None
 
+        # Titles whose reading carries this control's value, most specific
+        # first. A profile adds one where the collector answers the control's
+        # own name with a live measurement rather than the setting (#61).
+        declared = control_value_reading(device_meta.get("devcode"), param_id)
+        self._value_titles: tuple[str, ...] = tuple(
+            title for title in (declared, self._api_name, self._param_name) if title
+        )
+
         self._all_options = dict(options_map)
         self._current_value = initial_value
         self._options_error: str | None = None
@@ -148,14 +171,19 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         # Initialize identity
         device_alias = device_meta.get("alias", "DessMonitor")
         self._attr_name = f"{device_alias} {name}"
-        unique_suffix = name.lower().replace(" ", "_").replace("-", "_")
-        self._attr_unique_id = f"{device_sn}_{unique_suffix}"
+        self._attr_unique_id = f"{device_sn}_{control_entity_suffix(name)}"
+        self._legacy_unique_id = f"{device_sn}_{control_entity_suffix(self._api_name)}"
         self._attr_device_info = create_device_info(
             device_sn, device_meta, collector_meta
         )
         self._attr_entity_category = EntityCategory.CONFIG
 
         self._refresh_options()
+
+    @property
+    def legacy_unique_id(self) -> str:
+        """Return the unique id this control carried before its name changed."""
+        return self._legacy_unique_id
 
     @property
     def available(self) -> bool:
@@ -212,15 +240,20 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         value = control_value(cached.get(self._param_id))
         if stamp != self._last_cloud_sample:
             self._last_cloud_sample = stamp
-            value = (
-                find_control_value(points, self._api_name, self._param_name) or value
-            )
-        if value is not None and (
-            value in self._all_options or value in self._all_options.values()
-        ):
-            self._current_value = value
-            if self._device_sn in coordinator.ctrl_value_cache:
-                cached[self._param_id] = value
+            value = first_control_value(points, *self._value_titles) or value
+        if value is not None:
+            # A vendor may report a setting in a spelling it does not offer,
+            # such as 60.0 for an option keyed "60.00". The option's own key is
+            # what a write has to send, so that is what is kept.
+            matched = option_key_for(self._all_options, value)
+            if matched is not None:
+                self._current_value = (
+                    value
+                    if value in self._all_options or value in self._all_options.values()
+                    else matched
+                )
+                if self._device_sn in coordinator.ctrl_value_cache:
+                    cached[self._param_id] = self._current_value
         self._refresh_options()
         super()._handle_coordinator_update()
 
@@ -254,8 +287,7 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
                 coordinator, self._device_sn
             )[0]
             self._attr_current_option = option
-            if self._device_sn in coordinator.ctrl_value_cache:
-                coordinator.ctrl_value_cache[self._device_sn][self._param_id] = option
+            coordinator.record_control_write(self._device_sn, self._param_id, option)
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set option for %s: %s", self._attr_unique_id, err)
