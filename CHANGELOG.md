@@ -23,11 +23,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They are additions, so nothing an installation already publishes changes.
 
 ### Fixed
+- Eight sensors that declare themselves diagnostic were published as ordinary
+  sensors: Rated Current, Rated Frequency, Rated Voltage, Rated Apparent
+  Power, Battery Rated Voltage, Grid Rated Current, Grid Rated Voltage and
+  Grid Reconnect Waiting Time. `SENSOR_TYPES` declared the category and the
+  sensor platform read a second, shorter list instead, which also named a
+  sensor that does not exist. The declaration in `SENSOR_TYPES` is now the
+  only one.
 - A local setup error in the diagnostics download printed the address it
   failed to bind, so a reporter's LAN address reached a public attachment
   while the same address was described rather than printed everywhere else in
   the file. Addresses in those messages now get the same subnet description,
   and the errno and port are kept (#66).
+
+### Upgrade notes: eight rating sensors move into Diagnostics
+- Rated Current, Rated Frequency, Rated Voltage, Rated Apparent Power, Battery
+  Rated Voltage, Grid Rated Current, Grid Rated Voltage and Grid Reconnect
+  Waiting Time move into the **Diagnostic** section of the device page, which
+  is where they always said they belonged. Rated Power was already there.
+- Nothing is renamed or removed. Entity ids, states, units and history are
+  unchanged, and automations, scripts and dashboard cards that reference them
+  keep working. The only visible effect is where the entities appear on the
+  device page, and that Home Assistant leaves a diagnostic entity out of the
+  cards it generates for you.
 
 ## [2.7.0] - 2026-11-09
 

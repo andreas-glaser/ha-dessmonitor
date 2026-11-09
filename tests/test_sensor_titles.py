@@ -86,3 +86,54 @@ def test_no_two_sensor_definitions_differ_only_in_case_or_spacing() -> None:
         "these SENSOR_TYPES keys name one reading twice: "
         f"{duplicates}. Keep one and let the resolver match the other spelling."
     )
+
+
+def test_every_diagnostic_sensor_says_so_in_one_place() -> None:
+    """``SENSOR_TYPES`` is the only place that decides the entity category.
+
+    A second list in ``sensor.py`` named seven titles while thirteen entries
+    declared ``entity_category``, so eight sensors that said they were
+    diagnostic were published as ordinary ones, and one name in that list was
+    not a sensor key at all. A reader who adds a declaration and sees nothing
+    happen is the failure this guards against.
+    """
+    from custom_components.dessmonitor import sensor as sensor_platform
+
+    assert not hasattr(sensor_platform, "DIAGNOSTIC_SENSOR_TITLES"), (
+        "the second list is back; keep the decision in SENSOR_TYPES, which "
+        "_apply_sensor_traits reads"
+    )
+
+    declared = {
+        key
+        for key, config in SENSOR_TYPES.items()
+        if config.get("entity_category") == "diagnostic"
+    }
+    # The nameplate ratings and the reconnect timer are the ones that were
+    # declared and not applied; the rest were in both places already.
+    assert {
+        "rated current",
+        "rated frequency",
+        "rated voltage",
+        "rated apparent power",
+        "battery rated voltage",
+        "grid rated current",
+        "grid rated voltage",
+        "Grid Reconnect Waiting Time",
+        "Output Voltage Setting",
+        "rated power",
+        "Software version",
+        "Output priority",
+        "Charger Source Priority",
+        "charger work enable",
+    } <= declared
+
+    unknown = sorted(
+        key
+        for key, config in SENSOR_TYPES.items()
+        if "entity_category" in config and config["entity_category"] != "diagnostic"
+    )
+    assert not unknown, (
+        f"these entries name a category nothing applies: {unknown}. "
+        "Only 'diagnostic' is honoured."
+    )

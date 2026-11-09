@@ -732,6 +732,7 @@ SENSOR_TYPES = {
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:cog",
+        "entity_category": "diagnostic",
     },
     "outpower": {
         "name": "Total PV Power",

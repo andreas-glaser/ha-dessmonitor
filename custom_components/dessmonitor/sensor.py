@@ -58,25 +58,6 @@ TEXT_SENSOR_TITLES = {
     "Charge Mode",
 }
 
-DIAGNOSTIC_SENSOR_TITLES = {
-    "Output Voltage Setting",
-    "Output priority",
-    "Charger Source Priority",
-    "Software version",
-    "charger work enable",
-    "rated power",
-    "Battery Type",
-    # Devcode 6489 (#66): the fan, the half-wave apparent power and the three
-    # figures the BMS reports about its own limits rather than the pack's
-    # state. A sensor is diagnostic here and in SENSOR_TYPES both, as
-    # "rated power" above is.
-    "Output Half Wave Apparent Power",
-    "Fan Speed",
-    "BMS Rated Capacity",
-    "BMS Max Charge Current",
-    "BMS CV Point Voltage",
-}
-
 
 def _normalize_devcode(value: Any) -> int | None:
     """Normalize raw devcode payloads to integers when possible."""
@@ -359,7 +340,12 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if icon:
             self._attr_icon = str(icon)
 
-        if self._sensor_type in DIAGNOSTIC_SENSOR_TITLES:
+        # SENSOR_TYPES says which sensors are diagnostic, and it is the only
+        # place that does. A second list here named seven titles while
+        # thirteen entries declared it, so the nameplate ratings and the grid
+        # reconnect timer were published as ordinary sensors, and one name in
+        # the list ("Battery Type") was not a sensor key at all.
+        if sensor_config.get("entity_category") == "diagnostic":
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
             _LOGGER.debug(
                 "Set entity category to DIAGNOSTIC for sensor %s", self._sensor_type
