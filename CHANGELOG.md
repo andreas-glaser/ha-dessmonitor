@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for devcode 2341 (EASUN hybrid and PowMr MPS-V plus 3.5 kW, both
+  24 V units) (#72, #73, thanks to @mathispp and @vrabi-cv for three
+  diagnostics downloads between them). Of the 45 readings that reached no
+  entity, 17 become sensors - state of charge, the grid voltage and frequency,
+  the PV voltage and charge power, output load, operating mode, grid status,
+  output priority and the eight nameplate ratings - and 24 are the inverter's
+  own setpoints, which the account already publishes as number and select
+  entities and which are now declared settings rather than counted as missing
+  readings. The battery-voltage dropdowns are narrowed to the reported 24 V or
+  48 V rating. The four that remain identify the hardware and carry no unit.
 - Support for devcode 6489 (JSD Solar 5.5 kW 48 V hybrid behind a
   `WFBLE.RTU.Bar` collector) with the mains, battery, AC output, PV and BMS
   sections of its telemetry mapped: 45 of its 71 readings resolve now against

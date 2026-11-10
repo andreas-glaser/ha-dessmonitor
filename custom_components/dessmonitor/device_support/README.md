@@ -12,13 +12,14 @@ This directory contains device profiles for inverters connected through DessMoni
 - **devcode 4743**: Single-phase grid-connected PV inverter with up to three strings, on ShineMonitor; inverter brand and model not yet confirmed. No battery readings. The R phase is mapped to the grid sensors, and the S and T phases, the S and T load voltages and the unconnected string powers are declared in `ABSENT_READINGS`: the reported hardware is single-phase with one string, so the collector returns those fields at zero and they are not dropped readings. Map them when a three-phase or multi-string unit on this devcode is reported.
 
 - **devcode 2334**: Known to pair with EASUN 6.2KW Hybrid Solar Inverter
+- **devcode 2341**: Known to pair with an EASUN hybrid and a PowMr MPS-V plus 3.5 kW, both 24 V units (#72, #73). Shares the Voltronic PI30 title and control vocabulary in `eybond_voltronic.py` with devcode 2477: the same reading spellings, the same nameplate ratings as diagnostic sensors, the same `SETTING_READINGS`, and the same 24 V / 48 V battery-voltage dropdown filtering.
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
 - **devcode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
 - **devcode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **devcode 2428**: Known to pair with Hybrid inverter
 - **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded). Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`, five of which the account also publishes as controls.
-- **devcode 2477**: Known to pair with Novopal NP35PEU24 (3500 VA, 24 V, 230 V / 50 Hz), confirmed from the nameplate in #61; also reported as a 48 V / 5 kW unit in #40, whose model is still unconfirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating. Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`; its reading titles and control-field names are not spelled the same.
+- **devcode 2477**: Known to pair with Novopal NP35PEU24 (3500 VA, 24 V, 230 V / 50 Hz), confirmed from the nameplate in #61; also reported as a 48 V / 5 kW unit in #40, whose model is still unconfirmed. Battery-voltage dropdowns use the reported 24 V / 48 V rating. Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`; its reading titles and control-field names are not spelled the same. Shares that vocabulary with devcode 2341 through `eybond_voltronic.py`.
 - **devcode 6416**: Known to pair with PowMr POW-HVM6.2M-48V-N
 - **devcode 6422**: Known to pair with Must PH19-6048 EXP
 - **devcode 6514**: Known to pair with ANENJI 5KW 48V Hybrid Solar Inverter, Aninerel 6.2KW 48V, and Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module). Reports each output leg (L1/L2) alongside the summed output.
@@ -89,20 +90,23 @@ device_support/
 └── README.md                  # This file
 ```
 
-## Example: Adding devcode 2341
+## Example: Adding devcode 9999
 
-1. Copy `devcode_template.py` to `devcode_2341.py`
+The number below is a placeholder; use your own. Check that no
+`devcode_<n>.py` already exists for it first.
+
+1. Copy `devcode_template.py` to `devcode_9999.py`
 2. Update device info:
    ```python
    DEVICE_INFO = {
-       "name": "Legacy DessMonitor Data Collector (2341)",
-       "description": "Older model DessMonitor data collector/gateway",
+       "name": "Eybond Data Collector (devcode 9999)",
+       "description": "Eybond data collector/gateway",
        # ...
    }
    ```
 3. Add actual mappings from your device's API responses
 4. Register in `device_registry.py`:
    ```python
-   from .devcode_2341 import DEVCODE_CONFIG as config_2341  
-   _register_devcode(2341, config_2341)
+   from .devcode_9999 import DEVCODE_CONFIG as config_9999
+   _register_devcode(9999, config_9999)
    ```
