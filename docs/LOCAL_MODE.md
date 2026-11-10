@@ -223,6 +223,15 @@ first.
   per inverter address and retains it for subsequent polling. Local controls
   are not provided. Sustained polling and reconnects still require hardware
   verification after installing this change.
+- A layout code register `184` reports that is none of `0`, `1` or `4` has no
+  register map of its own. The standard SMG `201..234` map is tried on it and
+  the inverter is kept only if that block decodes: a complete block, a known
+  operating mode, every field inside its range and at least one non-zero
+  voltage. That is the same bar firmware with no layout register has to clear,
+  and it is what the layout code alone cannot tell you - an ANENJI 5KW that
+  polled correctly for releases reports a code outside the three above. A
+  layout whose registers mean something else fails the block and is refused,
+  and the failure names the code the collector reported.
 
 PI30 reads its 17 or 21-field `QPIGS` status, and on a dual-MPPT inverter it
 also reads `QPIGS2` for the second string's current, voltage and charging
@@ -315,7 +324,9 @@ the collector, including when several collectors are discovered concurrently.
 An overall discovery deadline appears as a report-level `timeout`; the in-flight
 query appears as `cancelled` because the deadline interrupts it.
 An `unsupported_protocol` outcome means the inverter returned a protocol ID for
-which this driver has no verified field layout.
+which this driver has no verified field layout, and for SMG/Modbus that the
+standard register map did not decode on it either. The message names the code
+the collector reported.
 
 The combined analysis matches a unique hashed collector product number and
 inverter address, refuses ambiguous matches, and also writes mode `0600`.

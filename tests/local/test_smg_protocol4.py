@@ -222,7 +222,16 @@ async def test_mixed_collector_retains_each_inverters_register_layout():
     assert (2, 201, 34) in calls
 
 
-async def test_unsupported_layout_cannot_fall_back_to_standard_map():
+async def test_an_unknown_layout_is_refused_when_the_legacy_map_cannot_read_it():
+    """This hardware is protocol 4, so its legacy block has to be rejected.
+
+    An unknown layout code is not by itself proof that the legacy register map
+    is wrong - refusing on the code alone took local mode away from a
+    collector that had polled correctly for releases (#64) - so the map is
+    tried and the route kept only if it decodes. Here it must not: these are
+    protocol-4 registers, and reading them as the legacy block is the
+    mis-decode this check exists to prevent.
+    """
     replay = HardwareReplay(protocol=5)
 
     async def send(payload, code, address):
@@ -239,7 +248,50 @@ async def test_unsupported_layout_cannot_fall_back_to_standard_map():
         await discover_smg(send, collector_product_number="TEST", device_address=1)
     assert raised.value.reason == "unsupported_protocol"
     assert raised.value.details == {"layout_code": 5}
-    assert all(start == 184 for _, start, _ in replay.calls)
+    # The legacy block was read and rejected, and nothing beyond it was.
+    assert {start for _, start, _ in replay.calls} == {184, 201}
+
+
+async def test_an_unknown_layout_polls_when_the_legacy_map_does_read_it():
+    """The regression in #64: a working collector lost local mode to a number.
+
+    The ANENJI 5KW reports a layout code outside the three this driver has a
+    map for. Before the layout register was read at all it discovered and
+    polled correctly on the legacy map, and reading the register turned that
+    into "no supported read-only local protocol was identified" with every
+    probe query answered. A code with no map of its own now falls back, and the
+    live block it decodes is the evidence that the fallback is right.
+    """
+    legacy = {
+        201: 2,  # Mains
+        202: 2401,  # Grid Voltage 240.1 V
+        203: 5001,  # Grid Frequency 50.01 Hz
+        210: 2450,  # Output Voltage 245.0 V
+        212: 5000,  # Output Frequency 50.00 Hz
+        215: 482,  # Battery Voltage 48.2 V
+    }
+
+    async def send(payload, code, collector_address):
+        slave = payload[0]
+        start = int.from_bytes(payload[2:4], "big")
+        count = int.from_bytes(payload[4:6], "big")
+        if (code, collector_address, slave) != (1, 255, 1):
+            return b""
+        if start == 184:
+            return build_read_holding_response(slave, [11])
+        words = [legacy.get(start + offset, 0) for offset in range(count)]
+        return build_read_holding_response(slave, words)
+
+    (device,) = await discover_smg(
+        send, collector_product_number="TEST", device_address=1
+    )
+
+    assert device.route.protocol_number == 11
+    assert device.initial_values["Output Voltage"] == 245.0
+    # The layout the collector reported is recorded rather than rewritten.
+    assert device.metadata["layout_code"] == 11
+    # And a later poll keeps reading the map that decoded.
+    assert (await poll_smg(send, device.route))["Output Voltage"] == 245.0
 
 
 def test_original_false_positive_with_zero_voltages_is_rejected():
