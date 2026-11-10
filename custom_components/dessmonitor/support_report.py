@@ -106,6 +106,7 @@ def build_support_report(
     control_fields: dict[str, Any] | None = None,
     parameters: dict[str, Any] | None = None,
     local: dict[str, Any] | None = None,
+    summary_not_merged: list[dict[str, Any]] | None = None,
     api_profile: str | None = None,
     integration_version: str | None = None,
     source: str = "integration_diagnostics",
@@ -212,6 +213,22 @@ def build_support_report(
         report["parameters"] = _redacted_controls(parameters)
     if local is not None:
         report["local"] = local
+    if summary_not_merged:
+        # The cloud's own figure for a sensor this device feeds from its own
+        # telemetry. The merge publishes a dashboard field only where no
+        # reading already reaches that entity name, so these are the values
+        # Home Assistant decided against - and the vendor app shows them. When
+        # an owner reports that the app's daily energy differs from Home
+        # Assistant's, this is the comparison, in the file they already sent
+        # (#58).
+        report["summary_not_merged"] = [
+            {
+                "title": str(point.get("title", "")),
+                "value": _as_text(point.get("value", point.get("val"))),
+                "unit": str(point.get("unit") or ""),
+            }
+            for point in summary_not_merged
+        ]
 
     report["checksum"] = report_checksum(report)
     return report

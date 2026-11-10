@@ -97,3 +97,38 @@ def test_inverter_status_is_not_an_enum_sensor(hass) -> None:
     assert sensor.native_value == "Normal"
     assert sensor.device_class != "enum"
     assert sensor.options is None
+
+
+def test_the_idle_phases_withdraw_the_missing_reading_card() -> None:
+    """The check that decides whether the Repairs card stays up.
+
+    On 2.7.0 this collector's S and T phases and its three line voltages all
+    carry a unit and all read 0.0, and the reporter was told seven readings
+    were missing while every reading their inverter fills reached an entity
+    (#58). Mapping them would publish five voltage sensors and two current
+    sensors that read zero forever.
+    """
+    import json
+    from pathlib import Path
+
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    evidence = (
+        Path(__file__).resolve().parents[1]
+        / "docs/evidence/devcodes/analysis_632_single_phase.json"
+    )
+    with evidence.open(encoding="utf-8") as handle:
+        payload = json.load(handle)
+    (device,) = [
+        device for device in payload["data"]["devices"] if device["devcode"] == DEVCODE
+    ]
+    readings = [
+        {"title": row["title"], "val": row["value"], "unit": row["unit"]}
+        for row in device["readings"]
+    ]
+
+    support = build_support_report(devcode=DEVCODE, readings=readings)["support"]
+
+    assert support["unresolved_with_unit"] == []
+    assert support["status"] == "supported"
+    assert support["excluded"]["declared_absent"] == 7

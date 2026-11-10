@@ -397,6 +397,13 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         # control's own options matches. They are not values the entities can
         # show, and they are not an absence either.
         self.ctrl_unmatched_values: dict[str, dict[str, str]] = {}
+        # Summary points the dashboard endpoint returned that the merge did not
+        # publish, because a reading the device sent already reaches an entity
+        # of that name. They are the cloud's own figure for a sensor Home
+        # Assistant feeds from the device instead, so they are the one thing
+        # that answers "the vendor app shows a different daily energy" from an
+        # attached file rather than a round trip (#58).
+        self.summary_points_not_merged: dict[str, list[dict[str, Any]]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_field_failures: dict[str, int] = {}
@@ -1258,6 +1265,11 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         if not summary_data:
             return
 
+        # Rebuilt from this fetch rather than accumulated, so a device the
+        # account no longer lists leaves nothing behind. A failed fetch keeps
+        # what the last one recorded, above.
+        self.summary_points_not_merged = {}
+
         for device_sn, device_info in data.items():
             summary_points = summary_data.get(device_sn, {}).get("data", [])
             if not summary_points:
@@ -1311,6 +1323,23 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     or map_sensor_title(devcode, point.get("title"))
                     not in existing_titles
                 )
+            ]
+
+            # What the merge decided against, for the diagnostics download. A
+            # dropped point is the cloud's own figure for a sensor the device
+            # feeds, and the two disagreeing is a report in its own right: on
+            # devcode 632 in #58 the app's daily energy stood at 1.0 kWh
+            # against the inverter's own 0.8, and nothing in the file said what
+            # the cloud had sent.
+            kept_titles = {point.get("title") for point in unique_summary_points}
+            self.summary_points_not_merged[device_sn] = [
+                {
+                    "title": str(point.get("title")),
+                    "value": str(point.get("val")),
+                    "unit": str(point.get("unit") or ""),
+                }
+                for point in summary_points
+                if point.get("title") and point.get("title") not in kept_titles
             ]
 
             if not unique_summary_points:
@@ -1411,6 +1440,7 @@ async def async_get_device_diagnostics(
         device_address=device_info.get("device", {}).get("devaddr"),
         control_fields=control_config,
         parameters=device_parameters,
+        summary_not_merged=coordinator.summary_points_not_merged.get(device_sn),
         api_profile=resolve_api_profile(dict(entry.data)),
         integration_version=VERSION,
         source="device_diagnostics",
@@ -1748,6 +1778,7 @@ async def _build_device_support_report(
         device_address=device_meta.get("devaddr"),
         control_fields=control_fields,
         parameters=parameters,
+        summary_not_merged=coordinator.summary_points_not_merged.get(serial),
         api_profile=resolve_api_profile(dict(entry.data)),
         integration_version=VERSION,
     )

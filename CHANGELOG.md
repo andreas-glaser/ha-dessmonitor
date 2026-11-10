@@ -75,7 +75,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remaining and rated capacity, its charge-current limit and its CV point.
   They are additions, so nothing an installation already publishes changes.
 
+- The diagnostics download records the dashboard figure the summary merge
+  decided against. The plant summary carries the cloud's own `energyToday`,
+  `energyTotal` and `outpower`, and a device whose own telemetry already
+  reaches those entities keeps its own reading, so the cloud's figure was
+  dropped and left no trace. It is what the vendor app displays, which makes
+  it the comparison every "the app shows a different daily energy" report
+  needs, and the file it is now in is the one reporters already attach
+  (#58, #63).
+
 ### Fixed
+- Devcode 632 told owners that seven readings were missing when none were. The
+  collector reports the R, S and T phases and the RS, ST and TR line voltages
+  whatever the hardware is, and on a single-phase inverter the R phase carries
+  the measurement while the other seven read 0.0 and carry a unit. They are
+  now declared absent on this devcode, as devcode 4743's idle phases are, so
+  they count as neither mapped nor dropped and the Repairs card is withdrawn.
+  Mapping them would have published five voltage and two current sensors that
+  read zero forever. No entity is added, renamed or removed (#58, thanks to
+  @shanidks for two diagnostics downloads from 2.7.0).
 - Devcode 2451 told owners that sixteen readings were missing when none were.
   Seven are the inverter's nameplate ratings, which now become diagnostic
   sensors; seven are its own setpoints, which the account publishes as number

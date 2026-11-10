@@ -1,0 +1,358 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.7.0",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "api_profile": "shinemonitor_solar"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 7,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": false
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "shinemonitor_solar",
+        "integration_version": "2.7.0",
+        "devcode": 632,
+        "device_identity": "sha256:f00b970dacb9",
+        "collector_identity": "sha256:355c42c5d3b9",
+        "device_address": 1,
+        "support": {
+          "status": "partial",
+          "profile": "Eybond Data Collector (devcode 632)",
+          "known_inverters": [],
+          "resolved": 24,
+          "unresolved": 15,
+          "total": 39,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 24,
+          "unresolved_with_unit": [
+            {
+              "title": "Grid line voltage RS",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Grid line voltage ST",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Grid line voltage TR",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Grid S current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "Grid S voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Grid T current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "Grid T voltage",
+              "unit": "V",
+              "sample": "0.0"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Custom standard",
+            "DCI",
+            "Equipment type",
+            "GFCI",
+            "ISO",
+            "Manufacturer's name",
+            "Security type"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-10 09:08:48",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Manufacturer's name",
+            "value": "20202020202020000000000000000000",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "SN",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Equipment type",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Equipment type",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Security type",
+            "value": "IEC 61727",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Custom standard",
+            "value": "Custom standard",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Output Power",
+            "value": "925",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "Output S",
+            "value": "914",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "Output Q",
+            "value": "122",
+            "unit": "VA",
+            "resolved_key": "Output Reactive Power"
+          },
+          {
+            "title": "Output PF",
+            "value": "1.00",
+            "unit": "",
+            "resolved_key": "Power Factor"
+          },
+          {
+            "title": "Instrument power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Meter Power"
+          },
+          {
+            "title": "Energy today",
+            "value": "1.1",
+            "unit": "kWh",
+            "resolved_key": "Energy Today"
+          },
+          {
+            "title": "energy_total",
+            "value": "5406",
+            "unit": "kWh",
+            "resolved_key": "Energy Total"
+          },
+          {
+            "title": "cumulative time",
+            "value": "4810",
+            "unit": "h",
+            "resolved_key": "Operating Time"
+          },
+          {
+            "title": "Inverter status",
+            "value": "Normal",
+            "unit": "",
+            "resolved_key": "Inverter Status"
+          },
+          {
+            "title": "Waiting time",
+            "value": "0",
+            "unit": "S",
+            "resolved_key": "Grid Reconnect Waiting Time"
+          },
+          {
+            "title": "PV1 voltage",
+            "value": "230.1",
+            "unit": "V",
+            "resolved_key": "PV1 Voltage"
+          },
+          {
+            "title": "PV1 current",
+            "value": "4.2",
+            "unit": "A",
+            "resolved_key": "PV1 Current"
+          },
+          {
+            "title": "PV2 voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "PV2 Voltage"
+          },
+          {
+            "title": "PV2 current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "PV2 Current"
+          },
+          {
+            "title": "PV3 voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "PV3 Voltage"
+          },
+          {
+            "title": "PV3 current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "PV3 Current"
+          },
+          {
+            "title": "Grid R voltage",
+            "value": "240.7",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "Grid R current",
+            "value": "3.9",
+            "unit": "A",
+            "resolved_key": "grid current"
+          },
+          {
+            "title": "Grid S voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid S current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid T voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid T current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid line voltage RS",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid line voltage ST",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid line voltage TR",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid frequency",
+            "value": "50.00",
+            "unit": "HZ",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "bus voltage",
+            "value": "390.7",
+            "unit": "V",
+            "resolved_key": "Bus Voltage"
+          },
+          {
+            "title": "ISO",
+            "value": "29709",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "DCI",
+            "value": "62",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "GFCI",
+            "value": "5",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Internal ambient temperature",
+            "value": "43.8",
+            "unit": "°C",
+            "resolved_key": "Ambient Temperature"
+          },
+          {
+            "title": "Internal radiator temperature",
+            "value": "44.9",
+            "unit": "°C",
+            "resolved_key": "Inverter Radiator Temperature"
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [],
+        "parameters": [],
+        "checksum": "52e25ce8974505015ea6e755572cd90676b40b279c6eb28d4fa85854b0e49bb3",
+        "control_reads": {
+          "fields": 0,
+          "without_a_value": 0,
+          "rounds_that_recovered_nothing": 0,
+          "rounds_allowed": 3,
+          "still_trying": true,
+          "last_round_went_unanswered": false
+        },
+        "data_source": "Cloud",
+        "last_update": "2026-11-10 09:08:48",
+        "control_error": "Request timed out"
+      }
+    ]
+  }
+}
