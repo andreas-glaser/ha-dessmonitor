@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0-rc.1] - 2026-11-10
+
+First release candidate for 2.8.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.8.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**Testing focus:** two changes in this candidate cannot be verified without
+hardware, and both are the reason it is a candidate rather than a release.
+
+Energy readings a collector labels in watt-hours are now scaled to the
+kilowatt-hours its sensor measures. That is the #71 fix - two devcode 2449
+inverters reporting 8466 kWh generated in a day - and it is deliberately
+generic, so it applies to any collector that labels a reading that way rather
+than to one devcode. If your energy figures were already correct they must stay
+correct: a daily or lifetime figure that suddenly reads a thousand times too
+low is the thing to report, and please report it with a diagnostics download.
+The upgrade note below covers clearing the spike the old inflated readings left
+in long-term statistics.
+
+Hybrid installations whose collector answers on an RS485 address the cloud does
+not record for it were collecting local telemetry and discarding it in silence.
+If your `Data Source` sensor read `Cloud` while local polling looked healthy,
+or if you set **Inverter address** by hand to make local mode work, this
+candidate should pair it on its own and `Data Source` should read `Local`.
+
+Beyond those: devcodes 2341, 2548 and 6489 gain support for the first time, and
+2451, 2452, 632 and 6514 gain declarations that withdraw a "readings are
+missing" card without changing any entity. An owner of any of those confirming
+that their sensors read sensibly would settle what one diagnostics file each
+currently rests on. A device that showed two entities with the same name now
+publishes one, and eight rating sensors move into the Diagnostic section of the
+device page; the upgrade notes below say what to expect from each.
+
 ### Added
 - Support for devcode 2341 (EASUN hybrid and PowMr MPS-V plus 3.5 kW, both
   24 V units) (#72, #73, thanks to @mathispp and @vrabi-cv for three
@@ -180,11 +211,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   readings taken after the update are correct and unaffected.
 
 ### Upgrade notes: a duplicated sensor name stops being published
-- If a device of yours already shows two entities with one name, the one that
-  was created second stops being published and will show as unavailable until
-  you delete it. It is the one that was reading a field the vendor leaves
-  unset, typically 0. The reading you want keeps its entity id and its
-  history.
+- If a device of yours already shows two entities with one name, the one fed by
+  the summary field stops being published and will show as unavailable until you
+  delete it. It is the one that was reading a field the vendor leaves unset,
+  typically 0, and the measured reading is kept.
+- Which of the two holds the plain entity id depends on which existed when the
+  pair was first created. Normally that is the measured reading, so it keeps its
+  entity id and its history and nothing needs doing. If your device reported
+  only the summary field at the time - the 0 kWh case - then the surviving
+  entity is the one Home Assistant suffixed `_2`, and dashboard cards, the
+  energy dashboard and automations pointing at the unsuffixed id need
+  repointing at it.
+
+### Upgrade notes: local telemetry that was being discarded starts publishing
+- On a hybrid installation whose collector answers on an RS485 address the cloud
+  does not record for it, local readings were collected and dropped. Those
+  devices start publishing local values where they were publishing cloud values,
+  and `Data Source` changes from `Cloud` to `Local`. That is what `prefer_local`
+  was asked for, and no entity is added, renamed or removed.
+- Local and cloud can disagree slightly about a cumulative counter, because they
+  are read at different intervals. Energy Total is held at its high mark across
+  a source switch rather than walking backwards, so the energy dashboard is not
+  affected.
+- An installation whose addresses already agree is untouched: pairing by serial
+  and by equal address is unchanged and still tried first. If you set **Inverter
+  address** by hand to work around this, leave it - it keeps working, and you can
+  return it to `0` once you are on this release.
 
 ### Upgrade notes: eight rating sensors move into Diagnostics
 - Rated Current, Rated Frequency, Rated Voltage, Rated Apparent Power, Battery
