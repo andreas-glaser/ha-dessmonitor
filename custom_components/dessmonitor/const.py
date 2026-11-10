@@ -1159,6 +1159,16 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:gauge",
     },
+    # What the solar charge controller measures the battery at, which Axpert
+    # hardware reports beside the inverter's own battery voltage and which can
+    # differ from it while charging (devcode 2451, #74).
+    "Battery Voltage From SCC": {
+        "name": "Battery Voltage From SCC",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
     "Battery Charging Voltage": {
         "name": "Battery Charging Voltage",
         "unit": UNITS["VOLTAGE"],

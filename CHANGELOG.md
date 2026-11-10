@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   phase A by name while prefixing the other two `L2:` and `L3:`, so all three
   are brought into one naming, and it reports the inverter's own output
   current separately from what the load draws, which differ on bypass.
+- A canonical name for the battery voltage a solar charge controller measures,
+  which Axpert hardware reports beside the inverter's own battery voltage and
+  which can differ from it while charging (#74).
 - Fifteen sensor readings that had no canonical name, all for three-phase
   hardware: the third phase's voltage, current, active and apparent power and
   load percentage, the load current on each of the three phases, the mains
@@ -73,6 +76,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They are additions, so nothing an installation already publishes changes.
 
 ### Fixed
+- Devcode 2451 told owners that sixteen readings were missing when none were.
+  Seven are the inverter's nameplate ratings, which now become diagnostic
+  sensors; seven are its own setpoints, which the account publishes as number
+  and select entities and which are now declared settings; and the remaining
+  two are real readings that had nowhere to go - the grid input current and the
+  battery voltage the solar charge controller measures. The six titles still
+  unmapped identify the hardware and carry no unit (#74, thanks to
+  @FifoTheHein for the diagnostics download).
 - Energy readings a collector labels in watt-hours were published on sensors
   that measure kilowatt-hours, so the value reached Home Assistant a thousand
   times too large and went into the energy dashboard and long-term statistics
