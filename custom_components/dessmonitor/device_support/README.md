@@ -15,7 +15,8 @@ This directory contains device profiles for inverters connected through DessMoni
 - **devcode 2341**: Known to pair with an EASUN hybrid and a PowMr MPS-V plus 3.5 kW, both 24 V units (#72, #73). Shares the Voltronic PI30 title and control vocabulary in `eybond_voltronic.py` with devcode 2477: the same reading spellings, the same nameplate ratings as diagnostic sensors, the same `SETTING_READINGS`, and the same 24 V / 48 V battery-voltage dropdown filtering.
 - **devcode 2361**: Known to pair with SRNE SR-EOV24-3.5K-5KWh
 - **devcode 2376**: Known to pair with POW-HVM6.2K-48V-LIP
-- **devcode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V
+- **devcode 2449**: Known to pair with EASUN 8/11KWA, WKS Evo MAX II 10kVA 48V. Reports both generation counters in watt-hours; the registry scales them from that label.
+- **devcode 2548**: Known to pair with an SPI-12K-H3 12 kW three-phase hybrid whose own `Equipment type` reads ASF48120S260-H (#67). The first three-phase profile: it names phase A by name and the other two with `L2:` / `L3:` prefixes, and reports the inverter's output current separately from the load current. Its four battery energy counters arrive in watt-hours.
 - **devcode 2451**: Known to pair with Axpert MKS IV 5600VA
 - **devcode 2428**: Known to pair with Hybrid inverter
 - **devcode 2452**: Known to pair with Axpert (PI18 protocol, rebranded). Reports its nameplate ratings as diagnostic sensors and declares the setpoints it returns among the readings in `SETTING_READINGS`, five of which the account also publishes as controls.

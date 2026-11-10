@@ -18,6 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entities and which are now declared settings rather than counted as missing
   readings. The battery-voltage dropdowns are narrowed to the reported 24 V or
   48 V rating. The four that remain identify the hardware and carry no unit.
+- Support for devcode 2548, an SPI-12K-H3 12 kW three-phase hybrid and the
+  first three-phase unit with a profile (#67, thanks to @pletik11-sketch for
+  the diagnostics download). 65 of its 74 readings reach a sensor now against
+  14 before, and every reading it labels with a unit reaches one. It names
+  phase A by name while prefixing the other two `L2:` and `L3:`, so all three
+  are brought into one naming, and it reports the inverter's own output
+  current separately from what the load draws, which differ on bypass.
+- Fifteen sensor readings that had no canonical name, all for three-phase
+  hardware: the third phase's voltage, current, active and apparent power and
+  load percentage, the load current on each of the three phases, the mains
+  voltage on each, battery charging power, the daily and accumulated
+  mains-charging ampere-hour counters, and the summed phase voltage this
+  collector reports beside the individual phases. They are additions, so
+  nothing an installation already publishes changes.
 - Support for devcode 6489 (JSD Solar 5.5 kW 48 V hybrid behind a
   `WFBLE.RTU.Bar` collector) with the mains, battery, AC output, PV and BMS
   sections of its telemetry mapped: 45 of its 71 readings resolve now against
