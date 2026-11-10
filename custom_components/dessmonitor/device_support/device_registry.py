@@ -24,6 +24,15 @@ _DEVICE_REGISTRY: dict[int, dict[str, Any]] = {}
 # Transformations run for every sensor read; report missing support once per run.
 _WARNED_UNSUPPORTED_DEVCODES: set[int] = set()
 
+# Reading scales already reported, as (devcode, title). This runs for every
+# reading on every refresh, so the log line is emitted once per reading rather
+# than per sample. It is the only trace a scale leaves: the support report
+# records the reading with its converted value and the sensor's own unit, so a
+# download cannot show that a conversion happened. If a collector ever labels
+# a reading Wh while sending kilowatt-hours, this is the line that says which
+# reading was divided and on whose authority.
+_REPORTED_SCALES: set[tuple[Any, str]] = set()
+
 
 def _register_devcode(devcode: int, config: dict[str, Any]) -> None:
     """Register a devcode configuration."""
@@ -391,6 +400,28 @@ def normalize_reading_scale(devcode: Any, transformed_data: dict[str, Any]) -> N
         # Not a number, so not a reading a scale applies to. The support
         # report still records it as the collector sent it.
         return
+    seen = (devcode, _normalize_title(title))
+    if seen not in _REPORTED_SCALES:
+        _REPORTED_SCALES.add(seen)
+        _LOGGER.debug(
+            "Devcode %s reports %s in %s and the sensor publishes %s, so its "
+            "values are scaled by %s/%s (%s became %s). The unit the collector "
+            "declared is what decided this%s",
+            devcode,
+            title,
+            declared,
+            canonical,
+            numerator,
+            denominator,
+            value,
+            scaled,
+            (
+                ""
+                if transformed_data.get("unit")
+                else "; the payload carried no unit, so the profile's own "
+                "declaration was used"
+            ),
+        )
     transformed_data["val"] = scaled
     # The reading now carries the unit its sensor publishes, so the support
     # report and a second pass over the same point both agree with the entity.

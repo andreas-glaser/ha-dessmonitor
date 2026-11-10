@@ -133,3 +133,30 @@ def test_an_unlisted_unit_pair_is_left_alone() -> None:
 
     assert point["val"] == "15.0452"
     assert point["unit"] == "MWh"
+
+
+def test_a_scale_is_reported_once_per_reading(caplog) -> None:
+    """The only trace a conversion leaves, and a hot path, so once per reading.
+
+    A download records the converted value against the sensor's own unit, so
+    it cannot show that a conversion happened. If a collector ever labels a
+    reading Wh while sending kilowatt-hours, this line names which reading was
+    divided and what decided it.
+    """
+    import logging
+
+    from custom_components.dessmonitor.device_support import device_registry
+
+    device_registry._REPORTED_SCALES.clear()
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.dessmonitor.device_support"
+    ):
+        for _ in range(3):
+            apply_devcode_transformations(
+                2449, _reading("Total generation", "15045200", "Wh")
+            )
+
+    scaled = [record for record in caplog.records if "are scaled by" in record.message]
+    assert len(scaled) == 1
+    assert "Energy Total" in scaled[0].getMessage()
+    assert "Wh" in scaled[0].getMessage()
