@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .eybond_ess import SETTING_READINGS
+
 DEVICE_INFO = {
     "name": "Eybond Data Collector (devcode 6514)",
     "description": "Eybond data collector/gateway for dual-output inverters",
@@ -67,64 +69,18 @@ VALUE_TRANSFORMATIONS: dict = {}
 # The coordinator selects parameters by their API name, not their ID.
 PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
-# Setpoints this collector returns among the telemetry. Every one is spelled
-# exactly as a control field on the same device, and carries the value that
-# control reads back, so each already reaches Home Assistant as a number or
-# select entity, or, for "Output mode", is a control with a single option and
-# nothing to choose. A sensor for them would be a second entity for one
-# setting. The evidence is the ANENJI 4.2KW 24V diagnostics download in
+# The setpoints this collector returns among the telemetry, shared with the
+# other Eybond ESS collectors in ``eybond_ess``. Every one is spelled exactly
+# as a control field on the same device and carries the value that control
+# reads back, so each already reaches Home Assistant as a number or select
+# entity, or, for "Output mode", is a control with a single option and nothing
+# to choose. A sensor for them would be a second entity for one setting. The
+# evidence is the ANENJI 4.2KW 24V diagnostics download in
 # ``docs/evidence/devcodes/analysis_6514_anenji_4200.json``: of its 76 counted
 # titles 38 resolved, and the support report told the owner twenty readings
 # were missing when every one of the twenty was a setting. The earlier CLI
 # analysis recorded a unit for its first twenty samples only, which is why the
 # coverage guard never saw them.
-#
-# "Equipment type" and "Protocol Number" are left out on purpose: they describe
-# the hardware rather than configure it, carry no unit, and are not controls.
-# "Output Voltage Setting" is not listed either: it already resolves to its own
-# sensor, which an installation publishes today and must keep.
-SETTING_READINGS: set[str] = {
-    # Battery charging and protection setpoints, published as number entities.
-    "Battery overvoltage protection point",
-    "Maximum charging voltage",
-    "Floating charge voltage",
-    "Mains mode battery discharge recovery point",
-    "Mains mode battery low voltage protection point",
-    "Off-grid mode battery low voltage protection point",
-    "Off-grid mode OP1 battery low voltage protection point",
-    "Constant pressure to float waiting time",
-    "Maximum charging current",
-    "Maximum mains charging current",
-    "Maximum discharge current protection",
-    "Low DC Protection SOC In AC Mode",
-    "Low DC Recovery SOC In AC Mode",
-    # The vendor pads this title with two spaces; titles compare collapsed.
-    "SOC Protection value of OP1 In off-grid mode",
-    "Battery Low Cut Off SOC",
-    "OP2 overload alarm setting",
-    # Equalization setpoints. "bat_eq_time" is the vendor's own title.
-    "Eq charging voltage",
-    "bat_eq_time",
-    "Eq timeout exit",
-    "Eq charging interval",
-    # Mode and behaviour settings, published as select entities.
-    "Battery Type",
-    "Battery Eq mode enable",
-    "Buzzer Mode",
-    "LCD backlight",
-    "LCD automatically returns to the homepage",
-    "Input Mode",
-    "Output mode",
-    "Output Frequency Setting",
-    "Overload automatic restart",
-    "Automatic restart when over temperature",
-    "Overload transfer to bypass enable",
-    "Automatic mains output enable",
-    "Automatic activation for lithium battery",
-    "Whether the OP2 allows the output",
-    "Boot method",
-    "Remote switch",
-}
 
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
