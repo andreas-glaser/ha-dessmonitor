@@ -76,9 +76,7 @@ from .support_report import UNSUPPORTED as SUPPORT_UNSUPPORTED
 from .support_report import (
     build_support_report,
     device_support_status,
-    is_attribute_reading,
     report_checksum,
-    resolved_key_for,
     short_identity,
 )
 
@@ -1395,8 +1393,31 @@ async def async_get_device_diagnostics(
     if control_error:
         diagnostics["battery_config_error"] = control_error
 
+    # The same support report the entry download carries, built from data
+    # already in hand so this costs no extra API call. Home Assistant offers
+    # "Download diagnostics" on the device as well as on the entry, and a
+    # reporter attaches whichever button they found: four of the five files on
+    # the devcode issues open when this was written were device downloads, and
+    # none of them was usable evidence. This file named the unmapped readings
+    # and nothing else - no value, no unit, no control-field correlation - so
+    # every one of them cost a round trip asking for the other file, and
+    # ``tools/triage.py`` rejected them as "not a devcode analysis or
+    # diagnostics download". Both downloads now answer the same questions.
+    diagnostics["support_report"] = build_support_report(
+        devcode=device_info.get("device", {}).get("devcode"),
+        readings=device_data,
+        device_serial=device_sn,
+        collector_product_number=device_info.get("collector", {}).get("pn"),
+        device_address=device_info.get("device", {}).get("devaddr"),
+        control_fields=control_config,
+        parameters=device_parameters,
+        api_profile=resolve_api_profile(dict(entry.data)),
+        integration_version=VERSION,
+        source="device_diagnostics",
+    )
+
     diagnostics["summary"] = _build_diagnostics_summary(
-        device_info.get("device", {}).get("devcode"), device_data, diagnostics
+        device_data, diagnostics, diagnostics["support_report"]["support"]
     )
 
     _LOGGER.debug(
@@ -2042,9 +2063,9 @@ def _extract_sensor_value(
 
 
 def _build_diagnostics_summary(
-    devcode: Any,
     device_data: list[dict[str, Any]],
     diagnostics: dict[str, Any],
+    support: dict[str, Any],
 ) -> dict[str, Any]:
     """Create diagnostics summary block.
 
@@ -2056,25 +2077,19 @@ def _build_diagnostics_summary(
     pair is the first thing worth knowing when a reporter says a reading is
     missing.
 
-    Coverage is decided by ``support_report.resolved_key_for``, the single
-    predicate the sensor platform, this summary, the hub report and the
-    maintainer tooling all ask.
+    Both come from the support report in the same file rather than being
+    counted again here, so the two sections cannot disagree. They used to: this
+    summary left out only the attribute readings, while the report also leaves
+    out a setpoint a profile declares and a field the hardware never fills, so
+    a devcode 6514 download said thirty-eight readings reached no sensor on
+    the same page as a report that said twenty (#68, #69).
     """
-    resolved: set[str] = set()
-    unresolved: list[str] = []
-    for data_point in device_data:
-        title = data_point.get("title")
-        if not isinstance(title, str) or not title.strip():
-            continue
-        key = resolved_key_for(devcode, data_point)
-        if key:
-            resolved.add(key)
-        elif not is_attribute_reading(title):
-            unresolved.append(title.strip())
-
     return {
-        "total_sensors_created": len(resolved),
-        "readings_without_a_sensor": sorted(set(unresolved)),
+        "total_sensors_created": support["sensors"],
+        "readings_without_a_sensor": sorted(
+            {row["title"] for row in support["unresolved_with_unit"]}
+            | set(support["unresolved_without_unit"])
+        ),
         "last_update": _extract_sensor_value(device_data, "Timestamp", "Unknown"),
         "control_fields_found": len(diagnostics.get("configuration", {})),
         "parameters_found": len(diagnostics.get("parameters", {})),

@@ -650,3 +650,90 @@ async def test_no_configured_value_reaches_the_download_verbatim(
     # an absent one.
     for key in sentinels:
         assert key in report["entry_data"]
+
+
+async def test_the_device_download_carries_the_same_support_report(
+    hass: HomeAssistant,
+) -> None:
+    """Either button produces usable devcode evidence.
+
+    The device download named the readings that reached no entity and nothing
+    else: no value, no unit, no control-field correlation and no checksum. Four
+    of the five files on the devcode issues open when this was written were
+    device downloads, so four reporters were asked for a second file before
+    their first could be used, and the triage tool refused all four as "not a
+    devcode analysis or diagnostics download".
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "SN-1": {
+            "collector": {"pn": "PN-1"},
+            "device": {"devcode": 2477, "devaddr": 5, "alias": "Inverter"},
+            "data": [
+                {"title": "Battery Voltage", "val": "24.3", "unit": "V"},
+                {"title": "Nominal AC Voltage", "val": "230.0", "unit": "V"},
+                {"title": "Bulk Charging Voltage", "val": "28.8", "unit": "V"},
+            ],
+        }
+    }
+    coordinator.api.get_device_control_fields = AsyncMock(return_value={})
+    coordinator.api.get_device_parameters = AsyncMock(return_value={})
+    coordinator.ctrl_value_cache = {}
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = {}
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+    device = DeviceEntry(identifiers={(DOMAIN, "SN-1")})
+
+    report = await diagnostics_platform.async_get_device_diagnostics(
+        hass, entry, device
+    )
+    support = report["support_report"]
+
+    assert support["devcode"] == 2477
+    assert support["source"] == "device_diagnostics"
+    # Every reading with its unit and its resolved key, which is what a
+    # maintainer works from and what the coverage guard reads.
+    assert {row["title"]: row["unit"] for row in support["readings"]} == {
+        "Battery Voltage": "V",
+        "Nominal AC Voltage": "V",
+        "Bulk Charging Voltage": "V",
+    }
+    assert support["support"]["unresolved_with_unit"] == []
+    # And no identifier, as the entry download promises.
+    assert support["device_identity"] == short_identity("SN-1")
+    assert "SN-1" not in json.dumps(report)
+
+
+async def test_a_device_download_is_read_as_evidence(hass: HomeAssistant) -> None:
+    """``normalized_reports`` reads the device shape, so the tooling does."""
+    from custom_components.dessmonitor.support_report import normalized_reports
+
+    coordinator = MagicMock()
+    coordinator.data = {
+        "SN-1": {
+            "collector": {"pn": "PN-1"},
+            "device": {"devcode": 2341, "devaddr": 5, "alias": "Inverter"},
+            "data": [{"title": "Battery Capacity", "val": "57", "unit": "%"}],
+        }
+    }
+    coordinator.api.get_device_control_fields = AsyncMock(return_value={})
+    coordinator.api.get_device_parameters = AsyncMock(return_value={})
+    coordinator.ctrl_value_cache = {}
+    entry = MagicMock()
+    entry.entry_id = "entry-1"
+    entry.data = {}
+    hass.data[DOMAIN] = {"entry-1": coordinator}
+    device = DeviceEntry(identifiers={(DOMAIN, "SN-1")})
+
+    report = await diagnostics_platform.async_get_device_diagnostics(
+        hass, entry, device
+    )
+
+    # As the reporter attaches it: Home Assistant wraps the hook's return
+    # value under "data" beside its own host sections.
+    records = normalized_reports({"data": report})
+
+    assert [record["devcode"] for record in records] == [2341]
+    assert records[0]["units"] == {"Battery Capacity": "%"}
+    assert records[0]["checksum_valid"] is True

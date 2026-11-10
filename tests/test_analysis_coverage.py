@@ -372,3 +372,84 @@ def _device_reports(path: Path) -> list[dict[str, Any]]:
     data = payload.get("data", payload)
     devices = data.get("devices") if isinstance(data, dict) else None
     return [device for device in devices or [] if isinstance(device, dict)]
+
+
+# Devcodes registered before committed evidence became a requirement for a new
+# one. Each is a profile nothing guards: the coverage check above can only read
+# a devcode it has a file for, so a change that stops one of these resolving a
+# reading breaks an installation and no test says so. That is not a
+# hypothetical - devcode 6514 shipped mapping its state of charge and nothing
+# else, dropped 58 of its 76 titles in silence, and it took #35 and then #56,
+# eight months apart, for anyone to notice.
+#
+# The list only shrinks. A reporter's diagnostics download is enough to clear
+# an entry, and `tools/evidence_from_diagnostics.py` commits it; a download
+# taken from either button carries every reading's unit now, which is what the
+# guard needs. Adding a devcode here instead of its evidence is not an option
+# a new profile has.
+_DEVCODES_WITHOUT_COMMITTED_EVIDENCE = {
+    518,
+    2334,
+    2341,
+    2361,
+    2428,
+    2449,
+    2451,
+    2507,
+    6416,
+    6422,
+}
+
+
+def test_every_registered_devcode_is_guarded_by_committed_evidence() -> None:
+    """A profile with no evidence file is a profile no test can defend.
+
+    This is what makes "commit the analysis" a requirement rather than a step
+    in a guide that a pull request may skip, and it is the reason a devcode
+    issue asks for the diagnostics download before anything else.
+    """
+    from custom_components.dessmonitor.device_support.device_registry import (
+        _DEVICE_REGISTRY,
+    )
+
+    with_evidence = {
+        record["devcode"]
+        for path in ANALYSIS_FILES
+        for record in _records(path)
+        if record["devcode"] is not None
+    }
+    unguarded = {
+        devcode
+        for devcode in _DEVICE_REGISTRY
+        if devcode not in with_evidence
+        and devcode not in _DEVCODES_WITHOUT_COMMITTED_EVIDENCE
+    }
+
+    assert unguarded == set(), (
+        "these devcodes are registered with no committed evidence: "
+        f"{sorted(unguarded)}. Commit the reporter's diagnostics download "
+        "under docs/evidence/devcodes with "
+        "tools/evidence_from_diagnostics.py, which is what guards the "
+        "profile against a later change dropping one of its readings."
+    )
+
+
+def test_the_list_of_unguarded_devcodes_only_shrinks() -> None:
+    """An entry that now has evidence must leave the list.
+
+    Otherwise the exemption outlives the gap and the next devcode added
+    without evidence hides behind it.
+    """
+    with_evidence = {
+        record["devcode"]
+        for path in ANALYSIS_FILES
+        for record in _records(path)
+        if record["devcode"] is not None
+    }
+
+    stale = _DEVCODES_WITHOUT_COMMITTED_EVIDENCE & with_evidence
+
+    assert stale == set(), (
+        f"{sorted(stale)} now have committed evidence; remove them from "
+        "_DEVCODES_WITHOUT_COMMITTED_EVIDENCE so they are guarded like the rest"
+    )

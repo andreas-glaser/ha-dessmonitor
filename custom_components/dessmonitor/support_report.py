@@ -477,8 +477,18 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
     in every file that reaches an issue (#62).
     """
     data = payload.get("data")
-    if isinstance(data, dict) and ("devices" in data or "readings" in data):
+    if isinstance(data, dict) and (
+        "devices" in data or "readings" in data or "support_report" in data
+    ):
         return normalized_reports(data)
+
+    # A device download wraps one device's report beside the display sections
+    # Home Assistant's own page shows. Reporters attach it as often as the entry
+    # download, so it is read as the evidence it now carries rather than
+    # rejected for being the other button.
+    device_report = payload.get("support_report")
+    if isinstance(device_report, dict):
+        return normalized_reports(device_report)
 
     if "analysis" in payload and isinstance(payload["analysis"], dict):
         analysis = payload["analysis"]

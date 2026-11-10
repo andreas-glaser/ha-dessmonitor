@@ -61,6 +61,18 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
 
 VALUE_TRANSFORMATIONS: dict = {}
 
+# This collector reports both generation counters in watt-hours while the
+# sensors publish kilowatt-hours, so two AXPERT MAX II 10 kW inverters showed
+# 8466 kWh generated today and 15045200 kWh in their lifetime (#71). The
+# collector labels both readings "Wh" and the registry scales from that label;
+# these entries only state what the download showed, for a payload that sends
+# the value without the unit. Unlike devcode 2452, whose lifetime total is
+# already in kWh, both of this one's are in Wh.
+SOURCE_UNITS: dict[str, str] = {
+    "Energy Today": "Wh",
+    "Energy Total": "Wh",
+}
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -68,4 +80,5 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
+    "source_units": SOURCE_UNITS,
 }

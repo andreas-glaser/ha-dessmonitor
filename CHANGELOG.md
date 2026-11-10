@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for devcode 2341 (EASUN hybrid and PowMr MPS-V plus 3.5 kW, both
+  24 V units) (#72, #73, thanks to @mathispp and @vrabi-cv for three
+  diagnostics downloads between them). Of the 45 readings that reached no
+  entity, 17 become sensors - state of charge, the grid voltage and frequency,
+  the PV voltage and charge power, output load, operating mode, grid status,
+  output priority and the eight nameplate ratings - and 24 are the inverter's
+  own setpoints, which the account already publishes as number and select
+  entities and which are now declared settings rather than counted as missing
+  readings. The battery-voltage dropdowns are narrowed to the reported 24 V or
+  48 V rating. The four that remain identify the hardware and carry no unit.
+- Support for devcode 2548, an SPI-12K-H3 12 kW three-phase hybrid and the
+  first three-phase unit with a profile (#67, thanks to @pletik11-sketch for
+  the diagnostics download). 65 of its 74 readings reach a sensor now against
+  14 before, and every reading it labels with a unit reaches one. It names
+  phase A by name while prefixing the other two `L2:` and `L3:`, so all three
+  are brought into one naming, and it reports the inverter's own output
+  current separately from what the load draws, which differ on bypass.
+- Fifteen sensor readings that had no canonical name, all for three-phase
+  hardware: the third phase's voltage, current, active and apparent power and
+  load percentage, the load current on each of the three phases, the mains
+  voltage on each, battery charging power, the daily and accumulated
+  mains-charging ampere-hour counters, and the summed phase voltage this
+  collector reports beside the individual phases. They are additions, so
+  nothing an installation already publishes changes.
 - Support for devcode 6489 (JSD Solar 5.5 kW 48 V hybrid behind a
   `WFBLE.RTU.Bar` collector) with the mains, battery, AC output, PV and BMS
   sections of its telemetry mapped: 45 of its 71 readings resolve now against
@@ -15,6 +39,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   twenty setpoints it returns among the readings are declared settings rather
   than counted as readings that reach no entity (#66, thanks to @pivanet for
   the diagnostics download).
+- Devcode 6489 recognises "Mains mode" as its grid state. The first download
+  for it was taken with the mains out, so battery mode was the only state it
+  had been seen in; a second download with the mains back supplied the other
+  and is committed beside the first (#66, thanks to @pivanet).
+- `tools/evidence_from_diagnostics.py` takes `--suffix`, so a second download
+  for a devcode is committed beside the existing evidence instead of replacing
+  it. Two reports from different accounts, or from the same hardware in a
+  different state, are better evidence than one: the devcode 6514
+  declarations were drawn from a 24 V unit and confirmed against a 48 V one.
+- A devcode profile registered with no committed evidence now fails the test
+  suite. The coverage guard can only read a devcode it has an evidence file
+  for, so a profile without one is defended by nothing and a later change can
+  stop it resolving a reading in silence - which is how devcode 6514 shipped
+  resolving its state of charge alone and dropped 58 of its 76 titles until
+  two reporters noticed eight months apart. Ten devcodes registered before
+  this was a requirement are listed as exemptions, and the list only shrinks:
+  a second test fails once an entry on it has evidence. A pull request
+  template now asks for the download alongside the profile.
+- The device "Download diagnostics" button now produces the same support
+  report the integration entry's button does: every reading with its value,
+  unit and resolved sensor, the support classification, and a checksum over
+  the lot. Both files are now usable devcode evidence, which matters because
+  reporters attach whichever button they found - four of the five files on the
+  open devcode issues were device downloads, and that file named the unmapped
+  readings and nothing else. `tools/triage.py` and
+  `tools/evidence_from_diagnostics.py` read it too (#63, #68, #72, #73).
 - Eleven sensor readings that had no canonical name: output current
   percentage, battery charging voltage, output half-wave apparent power, fan
   speed, the daily mains and load energy counters beside the accumulated ones,
@@ -23,6 +73,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They are additions, so nothing an installation already publishes changes.
 
 ### Fixed
+- Energy readings a collector labels in watt-hours were published on sensors
+  that measure kilowatt-hours, so the value reached Home Assistant a thousand
+  times too large and went into the energy dashboard and long-term statistics
+  that way. Two devcode 2449 inverters reported 8466 kWh generated in a day
+  and 15045200 kWh in their lifetime (#71, thanks to @infordbf for the
+  measurements). A reading is now scaled from the unit the collector itself
+  declares, which fixes this wherever it occurs rather than one devcode at a
+  time, and leaves a collector that already reports kilowatt-hours untouched.
+  Devcode 2452, which had a hand-written conversion for three of its counters,
+  now goes through the same path and publishes the same values as before.
+- A device diagnostics download disagreed with itself about how many readings
+  reached no sensor, because its summary counted a setpoint the profile
+  declares a setting and a field the hardware never fills while the support
+  report in the same file did not. On devcode 6514 that was thirty-eight
+  against twenty. Both now come from the support report (#68, #69).
+- Devcode 6514 told owners that twenty readings were missing when none were.
+  The collector returns the inverter's own setpoints - charging voltages and
+  currents, battery protection voltages and SOC thresholds, equalization
+  times - among its telemetry, each the value of a control the account already
+  publishes as a number or select entity. They are now declared settings, so
+  the support report counts them as neither mapped nor dropped and the Repairs
+  card is withdrawn. No sensor, number, select or button entity is added,
+  renamed or removed. The ANENJI 4.2KW 24V diagnostics download is committed
+  as evidence; the earlier CLI analysis recorded a unit for its first twenty
+  samples only, which is why the coverage guard never saw these.
 - An enum sensor went unavailable the first time its collector reported a
   state no devcode registers. Home Assistant rejects an enum state outside
   the entity's option list, and the list was fixed when the entity was built,
@@ -50,6 +125,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   while the same address was described rather than printed everywhere else in
   the file. Addresses in those messages now get the same subnet description,
   and the errno and port are kept (#66).
+
+### Upgrade notes: corrected energy values and existing statistics
+- If your energy sensors were reading a thousand times too high - devcode 2449
+  is the confirmed case - they now report the real figure, keeping their entity
+  ids, units and history. The inflated readings already recorded stay in
+  long-term statistics and will show as one enormous spike on the energy
+  dashboard. Remove them under **Developer tools > Statistics**, which lists
+  the affected entities and offers to adjust or delete the recorded sums; the
+  readings taken after the update are correct and unaffected.
 
 ### Upgrade notes: a duplicated sensor name stops being published
 - If a device of yours already shows two entities with one name, the one that
