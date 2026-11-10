@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   twenty setpoints it returns among the readings are declared settings rather
   than counted as readings that reach no entity (#66, thanks to @pivanet for
   the diagnostics download).
+- The device "Download diagnostics" button now produces the same support
+  report the integration entry's button does: every reading with its value,
+  unit and resolved sensor, the support classification, and a checksum over
+  the lot. Both files are now usable devcode evidence, which matters because
+  reporters attach whichever button they found - four of the five files on the
+  open devcode issues were device downloads, and that file named the unmapped
+  readings and nothing else. `tools/triage.py` and
+  `tools/evidence_from_diagnostics.py` read it too (#63, #68, #72, #73).
 - Eleven sensor readings that had no canonical name: output current
   percentage, battery charging voltage, output half-wave apparent power, fan
   speed, the daily mains and load energy counters beside the accumulated ones,
@@ -23,6 +31,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They are additions, so nothing an installation already publishes changes.
 
 ### Fixed
+- Energy readings a collector labels in watt-hours were published on sensors
+  that measure kilowatt-hours, so the value reached Home Assistant a thousand
+  times too large and went into the energy dashboard and long-term statistics
+  that way. Two devcode 2449 inverters reported 8466 kWh generated in a day
+  and 15045200 kWh in their lifetime (#71, thanks to @infordbf for the
+  measurements). A reading is now scaled from the unit the collector itself
+  declares, which fixes this wherever it occurs rather than one devcode at a
+  time, and leaves a collector that already reports kilowatt-hours untouched.
+  Devcode 2452, which had a hand-written conversion for three of its counters,
+  now goes through the same path and publishes the same values as before.
+- A device diagnostics download disagreed with itself about how many readings
+  reached no sensor, because its summary counted a setpoint the profile
+  declares a setting and a field the hardware never fills while the support
+  report in the same file did not. On devcode 6514 that was thirty-eight
+  against twenty. Both now come from the support report (#68, #69).
 - An enum sensor went unavailable the first time its collector reported a
   state no devcode registers. Home Assistant rejects an enum state outside
   the entity's option list, and the list was fixed when the entity was built,
@@ -50,6 +73,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   while the same address was described rather than printed everywhere else in
   the file. Addresses in those messages now get the same subnet description,
   and the errno and port are kept (#66).
+
+### Upgrade notes: corrected energy values and existing statistics
+- If your energy sensors were reading a thousand times too high - devcode 2449
+  is the confirmed case - they now report the real figure, keeping their entity
+  ids, units and history. The inflated readings already recorded stay in
+  long-term statistics and will show as one enormous spike on the energy
+  dashboard. Remove them under **Developer tools > Statistics**, which lists
+  the affected entities and offers to adjust or delete the recorded sums; the
+  readings taken after the update are correct and unaffected.
 
 ### Upgrade notes: a duplicated sensor name stops being published
 - If a device of yours already shows two entities with one name, the one that

@@ -77,22 +77,23 @@ SENSOR_TITLE_MAPPINGS: dict[str, str] = {
 }
 
 
-def _wh_to_kwh(value):
-    """Convert raw Wh value to kWh. Returns original value on parse failure."""
-    try:
-        return float(value) / 1000
-    except (TypeError, ValueError):
-        return value
+VALUE_TRANSFORMATIONS: dict = {}
 
-
-# queryDeviceLastData reports Today/Month/Year generation in Wh while the
-# sensor unit is fixed to kWh, so scale them here. Total generation is
-# already in kWh (matches parameters API and summary endpoint) and is
-# intentionally left alone.
-VALUE_TRANSFORMATIONS: dict = {
-    "Energy Today": _wh_to_kwh,
-    "Energy Month": _wh_to_kwh,
-    "Energy Year": _wh_to_kwh,
+# queryDeviceLastData reports Today/Month/Year generation in watt-hours while
+# the sensor publishes kilowatt-hours. The collector says so itself - the
+# committed download labels all three "Wh" - and the registry scales from that
+# label, so this only states what the vendor showed in case a payload omits
+# the unit. Total generation is already in kWh (it matches the parameters API
+# and the summary endpoint) and is deliberately absent.
+#
+# This replaced a per-title conversion callback. That callback scaled whatever
+# it was given, so it would have divided a collector already reporting kWh by
+# a thousand, and it fixed this devcode alone while devcode 2449 had the same
+# defect and no callback (#71).
+SOURCE_UNITS: dict[str, str] = {
+    "Energy Today": "Wh",
+    "Energy Month": "Wh",
+    "Energy Year": "Wh",
 }
 
 PARAMETER_SENSOR_NAMES: set[str] = set()
@@ -123,6 +124,7 @@ DEVCODE_CONFIG = {
     "operating_mode_mapping": OPERATING_MODE_MAPPING,
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
+    "source_units": SOURCE_UNITS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
 }
