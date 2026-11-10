@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   twenty setpoints it returns among the readings are declared settings rather
   than counted as readings that reach no entity (#66, thanks to @pivanet for
   the diagnostics download).
+- A devcode profile registered with no committed evidence now fails the test
+  suite. The coverage guard can only read a devcode it has an evidence file
+  for, so a profile without one is defended by nothing and a later change can
+  stop it resolving a reading in silence - which is how devcode 6514 shipped
+  resolving its state of charge alone and dropped 58 of its 76 titles until
+  two reporters noticed eight months apart. Ten devcodes registered before
+  this was a requirement are listed as exemptions, and the list only shrinks:
+  a second test fails once an entry on it has evidence. A pull request
+  template now asks for the download alongside the profile.
 - The device "Download diagnostics" button now produces the same support
   report the integration entry's button does: every reading with its value,
   unit and resolved sensor, the support classification, and a checksum over
