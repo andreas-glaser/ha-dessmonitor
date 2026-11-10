@@ -56,6 +56,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declares a setting and a field the hardware never fills while the support
   report in the same file did not. On devcode 6514 that was thirty-eight
   against twenty. Both now come from the support report (#68, #69).
+- Devcode 6514 told owners that twenty readings were missing when none were.
+  The collector returns the inverter's own setpoints - charging voltages and
+  currents, battery protection voltages and SOC thresholds, equalization
+  times - among its telemetry, each the value of a control the account already
+  publishes as a number or select entity. They are now declared settings, so
+  the support report counts them as neither mapped nor dropped and the Repairs
+  card is withdrawn. No sensor, number, select or button entity is added,
+  renamed or removed. The ANENJI 4.2KW 24V diagnostics download is committed
+  as evidence; the earlier CLI analysis recorded a unit for its first twenty
+  samples only, which is why the coverage guard never saw these.
 - An enum sensor went unavailable the first time its collector reported a
   state no devcode registers. Home Assistant rejects an enum state outside
   the entity's option list, and the list was fixed when the entity was built,
