@@ -117,6 +117,23 @@ SETTING_READINGS: set[str] = {
     "Whether the second route is enabled",
 }
 
+# Cloud control ids, not local Modbus write addresses. Each entry moves the
+# field off the number platform, where a clock value cannot be represented: a
+# number entity shows nothing at all for "00:00" or for a nineteen-character
+# calendar string, which is what the reporter in #53 saw as four controls that
+# stayed empty. The ids and the two value shapes are the account's own control
+# readback in ``docs/evidence/devcodes/analysis_2452.json``: the four schedule
+# boundaries read "00:00" and the clock reads "2026-11-04 21:29:38". The write
+# format is the string the API returned, unchanged, and is not confirmed on
+# this hardware by a write.
+TEMPORAL_CONTROLS: dict[str, str] = {
+    "cts_start_time_for_enable_ac_charger_working": "time",
+    "cts_endin_time_for_enable_ac_charger_working": "time",
+    "cts_scheduled_time_for_ac_output_on": "time",
+    "cts_scheduled_time_for_ac_output_off": "time",
+    "cts_set_date_time": "text",
+}
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -127,4 +144,5 @@ DEVCODE_CONFIG = {
     "source_units": SOURCE_UNITS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
+    "temporal_controls": TEMPORAL_CONTROLS,
 }
