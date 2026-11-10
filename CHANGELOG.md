@@ -85,6 +85,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#58, #63).
 
 ### Fixed
+- Devcode 2452's four schedule controls and its clock were published as number
+  entities, which cannot hold "00:00" or a nineteen-character calendar string,
+  so they sat empty with nothing to set: Start Time and Ending Time For Enable
+  AC Charger Working, Start time and Ending time for enable AC supply the load,
+  and Set Date Time (#53, thanks to @DastardlyBaker). They become `time` and
+  `text` controls, the way devcodes 6544 and 6515 already do. The field ids and
+  both value shapes are the account's own control readback in the committed
+  download; the write format is the string the API returned, unchanged, and is
+  not confirmed on this hardware by a write.
 - Local mode stopped working on collectors it had polled correctly for
   releases, reporting "no supported read-only local protocol was identified"
   while every probe query was answered. 2.6.0 began reading the SMG layout
@@ -224,6 +233,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dashboard. Remove them under **Developer tools > Statistics**, which lists
   the affected entities and offers to adjust or delete the recorded sums; the
   readings taken after the update are correct and unaffected.
+
+### Upgrade notes: devcode 2452 time and clock controls
+- Four schedule controls move from `number` to `time`, and Set Date Time moves
+  from `number` to `text`. Update dashboard and automation entity references
+  and use `time.set_value` / `text.set_value` instead of `number.set_value`.
+  The old number entities held no usable value, so nothing is lost in moving.
+- Old number registry and history entries are retained and disabled rather than
+  deleted, through the same migration devcodes 6544 and 6515 used, which
+  records its decision per entity so a disable or re-enable survives a reload.
 
 ### Upgrade notes: a duplicated sensor name stops being published
 - If a device of yours already shows two entities with one name, the one that
