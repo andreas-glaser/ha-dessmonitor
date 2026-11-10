@@ -7,6 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0-rc.2] - 2026-11-11
+
+Second release candidate for 2.8.0, carrying the work that landed after
+`v2.8.0-rc.1`. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.8.0-rc.2/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+Everything in `v2.8.0-rc.1` is included; its own testing focus still applies.
+
+**Testing focus:** this candidate exists for one regression and one entity
+move.
+
+Local mode stopped working on collectors it had polled correctly for releases.
+2.6.0 began reading the SMG layout register and refusing any value other than
+0, 1 or 4 from that number alone, before the register map was tried, and at
+least one inverter reports a value outside those three. Its owner rolled back
+to 2.5.0 to get local telemetry back (#64). If local polling worked for you on
+2.5.0 and has reported "no supported read-only local protocol was identified"
+since, this candidate is the one to test: `Data Source` should read `Local`
+with **Inverter address** left on automatic. If it still fails, the failure now
+names the layout code the collector reported, and that number is what to put in
+the report.
+
+Devcode 2452's four schedule controls move from `number` to `time` and Set Date
+Time from `number` to `text` (#53). The number entities could not hold a clock
+value and showed nothing, so nothing is lost in moving, but dashboard and
+automation references need updating and the upgrade note below says how. What
+is not confirmed on hardware is writing a schedule to this model: the format is
+the string the API itself returned, unchanged, so a write that does not take is
+worth reporting.
+
+Beyond those: devcodes 6544 and 6515 gain declarations that withdraw a
+"readings are missing" card without changing any entity, and a collector whose
+SMG layout this driver cannot read now says so instead of reporting that no
+local protocol could be identified at all.
+
+### Fixed
+- Devcode 2452's four schedule controls and its clock were published as number
+  entities, which cannot hold "00:00" or a nineteen-character calendar string,
+  so they sat empty with nothing to set: Start Time and Ending Time For Enable
+  AC Charger Working, Start time and Ending time for enable AC supply the load,
+  and Set Date Time (#53, thanks to @DastardlyBaker). They become `time` and
+  `text` controls, the way devcodes 6544 and 6515 already do. The field ids and
+  both value shapes are the account's own control readback in the committed
+  download; the write format is the string the API returned, unchanged, and is
+  not confirmed on this hardware by a write.
+- Local mode stopped working on collectors it had polled correctly for
+  releases, reporting "no supported read-only local protocol was identified"
+  while every probe query was answered. 2.6.0 began reading the SMG layout
+  register and refusing any code other than 0, 1 or 4, on the code alone,
+  before the register map was tried. An ANENJI 5KW reports a code outside those
+  three and had polled at five-second intervals on 2.5.0; its owner rolled back
+  to get local telemetry again (#64, thanks to @vyore1980 for debug logs from
+  both versions, which is what identified this). A code with no map of its own
+  now falls back to the standard `201..234` map and the inverter is kept only
+  if that block decodes - a complete block, a known operating mode, every field
+  within its range and a non-zero voltage, the same bar firmware with no layout
+  register has to clear. A layout whose registers mean something else still
+  fails that block and is refused, and the refusal now names the code the
+  collector reported. No layout's register map is guessed at.
+- Local discovery reported that no read-only protocol could be identified on a
+  collector that had identified itself. The Eybond logger on a Maxsky EM11000
+  answers the SMG layout register with 3, a variant no driver reads, and that
+  answer was swallowed by the fall-through to the next candidate route: the
+  probe counted the query as a success and the failure said only that no
+  protocol was found, which reads as missing devcode support for a collector
+  that replied in 250 ms. The failure now names the layout the collector
+  reported and the three that are confirmed on hardware, so the next report on
+  it is about the layout rather than about the devcode (#76, thanks to
+  @ballhtml for the register read). No layout is added; 3 is still unsupported.
+- Devcodes 6544 and 6515 told their owners that readings were missing when none
+  were. Both collectors return the inverter's setpoints among the telemetry,
+  each spelled exactly as a control field on the same device and carrying the
+  value that control reads back, so the account already publishes every one as
+  a number or select entity. Three ANENJI ANJ-11KW-48V-W-P inverters each
+  reported 44 of them, 20 with a unit, which is the "missing 20 readings"
+  Repairs card (#77, thanks to @realjohndo for a config-entry download covering
+  all three); a Maxsky EM11000 reported 40, 17 with a unit (#76, thanks to
+  @ballhtml). They are now declared settings, so they count as
+  neither mapped nor dropped, both devcodes report supported and the cards are
+  withdrawn. Only "Equipment type" and "Protocol Number" stay unresolved on
+  each; they identify the hardware and carry no unit. No entity is added,
+  renamed or removed.
+- The three Eybond ESS collectors that share this setpoint vocabulary -
+  devcodes 6514, 6515 and 6544 - now share one table of it in
+  `device_support/eybond_ess.py`, as the two Voltronic PI30 collectors already
+  share `eybond_voltronic.py`. 30 of its 46 titles appear in all three
+  downloads and every title appears in at least one, so three copies would have
+  been three lists to keep in step. A profile opts in by importing the table,
+  which keeps adding a devcode to the family a decision backed by its own
+  download, and the guard over it fails on any title that no committed download
+  reports as both a reading and a control.
+
+### Upgrade notes: devcode 2452 time and clock controls
+- Four schedule controls move from `number` to `time`, and Set Date Time moves
+  from `number` to `text`. Update dashboard and automation entity references
+  and use `time.set_value` / `text.set_value` instead of `number.set_value`.
+  The old number entities held no usable value, so nothing is lost in moving.
+- Old number registry and history entries are retained and disabled rather than
+  deleted, through the same migration devcodes 6544 and 6515 used, which
+  records its decision per entity so a disable or re-enable survives a reload.
+
 ## [2.8.0-rc.1] - 2026-11-10
 
 First release candidate for 2.8.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v2.8.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
@@ -116,61 +215,6 @@ device page; the upgrade notes below say what to expect from each.
   (#58, #63).
 
 ### Fixed
-- Devcode 2452's four schedule controls and its clock were published as number
-  entities, which cannot hold "00:00" or a nineteen-character calendar string,
-  so they sat empty with nothing to set: Start Time and Ending Time For Enable
-  AC Charger Working, Start time and Ending time for enable AC supply the load,
-  and Set Date Time (#53, thanks to @DastardlyBaker). They become `time` and
-  `text` controls, the way devcodes 6544 and 6515 already do. The field ids and
-  both value shapes are the account's own control readback in the committed
-  download; the write format is the string the API returned, unchanged, and is
-  not confirmed on this hardware by a write.
-- Local mode stopped working on collectors it had polled correctly for
-  releases, reporting "no supported read-only local protocol was identified"
-  while every probe query was answered. 2.6.0 began reading the SMG layout
-  register and refusing any code other than 0, 1 or 4, on the code alone,
-  before the register map was tried. An ANENJI 5KW reports a code outside those
-  three and had polled at five-second intervals on 2.5.0; its owner rolled back
-  to get local telemetry again (#64, thanks to @vyore1980 for debug logs from
-  both versions, which is what identified this). A code with no map of its own
-  now falls back to the standard `201..234` map and the inverter is kept only
-  if that block decodes - a complete block, a known operating mode, every field
-  within its range and a non-zero voltage, the same bar firmware with no layout
-  register has to clear. A layout whose registers mean something else still
-  fails that block and is refused, and the refusal now names the code the
-  collector reported. No layout's register map is guessed at.
-- Local discovery reported that no read-only protocol could be identified on a
-  collector that had identified itself. The Eybond logger on a Maxsky EM11000
-  answers the SMG layout register with 3, a variant no driver reads, and that
-  answer was swallowed by the fall-through to the next candidate route: the
-  probe counted the query as a success and the failure said only that no
-  protocol was found, which reads as missing devcode support for a collector
-  that replied in 250 ms. The failure now names the layout the collector
-  reported and the three that are confirmed on hardware, so the next report on
-  it is about the layout rather than about the devcode (#76, thanks to
-  @ballhtml for the register read). No layout is added; 3 is still unsupported.
-- Devcodes 6544 and 6515 told their owners that readings were missing when none
-  were. Both collectors return the inverter's setpoints among the telemetry,
-  each spelled exactly as a control field on the same device and carrying the
-  value that control reads back, so the account already publishes every one as
-  a number or select entity. Three ANENJI ANJ-11KW-48V-W-P inverters each
-  reported 44 of them, 20 with a unit, which is the "missing 20 readings"
-  Repairs card (#77, thanks to @realjohndo for a config-entry download covering
-  all three); a Maxsky EM11000 reported 40, 17 with a unit (#76, thanks to
-  @ballhtml). They are now declared settings, so they count as
-  neither mapped nor dropped, both devcodes report supported and the cards are
-  withdrawn. Only "Equipment type" and "Protocol Number" stay unresolved on
-  each; they identify the hardware and carry no unit. No entity is added,
-  renamed or removed.
-- The three Eybond ESS collectors that share this setpoint vocabulary -
-  devcodes 6514, 6515 and 6544 - now share one table of it in
-  `device_support/eybond_ess.py`, as the two Voltronic PI30 collectors already
-  share `eybond_voltronic.py`. 30 of its 46 titles appear in all three
-  downloads and every title appears in at least one, so three copies would have
-  been three lists to keep in step. A profile opts in by importing the table,
-  which keeps adding a devcode to the family a decision backed by its own
-  download, and the guard over it fails on any title that no committed download
-  reports as both a reading and a control.
 - Local telemetry was collected and then silently discarded when the collector
   answered on an RS485 address the cloud does not record for it. Automatic
   discovery pairs on whichever address answers first, and hybrid mode pairs a
@@ -264,15 +308,6 @@ device page; the upgrade notes below say what to expect from each.
   dashboard. Remove them under **Developer tools > Statistics**, which lists
   the affected entities and offers to adjust or delete the recorded sums; the
   readings taken after the update are correct and unaffected.
-
-### Upgrade notes: devcode 2452 time and clock controls
-- Four schedule controls move from `number` to `time`, and Set Date Time moves
-  from `number` to `text`. Update dashboard and automation entity references
-  and use `time.set_value` / `text.set_value` instead of `number.set_value`.
-  The old number entities held no usable value, so nothing is lost in moving.
-- Old number registry and history entries are retained and disabled rather than
-  deleted, through the same migration devcodes 6544 and 6515 used, which
-  records its decision per entity so a disable or re-enable survives a reload.
 
 ### Upgrade notes: a duplicated sensor name stops being published
 - If a device of yours already shows two entities with one name, the one fed by
