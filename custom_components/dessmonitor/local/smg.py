@@ -50,6 +50,12 @@ _OPERATING_MODES = {
 }
 
 
+# Layout codes register 184 reports that this driver has a register map for.
+# Anything else falls back to the legacy map and has to decode on the hardware
+# before its route is kept; see ``_read_discovery_snapshot``.
+_KNOWN_LAYOUTS = (0, 1, 4)
+
+
 @dataclass(frozen=True, slots=True)
 class SmgRoute:
     """Exact Eybond tunnel and Modbus slave route."""
@@ -218,11 +224,21 @@ async def discover_smg(
     tunnel_codes = _tunnel_device_codes(configured_device_code, reported_device_code)
     selected: tuple[int, int] | None = None
     first_snapshot: tuple[int, dict[str, Any]] | None = None
+    # A layout register this driver cannot read is an answer, not a silence,
+    # and the routes tried after it cannot produce a better one. Losing it to
+    # the fall-through below left discovery reporting that no local protocol
+    # could be identified, which sends a reporter to the devcode-support path
+    # for a collector that answered in 250 ms (#76).
+    unsupported_layout: int | None = None
     for device_code in tunnel_codes:
         for collector_address in (SMG_TUNNEL_COLLECTOR_ADDRESS, first_address):
             route = SmgRoute(device_code, collector_address, first_address)
             try:
                 candidate = await _read_discovery_snapshot(send, route)
+            except ModbusError as err:
+                if err.reason == "unsupported_protocol" and unsupported_layout is None:
+                    unsupported_layout = err.details.get("layout_code")
+                continue
             except (TimeoutError, ProtocolError):
                 continue
             selected = (device_code, collector_address)
@@ -231,6 +247,14 @@ async def discover_smg(
         if selected is not None:
             break
     if selected is None or first_snapshot is None:
+        if unsupported_layout is not None:
+            raise ModbusError(
+                "the collector answered on SMG/Modbus and reported register "
+                f"layout {unsupported_layout}, which this driver does not read; "
+                "only layouts 0, 1 and 4 have been confirmed on hardware",
+                reason="unsupported_protocol",
+                details={"layout_code": unsupported_layout},
+            )
         raise ModbusError("no SMG/Modbus inverter responded")
 
     devices: list[SmgDevice] = []
@@ -293,8 +317,11 @@ async def poll_smg(
     """Poll the live block and, less often, the two read-only status blocks."""
     if route.protocol_number == 4:
         return await _poll_protocol4(send, route)
-    if route.protocol_number not in (0, 1):
-        raise ModbusError("unsupported SMG register layout")
+    # Every other layout reads the legacy live map, including a code this
+    # driver does not know. A route carrying one exists only because discovery
+    # decoded that map on this hardware and it passed the plausibility checks
+    # in ``decode_live_registers``; refusing it here would find the inverter
+    # and then publish nothing for it.
     live = await read_holding_registers(send, route, _LIVE_START, _LIVE_COUNT)
     values = decode_live_registers(live)
     if not include_status:
@@ -319,15 +346,30 @@ async def _read_discovery_snapshot(
         (protocol_number,) = await read_holding_registers(send, route, 184, 1)
     except (TimeoutError, ProtocolError):
         protocol_number = 0
-    if protocol_number not in (0, 1, 4):
-        raise ModbusError(
-            f"unsupported SMG register layout {protocol_number}",
-            reason="unsupported_protocol",
-        )
     selected = SmgRoute(
         route.device_code, route.collector_address, route.slave_address, protocol_number
     )
-    return protocol_number, await poll_smg(send, selected)
+    if protocol_number in _KNOWN_LAYOUTS:
+        return protocol_number, await poll_smg(send, selected)
+    # A layout code this driver does not know says nothing about whether the
+    # legacy live map reads this hardware, and refusing on the code alone took
+    # local mode away from collectors it had worked on for releases: the
+    # ANENJI 5KW in #64 reports a layout outside this set and polled correctly
+    # on 2.5.0, where the layout register was never read. The map is tried and
+    # the route kept only if it decodes, which means a complete block, a known
+    # operating mode, fields inside their ranges and a non-zero voltage - the
+    # same bar legacy firmware with no layout register has to clear. The
+    # protocol-4 capture in the test fixture fails it, so a layout whose
+    # registers mean something else is still refused rather than published.
+    try:
+        return protocol_number, await poll_smg(send, selected)
+    except (TimeoutError, ProtocolError) as err:
+        raise ModbusError(
+            f"unsupported SMG register layout {protocol_number}: the legacy "
+            f"register map does not read this hardware ({err})",
+            reason="unsupported_protocol",
+            details={"layout_code": protocol_number},
+        ) from err
 
 
 async def _poll_protocol4(send: SendCommand, route: SmgRoute) -> dict[str, Any]:
