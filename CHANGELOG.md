@@ -85,6 +85,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#58, #63).
 
 ### Fixed
+- Local mode stopped working on collectors it had polled correctly for
+  releases, reporting "no supported read-only local protocol was identified"
+  while every probe query was answered. 2.6.0 began reading the SMG layout
+  register and refusing any code other than 0, 1 or 4, on the code alone,
+  before the register map was tried. An ANENJI 5KW reports a code outside those
+  three and had polled at five-second intervals on 2.5.0; its owner rolled back
+  to get local telemetry again (#64, thanks to @vyore1980 for debug logs from
+  both versions, which is what identified this). A code with no map of its own
+  now falls back to the standard `201..234` map and the inverter is kept only
+  if that block decodes - a complete block, a known operating mode, every field
+  within its range and a non-zero voltage, the same bar firmware with no layout
+  register has to clear. A layout whose registers mean something else still
+  fails that block and is refused, and the refusal now names the code the
+  collector reported. No layout's register map is guessed at.
 - Local discovery reported that no read-only protocol could be identified on a
   collector that had identified itself. The Eybond logger on a Maxsky EM11000
   answers the SMG layout register with 3, a variant no driver reads, and that
