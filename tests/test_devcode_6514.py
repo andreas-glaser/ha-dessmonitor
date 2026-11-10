@@ -115,6 +115,24 @@ def _declared_settings() -> set[str]:
     return set(get_devcode_config(6514)["setting_readings"])
 
 
+def _declared_settings_this_device_reports() -> set[str]:
+    """The declarations the evidence below can speak for.
+
+    The table is the Eybond ESS family's, shared with devcodes 6515 and 6544,
+    so it names settings this collector does not send - the scheduled secondary
+    priorities, the clock - and a download cannot justify those. The family
+    guard in ``tests/test_eybond_ess_settings.py`` requires every title to be a
+    reading and a control on at least one committed download; here the question
+    is only whether this device's own are.
+    """
+    reported = {_normalize(row["title"]) for row in _evidence_device()["readings"]}
+    return {
+        setting
+        for setting in _declared_settings()
+        if _normalize(setting) in reported
+    }
+
+
 def _normalize(title: str) -> str:
     return " ".join(title.split()).casefold()
 
@@ -147,10 +165,10 @@ def test_every_declared_setting_is_a_control_on_the_same_device() -> None:
     through that control rather than being hidden.
     """
     device = _evidence_device()
-    titles = {_normalize(row["title"]) for row in device["readings"]}
     controls = {_normalize(field["name"]) for field in device["control_fields"]}
-    for setting in _declared_settings():
-        assert _normalize(setting) in titles, setting
+    settings = _declared_settings_this_device_reports()
+    assert len(settings) == 36
+    for setting in settings:
         assert _normalize(setting) in controls, setting
 
 
@@ -178,7 +196,9 @@ def test_the_download_now_reports_the_devcode_supported() -> None:
     assert support["unresolved_with_unit"] == []
     # Only the two identity fields stay unresolved; they carry no unit.
     assert support["unresolved_without_unit"] == ["Equipment type", "Protocol Number"]
-    assert support["excluded"]["declared_settings"] == len(_declared_settings())
+    assert support["excluded"]["declared_settings"] == len(
+        _declared_settings_this_device_reports()
+    )
     assert support["resolved"] == 38
     assert support["resolved"] + support["unresolved"] == support["total"]
 
@@ -223,8 +243,16 @@ def test_control_names_and_unique_ids_are_untouched() -> None:
         assert map_control_field(6514, field["name"]) == name
 
 
-@pytest.mark.parametrize("devcode", [6515, 6544, 2477, 518])
-def test_other_profiles_do_not_inherit_the_declarations(devcode: int) -> None:
+@pytest.mark.parametrize("devcode", [2477, 518])
+def test_a_profile_outside_the_family_does_not_inherit_the_declarations(
+    devcode: int,
+) -> None:
+    """Only a profile that imports the table gets it.
+
+    Devcodes 6515 and 6544 do import it, each on its own download (#76, #77),
+    and are checked in ``tests/test_eybond_ess_settings.py``. A Voltronic PI30
+    collector spells its setpoints differently and must not be given these.
+    """
     for title in ("Maximum charging voltage", "Eq charging voltage", "Remote switch"):
         assert is_setting_reading(devcode, title) is False
 

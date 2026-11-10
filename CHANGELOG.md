@@ -85,6 +85,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#58, #63).
 
 ### Fixed
+- Devcodes 6544 and 6515 told their owners that readings were missing when none
+  were. Both collectors return the inverter's setpoints among the telemetry,
+  each spelled exactly as a control field on the same device and carrying the
+  value that control reads back, so the account already publishes every one as
+  a number or select entity. Three ANENJI ANJ-11KW-48V-W-P inverters each
+  reported 44 of them, 20 with a unit, which is the "missing 20 readings"
+  Repairs card (#77, thanks to @realjohndo for a config-entry download covering
+  all three); a Maxsky EM11000 reported 40, 17 with a unit (#76, thanks to
+  @ballhtml). They are now declared settings, so they count as
+  neither mapped nor dropped, both devcodes report supported and the cards are
+  withdrawn. Only "Equipment type" and "Protocol Number" stay unresolved on
+  each; they identify the hardware and carry no unit. No entity is added,
+  renamed or removed.
+- The three Eybond ESS collectors that share this setpoint vocabulary -
+  devcodes 6514, 6515 and 6544 - now share one table of it in
+  `device_support/eybond_ess.py`, as the two Voltronic PI30 collectors already
+  share `eybond_voltronic.py`. 30 of its 46 titles appear in all three
+  downloads and every title appears in at least one, so three copies would have
+  been three lists to keep in step. A profile opts in by importing the table,
+  which keeps adding a devcode to the family a decision backed by its own
+  download, and the guard over it fails on any title that no committed download
+  reports as both a reading and a control.
 - Local telemetry was collected and then silently discarded when the collector
   answered on an RS485 address the cloud does not record for it. Automatic
   discovery pairs on whichever address answers first, and hybrid mode pairs a
