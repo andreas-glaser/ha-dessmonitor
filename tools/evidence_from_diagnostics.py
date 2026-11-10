@@ -86,12 +86,17 @@ def evidence_from(payload: dict[str, Any]) -> dict[str, Any]:
             "this is not a diagnostics download: Home Assistant writes the "
             "report under a 'data' key"
         )
+    # A device download carries one device's report under ``support_report``
+    # rather than a list under ``devices``. It is the same report, with the
+    # same checksum over it, so it is lifted into the shape the rest of this
+    # tool and the coverage guard read instead of being refused for having come
+    # from the other "Download diagnostics" button.
+    if "devices" not in data and isinstance(data.get("support_report"), dict):
+        data = {**data, "devices": [data["support_report"]]}
     if not isinstance(data.get("devices"), list) or not data["devices"]:
         raise ValueError("the download carries no devices to use as evidence")
 
-    kept = {
-        section: data[section] for section in _KEPT_SECTIONS if section in data
-    }
+    kept = {section: data[section] for section in _KEPT_SECTIONS if section in data}
     return {"data": kept}
 
 

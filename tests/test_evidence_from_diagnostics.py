@@ -180,3 +180,75 @@ def test_a_symlinked_download_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="symbolic link"):
         tool.read_download(link)
+
+
+def _device_download(devcode: Any, readings: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a download in the shape the device page's button writes one.
+
+    Home Assistant offers "Download diagnostics" on each device as well as on
+    the entry, and a reporter attaches whichever one they found. This shape
+    carries one device's report under ``support_report``, beside the sections
+    the device page displays.
+    """
+    return {
+        "home_assistant": {"version": "2026.11.0", "timezone": "Europe/Prague"},
+        "custom_components": {"hacs": {"version": "2.0.0"}},
+        "integration_manifest": {"domain": "dessmonitor"},
+        "setup_times": {"entry": 1.2},
+        "data": {
+            "device_info": {"device_code": devcode, "device_address": 1},
+            "configuration": {},
+            "status": {},
+            "raw_data_points": len(readings),
+            "summary": {"total_sensors_created": 1},
+            "support_report": build_support_report(
+                devcode=devcode,
+                readings=readings,
+                device_serial=f"SN-{devcode}",
+                collector_product_number="Q0000SECRETPN0",
+                source="device_diagnostics",
+            ),
+        },
+    }
+
+
+def test_a_device_download_is_accepted_as_evidence(tmp_path: Path) -> None:
+    """The other "Download diagnostics" button is the same evidence.
+
+    Four of the five files attached to the devcode issues open when this was
+    written were device downloads, and every one cost a round trip asking the
+    reporter for the entry download instead.
+    """
+    tool = _tool()
+    payload = _device_download(2341, [{"title": "SOC", "val": "57", "unit": "%"}])
+
+    evidence = tool.evidence_from(payload)
+
+    assert tool.verify(evidence) == []
+    assert tool._devcodes(evidence) == [2341]
+    out = tmp_path / "evidence"
+    out.mkdir()
+    assert [path.name for path in tool.write_evidence(evidence, out)] == [
+        "analysis_2341.json"
+    ]
+
+
+def test_a_device_download_keeps_no_host_sections(tmp_path: Path) -> None:
+    tool = _tool()
+    payload = _device_download(2341, [{"title": "SOC", "val": "57", "unit": "%"}])
+
+    serialized = json.dumps(tool.evidence_from(payload))
+
+    for section in ("home_assistant", "custom_components", "setup_times"):
+        assert section not in serialized
+
+
+def test_an_edited_device_download_is_refused(tmp_path: Path) -> None:
+    """The checksum covers the report whichever button produced it."""
+    tool = _tool()
+    payload = _device_download(2341, [{"title": "SOC", "val": "57", "unit": "%"}])
+    payload["data"]["support_report"]["readings"][0]["value"] = "99"
+
+    problems = tool.verify(tool.evidence_from(payload))
+
+    assert problems and "does not match its own checksum" in problems[0]

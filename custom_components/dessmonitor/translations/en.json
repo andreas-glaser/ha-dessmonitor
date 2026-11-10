@@ -186,11 +186,11 @@
   "issues": {
     "devcode_unsupported": {
       "title": "Devcode {devcode} has no device mappings",
-      "description": "DessMonitor has no profile for devcode {devcode}, so its readings keep the vendor's own titles and {dropped} reading(s) reach no entity at all.\n\nTo have it added: open this integration's entry, choose **Download diagnostics**, and attach the file to a device support request. It contains no serial number, collector identifier or credential."
+      "description": "DessMonitor has no profile for devcode {devcode}, so its readings keep the vendor's own titles and {dropped} reading(s) reach no entity at all.\n\nTo have it added: choose **Download diagnostics**, either on this integration's entry or on the inverter's own device page, and attach the file to a device support request. It contains no serial number, collector identifier or credential."
     },
     "devcode_partial": {
       "title": "Devcode {devcode} is missing {dropped} reading(s)",
-      "description": "DessMonitor has a profile for devcode {devcode} and maps {resolved} of {total} readings, but {dropped} reading(s) that your collector labels with a unit reach no entity.\n\nTo have them added: open this integration's entry, choose **Download diagnostics**, and attach the file to a device support request. It names the missing readings and contains no serial number, collector identifier or credential."
+      "description": "DessMonitor has a profile for devcode {devcode} and maps {resolved} of {total} readings, but {dropped} reading(s) that your collector labels with a unit reach no entity.\n\nTo have them added: choose **Download diagnostics**, either on this integration's entry or on the inverter's own device page, and attach the file to a device support request. It names the missing readings and contains no serial number, collector identifier or credential."
     }
   }
 }

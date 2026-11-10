@@ -26,6 +26,11 @@ many of its readings reach an entity, and the title and unit of every reading
 that reaches none, which is the list a maintainer works from. It also carries
 the control fields, so settings can be mapped from the same file.
 
+Home Assistant offers the same button on each inverter's own device page, and
+that file carries the same report for that one device. Either is enough: attach
+whichever you took. The entry download is still the better first file on a
+multi-inverter account, because it covers all of them at once.
+
 **It contains no credentials and no identifiers.** The username, password,
 company key and token are redacted, and serial numbers, collector aliases and
 collector product numbers appear only as a `sha256:` correlation hash, so two
