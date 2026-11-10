@@ -145,9 +145,20 @@ def _report_disagreements(evidence: dict[str, Any]) -> None:
 
 
 def write_evidence(
-    evidence: dict[str, Any], output_dir: Path, *, force: bool = False
+    evidence: dict[str, Any],
+    output_dir: Path,
+    *,
+    force: bool = False,
+    suffix: str = "",
 ) -> list[Path]:
-    """Write one evidence file per devcode and return what was written."""
+    """Write one evidence file per devcode and return what was written.
+
+    ``suffix`` names a second download for a devcode that already has one,
+    rather than replacing it. Two reports from different accounts are better
+    evidence than one: the devcode 6514 declarations were drawn from a 24 V
+    unit and confirmed against a 48 V one on another account, and both files
+    are committed so a later change has to satisfy both.
+    """
     written: list[Path] = []
     by_devcode: dict[Any, list[dict[str, Any]]] = {}
     for device in evidence["data"]["devices"]:
@@ -155,11 +166,13 @@ def write_evidence(
 
     for devcode, devices in sorted(by_devcode.items(), key=lambda item: str(item[0])):
         # The committed name is what tests/test_analysis_coverage globs for.
-        path = output_dir / f"analysis_{devcode}.json"
+        stem = f"analysis_{devcode}{f'_{suffix}' if suffix else ''}"
+        path = output_dir / f"{stem}.json"
         if path.exists() and not force:
             raise FileExistsError(
                 f"{path} already exists; pass --force to replace the evidence "
-                "for this devcode"
+                "for this devcode, or --suffix NAME to commit this download "
+                "beside it"
             )
         payload = {
             "data": {
@@ -192,6 +205,16 @@ def main() -> int:
         "--force",
         action="store_true",
         help="Replace existing evidence for a devcode this download covers",
+    )
+    parser.add_argument(
+        "--suffix",
+        default="",
+        help=(
+            "Commit this download beside the existing evidence for its "
+            "devcode, as analysis_<devcode>_<suffix>.json, rather than "
+            "replacing it. Use it for a second account or a second state of "
+            "the same hardware"
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -230,7 +253,9 @@ def main() -> int:
         return 0
 
     try:
-        written = write_evidence(evidence, args.output_dir, force=args.force)
+        written = write_evidence(
+            evidence, args.output_dir, force=args.force, suffix=args.suffix
+        )
     except (OSError, FileExistsError) as err:
         print(f"  ! {err}", file=sys.stderr)
         return 1

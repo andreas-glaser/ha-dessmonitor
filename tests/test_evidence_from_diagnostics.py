@@ -252,3 +252,42 @@ def test_an_edited_device_download_is_refused(tmp_path: Path) -> None:
     problems = tool.verify(tool.evidence_from(payload))
 
     assert problems and "does not match its own checksum" in problems[0]
+
+
+def test_a_second_download_for_a_devcode_is_committed_beside_the_first(
+    tmp_path: Path,
+) -> None:
+    """Two reports are better evidence than one, so neither replaces the other.
+
+    The devcode 6514 setting declarations were drawn from a 24 V unit and
+    confirmed against a 48 V one on an unrelated account; committing both
+    means a later change has to satisfy both.
+    """
+    tool = _tool()
+    payload = _download(**{"6489": [{"title": "BMS SOC", "val": "75", "unit": "%"}]})
+    evidence = tool.evidence_from(payload)
+    out = tmp_path / "evidence"
+    out.mkdir()
+    tool.write_evidence(evidence, out)
+
+    written = tool.write_evidence(evidence, out, suffix="mains_present")
+
+    assert [path.name for path in written] == ["analysis_6489_mains_present.json"]
+    assert sorted(path.name for path in out.iterdir()) == [
+        "analysis_6489.json",
+        "analysis_6489_mains_present.json",
+    ]
+
+
+def test_a_second_download_still_refuses_to_overwrite_its_own_name(
+    tmp_path: Path,
+) -> None:
+    tool = _tool()
+    payload = _download(**{"6489": [{"title": "BMS SOC", "val": "75", "unit": "%"}]})
+    evidence = tool.evidence_from(payload)
+    out = tmp_path / "evidence"
+    out.mkdir()
+    tool.write_evidence(evidence, out, suffix="mains_present")
+
+    with pytest.raises(FileExistsError):
+        tool.write_evidence(evidence, out, suffix="mains_present")

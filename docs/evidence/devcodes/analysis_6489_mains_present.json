@@ -1,0 +1,870 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.7.0",
+      "connection_type": "cloud",
+      "local_mode": "prefer_local",
+      "api_profile": "dessmonitor_ess"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 60.0,
+      "cloud_revision": 0,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 1,
+      "hybrid": true
+    },
+    "local": {
+      "setup_errors": [],
+      "transports": [
+        {
+          "connected": true,
+          "last_update_success": false,
+          "device_code": null,
+          "devices": 0,
+          "devices_seen": []
+        }
+      ]
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.7.0",
+        "devcode": 6489,
+        "device_identity": "sha256:9d901565181a",
+        "collector_identity": "sha256:91244a0d1fb9",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 21,
+          "unresolved": 48,
+          "total": 69,
+          "excluded": {
+            "attribute_readings": 2,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 20,
+          "unresolved_with_unit": [
+            {
+              "title": "Battery discharge alarm voltage",
+              "unit": "V",
+              "sample": "47.6"
+            },
+            {
+              "title": "Battery discharge cut-off voltage",
+              "unit": "V",
+              "sample": "46.0"
+            },
+            {
+              "title": "BMS current",
+              "unit": "A",
+              "sample": "123.39"
+            },
+            {
+              "title": "BMS cv point voltage",
+              "unit": "V",
+              "sample": "57.60"
+            },
+            {
+              "title": "BMS max change current",
+              "unit": "A",
+              "sample": "195.00"
+            },
+            {
+              "title": "BMS Rating Energy",
+              "unit": "Ah",
+              "sample": "--"
+            },
+            {
+              "title": "BMS Remaining power",
+              "unit": "Ah",
+              "sample": "--"
+            },
+            {
+              "title": "BMS SOC",
+              "unit": "%",
+              "sample": "75.00"
+            },
+            {
+              "title": "BMS Temperature",
+              "unit": "°C",
+              "sample": "29.80"
+            },
+            {
+              "title": "BMS voltage",
+              "unit": "V",
+              "sample": "53.80"
+            },
+            {
+              "title": "Charging current",
+              "unit": "A",
+              "sample": "31.1"
+            },
+            {
+              "title": "Charging voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Constant voltage charging time",
+              "unit": "M",
+              "sample": "480"
+            },
+            {
+              "title": "Constant voltage charging voltage",
+              "unit": "V",
+              "sample": "56.4"
+            },
+            {
+              "title": "Equalization Charge Timeout",
+              "unit": "M",
+              "sample": "120"
+            },
+            {
+              "title": "Equalization charging interval",
+              "unit": "D",
+              "sample": "720"
+            },
+            {
+              "title": "Equalization charging time",
+              "unit": "M",
+              "sample": "60"
+            },
+            {
+              "title": "Equalization charging voltage",
+              "unit": "V",
+              "sample": "58.4"
+            },
+            {
+              "title": "Fan speed",
+              "unit": "%",
+              "sample": "60"
+            },
+            {
+              "title": "Float charging voltage",
+              "unit": "V",
+              "sample": "55.2"
+            },
+            {
+              "title": "frequency",
+              "unit": "Hz",
+              "sample": "50.0"
+            },
+            {
+              "title": "High frequency of mains loss",
+              "unit": "Hz",
+              "sample": "70.00"
+            },
+            {
+              "title": "High point of mains loss voltage",
+              "unit": "V",
+              "sample": "264.0"
+            },
+            {
+              "title": "Input frequency",
+              "unit": "Hz",
+              "sample": "49.9"
+            },
+            {
+              "title": "Low frequency of mains loss",
+              "unit": "Hz",
+              "sample": "40.00"
+            },
+            {
+              "title": "Low point of mains loss voltage",
+              "unit": "V",
+              "sample": "154.0"
+            },
+            {
+              "title": "Low power discharge time",
+              "unit": "H",
+              "sample": "0"
+            },
+            {
+              "title": "Mains frequency",
+              "unit": "Hz",
+              "sample": "49.97"
+            },
+            {
+              "title": "Mains input voltage",
+              "unit": "V",
+              "sample": "232.1"
+            },
+            {
+              "title": "Mains loss voltage high recovery point",
+              "unit": "V",
+              "sample": "255.0"
+            },
+            {
+              "title": "Mains loss voltage low recovery point",
+              "unit": "V",
+              "sample": "163.0"
+            },
+            {
+              "title": "Maximum charging current",
+              "unit": "A",
+              "sample": "60.00"
+            },
+            {
+              "title": "Output current percentage",
+              "unit": "%",
+              "sample": "0"
+            },
+            {
+              "title": "output half wave apparent power",
+              "unit": "VA",
+              "sample": "0"
+            },
+            {
+              "title": "Output the total electricity consumption of the day",
+              "unit": "kWh",
+              "sample": "0.00"
+            },
+            {
+              "title": "Total electricity consumption",
+              "unit": "kWh",
+              "sample": "370.69"
+            },
+            {
+              "title": "Total electricity consumption of the day",
+              "unit": "kWh",
+              "sample": "0.00"
+            },
+            {
+              "title": "Total output electricity consumption",
+              "unit": "kWh",
+              "sample": "266.47"
+            },
+            {
+              "title": "Total photovoltaic power generation",
+              "unit": "kWh",
+              "sample": "0.00"
+            },
+            {
+              "title": "Total PV power generation on the day",
+              "unit": "kWh",
+              "sample": "0.00"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Balanced charging mode",
+            "Battery Type",
+            "BMS fault code",
+            "BMS status",
+            "BMS warning code",
+            "Charge Mode",
+            "DCDC control status",
+            "Number of battery cells"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-09 14:49:27",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Output voltage",
+            "value": "231.1",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Output current percentage",
+            "value": "0",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "Input frequency",
+            "value": "49.9",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "Rated voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": "rated voltage"
+          },
+          {
+            "title": "frequency",
+            "value": "50.0",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "Operating mode",
+            "value": "Mains mode",
+            "unit": "",
+            "resolved_key": "Operating mode"
+          },
+          {
+            "title": "Mains input voltage",
+            "value": "232.1",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Mains frequency",
+            "value": "49.97",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "High point of mains loss voltage",
+            "value": "264.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Low point of mains loss voltage",
+            "value": "154.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Mains loss voltage high recovery point",
+            "value": "255.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Mains loss voltage low recovery point",
+            "value": "163.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "High frequency of mains loss",
+            "value": "70.00",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "Low frequency of mains loss",
+            "value": "40.00",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "Total electricity consumption of the day",
+            "value": "0.00",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Total electricity consumption",
+            "value": "370.69",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery voltage",
+            "value": "53.8",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "Battery discharge cut-off voltage",
+            "value": "46.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery discharge alarm voltage",
+            "value": "47.6",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Charging voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Number of battery cells",
+            "value": "4",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Charging current",
+            "value": "31.1",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Constant voltage charging voltage",
+            "value": "56.4",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Float charging voltage",
+            "value": "55.2",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Equalization charging voltage",
+            "value": "58.4",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Maximum charging current",
+            "value": "60.00",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Constant voltage charging time",
+            "value": "480",
+            "unit": "M",
+            "resolved_key": null
+          },
+          {
+            "title": "Equalization charging time",
+            "value": "60",
+            "unit": "M",
+            "resolved_key": null
+          },
+          {
+            "title": "Equalization Charge Timeout",
+            "value": "120",
+            "unit": "M",
+            "resolved_key": null
+          },
+          {
+            "title": "Equalization charging interval",
+            "value": "720",
+            "unit": "D",
+            "resolved_key": null
+          },
+          {
+            "title": "Balanced charging mode",
+            "value": "Close",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery Type",
+            "value": "2",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Low power discharge time",
+            "value": "0",
+            "unit": "H",
+            "resolved_key": null
+          },
+          {
+            "title": "Charge Mode",
+            "value": "Constant current mode",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "DCDC control status",
+            "value": "Charge",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Output voltage",
+            "value": "232.1",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Output frequency",
+            "value": "49.90",
+            "unit": "Hz",
+            "resolved_key": "Output Frequency"
+          },
+          {
+            "title": "Output current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": "Output Current"
+          },
+          {
+            "title": "Output active power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "Output apparent power",
+            "value": "0",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "output half wave apparent power",
+            "value": "0",
+            "unit": "VA",
+            "resolved_key": null
+          },
+          {
+            "title": "Load percentage",
+            "value": "0",
+            "unit": "%",
+            "resolved_key": "Load Percent"
+          },
+          {
+            "title": "Output the total electricity consumption of the day",
+            "value": "0.00",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Total output electricity consumption",
+            "value": "266.47",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Inverter voltage",
+            "value": "230.8",
+            "unit": "V",
+            "resolved_key": "Inverter Voltage"
+          },
+          {
+            "title": "Inverter frequency",
+            "value": "49.98",
+            "unit": "Hz",
+            "resolved_key": "Inverter frequency"
+          },
+          {
+            "title": "Inverter current",
+            "value": "7.2",
+            "unit": "A",
+            "resolved_key": "Inverter Current"
+          },
+          {
+            "title": "Fan speed",
+            "value": "60",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "PV voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "PV Voltage"
+          },
+          {
+            "title": "PV charging current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": "PV charging current"
+          },
+          {
+            "title": "PV current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": "PV Current"
+          },
+          {
+            "title": "PV Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "PV Power"
+          },
+          {
+            "title": "Total PV power generation on the day",
+            "value": "0.00",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Total photovoltaic power generation",
+            "value": "0.00",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS status",
+            "value": "0.0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS voltage",
+            "value": "53.80",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS current",
+            "value": "123.39",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS Temperature",
+            "value": "29.80",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS SOC",
+            "value": "75.00",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS Remaining power",
+            "value": "--",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS Rating Energy",
+            "value": "--",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS fault code",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS warning code",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS max change current",
+            "value": "195.00",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS cv point voltage",
+            "value": "57.60",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cached Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "12V battery input",
+            "value": "Not read",
+            "unit": "",
+            "id": "cltd_12Vbattery_input"
+          },
+          {
+            "name": "24v battery undervoltage point",
+            "value": "Not read",
+            "unit": "",
+            "id": "cltd_24Vbattery_input"
+          },
+          {
+            "name": "48v battery undervoltage point",
+            "value": "Not read",
+            "unit": "",
+            "id": "cltd_48Vbattery_input"
+          },
+          {
+            "name": "Battery Mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "48: Lead-acid battery",
+              "49: Water injection battery",
+              "50: The lithium battery",
+              "51: The custom"
+            ],
+            "id": "cltd_battery_mode"
+          },
+          {
+            "name": "Charging priority",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "12336: Mains charging is preferred",
+              "12337: Photovoltaic charging is preferred",
+              "12338: The mains and PV are charged together",
+              "12339: Only PV charging is allowed"
+            ],
+            "id": "cltd_charging_priority"
+          },
+          {
+            "name": "Controls the inverter switch",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Open",
+              "1: Close"
+            ],
+            "id": "cltd_inverter_remote_switch"
+          },
+          {
+            "name": "Inverter output voltage",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "100: 100",
+              "110: 110",
+              "115: 115",
+              "120: 120",
+              "127: 127",
+              "208: 208",
+              "220: 208",
+              "230: 230",
+              "240: 240"
+            ],
+            "id": "cltd_inverter_output_voltage"
+          },
+          {
+            "name": "Mains charging current",
+            "value": "Not read",
+            "unit": "",
+            "id": "cltd_mains_charging_current"
+          },
+          {
+            "name": "Maximum charging current",
+            "value": "60.00",
+            "unit": "",
+            "id": "cltd_maximum_charging_current"
+          },
+          {
+            "name": "Output mode",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "12336: Home appliance model",
+              "12337: UPS mode"
+            ],
+            "id": "cltd_set_output_mode"
+          },
+          {
+            "name": "Output priority",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "12336: Mains output is preferred",
+              "12337: Photovoltaic output is preferred",
+              "12338: Priority from high to low,Photovoltaic > Battery > Mains"
+            ],
+            "id": "cltd_set_output_priority"
+          },
+          {
+            "name": "Power generation statistics time",
+            "value": "Not read",
+            "unit": "",
+            "id": "rating_power"
+          },
+          {
+            "name": "Restore the default value",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Default"
+            ],
+            "id": "cltd_restore_default"
+          },
+          {
+            "name": "system time",
+            "value": "Not read",
+            "unit": "",
+            "id": "system_time"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Battery voltage",
+            "value": "0",
+            "unit": "V",
+            "id": "battery_voltage"
+          },
+          {
+            "name": "BMS SOC",
+            "value": "0",
+            "unit": "%",
+            "id": "bt_battery_capacity"
+          },
+          {
+            "name": "Mains input voltage",
+            "value": "0",
+            "unit": "V",
+            "id": "gd_grid_voltage"
+          },
+          {
+            "name": "Output active power",
+            "value": "0",
+            "unit": "W",
+            "id": "load_active_power"
+          },
+          {
+            "name": "Output current percentage",
+            "value": "0",
+            "unit": "%",
+            "id": "output_current_percentage"
+          },
+          {
+            "name": "Output voltage",
+            "value": "0",
+            "unit": "V",
+            "id": "output_voltage"
+          }
+        ],
+        "checksum": "35d0978c89e1f882ccd3fa0390624a3420c01e1a642f52c4ca1420404a9f7c10",
+        "control_reads": {
+          "fields": 14,
+          "without_a_value": 13,
+          "rounds_that_recovered_nothing": 1,
+          "rounds_allowed": 12,
+          "still_trying": true,
+          "last_round_went_unanswered": true
+        },
+        "data_source": "Cached Cloud",
+        "last_update": "2026-11-09 14:49:27"
+      }
+    ]
+  }
+}

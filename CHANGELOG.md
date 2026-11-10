@@ -39,6 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   twenty setpoints it returns among the readings are declared settings rather
   than counted as readings that reach no entity (#66, thanks to @pivanet for
   the diagnostics download).
+- Devcode 6489 recognises "Mains mode" as its grid state. The first download
+  for it was taken with the mains out, so battery mode was the only state it
+  had been seen in; a second download with the mains back supplied the other
+  and is committed beside the first (#66, thanks to @pivanet).
+- `tools/evidence_from_diagnostics.py` takes `--suffix`, so a second download
+  for a devcode is committed beside the existing evidence instead of replacing
+  it. Two reports from different accounts, or from the same hardware in a
+  different state, are better evidence than one: the devcode 6514
+  declarations were drawn from a 24 V unit and confirmed against a 48 V one.
 - A devcode profile registered with no committed evidence now fails the test
   suite. The coverage guard can only read a devcode it has an evidence file
   for, so a profile without one is defended by nothing and a later change can

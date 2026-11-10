@@ -81,8 +81,12 @@ CHARGER_PRIORITY_MAPPING: dict[str, str] = {}
 # was absent. Any other string this collector uses reads as unavailable until
 # it is registered here, so the rest wait on a download taken with the mains
 # present rather than on a guess at the vendor's wording.
+# The first download for this devcode was taken with the mains out, so
+# "Battery mode" was the only state it had ever been observed in. "Mains mode"
+# comes from the second one, taken with the mains back (#66).
 OPERATING_MODE_MAPPING: dict[str, str] = {
     "Battery mode": "Battery",
+    "Mains mode": "Grid Mode",
 }
 
 SENSOR_TITLE_MAPPINGS: dict[str, str] = {
