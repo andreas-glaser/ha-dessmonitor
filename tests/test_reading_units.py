@@ -160,3 +160,39 @@ def test_a_scale_is_reported_once_per_reading(caplog) -> None:
     assert len(scaled) == 1
     assert "Energy Total" in scaled[0].getMessage()
     assert "Wh" in scaled[0].getMessage()
+
+
+def test_scaling_the_same_reading_twice_does_not_scale_it_twice() -> None:
+    """Rewriting the unit is what makes this safe, so pin it.
+
+    A conversion that was not idempotent would be a million-fold error the
+    moment any caller passed a converted point back through, and the devcode
+    that needed watching would be the one whose payload omits the unit and
+    relies on the profile's declaration.
+    """
+    once = apply_devcode_transformations(
+        2449, _reading("Today generation", "8466", "Wh")
+    )
+    twice = apply_devcode_transformations(2449, dict(once))
+
+    assert once["val"] == 8.466
+    assert twice["val"] == 8.466
+    assert twice["unit"] == "kWh"
+
+
+def test_a_declared_source_unit_is_not_reapplied_after_conversion() -> None:
+    """The payload had no unit, so only the rewritten one stops the second pass."""
+    once = apply_devcode_transformations(2449, _reading("Today generation", "8466", ""))
+    twice = apply_devcode_transformations(2449, dict(once))
+
+    assert once["val"] == 8.466
+    assert twice["val"] == 8.466
+
+
+def test_the_original_data_point_is_not_mutated() -> None:
+    """The coordinator holds the snapshot; a transformation returns a copy."""
+    point = _reading("Today generation", "8466", "Wh")
+
+    apply_devcode_transformations(2449, point)
+
+    assert point == {"title": "Today generation", "val": "8466", "unit": "Wh"}
