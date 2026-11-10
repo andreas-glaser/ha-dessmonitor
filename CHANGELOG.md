@@ -85,6 +85,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#58, #63).
 
 ### Fixed
+- Local discovery reported that no read-only protocol could be identified on a
+  collector that had identified itself. The Eybond logger on a Maxsky EM11000
+  answers the SMG layout register with 3, a variant no driver reads, and that
+  answer was swallowed by the fall-through to the next candidate route: the
+  probe counted the query as a success and the failure said only that no
+  protocol was found, which reads as missing devcode support for a collector
+  that replied in 250 ms. The failure now names the layout the collector
+  reported and the three that are confirmed on hardware, so the next report on
+  it is about the layout rather than about the devcode (#76, thanks to
+  @ballhtml for the register read). No layout is added; 3 is still unsupported.
 - Devcodes 6544 and 6515 told their owners that readings were missing when none
   were. Both collectors return the inverter's setpoints among the telemetry,
   each spelled exactly as a control field on the same device and carrying the

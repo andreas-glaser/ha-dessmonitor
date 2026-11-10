@@ -232,8 +232,13 @@ async def test_unsupported_layout_cannot_fall_back_to_standard_map():
             return build_read_holding_response(payload[0], [5])
         return response
 
-    with pytest.raises(ModbusError, match="no SMG"):
+    # The layout the collector named is what the failure says, not a silence:
+    # losing it sent the reporter in #76 to the devcode-support path for a
+    # collector that answered this register in 250 ms.
+    with pytest.raises(ModbusError, match="register layout 5") as raised:
         await discover_smg(send, collector_product_number="TEST", device_address=1)
+    assert raised.value.reason == "unsupported_protocol"
+    assert raised.value.details == {"layout_code": 5}
     assert all(start == 184 for _, start, _ in replay.calls)
 
 

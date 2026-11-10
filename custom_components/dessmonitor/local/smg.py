@@ -218,11 +218,21 @@ async def discover_smg(
     tunnel_codes = _tunnel_device_codes(configured_device_code, reported_device_code)
     selected: tuple[int, int] | None = None
     first_snapshot: tuple[int, dict[str, Any]] | None = None
+    # A layout register this driver cannot read is an answer, not a silence,
+    # and the routes tried after it cannot produce a better one. Losing it to
+    # the fall-through below left discovery reporting that no local protocol
+    # could be identified, which sends a reporter to the devcode-support path
+    # for a collector that answered in 250 ms (#76).
+    unsupported_layout: int | None = None
     for device_code in tunnel_codes:
         for collector_address in (SMG_TUNNEL_COLLECTOR_ADDRESS, first_address):
             route = SmgRoute(device_code, collector_address, first_address)
             try:
                 candidate = await _read_discovery_snapshot(send, route)
+            except ModbusError as err:
+                if err.reason == "unsupported_protocol" and unsupported_layout is None:
+                    unsupported_layout = err.details.get("layout_code")
+                continue
             except (TimeoutError, ProtocolError):
                 continue
             selected = (device_code, collector_address)
@@ -231,6 +241,14 @@ async def discover_smg(
         if selected is not None:
             break
     if selected is None or first_snapshot is None:
+        if unsupported_layout is not None:
+            raise ModbusError(
+                "the collector answered on SMG/Modbus and reported register "
+                f"layout {unsupported_layout}, which this driver does not read; "
+                "only layouts 0, 1 and 4 have been confirmed on hardware",
+                reason="unsupported_protocol",
+                details={"layout_code": unsupported_layout},
+            )
         raise ModbusError("no SMG/Modbus inverter responded")
 
     devices: list[SmgDevice] = []
@@ -323,6 +341,7 @@ async def _read_discovery_snapshot(
         raise ModbusError(
             f"unsupported SMG register layout {protocol_number}",
             reason="unsupported_protocol",
+            details={"layout_code": protocol_number},
         )
     selected = SmgRoute(
         route.device_code, route.collector_address, route.slave_address, protocol_number
