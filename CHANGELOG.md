@@ -85,6 +85,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#58, #63).
 
 ### Fixed
+- Local telemetry was collected and then silently discarded when the collector
+  answered on an RS485 address the cloud does not record for it. Automatic
+  discovery pairs on whichever address answers first, and hybrid mode pairs a
+  local inverter with its cloud record by serial or by collector plus an equal
+  address, so the two disagreed, the overlay declined, and `Data Source` stayed
+  on `Cloud` in `prefer_local` mode with nothing said anywhere. The reporter in
+  #61 found it by setting **Inverter address** to 5 on a hunch. Where a
+  collector carries one inverter locally and the cloud lists one for it, the
+  pairing is unambiguous and the addresses no longer have to agree; where
+  several share a collector the overlay still declines, because pairing on
+  weaker evidence than an address could publish one inverter's readings on
+  another's entities, and the log now names the addresses that answered and the
+  ones the cloud records so the setting can be corrected (#61, #65). An
+  affected hybrid installation starts publishing local values where it was
+  publishing cloud values; no entity is added, renamed or removed.
 - Devcode 632 told owners that seven readings were missing when none were. The
   collector reports the R, S and T phases and the RS, ST and TR line voltages
   whatever the hardware is, and on a single-phase inverter the R phase carries

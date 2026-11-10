@@ -191,6 +191,17 @@ Set `1` through `247` to target just that address, including addresses above
 address. Hybrid mode applies the setting to each listed collector. Existing
 entries without the setting retain automatic discovery.
 
+Hybrid mode has to decide which cloud device a locally seen inverter is, and it
+pairs on the serial number, or on the collector product number plus an equal
+RS485 address. Where the collector answers on an address the cloud does not
+record for it, those two disagree. If the collector carries one inverter
+locally and the cloud lists one for it, the pairing is unambiguous and the
+addresses need not agree. Where several inverters share the collector, pairing
+on anything weaker than the address could publish one inverter's readings on
+another's entities, so the overlay declines and the log says which addresses
+answered and which the cloud records, so **Inverter address** can be set to the
+first.
+
 ## Supported read-only drivers
 
 - PI17/PI18 ASCII telemetry, with strict length and CRC validation. The inverter's
