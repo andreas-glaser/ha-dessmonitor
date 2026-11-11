@@ -7,6 +7,286 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-11-12
+
+This stable release includes all changes since 2.7.0, including everything
+shipped in 2.8.0-rc.1 and 2.8.0-rc.2.
+
+### Added
+- Support for devcode 2341 (EASUN hybrid and PowMr MPS-V plus 3.5 kW, both
+  24 V units) (#72, #73, thanks to @mathispp and @vrabi-cv for three
+  diagnostics downloads between them). Of the 45 readings that reached no
+  entity, 17 become sensors - state of charge, the grid voltage and frequency,
+  the PV voltage and charge power, output load, operating mode, grid status,
+  output priority and the eight nameplate ratings - and 24 are the inverter's
+  own setpoints, which the account already publishes as number and select
+  entities and which are now declared settings rather than counted as missing
+  readings. The battery-voltage dropdowns are narrowed to the reported 24 V or
+  48 V rating. The four that remain identify the hardware and carry no unit.
+- Support for devcode 2548, an SPI-12K-H3 12 kW three-phase hybrid and the
+  first three-phase unit with a profile (#67, thanks to @pletik11-sketch for
+  the diagnostics download). 65 of its 74 readings reach a sensor now against
+  14 before, and every reading it labels with a unit reaches one. It names
+  phase A by name while prefixing the other two `L2:` and `L3:`, so all three
+  are brought into one naming, and it reports the inverter's own output
+  current separately from what the load draws, which differ on bypass.
+- A canonical name for the battery voltage a solar charge controller measures,
+  which Axpert hardware reports beside the inverter's own battery voltage and
+  which can differ from it while charging (#74).
+- Fifteen sensor readings that had no canonical name, all for three-phase
+  hardware: the third phase's voltage, current, active and apparent power and
+  load percentage, the load current on each of the three phases, the mains
+  voltage on each, battery charging power, the daily and accumulated
+  mains-charging ampere-hour counters, and the summed phase voltage this
+  collector reports beside the individual phases. They are additions, so
+  nothing an installation already publishes changes.
+- Support for devcode 6489 (JSD Solar 5.5 kW 48 V hybrid behind a
+  `WFBLE.RTU.Bar` collector) with the mains, battery, AC output, PV and BMS
+  sections of its telemetry mapped: 45 of its 71 readings resolve now against
+  21 before, every reading that carries a unit reaches a sensor, and the
+  twenty setpoints it returns among the readings are declared settings rather
+  than counted as readings that reach no entity (#66, thanks to @pivanet for
+  the diagnostics download).
+- Devcode 6489 recognises "Mains mode" as its grid state. The first download
+  for it was taken with the mains out, so battery mode was the only state it
+  had been seen in; a second download with the mains back supplied the other
+  and is committed beside the first (#66, thanks to @pivanet).
+- `tools/evidence_from_diagnostics.py` takes `--suffix`, so a second download
+  for a devcode is committed beside the existing evidence instead of replacing
+  it. Two reports from different accounts, or from the same hardware in a
+  different state, are better evidence than one: the devcode 6514
+  declarations were drawn from a 24 V unit and confirmed against a 48 V one.
+- A devcode profile registered with no committed evidence now fails the test
+  suite. The coverage guard can only read a devcode it has an evidence file
+  for, so a profile without one is defended by nothing and a later change can
+  stop it resolving a reading in silence - which is how devcode 6514 shipped
+  resolving its state of charge alone and dropped 58 of its 76 titles until
+  two reporters noticed eight months apart. Ten devcodes registered before
+  this was a requirement are listed as exemptions, and the list only shrinks:
+  a second test fails once an entry on it has evidence. A pull request
+  template now asks for the download alongside the profile.
+- The device "Download diagnostics" button now produces the same support
+  report the integration entry's button does: every reading with its value,
+  unit and resolved sensor, the support classification, and a checksum over
+  the lot. Both files are now usable devcode evidence, which matters because
+  reporters attach whichever button they found - four of the five files on the
+  open devcode issues were device downloads, and that file named the unmapped
+  readings and nothing else. `tools/triage.py` and
+  `tools/evidence_from_diagnostics.py` read it too (#63, #68, #72, #73).
+- Eleven sensor readings that had no canonical name: output current
+  percentage, battery charging voltage, output half-wave apparent power, fan
+  speed, the daily mains and load energy counters beside the accumulated ones,
+  the charger's own stage, and what a battery's BMS reports about its
+  remaining and rated capacity, its charge-current limit and its CV point.
+  They are additions, so nothing an installation already publishes changes.
+
+- The diagnostics download records the dashboard figure the summary merge
+  decided against. The plant summary carries the cloud's own `energyToday`,
+  `energyTotal` and `outpower`, and a device whose own telemetry already
+  reaches those entities keeps its own reading, so the cloud's figure was
+  dropped and left no trace. It is what the vendor app displays, which makes
+  it the comparison every "the app shows a different daily energy" report
+  needs, and the file it is now in is the one reporters already attach
+  (#58, #63).
+
+### Fixed
+- Devcode 2452's four schedule controls and its clock were published as number
+  entities, which cannot hold "00:00" or a nineteen-character calendar string,
+  so they sat empty with nothing to set: Start Time and Ending Time For Enable
+  AC Charger Working, Start time and Ending time for enable AC supply the load,
+  and Set Date Time (#53, thanks to @DastardlyBaker). They become `time` and
+  `text` controls, the way devcodes 6544 and 6515 already do. The field ids and
+  both value shapes are the account's own control readback in the committed
+  download; the write format is the string the API returned, unchanged, and is
+  not confirmed on this hardware by a write.
+- Local mode stopped working on collectors it had polled correctly for
+  releases, reporting "no supported read-only local protocol was identified"
+  while every probe query was answered. 2.6.0 began reading the SMG layout
+  register and refusing any code other than 0, 1 or 4, on the code alone,
+  before the register map was tried. An ANENJI 5KW reports a code outside those
+  three and had polled at five-second intervals on 2.5.0; its owner rolled back
+  to get local telemetry again (#64, thanks to @vyore1980 for debug logs from
+  both versions, which is what identified this). A code with no map of its own
+  now falls back to the standard `201..234` map and the inverter is kept only
+  if that block decodes - a complete block, a known operating mode, every field
+  within its range and a non-zero voltage, the same bar firmware with no layout
+  register has to clear. A layout whose registers mean something else still
+  fails that block and is refused, and the refusal now names the code the
+  collector reported. No layout's register map is guessed at.
+- Local discovery reported that no read-only protocol could be identified on a
+  collector that had identified itself. The Eybond logger on a Maxsky EM11000
+  answers the SMG layout register with 3, a variant no driver reads, and that
+  answer was swallowed by the fall-through to the next candidate route: the
+  probe counted the query as a success and the failure said only that no
+  protocol was found, which reads as missing devcode support for a collector
+  that replied in 250 ms. The failure now names the layout the collector
+  reported and the three that are confirmed on hardware, so the next report on
+  it is about the layout rather than about the devcode (#76, thanks to
+  @ballhtml for the register read). No layout is added; 3 is still unsupported.
+- Devcodes 6544 and 6515 told their owners that readings were missing when none
+  were. Both collectors return the inverter's setpoints among the telemetry,
+  each spelled exactly as a control field on the same device and carrying the
+  value that control reads back, so the account already publishes every one as
+  a number or select entity. Three ANENJI ANJ-11KW-48V-W-P inverters each
+  reported 44 of them, 20 with a unit, which is the "missing 20 readings"
+  Repairs card (#77, thanks to @realjohndo for a config-entry download covering
+  all three); a Maxsky EM11000 reported 40, 17 with a unit (#76, thanks to
+  @ballhtml). They are now declared settings, so they count as
+  neither mapped nor dropped, both devcodes report supported and the cards are
+  withdrawn. Only "Equipment type" and "Protocol Number" stay unresolved on
+  each; they identify the hardware and carry no unit. No entity is added,
+  renamed or removed.
+- The three Eybond ESS collectors that share this setpoint vocabulary -
+  devcodes 6514, 6515 and 6544 - now share one table of it in
+  `device_support/eybond_ess.py`, as the two Voltronic PI30 collectors already
+  share `eybond_voltronic.py`. 30 of its 46 titles appear in all three
+  downloads and every title appears in at least one, so three copies would have
+  been three lists to keep in step. A profile opts in by importing the table,
+  which keeps adding a devcode to the family a decision backed by its own
+  download, and the guard over it fails on any title that no committed download
+  reports as both a reading and a control.
+- Local telemetry was collected and then silently discarded when the collector
+  answered on an RS485 address the cloud does not record for it. Automatic
+  discovery pairs on whichever address answers first, and hybrid mode pairs a
+  local inverter with its cloud record by serial or by collector plus an equal
+  address, so the two disagreed, the overlay declined, and `Data Source` stayed
+  on `Cloud` in `prefer_local` mode with nothing said anywhere. The reporter in
+  #61 found it by setting **Inverter address** to 5 on a hunch. Where a
+  collector carries one inverter locally and the cloud lists one for it, the
+  pairing is unambiguous and the addresses no longer have to agree; where
+  several share a collector the overlay still declines, because pairing on
+  weaker evidence than an address could publish one inverter's readings on
+  another's entities, and the log now names the addresses that answered and the
+  ones the cloud records so the setting can be corrected (#61, #65). An
+  affected hybrid installation starts publishing local values where it was
+  publishing cloud values; no entity is added, renamed or removed.
+- Devcode 632 told owners that seven readings were missing when none were. The
+  collector reports the R, S and T phases and the RS, ST and TR line voltages
+  whatever the hardware is, and on a single-phase inverter the R phase carries
+  the measurement while the other seven read 0.0 and carry a unit. They are
+  now declared absent on this devcode, as devcode 4743's idle phases are, so
+  they count as neither mapped nor dropped and the Repairs card is withdrawn.
+  Mapping them would have published five voltage and two current sensors that
+  read zero forever. No entity is added, renamed or removed (#58, thanks to
+  @shanidks for two diagnostics downloads from 2.7.0).
+- Devcode 2451 told owners that sixteen readings were missing when none were.
+  Seven are the inverter's nameplate ratings, which now become diagnostic
+  sensors; seven are its own setpoints, which the account publishes as number
+  and select entities and which are now declared settings; and the remaining
+  two are real readings that had nowhere to go - the grid input current and the
+  battery voltage the solar charge controller measures. The six titles still
+  unmapped identify the hardware and carry no unit (#74, thanks to
+  @FifoTheHein for the diagnostics download).
+- Energy readings a collector labels in watt-hours were published on sensors
+  that measure kilowatt-hours, so the value reached Home Assistant a thousand
+  times too large and went into the energy dashboard and long-term statistics
+  that way. Two devcode 2449 inverters reported 8466 kWh generated in a day
+  and 15045200 kWh in their lifetime (#71, thanks to @infordbf for the
+  measurements). A reading is now scaled from the unit the collector itself
+  declares, which fixes this wherever it occurs rather than one devcode at a
+  time, and leaves a collector that already reports kilowatt-hours untouched.
+  Devcode 2452, which had a hand-written conversion for three of its counters,
+  now goes through the same path and publishes the same values as before.
+- A device diagnostics download disagreed with itself about how many readings
+  reached no sensor, because its summary counted a setpoint the profile
+  declares a setting and a field the hardware never fills while the support
+  report in the same file did not. On devcode 6514 that was thirty-eight
+  against twenty. Both now come from the support report (#68, #69).
+- Devcode 6514 told owners that twenty readings were missing when none were.
+  The collector returns the inverter's own setpoints - charging voltages and
+  currents, battery protection voltages and SOC thresholds, equalization
+  times - among its telemetry, each the value of a control the account already
+  publishes as a number or select entity. They are now declared settings, so
+  the support report counts them as neither mapped nor dropped and the Repairs
+  card is withdrawn. No sensor, number, select or button entity is added,
+  renamed or removed. The ANENJI 4.2KW 24V diagnostics download is committed
+  as evidence; the earlier CLI analysis recorded a unit for its first twenty
+  samples only, which is why the coverage guard never saw these.
+- An enum sensor went unavailable the first time its collector reported a
+  state no devcode registers. Home Assistant rejects an enum state outside
+  the entity's option list, and the list was fixed when the entity was built,
+  so one unfamiliar word took down the whole sensor - Operating Mode, a
+  priority or the charger state - rather than showing that word. The list now
+  carries a state first seen later, bounded so a reading misclassified as an
+  enumeration cannot grow it without end (#66).
+- A device could publish two entities with the same name. Several readings are
+  defined twice on purpose, once per vendor spelling - `SOC` beside `State of
+  Charge`, `Batt Current` beside `Battery Current`, `energyToday` beside
+  `Energy Today` - and a collector that reports both resolved them to two
+  separate sensors. Only the summary endpoint's pair was guarded, and only
+  there. A device now gets one entity per name, keeping the reading that
+  arrives first, which is the measured one rather than a summary field the
+  vendor may never set (#58).
+- Eight sensors that declare themselves diagnostic were published as ordinary
+  sensors: Rated Current, Rated Frequency, Rated Voltage, Rated Apparent
+  Power, Battery Rated Voltage, Grid Rated Current, Grid Rated Voltage and
+  Grid Reconnect Waiting Time. `SENSOR_TYPES` declared the category and the
+  sensor platform read a second, shorter list instead, which also named a
+  sensor that does not exist. The declaration in `SENSOR_TYPES` is now the
+  only one.
+- A local setup error in the diagnostics download printed the address it
+  failed to bind, so a reporter's LAN address reached a public attachment
+  while the same address was described rather than printed everywhere else in
+  the file. Addresses in those messages now get the same subnet description,
+  and the errno and port are kept (#66).
+
+### Upgrade notes: corrected energy values and existing statistics
+- If your energy sensors were reading a thousand times too high - devcode 2449
+  is the confirmed case - they now report the real figure, keeping their entity
+  ids, units and history. The inflated readings already recorded stay in
+  long-term statistics and will show as one enormous spike on the energy
+  dashboard. Remove them under **Developer tools > Statistics**, which lists
+  the affected entities and offers to adjust or delete the recorded sums; the
+  readings taken after the update are correct and unaffected.
+
+### Upgrade notes: a duplicated sensor name stops being published
+- If a device of yours already shows two entities with one name, the one fed by
+  the summary field stops being published and will show as unavailable until you
+  delete it. It is the one that was reading a field the vendor leaves unset,
+  typically 0, and the measured reading is kept.
+- Which of the two holds the plain entity id depends on which existed when the
+  pair was first created. Normally that is the measured reading, so it keeps its
+  entity id and its history and nothing needs doing. If your device reported
+  only the summary field at the time - the 0 kWh case - then the surviving
+  entity is the one Home Assistant suffixed `_2`, and dashboard cards, the
+  energy dashboard and automations pointing at the unsuffixed id need
+  repointing at it.
+
+### Upgrade notes: local telemetry that was being discarded starts publishing
+- On a hybrid installation whose collector answers on an RS485 address the cloud
+  does not record for it, local readings were collected and dropped. Those
+  devices start publishing local values where they were publishing cloud values,
+  and `Data Source` changes from `Cloud` to `Local`. That is what `prefer_local`
+  was asked for, and no entity is added, renamed or removed.
+- Local and cloud can disagree slightly about a cumulative counter, because they
+  are read at different intervals. Energy Total is held at its high mark across
+  a source switch rather than walking backwards, so the energy dashboard is not
+  affected.
+- An installation whose addresses already agree is untouched: pairing by serial
+  and by equal address is unchanged and still tried first. If you set **Inverter
+  address** by hand to work around this, leave it - it keeps working, and you can
+  return it to `0` once you are on this release.
+
+### Upgrade notes: eight rating sensors move into Diagnostics
+- Rated Current, Rated Frequency, Rated Voltage, Rated Apparent Power, Battery
+  Rated Voltage, Grid Rated Current, Grid Rated Voltage and Grid Reconnect
+  Waiting Time move into the **Diagnostic** section of the device page, which
+  is where they always said they belonged. Rated Power was already there.
+- Nothing is renamed or removed. Entity ids, states, units and history are
+  unchanged, and automations, scripts and dashboard cards that reference them
+  keep working. The only visible effect is where the entities appear on the
+  device page, and that Home Assistant leaves a diagnostic entity out of the
+  cards it generates for you.
+
+### Upgrade notes: devcode 2452 time and clock controls
+- Four schedule controls move from `number` to `time`, and Set Date Time moves
+  from `number` to `text`. Update dashboard and automation entity references
+  and use `time.set_value` / `text.set_value` instead of `number.set_value`.
+  The old number entities held no usable value, so nothing is lost in moving.
+- Old number registry and history entries are retained and disabled rather than
+  deleted, through the same migration devcodes 6544 and 6515 used, which
+  records its decision per entity so a disable or re-enable survives a reload.
+
 ## [2.8.0-rc.2] - 2026-11-11
 
 Second release candidate for 2.8.0, carrying the work that landed after
@@ -2084,7 +2364,10 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.7.0...v2.8.0
+[2.8.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.8.0-rc.1...v2.8.0-rc.2
+[2.8.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.7.0...v2.8.0-rc.1
 [2.7.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0...v2.7.0
 [2.7.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.7.0-rc.1...v2.7.0-rc.2
 [2.7.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.6.0...v2.7.0-rc.1
