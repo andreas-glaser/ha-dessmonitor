@@ -24,6 +24,15 @@ _DEVICE_REGISTRY: dict[int, dict[str, Any]] = {}
 # Transformations run for every sensor read; report missing support once per run.
 _WARNED_UNSUPPORTED_DEVCODES: set[int] = set()
 
+# Reading scales already reported, as (devcode, title). This runs for every
+# reading on every refresh, so the log line is emitted once per reading rather
+# than per sample. It is the only trace a scale leaves: the support report
+# records the reading with its converted value and the sensor's own unit, so a
+# download cannot show that a conversion happened. If a collector ever labels
+# a reading Wh while sending kilowatt-hours, this is the line that says which
+# reading was divided and on whose authority.
+_REPORTED_SCALES: set[tuple[Any, str]] = set()
+
 
 def _register_devcode(devcode: int, config: dict[str, Any]) -> None:
     """Register a devcode configuration."""
@@ -84,6 +93,14 @@ def _load_device_configurations() -> None:
 
         _register_devcode(2428, config_2428)
 
+        from .devcode_2341 import DEVCODE_CONFIG as config_2341
+
+        _register_devcode(2341, config_2341)
+
+        from .devcode_2548 import DEVCODE_CONFIG as config_2548
+
+        _register_devcode(2548, config_2548)
+
         from .devcode_2477 import DEVCODE_CONFIG as config_2477
 
         _register_devcode(2477, config_2477)
@@ -107,6 +124,10 @@ def _load_device_configurations() -> None:
         from .devcode_4743 import DEVCODE_CONFIG as config_4743
 
         _register_devcode(4743, config_4743)
+
+        from .devcode_6489 import DEVCODE_CONFIG as config_6489
+
+        _register_devcode(6489, config_6489)
 
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
@@ -302,6 +323,111 @@ def map_operating_mode(devcode: int, api_value: str) -> str:
     return normalized_value
 
 
+# How to reach a canonical sensor's unit from the unit a collector declares.
+# Keyed by (declared unit, canonical unit), both casefolded, and holding the
+# scale as a numerator and a denominator rather than a float: a lifetime
+# counter goes into long-term statistics, and multiplying 15.0452 MWh by 1000.0
+# yields 15045.199999999999 where dividing keeps the figure the vendor sent.
+#
+# Only the energy scales are listed, because those are the only ones any
+# evidence in this repository shows a collector disagreeing with the sensor
+# about, and a factor applied to a reading that did not need one is a
+# thousand-fold error in the other direction. Add a pair here when a committed
+# download shows it, not in anticipation.
+_UNIT_SCALES: dict[tuple[str, str], tuple[int, int]] = {
+    ("wh", "kwh"): (1, 1000),
+}
+
+
+def declared_reading_unit(devcode: Any, title: str) -> str:
+    """Return the unit a profile says this reading arrives in, or "".
+
+    A collector normally labels its own readings, and that label is the
+    evidence used. This covers the case where it sends the value and no unit:
+    the profile states what the vendor's own download showed, so a payload
+    that happens to omit the unit does not silently go unscaled.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config:
+        return ""
+    declared = config.get("source_units") or {}
+    normalized = _normalize_title(title)
+    for name, unit in declared.items():
+        if _normalize_title(name) == normalized:
+            return str(unit)
+    return ""
+
+
+def normalize_reading_scale(devcode: Any, transformed_data: dict[str, Any]) -> None:
+    """Scale a reading whose declared unit is a multiple of its sensor's unit.
+
+    An entity's unit comes from ``SENSOR_TYPES`` and never from the payload, so
+    a collector that reports watt-hours on a reading this integration publishes
+    in kilowatt-hours puts a figure a thousand times too large on the energy
+    dashboard, where it also lands in long-term statistics. Devcode 2449
+    reported 15045200 Wh of lifetime generation as 15045200 kWh (#71), and
+    devcode 2452 reported the same thing a devcode-specific callback had to
+    correct by hand.
+
+    Deciding it from the unit the collector declares fixes the whole class and
+    cannot misfire on a collector that already reports the canonical unit,
+    which a blanket per-title conversion can. It runs for every devcode,
+    including one with no profile, because the vendor's own label is the
+    evidence rather than anything a profile knows.
+    """
+    from ..sensor_titles import sensor_unit
+
+    title = transformed_data.get("title")
+    value = transformed_data.get("val")
+    if not isinstance(title, str) or value is None:
+        return
+    declared = str(
+        transformed_data.get("unit") or declared_reading_unit(devcode, title)
+    ).strip()
+    if not declared:
+        return
+    canonical = sensor_unit(title).strip()
+    if not canonical:
+        return
+    scale = _UNIT_SCALES.get((declared.casefold(), canonical.casefold()))
+    if scale is None:
+        return
+    numerator, denominator = scale
+    try:
+        scaled = float(str(value).strip()) * numerator / denominator
+    except (TypeError, ValueError):
+        # Not a number, so not a reading a scale applies to. The support
+        # report still records it as the collector sent it.
+        return
+    seen = (devcode, _normalize_title(title))
+    if seen not in _REPORTED_SCALES:
+        _REPORTED_SCALES.add(seen)
+        _LOGGER.debug(
+            "Devcode %s reports %s in %s and the sensor publishes %s, so its "
+            "values are scaled by %s/%s (%s became %s). The unit the collector "
+            "declared is what decided this%s",
+            devcode,
+            title,
+            declared,
+            canonical,
+            numerator,
+            denominator,
+            value,
+            scaled,
+            (
+                ""
+                if transformed_data.get("unit")
+                else "; the payload carried no unit, so the profile's own "
+                "declaration was used"
+            ),
+        )
+    transformed_data["val"] = scaled
+    # The reading now carries the unit its sensor publishes, so the support
+    # report and a second pass over the same point both agree with the entity.
+    transformed_data["unit"] = canonical
+
+
 def apply_devcode_transformations(
     devcode: int, sensor_data: dict[str, Any]
 ) -> dict[str, Any]:
@@ -320,11 +446,16 @@ def apply_devcode_transformations(
                 devcode,
             )
             _WARNED_UNSUPPORTED_DEVCODES.add(devcode)
-        return sensor_data
+        # A collector with no profile still labels its readings, and the
+        # titles that already resolve without one still reach an entity.
+        transformed_data = sensor_data.copy()
+        normalize_reading_scale(devcode, transformed_data)
+        return transformed_data
 
     transformed_data = sensor_data.copy()
 
     _apply_title_mapping(devcode, transformed_data)
+    normalize_reading_scale(devcode, transformed_data)
     _apply_value_mappings(devcode, transformed_data)
     _apply_custom_transformations(config, transformed_data)
 

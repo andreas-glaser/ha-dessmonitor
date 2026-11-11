@@ -66,6 +66,121 @@ def test_unaddressed_ascii_requires_a_serial_match() -> None:
     assert values["Data Source"] == "Local"
 
 
+def test_one_inverter_behind_one_collector_pairs_despite_the_address() -> None:
+    """The refusal that cost #61 a working local mode until the owner guessed.
+
+    Discovery pairs on whichever RS485 address answers first - 5 on that
+    collector - and the cloud's record carried a different one, so local
+    telemetry flowed and the overlay declined it in silence. With one device
+    on each side of one collector there is nothing the pairing can get wrong.
+    """
+    local = _local_payload()
+    local["LOCAL-SERIAL"]["device"]["devaddr"] = 5
+
+    merged = merge_cloud_and_local(_cloud_payload(), local, local_available=True)
+    values = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+
+    assert values["Data Source"] == "Local"
+    assert values["Output Active Power"] == 900
+
+
+def test_a_second_cloud_device_on_the_collector_refuses_the_pairing() -> None:
+    """A wrong pairing publishes one inverter's readings on another's entities."""
+    cloud = _cloud_payload()
+    cloud["SECOND-CLOUD-SERIAL"] = {
+        "collector": {"pn": "COLLECTOR-1"},
+        "device": {"devcode": 2452, "devaddr": 2, "alias": "Second"},
+        "data": [{"title": "Grid voltage", "val": 229, "unit": "V"}],
+    }
+    local = _local_payload()
+    local["LOCAL-SERIAL"]["device"]["devaddr"] = 5
+
+    merged = merge_cloud_and_local(cloud, local, local_available=True)
+
+    for serial in ("CLOUD-SERIAL", "SECOND-CLOUD-SERIAL"):
+        values = {point["title"]: point["val"] for point in merged[serial]["data"]}
+        assert values["Data Source"] == "Cloud"
+
+
+def test_a_second_local_device_on_the_collector_refuses_the_pairing() -> None:
+    """Two local devices and one cloud record is not an unambiguous pairing."""
+    local = _local_payload()
+    local["LOCAL-SERIAL"]["device"]["devaddr"] = 5
+    local["SECOND-LOCAL-SERIAL"] = {
+        "collector": {"pn": "COLLECTOR-1"},
+        "device": {"devcode": 2452, "devaddr": 6},
+        "data": [{"title": "Grid Voltage", "val": 232.0, "unit": "V"}],
+    }
+
+    merged = merge_cloud_and_local(_cloud_payload(), local, local_available=True)
+    values = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+
+    assert values["Data Source"] == "Cloud"
+    assert values["Grid voltage"] == 228
+
+
+def test_an_unverified_address_is_not_paired_by_being_the_only_one() -> None:
+    """An ASCII driver that cannot confirm its address still needs a serial."""
+    local = _local_payload()
+    local["LOCAL-SERIAL"]["device"]["devaddr"] = 5
+    local["LOCAL-SERIAL"]["device"]["local_address_verified"] = False
+
+    merged = merge_cloud_and_local(_cloud_payload(), local, local_available=True)
+    values = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+
+    assert values["Data Source"] == "Cloud"
+
+
+def test_another_collector_is_not_paired_by_being_the_only_one() -> None:
+    """Being alone is only evidence within one collector."""
+    local = _local_payload()
+    local["LOCAL-SERIAL"]["collector"]["pn"] = "OTHER-COLLECTOR"
+    local["LOCAL-SERIAL"]["device"]["devaddr"] = 5
+
+    merged = merge_cloud_and_local(_cloud_payload(), local, local_available=True)
+    values = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
+
+    assert values["Data Source"] == "Cloud"
+
+
+def test_an_unpairable_local_address_is_reported_with_what_to_set(caplog) -> None:
+    """The silent refusal is what cost #61 weeks; it now names the addresses."""
+    from custom_components.dessmonitor.local import hybrid
+
+    hybrid._REPORTED_UNPAIRED_LOCAL.clear()
+    cloud = _cloud_payload()
+    cloud["SECOND-CLOUD-SERIAL"] = {
+        "collector": {"pn": "COLLECTOR-1"},
+        "device": {"devcode": 2452, "devaddr": 2, "alias": "Second"},
+        "data": [{"title": "Grid voltage", "val": 229, "unit": "V"}],
+    }
+    local = _local_payload()
+    local["LOCAL-SERIAL"]["device"]["devaddr"] = 5
+
+    with caplog.at_level("WARNING"):
+        merge_cloud_and_local(cloud, local, local_available=True)
+
+    assert "COLLECTOR-1 answered locally for RS485 address(es) 5" in caplog.text
+    assert "Inverter address" in caplog.text
+
+    # Said once, not on every poll.
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        merge_cloud_and_local(cloud, local, local_available=True)
+    assert caplog.text == ""
+
+
+def test_a_paired_collector_reports_nothing(caplog) -> None:
+    from custom_components.dessmonitor.local import hybrid
+
+    hybrid._REPORTED_UNPAIRED_LOCAL.clear()
+
+    with caplog.at_level("WARNING"):
+        merge_cloud_and_local(_cloud_payload(), _local_payload(), local_available=True)
+
+    assert caplog.text == ""
+
+
 def test_healthy_local_values_overlay_matching_cloud_device() -> None:
     """The cloud entity identity is retained while local values win by title."""
     merged = merge_cloud_and_local(

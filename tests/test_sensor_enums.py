@@ -90,3 +90,56 @@ async def test_replaced_one_option_select_is_disabled_not_deleted(
     preserved = registry.async_get(legacy.entity_id)
     assert preserved is not None
     assert preserved.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+
+
+def test_a_state_first_seen_later_is_added_to_the_options() -> None:
+    """An option list fixed at creation took the sensor down on a new value.
+
+    Home Assistant rejects an enum state outside the entity's options. The
+    list is built from everything every devcode maps plus the value the
+    entity starts with, so a collector that names a state no profile
+    registered broke the sensor the first time it reported it. Devcode 6489's
+    download observed only "Battery mode", taken while the reporter's mains
+    was out, so "Mains mode" is exactly that case (#66).
+    """
+    entity = _enum_sensor("Operating mode", "Battery mode")
+    assert entity.native_value == "Battery mode"
+
+    unregistered = "Battery eco mode"
+    assert unregistered not in (
+        entity.options or []
+    ), "pick a state no devcode maps, or this test proves nothing"
+    entity.coordinator.data["TEST-SERIAL"]["data"] = [
+        {"title": "Operating mode", "val": unregistered}
+    ]
+
+    value = entity.native_value
+    options = entity.options
+    assert value == unregistered
+    assert options is not None and value in options, (
+        "Home Assistant raises on a state outside the options, so the entity "
+        "would go unavailable instead of showing the state"
+    )
+
+
+def test_an_option_list_cannot_grow_without_end() -> None:
+    """A reading misread as an enumeration would otherwise collect every value.
+
+    Past the bound the sensor reads Unknown, which is always an option, and
+    says so once per value rather than publishing an invalid state.
+    """
+    from custom_components.dessmonitor.sensor import _MAX_ENUM_OPTIONS
+
+    entity = _enum_sensor("Operating mode", "Battery mode")
+    options = entity.options
+    assert options is not None
+
+    for index in range(_MAX_ENUM_OPTIONS + 10):
+        entity.coordinator.data["TEST-SERIAL"]["data"] = [
+            {"title": "Operating mode", "val": f"mode-{index}"}
+        ]
+        value = entity.native_value
+        assert value in (entity.options or [])
+
+    assert len(entity.options or []) == _MAX_ENUM_OPTIONS
+    assert entity.native_value == "Unknown"

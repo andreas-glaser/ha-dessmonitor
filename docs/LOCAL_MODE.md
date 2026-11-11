@@ -191,6 +191,17 @@ Set `1` through `247` to target just that address, including addresses above
 address. Hybrid mode applies the setting to each listed collector. Existing
 entries without the setting retain automatic discovery.
 
+Hybrid mode has to decide which cloud device a locally seen inverter is, and it
+pairs on the serial number, or on the collector product number plus an equal
+RS485 address. Where the collector answers on an address the cloud does not
+record for it, those two disagree. If the collector carries one inverter
+locally and the cloud lists one for it, the pairing is unambiguous and the
+addresses need not agree. Where several inverters share the collector, pairing
+on anything weaker than the address could publish one inverter's readings on
+another's entities, so the overlay declines and the log says which addresses
+answered and which the cloud records, so **Inverter address** can be set to the
+first.
+
 ## Supported read-only drivers
 
 - PI17/PI18 ASCII telemetry, with strict length and CRC validation. The inverter's
@@ -212,6 +223,15 @@ entries without the setting retain automatic discovery.
   per inverter address and retains it for subsequent polling. Local controls
   are not provided. Sustained polling and reconnects still require hardware
   verification after installing this change.
+- A layout code register `184` reports that is none of `0`, `1` or `4` has no
+  register map of its own. The standard SMG `201..234` map is tried on it and
+  the inverter is kept only if that block decodes: a complete block, a known
+  operating mode, every field inside its range and at least one non-zero
+  voltage. That is the same bar firmware with no layout register has to clear,
+  and it is what the layout code alone cannot tell you - an ANENJI 5KW that
+  polled correctly for releases reports a code outside the three above. A
+  layout whose registers mean something else fails the block and is refused,
+  and the failure names the code the collector reported.
 
 PI30 reads its 17 or 21-field `QPIGS` status, and on a dual-MPPT inverter it
 also reads `QPIGS2` for the second string's current, voltage and charging
@@ -304,7 +324,9 @@ the collector, including when several collectors are discovered concurrently.
 An overall discovery deadline appears as a report-level `timeout`; the in-flight
 query appears as `cancelled` because the deadline interrupts it.
 An `unsupported_protocol` outcome means the inverter returned a protocol ID for
-which this driver has no verified field layout.
+which this driver has no verified field layout, and for SMG/Modbus that the
+standard register map did not decode on it either. The message names the code
+the collector reported.
 
 The combined analysis matches a unique hashed collector product number and
 inverter address, refuses ambiguous matches, and also writes mode `0600`.

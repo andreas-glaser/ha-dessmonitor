@@ -15,6 +15,7 @@ import pytest
 from custom_components.dessmonitor.local.diagnostics import ProbeDiagnostics
 from custom_components.dessmonitor.local.discovery import DiscoveryError
 from custom_components.dessmonitor.local.drivers import discover_supported_devices
+from custom_components.dessmonitor.local.modbus import build_read_holding_response
 
 
 def _silent():
@@ -202,3 +203,29 @@ async def test_a_refused_status_query_still_rejects_p17() -> None:
 
     with pytest.raises(DiscoveryError):
         await _discover(send, ProbeDiagnostics())
+
+
+async def test_a_collector_that_names_an_unreadable_layout_says_so() -> None:
+    """Identifying itself is not failing to be identified (#76).
+
+    The Eybond logger on a Maxsky EM11000 answers the SMG layout register with
+    3, a variant no driver reads. That answer was swallowed by the fall-through
+    to the next candidate route, so discovery ended on "no supported read-only
+    local protocol was identified" with the query counted as a success - which
+    reads as missing devcode support for a collector that replied in 250 ms.
+    """
+
+    async def send(payload: bytes, device_code: int, device_address: int) -> bytes:
+        if len(payload) == 8 and int.from_bytes(payload[2:4], "big") == 184:
+            return build_read_holding_response(payload[0], [3])
+        raise TimeoutError("collector did not answer")
+
+    diagnostics = ProbeDiagnostics()
+
+    with pytest.raises(DiscoveryError) as failure:
+        await _discover(send, diagnostics, reported_device_code=258)
+
+    message = str(failure.value)
+    assert "register layout 3" in message
+    assert "layouts 0, 1 and 4" in message
+    assert not diagnostics.silent

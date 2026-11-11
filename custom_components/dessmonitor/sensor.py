@@ -34,7 +34,11 @@ from .device_support import (
     get_all_output_priorities,
     is_devcode_supported,
 )
-from .sensor_titles import normalize_sensor_title, resolve_sensor_key
+from .sensor_titles import (
+    normalize_sensor_title,
+    resolve_sensor_key,
+    sensor_display_name,
+)
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,17 +57,30 @@ ENUM_SENSOR_TITLES = {
 # them the enum device class would reject any word not in an option list.
 TEXT_SENSOR_TITLES = {
     "Inverter Status",
+    # Devcode 6489 names the charger's stage ("Stop charging") rather than
+    # measuring it, and no report carries the vendor's full set of strings.
+    "Charge Mode",
 }
 
-DIAGNOSTIC_SENSOR_TITLES = {
-    "Output Voltage Setting",
-    "Output priority",
-    "Charger Source Priority",
-    "Software version",
-    "charger work enable",
-    "rated power",
-    "Battery Type",
-}
+
+# How many values one enum sensor may collect beyond the registered ones.
+# A vendor's state set is small; a number misread as an enumeration is not.
+_MAX_ENUM_OPTIONS = 64
+
+
+def _name_marker(device_sn: str, sensor_type: str) -> str:
+    """Return the per-device marker two sensor types sharing a name collide on.
+
+    Separate keys can carry one display name on purpose, each a vendor's own
+    spelling: ``SOC`` beside ``State of Charge``, ``Batt Current`` beside
+    ``Battery Current``, ``energyToday`` beside ``Energy Today``. A collector
+    that reports one of each resolves them to two keys, so the key-level check
+    below lets both through and the device gets two entities with one name,
+    the second of them reading whatever the vendor left in the field it came
+    from (#58). The marker is kept in the same set and cannot collide with a
+    sensor key, which has no NUL in it.
+    """
+    return f"name\x00{device_sn}\x00{sensor_display_name(sensor_type)}"
 
 
 def _normalize_devcode(value: Any) -> int | None:
@@ -161,7 +178,19 @@ def _build_sensor_entities(
                 duplicate_sensors += 1
                 continue
 
+            name_marker = _name_marker(device_sn, sensor_type)
+            if name_marker in known_sensors:
+                duplicate_sensors += 1
+                _LOGGER.debug(
+                    "Skipping %s for device %s: another reading already "
+                    "publishes that name",
+                    sensor_type,
+                    device_sn,
+                )
+                continue
+
             known_sensors.add(sensor_key)
+            known_sensors.add(name_marker)
             source_titles = _build_source_title_set(
                 sensor_type, original_title, transformed_title
             )
@@ -347,7 +376,12 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if icon:
             self._attr_icon = str(icon)
 
-        if self._sensor_type in DIAGNOSTIC_SENSOR_TITLES:
+        # SENSOR_TYPES says which sensors are diagnostic, and it is the only
+        # place that does. A second list here named seven titles while
+        # thirteen entries declared it, so the nameplate ratings and the grid
+        # reconnect timer were published as ordinary sensors, and one name in
+        # the list ("Battery Type") was not a sensor key at all.
+        if sensor_config.get("entity_category") == "diagnostic":
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
             _LOGGER.debug(
                 "Set entity category to DIAGNOSTIC for sensor %s", self._sensor_type
@@ -465,10 +499,43 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         return self._coerce_numeric_value(value)
 
     def _coerce_enum_value(self, value: Any) -> str:
-        """Coerce enumerated values to strings with fallbacks."""
-        if value is not None and value != "":
-            return str(value)
-        return "Unknown"
+        """Coerce an enumerated value to a string the option list can carry.
+
+        Home Assistant rejects an enum state that is not in the entity's
+        options, and the options are built once from what every devcode maps
+        plus the value the entity starts with. A vendor that names a state no
+        profile registered therefore took the whole sensor down rather than
+        showing one unfamiliar word: devcode 6489's download observed only
+        "Battery mode", because the reporter's mains was out when they took
+        it, and "Mains mode" would have made the sensor unavailable the moment
+        the grid came back (#66). The list is extended instead, bounded so a
+        reading misclassified as an enum cannot grow it without end.
+        """
+        if value is None or value == "":
+            return "Unknown"
+
+        text = str(value)
+        options = self._attr_options
+        if options is None or text in options:
+            return text
+        if len(options) >= _MAX_ENUM_OPTIONS:
+            _LOGGER.warning(
+                "Sensor %s reports %r and already offers %d options, so it "
+                "reads Unknown; this reading is probably not an enumeration",
+                self._attr_unique_id,
+                text,
+                len(options),
+            )
+            return "Unknown"
+
+        options.append(text)
+        _LOGGER.info(
+            "Sensor %s reports %r, which no devcode registers; adding it to "
+            "the options this entity offers",
+            self._attr_unique_id,
+            text,
+        )
+        return text
 
     @staticmethod
     def _coerce_text_value(value: Any) -> str | None:

@@ -26,6 +26,14 @@ _LOGGER = logging.getLogger(__name__)
 # disagreeing about the same total; a larger drop is a real reset.
 _CUMULATIVE_RESET_RATIO = 0.9
 
+# Collectors a sole-device pairing has already been reported for, so the
+# override is visible once rather than on every poll.
+_REPORTED_SOLE_DEVICE_PAIRINGS: set[tuple[str, str]] = set()
+
+# Collectors an unpaired local device has already been reported for, keyed by
+# the addresses involved, so a changed situation is reported again.
+_REPORTED_UNPAIRED_LOCAL: set[tuple[str, tuple[Any, ...], tuple[Any, ...]]] = set()
+
 
 class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
     """Combine fresh local readings with cloud metadata, controls, and fallback."""
@@ -327,6 +335,8 @@ def merge_cloud_and_local(
     merged = copy.deepcopy(cloud_data or {})
     local_devices = local_data or {}
     matched_local: set[str] = set()
+    cloud_per_collector = _devices_per_collector(merged)
+    local_per_collector = _devices_per_collector(local_devices, skip_unverified=True)
 
     def source_for(cloud_serial: str) -> str:
         return "Cached Cloud" if cloud_serial in stale_serials else cloud_source
@@ -334,7 +344,12 @@ def merge_cloud_and_local(
     if local_available:
         for cloud_serial, cloud_payload in merged.items():
             local_match = _find_local_match(
-                cloud_serial, cloud_payload, local_devices, matched_local
+                cloud_serial,
+                cloud_payload,
+                local_devices,
+                matched_local,
+                cloud_per_collector,
+                local_per_collector,
             )
             if local_match is None:
                 cloud_payload["data"] = with_data_source(
@@ -349,6 +364,8 @@ def merge_cloud_and_local(
                 cloud_payload.get("device", {}).get("devcode"),
             )
 
+        _report_unpaired_local(merged, local_devices, matched_local)
+
     else:
         for cloud_serial, cloud_payload in merged.items():
             cloud_payload["data"] = with_data_source(
@@ -358,33 +375,167 @@ def merge_cloud_and_local(
     return merged
 
 
+def _report_unpaired_local(
+    cloud_devices: dict[str, Any],
+    local_devices: dict[str, Any],
+    matched_local: set[str],
+) -> None:
+    """Say once that a collector answered for a device nothing could be paired to.
+
+    The refusal used to be entirely silent: in #61 local telemetry was flowing
+    and ``Data Source`` stayed on ``Cloud``, and the owner found the fix by
+    setting **Inverter address** on a hunch. Where one device sits behind the
+    collector the overlay now pairs it regardless of the address; where several
+    do, pairing on anything weaker than an address would risk attributing one
+    inverter's readings to another, so this reports what it saw instead (#65).
+    """
+    for collector, addresses in _unpaired_addresses(local_devices, matched_local):
+        cloud_addresses = tuple(
+            sorted(
+                str(payload.get("device", {}).get("devaddr"))
+                for payload in cloud_devices.values()
+                if str(payload.get("collector", {}).get("pn", "")) == collector
+            )
+        )
+        if not cloud_addresses:
+            # The cloud does not list this collector at all, which is not an
+            # address problem and has nothing for the owner to set.
+            continue
+        seen = (collector, addresses, cloud_addresses)
+        if seen in _REPORTED_UNPAIRED_LOCAL:
+            continue
+        _REPORTED_UNPAIRED_LOCAL.add(seen)
+        _LOGGER.warning(
+            "Collector %s answered locally for RS485 address(es) %s, which match "
+            "none of the addresses the cloud records for it (%s), so that local "
+            "telemetry is not published. Set the integration's Inverter address "
+            "option to the address the collector answers on",
+            collector,
+            ", ".join(addresses),
+            ", ".join(cloud_addresses),
+        )
+
+
+def _unpaired_addresses(
+    local_devices: dict[str, Any], matched_local: set[str]
+) -> list[tuple[str, tuple[str, ...]]]:
+    """Group the local devices nothing was paired with by their collector."""
+    by_collector: dict[str, list[str]] = {}
+    for local_serial, payload in local_devices.items():
+        if local_serial in matched_local:
+            continue
+        device = payload.get("device", {})
+        if device.get("local_address_verified") is False:
+            continue
+        collector = str(payload.get("collector", {}).get("pn", ""))
+        if not collector:
+            continue
+        by_collector.setdefault(collector, []).append(str(device.get("devaddr")))
+    return [
+        (collector, tuple(sorted(addresses)))
+        for collector, addresses in sorted(by_collector.items())
+    ]
+
+
+def _devices_per_collector(
+    devices: dict[str, Any], *, skip_unverified: bool = False
+) -> dict[str, int]:
+    """Count how many devices each collector product number carries."""
+    counts: dict[str, int] = {}
+    for payload in devices.values():
+        if (
+            skip_unverified
+            and payload.get("device", {}).get("local_address_verified") is False
+        ):
+            continue
+        collector = str(payload.get("collector", {}).get("pn", ""))
+        if collector:
+            counts[collector] = counts.get(collector, 0) + 1
+    return counts
+
+
 def _find_local_match(
     cloud_serial: str,
     cloud_payload: dict[str, Any],
     local_devices: dict[str, Any],
     already_matched: set[str],
+    cloud_per_collector: dict[str, int] | None = None,
+    local_per_collector: dict[str, int] | None = None,
 ) -> tuple[str, dict[str, Any]] | None:
-    """Match by stable serial first, then collector PN plus RS485 address."""
+    """Match by stable serial, then collector PN plus RS485 address, then sole device."""
     if cloud_serial in local_devices and cloud_serial not in already_matched:
         return cloud_serial, local_devices[cloud_serial]
 
     cloud_collector = str(cloud_payload.get("collector", {}).get("pn", ""))
     cloud_address = cloud_payload.get("device", {}).get("devaddr")
+    candidates: list[tuple[str, dict[str, Any]]] = []
     for local_serial, local_payload in local_devices.items():
         if local_serial in already_matched:
             continue
         local_collector = str(local_payload.get("collector", {}).get("pn", ""))
         if local_payload.get("device", {}).get("local_address_verified") is False:
             continue
+        if not cloud_collector or cloud_collector != local_collector:
+            continue
         local_address = local_payload.get("device", {}).get("devaddr")
-        if (
-            cloud_collector
-            and cloud_collector == local_collector
-            and cloud_address is not None
-            and cloud_address == local_address
-        ):
+        if cloud_address is not None and cloud_address == local_address:
             return local_serial, local_payload
-    return None
+        candidates.append((local_serial, local_payload))
+
+    return _sole_device_match(
+        cloud_serial,
+        cloud_collector,
+        cloud_address,
+        candidates,
+        cloud_per_collector or {},
+        local_per_collector or {},
+    )
+
+
+def _sole_device_match(
+    cloud_serial: str,
+    cloud_collector: str,
+    cloud_address: Any,
+    candidates: list[tuple[str, dict[str, Any]]],
+    cloud_per_collector: dict[str, int],
+    local_per_collector: dict[str, int],
+) -> tuple[str, dict[str, Any]] | None:
+    """Pair the one device behind a collector with the one the cloud lists for it.
+
+    Automatic discovery pairs on whichever RS485 address answers first, and the
+    cloud's record of that address can differ: the collector in #61 answered on
+    address 5 against a different cloud record, so local telemetry was flowing
+    and the overlay declined it in silence, leaving ``Data Source`` on ``Cloud``
+    in ``prefer_local`` mode until the owner set **Inverter address** by hand.
+
+    Where one collector carries exactly one cloud device and answers for
+    exactly one local device, there is nothing the pairing could get wrong and
+    the addresses need not agree. Anything less certain than that still
+    refuses: a wrong pairing publishes one inverter's telemetry on another's
+    entities, and the owner has no way to tell (#61, #65).
+    """
+    if not cloud_collector or len(candidates) != 1:
+        return None
+    if cloud_per_collector.get(cloud_collector) != 1:
+        return None
+    if local_per_collector.get(cloud_collector) != 1:
+        return None
+
+    local_serial, local_payload = candidates[0]
+    seen = (cloud_collector, cloud_serial)
+    if seen not in _REPORTED_SOLE_DEVICE_PAIRINGS:
+        _REPORTED_SOLE_DEVICE_PAIRINGS.add(seen)
+        _LOGGER.info(
+            "Collector %s carries one inverter locally and one in the cloud, so "
+            "local telemetry is paired with %s although the RS485 addresses "
+            "differ (local %s, cloud %s). Set the inverter address to the local "
+            "one to pair on the address instead",
+            cloud_collector,
+            cloud_serial,
+            local_payload.get("device", {}).get("devaddr"),
+            cloud_address,
+        )
+    return local_serial, local_payload
 
 
 def _merge_data_points(

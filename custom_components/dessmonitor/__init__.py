@@ -6,6 +6,7 @@ import asyncio
 import copy
 import ipaddress
 import logging
+import re
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timedelta
 
@@ -75,9 +76,7 @@ from .support_report import UNSUPPORTED as SUPPORT_UNSUPPORTED
 from .support_report import (
     build_support_report,
     device_support_status,
-    is_attribute_reading,
     report_checksum,
-    resolved_key_for,
     short_identity,
 )
 
@@ -398,6 +397,13 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         # control's own options matches. They are not values the entities can
         # show, and they are not an absence either.
         self.ctrl_unmatched_values: dict[str, dict[str, str]] = {}
+        # Summary points the dashboard endpoint returned that the merge did not
+        # publish, because a reading the device sent already reaches an entity
+        # of that name. They are the cloud's own figure for a sensor Home
+        # Assistant feeds from the device instead, so they are the one thing
+        # that answers "the vendor app shows a different daily energy" from an
+        # attached file rather than a round trip (#58).
+        self.summary_points_not_merged: dict[str, list[dict[str, Any]]] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_field_failures: dict[str, int] = {}
@@ -1259,6 +1265,11 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         if not summary_data:
             return
 
+        # Rebuilt from this fetch rather than accumulated, so a device the
+        # account no longer lists leaves nothing behind. A failed fetch keeps
+        # what the last one recorded, above.
+        self.summary_points_not_merged = {}
+
         for device_sn, device_info in data.items():
             summary_points = summary_data.get(device_sn, {}).get("data", [])
             if not summary_points:
@@ -1312,6 +1323,23 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                     or map_sensor_title(devcode, point.get("title"))
                     not in existing_titles
                 )
+            ]
+
+            # What the merge decided against, for the diagnostics download. A
+            # dropped point is the cloud's own figure for a sensor the device
+            # feeds, and the two disagreeing is a report in its own right: on
+            # devcode 632 in #58 the app's daily energy stood at 1.0 kWh
+            # against the inverter's own 0.8, and nothing in the file said what
+            # the cloud had sent.
+            kept_titles = {point.get("title") for point in unique_summary_points}
+            self.summary_points_not_merged[device_sn] = [
+                {
+                    "title": str(point.get("title")),
+                    "value": str(point.get("val")),
+                    "unit": str(point.get("unit") or ""),
+                }
+                for point in summary_points
+                if point.get("title") and point.get("title") not in kept_titles
             ]
 
             if not unique_summary_points:
@@ -1394,8 +1422,32 @@ async def async_get_device_diagnostics(
     if control_error:
         diagnostics["battery_config_error"] = control_error
 
+    # The same support report the entry download carries, built from data
+    # already in hand so this costs no extra API call. Home Assistant offers
+    # "Download diagnostics" on the device as well as on the entry, and a
+    # reporter attaches whichever button they found: four of the five files on
+    # the devcode issues open when this was written were device downloads, and
+    # none of them was usable evidence. This file named the unmapped readings
+    # and nothing else - no value, no unit, no control-field correlation - so
+    # every one of them cost a round trip asking for the other file, and
+    # ``tools/triage.py`` rejected them as "not a devcode analysis or
+    # diagnostics download". Both downloads now answer the same questions.
+    diagnostics["support_report"] = build_support_report(
+        devcode=device_info.get("device", {}).get("devcode"),
+        readings=device_data,
+        device_serial=device_sn,
+        collector_product_number=device_info.get("collector", {}).get("pn"),
+        device_address=device_info.get("device", {}).get("devaddr"),
+        control_fields=control_config,
+        parameters=device_parameters,
+        summary_not_merged=coordinator.summary_points_not_merged.get(device_sn),
+        api_profile=resolve_api_profile(dict(entry.data)),
+        integration_version=VERSION,
+        source="device_diagnostics",
+    )
+
     diagnostics["summary"] = _build_diagnostics_summary(
-        device_info.get("device", {}).get("devcode"), device_data, diagnostics
+        device_data, diagnostics, diagnostics["support_report"]["support"]
     )
 
     _LOGGER.debug(
@@ -1475,6 +1527,38 @@ def _network_label(value: Any, subnets: dict[str, int]) -> str:
     label = subnets.setdefault(network, len(subnets) + 1)
     scope = "private" if address.is_private else "public"
     return f"{scope} ipv{address.version} in subnet {label}"
+
+
+# An address literal anywhere in free text. The IPv6 alternative also matches
+# a clock ("10:32:34"), which is why every candidate is validated below before
+# anything is replaced.
+_ADDRESS_LITERAL = re.compile(
+    r"(?<![\w.:])"
+    r"(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7})"
+    r"(?![\w.])"
+)
+
+
+def _redacted_message(text: Any, subnets: dict[str, int]) -> str:
+    """Return a free-text message with any address in it described, not printed.
+
+    The allowlist below covers the configured values, and a local setup error
+    carries the same addresses in prose: an exception from binding the listen
+    socket reports "error while attempting to bind on address ('A.B.C.D',
+    8899)", so a reporter's LAN address reached a public issue through the one
+    field in the download that was passed through verbatim. The rest of the
+    message is the diagnostic value and is kept, including the port.
+    """
+
+    def _describe(match: re.Match[str]) -> str:
+        literal = match.group(0)
+        try:
+            ipaddress.ip_address(literal)
+        except ValueError:
+            return literal
+        return _network_label(literal, subnets)
+
+    return _ADDRESS_LITERAL.sub(_describe, str(text))
 
 
 def _redacted_entry_values(
@@ -1562,7 +1646,10 @@ async def async_get_config_entry_diagnostics(
 
     if getattr(coordinator, "is_hybrid", False):
         report["local"] = {
-            "setup_errors": list(getattr(coordinator, "local_setup_errors", [])),
+            "setup_errors": [
+                _redacted_message(error, subnets)
+                for error in getattr(coordinator, "local_setup_errors", ())
+            ],
             "transports": [
                 {
                     "connected": local.connected,
@@ -1691,6 +1778,7 @@ async def _build_device_support_report(
         device_address=device_meta.get("devaddr"),
         control_fields=control_fields,
         parameters=parameters,
+        summary_not_merged=coordinator.summary_points_not_merged.get(serial),
         api_profile=resolve_api_profile(dict(entry.data)),
         integration_version=VERSION,
     )
@@ -2006,9 +2094,9 @@ def _extract_sensor_value(
 
 
 def _build_diagnostics_summary(
-    devcode: Any,
     device_data: list[dict[str, Any]],
     diagnostics: dict[str, Any],
+    support: dict[str, Any],
 ) -> dict[str, Any]:
     """Create diagnostics summary block.
 
@@ -2020,25 +2108,19 @@ def _build_diagnostics_summary(
     pair is the first thing worth knowing when a reporter says a reading is
     missing.
 
-    Coverage is decided by ``support_report.resolved_key_for``, the single
-    predicate the sensor platform, this summary, the hub report and the
-    maintainer tooling all ask.
+    Both come from the support report in the same file rather than being
+    counted again here, so the two sections cannot disagree. They used to: this
+    summary left out only the attribute readings, while the report also leaves
+    out a setpoint a profile declares and a field the hardware never fills, so
+    a devcode 6514 download said thirty-eight readings reached no sensor on
+    the same page as a report that said twenty (#68, #69).
     """
-    resolved: set[str] = set()
-    unresolved: list[str] = []
-    for data_point in device_data:
-        title = data_point.get("title")
-        if not isinstance(title, str) or not title.strip():
-            continue
-        key = resolved_key_for(devcode, data_point)
-        if key:
-            resolved.add(key)
-        elif not is_attribute_reading(title):
-            unresolved.append(title.strip())
-
     return {
-        "total_sensors_created": len(resolved),
-        "readings_without_a_sensor": sorted(set(unresolved)),
+        "total_sensors_created": support["sensors"],
+        "readings_without_a_sensor": sorted(
+            {row["title"] for row in support["unresolved_with_unit"]}
+            | set(support["unresolved_without_unit"])
+        ),
         "last_update": _extract_sensor_value(device_data, "Timestamp", "Unknown"),
         "control_fields_found": len(diagnostics.get("configuration", {})),
         "parameters_found": len(diagnostics.get("parameters", {})),

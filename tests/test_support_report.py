@@ -441,3 +441,33 @@ def test_a_report_without_a_control_template_carries_no_names() -> None:
     (record,) = normalized_reports(report)
 
     assert record["controls"] == []
+
+
+def test_the_cloud_figure_the_merge_dropped_is_carried_and_checksummed() -> None:
+    """What the dashboard sent for a sensor the device's own reading feeds.
+
+    Without it, "the vendor app shows 1.0 kWh and Home Assistant shows 0.8"
+    cannot be answered from the attached file (#58).
+    """
+    report = build_support_report(
+        devcode=4743,
+        readings=[{"title": "PV power generation today", "val": "0.8", "unit": "kWh"}],
+        summary_not_merged=[
+            {"title": "energyToday", "val": 1.0, "unit": "kWh"},
+        ],
+    )
+
+    assert report["summary_not_merged"] == [
+        {"title": "energyToday", "value": "1.0", "unit": "kWh"}
+    ]
+    assert report_checksum(report) == report["checksum"]
+
+
+def test_a_device_with_nothing_dropped_carries_no_such_section() -> None:
+    report = build_support_report(
+        devcode=4743,
+        readings=[{"title": "PV power generation today", "val": "0.8", "unit": "kWh"}],
+        summary_not_merged=[],
+    )
+
+    assert "summary_not_merged" not in report

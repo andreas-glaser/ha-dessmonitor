@@ -453,8 +453,22 @@ def _driver_failure(
     mostly timed out. What the probe recorded is reported instead, in full: a
     driver that timed out nine times and was refused once is not described by
     either outcome on its own.
+
+    One failure is not a count of outcomes: a collector that answers and names
+    a protocol variant no driver reads has identified itself, and the counts
+    then say only that the queries succeeded. Reporting them alone sent the
+    reporter in #76 down the devcode-support path for a collector that answered
+    the layout register in 250 ms, so that message is kept and the counts
+    follow it.
     """
     outcomes = diagnostics.protocol_outcomes(driver.key)
+    if failure_reason(err) == "unsupported_protocol":
+        if not outcomes:
+            return str(err)
+        counts = ", ".join(
+            f"{outcome}={count}" for outcome, count in sorted(outcomes.items())
+        )
+        return f"{err} ({counts})"
     if not outcomes:
         return failure_reason(err)
     return ", ".join(

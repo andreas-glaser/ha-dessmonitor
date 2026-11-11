@@ -26,6 +26,11 @@ many of its readings reach an entity, and the title and unit of every reading
 that reaches none, which is the list a maintainer works from. It also carries
 the control fields, so settings can be mapped from the same file.
 
+Home Assistant offers the same button on each inverter's own device page, and
+that file carries the same report for that one device. Either is enough: attach
+whichever you took. The entry download is still the better first file on a
+multi-inverter account, because it covers all of them at once.
+
 **It contains no credentials and no identifiers.** The username, password,
 company key and token are redacted, and serial numbers, collector aliases and
 collector product numbers appear only as a `sha256:` correlation hash, so two
@@ -97,11 +102,25 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 4. Write devcode_XXXX.py following the sibling pattern
 5. Register in device_registry.py
 6. Check sensor coverage against the analysis and close the remaining gaps
-7. Commit the redacted analysis under docs/evidence/devcodes/
+7. Commit the redacted analysis under docs/evidence/devcodes/  (required)
 8. Update README.md, device_support/README.md, CHANGELOG.md
 9. Run lint/type/format checks
 10. Commit and push; open a PR that references the issue and credits the reporter
 ```
+
+Step 7 is not optional and is enforced by a test. A registered devcode with no
+committed evidence is a profile nothing can defend: the coverage guard in
+`tests/test_analysis_coverage.py` only reads devcodes it has a file for, so a
+later change that stops one of its readings resolving breaks an installation
+silently. That is how devcode 6514 shipped resolving its state of charge and
+nothing else, dropping 58 of its 76 titles until two reporters noticed eight
+months apart (#35, then #56).
+
+`test_every_registered_devcode_is_guarded_by_committed_evidence` fails on a new
+devcode with no evidence file. It carries a list of the ten devcodes registered
+before this was a requirement, and that list only shrinks: a second test fails
+if an entry on it has since gained evidence. If you own one of those devices, a
+diagnostics download is all it takes to clear an entry.
 
 ## 1. Produce the analysis (contributor side)
 

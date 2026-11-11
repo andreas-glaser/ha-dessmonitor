@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .eybond_ess import SETTING_READINGS
+
 DEVICE_INFO = {
     "name": "Eybond Data Collector (devcode 6544)",
     "description": "Eybond data collector/gateway for split-phase inverters",
@@ -86,6 +88,15 @@ VALUE_TRANSFORMATIONS: dict = {}
 
 PARAMETER_SENSOR_NAMES: set[str] = set()
 
+# The setpoints this collector returns among the telemetry, shared with the
+# other Eybond ESS collectors in ``eybond_ess``. The evidence is the three
+# ANENJI ANJ-11KW-48V-W-P inverters in
+# ``docs/evidence/devcodes/analysis_6544_anenji_11kw.json``: each reports an
+# identical 46 titles that reach no sensor, 44 of them spelled as a control
+# field of the same device and 20 of those carrying a unit, which is the
+# "missing 20 readings" card its owner saw (#77). The two that are not controls
+# are "Equipment type" and "Protocol Number".
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -95,4 +106,5 @@ DEVCODE_CONFIG = {
     "temporal_controls": TEMPORAL_CONTROLS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
+    "setting_readings": SETTING_READINGS,
 }

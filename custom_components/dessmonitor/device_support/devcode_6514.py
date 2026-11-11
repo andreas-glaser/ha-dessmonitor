@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .eybond_ess import SETTING_READINGS
+
 DEVICE_INFO = {
     "name": "Eybond Data Collector (devcode 6514)",
     "description": "Eybond data collector/gateway for dual-output inverters",
@@ -10,6 +12,7 @@ DEVICE_INFO = {
         "ANENJI 5KW 48V Hybrid Solar Inverter",
         "Aninerel 6.2KW 48V",
         "Aninerel 4.2KW 24V (firmware 8.50.18.3, external Wi-Fi module)",
+        "ANENJI 4.2KW 24V",
     ],
     "supported_features": [
         "real_time_monitoring",
@@ -66,6 +69,19 @@ VALUE_TRANSFORMATIONS: dict = {}
 # The coordinator selects parameters by their API name, not their ID.
 PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 
+# The setpoints this collector returns among the telemetry, shared with the
+# other Eybond ESS collectors in ``eybond_ess``. Every one is spelled exactly
+# as a control field on the same device and carries the value that control
+# reads back, so each already reaches Home Assistant as a number or select
+# entity, or, for "Output mode", is a control with a single option and nothing
+# to choose. A sensor for them would be a second entity for one setting. The
+# evidence is the ANENJI 4.2KW 24V diagnostics download in
+# ``docs/evidence/devcodes/analysis_6514_anenji_4200.json``: of its 76 counted
+# titles 38 resolved, and the support report told the owner twenty readings
+# were missing when every one of the twenty was a setting. The earlier CLI
+# analysis recorded a unit for its first twenty samples only, which is why the
+# coverage guard never saw them.
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -74,4 +90,5 @@ DEVCODE_CONFIG = {
     "sensor_title_mappings": SENSOR_TITLE_MAPPINGS,
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
+    "setting_readings": SETTING_READINGS,
 }

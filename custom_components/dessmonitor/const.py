@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "2.7.0"
+VERSION: Final = "2.8.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -656,6 +656,117 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:gauge",
     },
+    # The third phase, and the per-phase readings a three-phase hybrid
+    # separates that a single- or split-phase one does not. Devcode 2548 (an
+    # SPI-12K-H3, #67) reports its mains, its inverter output and its load
+    # per phase, and reports the inverter's own output current separately from
+    # what the load draws, which differ whenever the unit runs on bypass.
+    "Output L3 Active Power": {
+        "name": "Output L3 Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+    },
+    "Output L3 Apparent Power": {
+        "name": "Output L3 Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+    },
+    "Output L3 Voltage": {
+        "name": "Output L3 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:flash",
+    },
+    "Output L3 Current": {
+        "name": "Output L3 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-ac",
+    },
+    "Load L3 Percentage": {
+        "name": "Load L3 Percentage",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:gauge",
+    },
+    "Load L1 Current": {
+        "name": "Load L1 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-ac",
+    },
+    "Load L2 Current": {
+        "name": "Load L2 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-ac",
+    },
+    "Load L3 Current": {
+        "name": "Load L3 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-ac",
+    },
+    "Grid L1 Voltage": {
+        "name": "Grid L1 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L2 Voltage": {
+        "name": "Grid L2 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L3 Voltage": {
+        "name": "Grid L3 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Battery Charging Power": {
+        "name": "Battery Charging Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
+    "Daily Mains Charge Ah": {
+        "name": "Daily Mains Charge Ah",
+        "unit": "Ah",
+        "state_class": "total_increasing",
+        "icon": "mdi:battery-charging",
+    },
+    "Accumulated Mains Charge Ah": {
+        "name": "Accumulated Mains Charge Ah",
+        "unit": "Ah",
+        "state_class": "total_increasing",
+        "icon": "mdi:battery-charging",
+    },
+    # The sum of the three output phase voltages, which is what devcode 2548
+    # reports beside them: 690.1 V against 230.0, 230.0 and 230.1. It is not
+    # an output voltage, so it is diagnostic rather than a measurement anyone
+    # should read as one.
+    "Total Output Voltage": {
+        "name": "Total Output Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "entity_category": "diagnostic",
+        "icon": "mdi:flash",
+    },
     "PV Charge Power": {
         "name": "PV Charge Power",
         "unit": UNITS["POWER"],
@@ -732,6 +843,7 @@ SENSOR_TYPES = {
         "device_class": "voltage",
         "state_class": "measurement",
         "icon": "mdi:cog",
+        "entity_category": "diagnostic",
     },
     "outpower": {
         "name": "Total PV Power",
@@ -1034,6 +1146,105 @@ SENSOR_TYPES = {
         "unit": "",
         "device_class": "enum",
         "options": CHARGER_PRIORITIES,
+        "icon": "mdi:battery-charging",
+        "entity_category": "diagnostic",
+    },
+    # Readings first reported on devcode 6489, a JSD Solar hybrid behind an
+    # Eybond collector (#66). Each is live telemetry the collector labels with
+    # a unit and none of them had a canonical key, so every one of them was
+    # being dropped in silence.
+    "Output Current Percentage": {
+        "name": "Output Current Percentage",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:gauge",
+    },
+    # What the solar charge controller measures the battery at, which Axpert
+    # hardware reports beside the inverter's own battery voltage and which can
+    # differ from it while charging (devcode 2451, #74).
+    "Battery Voltage From SCC": {
+        "name": "Battery Voltage From SCC",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "Battery Charging Voltage": {
+        "name": "Battery Charging Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
+    "Output Half Wave Apparent Power": {
+        "name": "Output Half Wave Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+        "entity_category": "diagnostic",
+    },
+    "Fan Speed": {
+        "name": "Fan Speed",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:fan",
+        "entity_category": "diagnostic",
+    },
+    # The daily counterparts of Accumulated Mains Load Energy and Accumulated
+    # Load Energy above, as Daily Battery Charge Ah is of the accumulated one.
+    "Daily Mains Load Energy": {
+        "name": "Daily Mains Load Energy",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:transmission-tower-import",
+    },
+    "Daily Load Energy": {
+        "name": "Daily Load Energy",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:home-lightning-bolt",
+    },
+    # A text sensor for the same reason as the status readings above: the
+    # charger names its stage ("Stop charging", "Discharge soft start") and no
+    # report carries the vendor's full set of strings, which an enum would
+    # need in order not to mark the rest invalid.
+    "Charge Mode": {
+        "name": "Charge Mode",
+        "unit": "",
+        "icon": "mdi:battery-charging-medium",
+    },
+    # What a battery's own BMS reports about itself, beside the inverter's
+    # measurements of the same pack. The two limits are the BMS telling the
+    # inverter what it will accept, not inverter settings, so they are
+    # diagnostic sensors rather than controls.
+    "BMS Remaining Capacity": {
+        "name": "BMS Remaining Capacity",
+        "unit": "Ah",
+        "state_class": "measurement",
+        "icon": "mdi:battery-70",
+    },
+    "BMS Rated Capacity": {
+        "name": "BMS Rated Capacity",
+        "unit": "Ah",
+        "state_class": "measurement",
+        "icon": "mdi:battery",
+        "entity_category": "diagnostic",
+    },
+    "BMS Max Charge Current": {
+        "name": "BMS Max Charge Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+        "entity_category": "diagnostic",
+    },
+    "BMS CV Point Voltage": {
+        "name": "BMS CV Point Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
         "icon": "mdi:battery-charging",
         "entity_category": "diagnostic",
     },

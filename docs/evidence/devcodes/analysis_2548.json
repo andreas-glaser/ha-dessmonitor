@@ -1,0 +1,782 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.7.0",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "api_profile": "dessmonitor_ess"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 60.0,
+      "cloud_revision": 6,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 1,
+      "hybrid": false
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.7.0",
+        "devcode": 2548,
+        "device_identity": "sha256:150dc888415f",
+        "collector_identity": "sha256:7f9c1753f780",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 14,
+          "unresolved": 60,
+          "total": 74,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 14,
+          "unresolved_with_unit": [
+            {
+              "title": "A phase load rate",
+              "unit": "%",
+              "sample": "3"
+            },
+            {
+              "title": "Battery charging ampere hours in the same day",
+              "unit": "Ah",
+              "sample": "0"
+            },
+            {
+              "title": "Battery discharge ampere hours per day",
+              "unit": "Ah",
+              "sample": "28"
+            },
+            {
+              "title": "battery energy today charge",
+              "unit": "Wh",
+              "sample": "0.0"
+            },
+            {
+              "title": "battery energy today discharge",
+              "unit": "Wh",
+              "sample": "1447.6"
+            },
+            {
+              "title": "battery energy total charge",
+              "unit": "Wh",
+              "sample": "4753091.3"
+            },
+            {
+              "title": "battery energy total discharge",
+              "unit": "Wh",
+              "sample": "4768291.1"
+            },
+            {
+              "title": "Battery SOC",
+              "unit": "%",
+              "sample": "89"
+            },
+            {
+              "title": "charging power",
+              "unit": "W",
+              "sample": "0"
+            },
+            {
+              "title": "Cumulative charging capacity of mains",
+              "unit": "Ah",
+              "sample": "54962"
+            },
+            {
+              "title": "Inverter A phase current",
+              "unit": "A",
+              "sample": "1.3"
+            },
+            {
+              "title": "Inverter A phase voltage",
+              "unit": "V",
+              "sample": "230.0"
+            },
+            {
+              "title": "L1:Mains voltage",
+              "unit": "V",
+              "sample": "229.5"
+            },
+            {
+              "title": "L2:Inverting current",
+              "unit": "A",
+              "sample": "1.2"
+            },
+            {
+              "title": "L2:Load active power",
+              "unit": "W",
+              "sample": "118"
+            },
+            {
+              "title": "L2:Load apparent power",
+              "unit": "VA",
+              "sample": "178"
+            },
+            {
+              "title": "L2:Load current",
+              "unit": "A",
+              "sample": "0.8"
+            },
+            {
+              "title": "L2:Load rate",
+              "unit": "%",
+              "sample": "4"
+            },
+            {
+              "title": "L2:Mains voltage",
+              "unit": "V",
+              "sample": "220.8"
+            },
+            {
+              "title": "L2:Output voltage",
+              "unit": "V",
+              "sample": "230.0"
+            },
+            {
+              "title": "L3:Inverting current",
+              "unit": "A",
+              "sample": "1.4"
+            },
+            {
+              "title": "L3:Load active power",
+              "unit": "W",
+              "sample": "193"
+            },
+            {
+              "title": "L3:Load apparent power",
+              "unit": "VA",
+              "sample": "241"
+            },
+            {
+              "title": "L3:Load current",
+              "unit": "A",
+              "sample": "1.0"
+            },
+            {
+              "title": "L3:Load rate",
+              "unit": "%",
+              "sample": "6"
+            },
+            {
+              "title": "L3:mains voltage",
+              "unit": "V",
+              "sample": "232.5"
+            },
+            {
+              "title": "L3:Output voltage",
+              "unit": "V",
+              "sample": "230.1"
+            },
+            {
+              "title": "Load A is phased at power",
+              "unit": "VA",
+              "sample": "159"
+            },
+            {
+              "title": "Load A phase active power",
+              "unit": "W",
+              "sample": "19"
+            },
+            {
+              "title": "Load A phase current",
+              "unit": "A",
+              "sample": "0.6"
+            },
+            {
+              "title": "Load cumulative power consumption",
+              "unit": "kWh",
+              "sample": "9434.3"
+            },
+            {
+              "title": "Mains charging current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "PV power generation on the day",
+              "unit": "kWh",
+              "sample": "3.7"
+            },
+            {
+              "title": "Solar panel 1 current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "Solar panel 1 power",
+              "unit": "W",
+              "sample": "0"
+            },
+            {
+              "title": "Solar panel 1 voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Solar panel 2 current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "Solar panel 2 power",
+              "unit": "W",
+              "sample": "0"
+            },
+            {
+              "title": "Solar panel 2 voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Solar total panel power",
+              "unit": "W",
+              "sample": "0"
+            },
+            {
+              "title": "Temperature of transformer",
+              "unit": "°C",
+              "sample": "44.7"
+            },
+            {
+              "title": "The battery accumulates ampere-hours of charge",
+              "unit": "Ah",
+              "sample": "91936"
+            },
+            {
+              "title": "The cumulative number of ampere hours of battery discharge",
+              "unit": "Ah",
+              "sample": "92230"
+            },
+            {
+              "title": "The electricity consumption of the load on the day",
+              "unit": "kWh",
+              "sample": "4.5"
+            },
+            {
+              "title": "The load accumulates the power consumption of the mains power",
+              "unit": "kWh",
+              "sample": "3252.5"
+            },
+            {
+              "title": "The load consumes electricity from the mains on the same day",
+              "unit": "kWh",
+              "sample": "0.0"
+            },
+            {
+              "title": "The number of ampere hours of mains charging on the same day",
+              "unit": "Ah",
+              "sample": "0"
+            },
+            {
+              "title": "Total active power of the load",
+              "unit": "W",
+              "sample": "330"
+            },
+            {
+              "title": "Total output voltage",
+              "unit": "V",
+              "sample": "690.1"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Battery type",
+            "Charging mode",
+            "CPU1 version",
+            "CPU2 version",
+            "Energy saving mode",
+            "Equipment type",
+            "Input mode",
+            "Output mode",
+            "Product type",
+            "System time",
+            "The current state of the machine"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-09 17:18:30",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Product type",
+            "value": "Control and inversion all-in-one machine",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "System time",
+            "value": "2001-03-31 12:11:22",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "CPU1 version",
+            "value": "V920.00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "The current state of the machine",
+            "value": "contravariant",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "CPU2 version",
+            "value": "V109.00",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery voltage",
+            "value": "51.7",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "Product serial number",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery current",
+            "value": "8.6",
+            "unit": "A",
+            "resolved_key": "Battery Current"
+          },
+          {
+            "title": "Battery SOC",
+            "value": "89",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "Positive bus voltage",
+            "value": "409.0",
+            "unit": "V",
+            "resolved_key": "Positive Bus Voltage"
+          },
+          {
+            "title": "Negative bus voltage",
+            "value": "408.9",
+            "unit": "V",
+            "resolved_key": "Negative Bus Voltage"
+          },
+          {
+            "title": "L1:Mains voltage",
+            "value": "229.5",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "L2:Mains voltage",
+            "value": "220.8",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "L3:mains voltage",
+            "value": "232.5",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Mains charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "charging power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "Grid frequency",
+            "value": "50.02",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "Solar panel 1 voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Solar panel 2 voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Solar panel 1 current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Solar panel 2 current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Solar panel 1 power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "Solar panel 2 power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "Solar total panel power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "PV charging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "PV charging current"
+          },
+          {
+            "title": "Inverter A phase voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Inverter A phase current",
+            "value": "1.3",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "L2:Output voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "L2:Inverting current",
+            "value": "1.2",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "L3:Output voltage",
+            "value": "230.1",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Load A phase current",
+            "value": "0.6",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "L3:Inverting current",
+            "value": "1.4",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "A phase load rate",
+            "value": "3",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "L2:Load current",
+            "value": "0.8",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "L2:Load rate",
+            "value": "4",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "Inverter frequency",
+            "value": "50.06",
+            "unit": "Hz",
+            "resolved_key": "Inverter frequency"
+          },
+          {
+            "title": "Load A phase active power",
+            "value": "19",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "L3:Load current",
+            "value": "1.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "L3:Load rate",
+            "value": "6",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "Load A is phased at power",
+            "value": "159",
+            "unit": "VA",
+            "resolved_key": null
+          },
+          {
+            "title": "L2:Load active power",
+            "value": "118",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "L2:Load apparent power",
+            "value": "178",
+            "unit": "VA",
+            "resolved_key": null
+          },
+          {
+            "title": "L3:Load active power",
+            "value": "193",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "L3:Load apparent power",
+            "value": "241",
+            "unit": "VA",
+            "resolved_key": null
+          },
+          {
+            "title": "PV radiator temperature",
+            "value": "25.6",
+            "unit": "°C",
+            "resolved_key": "PV Radiator Temperature"
+          },
+          {
+            "title": "Inverter radiator temperature",
+            "value": "45.9",
+            "unit": "°C",
+            "resolved_key": "Inverter Radiator Temperature"
+          },
+          {
+            "title": "Temperature of transformer",
+            "value": "44.7",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "Total output voltage",
+            "value": "690.1",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery charging ampere hours in the same day",
+            "value": "0",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery discharge ampere hours per day",
+            "value": "28",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "The number of ampere hours of mains charging on the same day",
+            "value": "0",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "PV power generation on the day",
+            "value": "3.7",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "The electricity consumption of the load on the day",
+            "value": "4.5",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "The load consumes electricity from the mains on the same day",
+            "value": "0.0",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Total active power of the load",
+            "value": "330",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "The battery accumulates ampere-hours of charge",
+            "value": "91936",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "The cumulative number of ampere hours of battery discharge",
+            "value": "92230",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "Cumulative charging capacity of mains",
+            "value": "54962",
+            "unit": "Ah",
+            "resolved_key": null
+          },
+          {
+            "title": "PV cumulative power generation",
+            "value": "3878.5",
+            "unit": "kWh",
+            "resolved_key": "PV Cumulative Power Generation"
+          },
+          {
+            "title": "Battery type",
+            "value": "16 strings of lithium iron phosphate batteries",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Load cumulative power consumption",
+            "value": "9434.3",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Equipment type",
+            "value": "ASF48120S260-H",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Output mode",
+            "value": "Inverter first",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Input mode",
+            "value": "UPS",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Energy saving mode",
+            "value": "Shut down",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Charging mode",
+            "value": "Hybrid charging",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "The load accumulates the power consumption of the mains power",
+            "value": "3252.5",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "battery energy today discharge",
+            "value": "1447.6",
+            "unit": "Wh",
+            "resolved_key": null
+          },
+          {
+            "title": "battery energy today charge",
+            "value": "0.0",
+            "unit": "Wh",
+            "resolved_key": null
+          },
+          {
+            "title": "battery energy total charge",
+            "value": "4753091.3",
+            "unit": "Wh",
+            "resolved_key": null
+          },
+          {
+            "title": "battery energy total discharge",
+            "value": "4768291.1",
+            "unit": "Wh",
+            "resolved_key": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "energyToday",
+            "value": "3.7000",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "3878.5000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cached Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [],
+        "parameters": [],
+        "checksum": "108b26a62226f41216704a66f755d82f575e0ee3c5727be1533058c3debf8db6",
+        "control_reads": {
+          "fields": 0,
+          "without_a_value": 0,
+          "rounds_that_recovered_nothing": 0,
+          "rounds_allowed": 3,
+          "still_trying": true,
+          "last_round_went_unanswered": false
+        },
+        "data_source": "Cached Cloud",
+        "last_update": "2026-11-09 17:18:30",
+        "control_error": "Request timed out"
+      }
+    ]
+  }
+}
