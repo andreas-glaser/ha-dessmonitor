@@ -736,6 +736,25 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:transmission-tower",
     },
+    # The battery-side charging figures a PV1800-family collector reports as
+    # "Charger Current" and "Charger Power" (#79). The vendor does not say
+    # which source is charging and the hardware can use either, so the names
+    # stay as the collector sends them rather than claiming the array or the
+    # mains.
+    "Charger Current": {
+        "name": "Charger Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
+    "Charger Power": {
+        "name": "Charger Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
     "Battery Charging Power": {
         "name": "Battery Charging Power",
         "unit": UNITS["POWER"],

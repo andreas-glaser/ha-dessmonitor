@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for devcode 697, a PV1800 MD PV18-5048 VHM 5 kW 48 V off-grid
+  inverter on ShineMonitor (#79, thanks to @clubdeportivotenisitas for the
+  diagnostics download). Eighteen of its twenty-one readings already resolved,
+  and the three that reached no entity now do: the lifetime PV counter, which
+  belongs on the energy dashboard, and the charger current and power, which the
+  collector measures on the battery.
+- Canonical names for a charger current and a charger power reported without
+  naming their source, so a collector that sends them reaches a sensor (#79).
 - Six nameplate ratings devcode 2449 reports beside its telemetry now reach
   diagnostic sensors: the grid's rated voltage and current, the battery's rated
   voltage, and the AC output's rated current, apparent power and active power
