@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Six nameplate ratings devcode 2449 reports beside its telemetry now reach
+  diagnostic sensors: the grid's rated voltage and current, the battery's rated
+  voltage, and the AC output's rated current, apparent power and active power
+  (#80, thanks to @HVSik for the diagnostics download from a SILA MAX 7200MH).
+
+### Fixed
+- Devcode 2449 no longer reports its own setpoints as readings that reach no
+  entity, so the Repairs card saying fourteen readings are missing is withdrawn
+  and the devcode reports `supported`. Eight setpoints the collector returns
+  among the telemetry, plus the battery type and AC input range, are the values
+  of controls the account already publishes as number and select entities, and
+  the committed download shows each reading agreeing with its control. Two of
+  the eight are spelled as ratings - the output's rating voltage and rating
+  frequency - and are declared settings rather than rating sensors because both
+  move when the owner changes the setting (#80). No entity is renamed or
+  removed by this half.
+
 ## [2.8.0] - 2026-11-12
 
 This stable release includes all changes since 2.7.0, including everything
