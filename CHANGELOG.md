@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   voltage, and the AC output's rated current, apparent power and active power
   (#80, thanks to @HVSik for the diagnostics download from a SILA MAX 7200MH).
 
+### Changed
+- `tools/analysis_coverage.py` pairs an unresolved reading with any control
+  field sitting at the same value, so the judgement a `SETTING_READINGS`
+  declaration rests on comes from the attached file rather than from a
+  reviewer's reading of the title. Both report shapes now carry the control
+  template, so a CLI analysis marks its settings too, and a diagnostics
+  download, which records each control's readback, is what makes the value
+  pairing possible (#80).
+
 ### Fixed
 - Devcode 2449 no longer reports its own setpoints as readings that reach no
   entity, so the Repairs card saying fourteen readings are missing is withdrawn
