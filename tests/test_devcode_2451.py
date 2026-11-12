@@ -129,5 +129,9 @@ def test_the_battery_voltage_from_scc_is_not_the_battery_voltage() -> None:
 
 
 def test_no_other_devcode_inherits_these_declarations() -> None:
-    assert not is_setting_reading(2449, "Battery Bulk Voltage")
-    assert not is_setting_reading(6515, "Max Charging Current")
+    """Each profile is a standalone contract (#69). Devcode 2449 declares the
+    same titles from its own download (#80) and devcode 2452 spells them in
+    lower case, which ``is_setting_reading`` matches; devcode 684 is a
+    grid-tie profile that declares no setting at all."""
+    assert not is_setting_reading(684, "Battery Bulk Voltage")
+    assert not is_setting_reading(684, "Max Charging Current")
