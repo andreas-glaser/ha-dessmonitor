@@ -547,9 +547,24 @@ It prints every raw title with the canonical key it resolves to, then the
 unresolved ones, marking those the collector labelled with a unit, those a
 profile declares a setting, and those the same report lists in the device's
 control template - a title marked `(control on this device)` is a setting to
-declare rather than a reading being dropped. Pass `--controls` to also list the
-control fields whose names no reading title matches, which is where a collector
-that spells a reading and its control differently shows up. A unit means the title is a reading and should
+declare rather than a reading being dropped.
+
+Where the report carries the control readbacks, which a diagnostics download
+does and a CLI analysis does not, an unresolved title is also printed with any
+control sitting at the same value:
+
+```
+    Battery Re-Charge Voltage  [V]
+        reads 44, as the control 'Back to Grid Voltage' does - a setting to
+        declare if the two are one
+```
+
+That is the pairing the names cannot make, because a collector does not spell a
+reading and its control alike. It is a candidate and not a declaration: two
+settings of one inverter can sit at the same value, and a live reading can pass
+through a setpoint's, so confirm it against the control's own name and option
+list before declaring it. Pass `--controls` to also list the control fields
+whose names no reading title matches. A unit means the title is a reading and should
 become a sensor, unless it is a setting; unresolved titles without one
 are settings, identity fields and timestamps, which reach Home Assistant through
 the number, select and button platforms instead. Work through the marked titles

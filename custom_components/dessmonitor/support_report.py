@@ -515,7 +515,14 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 "titles": [str(title) for title in analysis.get("sensor_titles", [])],
                 "units": _units_from_analysis(analysis),
                 "source": analysis.get("source", "cli_analysis"),
-                "controls": [],
+                # A CLI analysis records the control template too, so the
+                # titles that are really this device's settings can be marked
+                # in its coverage report as they are in a download's. What it
+                # cannot record is each control's readback, which is why the
+                # value pairing below finds nothing in a file of this shape.
+                "controls": _control_names(analysis.get("control_fields")),
+                "values": _values_from_analysis(analysis),
+                "control_values": _control_values(analysis.get("control_fields")),
                 "checksum": analysis.get("checksum"),
                 "checksum_valid": bool(analysis.get("checksum"))
                 and analysis["checksum"] == analysis_checksum(analysis),
@@ -544,6 +551,12 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 },
                 "source": payload.get("source", "integration_diagnostics"),
                 "controls": _control_names(payload.get("control_fields")),
+                "values": {
+                    str(reading.get("title")): str(reading.get("value"))
+                    for reading in readings
+                    if reading.get("title") and reading.get("value") not in (None, "")
+                },
+                "control_values": _control_values(payload.get("control_fields")),
                 "checksum": payload.get("checksum"),
                 "checksum_valid": bool(payload.get("checksum"))
                 and payload["checksum"] == report_checksum(payload),
@@ -551,6 +564,45 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
         ]
 
     raise ValueError("not a devcode analysis or support report")
+
+
+def _values_from_analysis(analysis: dict[str, Any]) -> dict[str, str]:
+    """Collect the sampled values a CLI analysis recorded, keyed by raw title.
+
+    As with the units, it samples rather than recording every reading, so a
+    report built in Home Assistant pairs more of them with their control.
+    """
+    values: dict[str, str] = {}
+    for section, label in (("sample_data", "title"), ("parameters", "name")):
+        for point in analysis.get(section, []):
+            title = point.get(label)
+            value = point.get("val", point.get("value"))
+            if title and value not in (None, ""):
+                values[str(title)] = str(value)
+    return values
+
+
+def _control_values(control_fields: Any) -> dict[str, str]:
+    """Return each control field's last readback, keyed by its name.
+
+    A reading that agrees with a control's readback is the evidence that the
+    two are one setting, which is the judgement every profile that declares
+    ``SETTING_READINGS`` rests on. It had to be made by eye because the
+    spellings differ on both sides - devcode 2449 reports "Max AC Charging
+    Current" against a "Max. AC Charging Current" control (#80) - so the
+    values are carried here and the coverage tool pairs them up.
+    """
+    if not isinstance(control_fields, list):
+        return {}
+    values: dict[str, str] = {}
+    for field in control_fields:
+        if not isinstance(field, dict):
+            continue
+        name = str(field.get("name") or "").strip()
+        value = field.get("value")
+        if name and value not in (None, ""):
+            values[name] = str(value)
+    return values
 
 
 def _units_from_analysis(analysis: dict[str, Any]) -> dict[str, str]:
