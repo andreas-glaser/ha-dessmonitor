@@ -1,8 +1,15 @@
-"""Small read-only driver boundary for local inverter protocols.
+"""Small driver boundary for local inverter protocols.
 
 The coordinator owns connection lifecycle and scheduling; drivers own only
 protocol detection, validation, and value decoding. New collector/inverter
 families can therefore be added without duplicating network or HA logic.
+
+A driver may also carry a ``settings`` backend, which is what makes local
+writes possible for its protocol. The two ASCII protocols have one: their
+setters are named commands the inverter acknowledges and then reports back,
+so a write can be verified. The Modbus driver has ``None``, because a holding
+register is addressed by number and no vendor register map for this family has
+been obtained; see ``modbus.py``.
 """
 
 from __future__ import annotations
@@ -26,6 +33,7 @@ from .smg import (
     poll_smg,
 )
 from .smg_protocol4 import PROTOCOL4_CLOUD_DEVICE_CODE
+from .writer import P17SettingsBackend, Pi30SettingsBackend, SettingsBackend
 
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
 
@@ -52,10 +60,12 @@ class LocalDevice:
     address_verified: bool = True
 
 
-class ReadOnlyLocalDriver(Protocol):
-    """Interface implemented by every auditable, read-only local driver."""
+class LocalDriver(Protocol):
+    """Interface implemented by every auditable local protocol driver."""
 
     key: str
+    #: Set only where a write can be acknowledged and then read back.
+    settings: SettingsBackend | None
 
     async def discover(
         self,
@@ -76,9 +86,10 @@ class ReadOnlyLocalDriver(Protocol):
 
 
 class P17Driver:
-    """Read-only PI18/P17 ASCII driver."""
+    """PI18/P17 ASCII driver, with verified setting writes."""
 
     key = P17_PROTOCOL
+    settings: SettingsBackend | None = P17SettingsBackend()
 
     async def discover(
         self,
@@ -191,9 +202,17 @@ class P17Driver:
 
 
 class SmgModbusDriver:
-    """Read-only SMG Modbus RTU driver."""
+    """Read-only SMG Modbus RTU driver.
+
+    No setting writes: a Modbus write names a register by number, and nothing
+    in this repository or in any source reviewed for it documents which
+    holding register this family keeps each setting in. A wrong address is a
+    changed setting on someone's inverter, so this driver stays read-only
+    until a vendor register map is in hand.
+    """
 
     key = SMG_PROTOCOL
+    settings: SettingsBackend | None = None
 
     async def discover(
         self,
@@ -255,9 +274,10 @@ class SmgModbusDriver:
 
 
 class Pi30Driver:
-    """Read-only standard PI30 driver; never selected from a cloud family hint."""
+    """Standard PI30 driver; never selected from a cloud family hint."""
 
     key = "pi30"
+    settings: SettingsBackend | None = Pi30SettingsBackend()
 
     async def discover(
         self,
@@ -367,7 +387,7 @@ class Pi30Driver:
         return values
 
 
-DRIVERS: tuple[ReadOnlyLocalDriver, ...] = (
+DRIVERS: tuple[LocalDriver, ...] = (
     P17Driver(),
     SmgModbusDriver(),
     Pi30Driver(),
@@ -384,7 +404,7 @@ async def discover_supported_devices(
     device_address: int = 0,
     diagnostics: ProbeDiagnostics | None = None,
     preferred_driver_key: str | None = None,
-) -> tuple[ReadOnlyLocalDriver, tuple[LocalDevice, ...]]:
+) -> tuple[LocalDriver, tuple[LocalDevice, ...]]:
     """Try a bounded driver order and return the first verified protocol.
 
     ``preferred_driver_key`` names a driver that already worked for this
@@ -444,7 +464,7 @@ async def discover_supported_devices(
 
 
 def _driver_failure(
-    diagnostics: ProbeDiagnostics, driver: ReadOnlyLocalDriver, err: BaseException
+    diagnostics: ProbeDiagnostics, driver: LocalDriver, err: BaseException
 ) -> str:
     """Describe why one driver failed, preferring what the probe observed.
 

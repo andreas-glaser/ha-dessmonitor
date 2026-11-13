@@ -13,6 +13,8 @@ from custom_components.dessmonitor.number import (
     _format_control_value,
 )
 
+from .support import bind_cloud_control_writes
+
 
 def _make_coordinator(value: str = "9") -> MagicMock:
     """Create the coordinator surface used by a number entity."""
@@ -31,7 +33,8 @@ def _make_coordinator(value: str = "9") -> MagicMock:
         }
     }
     coordinator.ctrl_value_cache = {"SN-1": {"bat_current": value}}
-    return coordinator
+    coordinator.api.set_device_control_value = AsyncMock(return_value={"err": 0})
+    return bind_cloud_control_writes(coordinator)
 
 
 def _make_entity(
@@ -284,8 +287,10 @@ async def test_successful_write_updates_state_and_cache() -> None:
     )
     assert entity.native_value == 25.0
     # The coordinator owns the cache, so that it can also hold the refresh
-    # rotation off a field Home Assistant has just written (#53).
-    coordinator.record_control_write.assert_called_once_with("SN-1", "bat_current", "25")
+    # rotation off a field Home Assistant has just written (#53). The entity
+    # writes through the coordinator's one write seam, so the cache is updated
+    # by the coordinator and not by the platform.
+    assert coordinator.ctrl_value_cache["SN-1"]["bat_current"] == "25"
     write_state.assert_called_once_with()
 
 
@@ -300,7 +305,8 @@ async def test_successful_write_without_control_cache_updates_state() -> None:
         await entity.async_set_native_value(25.0)
 
     assert entity.native_value == 25.0
-    assert coordinator.ctrl_value_cache == {}
+    # The cache is created by the write rather than required by it.
+    assert coordinator.ctrl_value_cache == {"SN-1": {"bat_current": "25"}}
     write_state.assert_called_once_with()
 
 

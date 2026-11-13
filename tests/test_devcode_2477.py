@@ -18,6 +18,8 @@ from custom_components.dessmonitor.api import DessMonitorAPI
 from custom_components.dessmonitor.const import DOMAIN, SENSOR_TYPES
 from custom_components.dessmonitor.device_support import is_setting_reading
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
+
+from .support import bind_cloud_control_writes
 from custom_components.dessmonitor.device_support.device_registry import (
     apply_devcode_transformations,
     is_devcode_supported,
@@ -98,7 +100,7 @@ def _coordinator(
     )
     coordinator.ctrl_value_cache = {"TEST-INVERTER": {param_id: "48.0"}}
     coordinator.api.set_device_control_value = AsyncMock(return_value={"err": 0})
-    return coordinator
+    return bind_cloud_control_writes(coordinator)
 
 
 def test_registration_and_observed_mode_without_extra_parameter_fetch(caplog):

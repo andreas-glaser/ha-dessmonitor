@@ -185,14 +185,9 @@ class DessMonitorButton(CoordinatorEntity, ButtonEntity):
         coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
         _LOGGER.info("Pressing %s (param %s)", self._attr_unique_id, self._param_id)
 
-        device = coordinator.data.get(self._device_sn, {}).get("device", {})
-        collector = coordinator.data.get(self._device_sn, {}).get("collector", {})
-
-        await coordinator.api.set_device_control_value(
-            pn=collector.get("pn"),
-            devcode=device.get("devcode"),
-            devaddr=device.get("devaddr"),
-            sn=self._device_sn,
-            param_id=self._param_id,
-            value=self._api_value,
+        await coordinator.async_set_control_value(
+            self._device_sn,
+            self._param_id,
+            self._api_value,
+            control_name=self._param_id,
         )

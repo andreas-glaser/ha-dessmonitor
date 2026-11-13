@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from ..const import (
     CONF_LOCAL_COLLECTOR_IP,
+    CONF_LOCAL_CONTROL,
     CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
@@ -20,19 +21,25 @@ from ..const import (
     CONF_LOCAL_POLL_INTERVAL,
     CONF_LOCAL_TCP_PORT,
     CONF_LOCAL_UDP_PORT,
+    DEFAULT_LOCAL_CONTROL,
     DEFAULT_LOCAL_DEVICE_ADDRESS,
     DEFAULT_LOCAL_DEVICE_CODE,
     DEFAULT_LOCAL_POLL_INTERVAL,
     DEFAULT_LOCAL_TCP_PORT,
     DEFAULT_LOCAL_UDP_PORT,
     DOMAIN,
+    LOCAL_CONTROL_ENABLED,
+    LOCAL_SETTINGS_REFRESH_CYCLES,
 )
+from ..control_values import TRANSPORT_LOCAL, ControlWriteResult
 from ..sensor_titles import resolve_sensor_key, sensor_unit
 from .announcer import CollectorAnnouncer
 from .discovery import inverter_addresses
-from .drivers import LocalDevice, ReadOnlyLocalDriver, discover_supported_devices
+from .drivers import LocalDevice, LocalDriver, discover_supported_devices
 from .protocol import ProtocolError
 from .server import CollectorIdentity, CollectorServer
+from .settings import SettingNotWritable
+from .writer import SettingsSnapshot, WriteHistory
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +50,13 @@ _MAX_DEVICE_ADDRESS = 16
 # for no gain; one that outlives it may need a fresh discovery.
 _SILENT_TUNNEL_GRACE = 180.0
 _MAX_RETRY_INTERVAL = 30.0
+# Consecutive failed settings reads before an inverter that has never answered
+# one drops back to the slow refresh cycle. The first few retries are worth a
+# frame each: a collector that has just connected may still be settling. After
+# that, asking every poll cycle for the life of the entry would spend one
+# transaction in every cycle on a link that carries one at a time, and the
+# answer has already been the same three times.
+_MAX_SETTINGS_READ_FAILURES = 3
 
 
 class InverterSilent(Exception):
@@ -86,15 +100,69 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         self._session_task: asyncio.Task[None] | None = None
         self._identity: CollectorIdentity | None = None
         self._device_code: int | None = None
-        self._driver: ReadOnlyLocalDriver | None = None
+        self._driver: LocalDriver | None = None
         self._devices: dict[str, LocalDevice] = {}
         self._polled_serials: set[str] = set()
         self._silence_started: float | None = None
+        self._control_enabled = (
+            entry_data.get(CONF_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)
+            == LOCAL_CONTROL_ENABLED
+        )
+        self._settings: dict[str, SettingsSnapshot] = {}
+        self._settings_errors: dict[str, str] = {}
+        self._settings_failures: dict[str, int] = {}
+        self._write_history: dict[str, WriteHistory] = {}
+        self._control_revision = 0
+        self._control_ids: frozenset[str] = frozenset()
+        # Serializes a write against the settings read-backs it depends on, so
+        # two simultaneous writes cannot each send a composite command built
+        # from the state before the other one.
+        self._write_lock = asyncio.Lock()
+        # Controls are published and written per device, not per field, so one
+        # cache keyed the way the cloud coordinator keys its own lets the
+        # number and select platforms consume a local device unchanged.
+        self.ctrl_value_cache: dict[str, dict[str, Any]] = {}
 
     @property
     def connected(self) -> bool:
         """Return whether the configured collector is identified."""
         return self._server.connected
+
+    @property
+    def cloud_revision(self) -> int:
+        """Return the counter entity discovery retries on.
+
+        There is no cloud on a local entry, and the shared loader in
+        ``entity_loader.py`` reloads controls only when this advances. A new
+        settings read-back that offers a different set of controls is the local
+        equivalent of the cloud revision that would have carried them, so that
+        is what advances it. Telemetry does not: a push every few seconds would
+        otherwise rebuild the control entities for the life of the entry.
+        """
+        return self._control_revision
+
+    @property
+    def driver_key(self) -> str | None:
+        """Return the local protocol in use, once one has been identified."""
+        return self._driver.key if self._driver is not None else None
+
+    @property
+    def control_enabled(self) -> bool:
+        """Return whether this entry may write settings over the local link."""
+        return self._control_enabled
+
+    def settings_snapshot(self, serial: str) -> SettingsSnapshot | None:
+        """Return the last settings read-back for one inverter."""
+        return self._settings.get(serial)
+
+    def write_history(self, serial: str) -> list[dict[str, Any]]:
+        """Return the recorded outcomes of this inverter's local writes."""
+        history = self._write_history.get(serial)
+        return list(history.outcomes) if history else []
+
+    def settings_error(self, serial: str) -> str | None:
+        """Return why this inverter's settings could not be read, if they were not."""
+        return self._settings_errors.get(serial)
 
     @property
     def device_code(self) -> int | None:
@@ -127,10 +195,152 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         await self._server.stop()
 
     async def async_get_controls_with_values(
-        self, _pn: str, _devcode: int, _devaddr: int, _sn: str
+        self, _pn: str, _devcode: int, _devaddr: int, sn: str
     ) -> tuple[dict[str, Any], dict[str, str]]:
-        """Expose no write controls while local mode is read-only."""
-        return {}, {}
+        """Return the settings this inverter reports, in the cloud's own shape.
+
+        Nothing is offered unless the owner enabled local control, and then
+        only settings the inverter reported a value for: a control whose write
+        could not be verified is not published at all.
+        """
+        if not self._control_enabled:
+            return {}, {}
+        snapshot = self._settings.get(sn)
+        if snapshot is None:
+            return {}, self.ctrl_value_cache.get(sn, {})
+        controls, values = snapshot.template()
+        self.ctrl_value_cache.setdefault(sn, {}).update(values)
+        return controls, values
+
+    def record_control_write(self, sn: str, field_id: str, value: str) -> None:
+        """Cache a verified setting so the entity shows it immediately."""
+        if not sn or not field_id:
+            return
+        self.ctrl_value_cache.setdefault(sn, {})[field_id] = value
+
+    async def async_set_control_value(
+        self, sn: str, param_id: str, value: str, *, control_name: str = ""
+    ) -> ControlWriteResult:
+        """Write one setting over the local link and prove that it moved."""
+        if not self._control_enabled:
+            raise SettingNotWritable(
+                "writing settings over the local link is turned off for this entry"
+            )
+        driver = self._driver
+        device = self._devices.get(sn)
+        if driver is None or device is None:
+            raise SettingNotWritable(f"{sn} is not a discovered local inverter")
+        backend = driver.settings
+        if backend is None:
+            raise SettingNotWritable(
+                f"the {driver.key} protocol has no verifiable setting commands"
+            )
+
+        async with self._write_lock:
+            known = self._settings[sn].enumerations if sn in self._settings else None
+            outcome, snapshot = await backend.async_write(
+                self._send_command, device, param_id, value, known
+            )
+            self._store_settings(sn, snapshot)
+            self._write_history.setdefault(sn, WriteHistory()).record(outcome)
+
+        if not outcome.verified:
+            _LOGGER.warning(
+                "Local write of %s on %s did not take effect: %s",
+                control_name or param_id,
+                sn,
+                outcome.error,
+            )
+            raise SettingNotWritable(
+                f"{control_name or param_id} was not changed: {outcome.error}"
+            )
+        _LOGGER.info(
+            "Local write of %s on %s verified as %s",
+            control_name or param_id,
+            sn,
+            outcome.reported,
+        )
+        self.record_control_write(sn, param_id, outcome.reported or value)
+        self.async_set_updated_data(self._coordinator_data())
+        return ControlWriteResult(
+            value=outcome.reported or value,
+            transport=TRANSPORT_LOCAL,
+            verified=True,
+        )
+
+    def _store_settings(self, serial: str, snapshot: SettingsSnapshot) -> None:
+        """Keep a read-back and advance the control revision when it differs."""
+        self._settings[serial] = snapshot
+        self._settings_errors.pop(serial, None)
+        self._settings_failures.pop(serial, None)
+        controls, values = snapshot.template()
+        self.ctrl_value_cache.setdefault(serial, {}).update(values)
+        offered = frozenset(
+            f"{serial}:{config['id']}" for config in controls.values()
+        ) | frozenset(
+            identifier
+            for identifier in self._control_ids
+            if not identifier.startswith(f"{serial}:")
+        )
+        if offered != self._control_ids:
+            self._control_ids = offered
+            self._control_revision += 1
+
+    async def _refresh_settings(self, *, cycle: int) -> None:
+        """Read the settings block on discovery and on its own slow cycle."""
+        driver = self._driver
+        if not self._control_enabled or driver is None:
+            return
+        backend = driver.settings
+        if backend is None:
+            return
+        slow_cycle = cycle % LOCAL_SETTINGS_REFRESH_CYCLES == 0
+        for serial, device in self._devices.items():
+            if serial not in self._polled_serials:
+                continue
+            if cycle and not slow_cycle:
+                # A device whose settings are known is only re-read on the slow
+                # cycle. One that has never answered gets a bounded run of
+                # immediate retries and then waits for that cycle too.
+                if (
+                    serial in self._settings
+                    or self._settings_failures.get(serial, 0)
+                    >= _MAX_SETTINGS_READ_FAILURES
+                ):
+                    continue
+            try:
+                known = (
+                    self._settings[serial].enumerations
+                    if serial in self._settings
+                    else None
+                )
+                snapshot = await backend.async_read(self._send_command, device, known)
+            except (TimeoutError, ProtocolError) as err:
+                # Telemetry is unaffected: this only means the settings this
+                # inverter reports are not known yet, so none are published.
+                self._settings_errors[serial] = str(err)
+                failures = self._settings_failures.get(serial, 0) + 1
+                self._settings_failures[serial] = failures
+                if failures == _MAX_SETTINGS_READ_FAILURES:
+                    _LOGGER.warning(
+                        "Local %s inverter at address %d has not answered %s "
+                        "%d times, so it publishes no settings; it is asked "
+                        "again every %d polls",
+                        driver.key,
+                        device.device_address,
+                        backend.rating_command,
+                        failures,
+                        LOCAL_SETTINGS_REFRESH_CYCLES,
+                    )
+                else:
+                    _LOGGER.debug(
+                        "Local %s settings read failed at address %d: %s",
+                        driver.key,
+                        device.device_address,
+                        err,
+                    )
+                continue
+            self._store_settings(serial, snapshot)
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Return pushed local data when Home Assistant requests a refresh."""
@@ -281,6 +491,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                 "Inverter discovery succeeded but status polling failed"
             )
         self._note_inverter_answered()
+        await self._refresh_settings(cycle=0)
         self.async_set_updated_data(self._coordinator_data())
 
     async def _poll_loop(self) -> None:
@@ -294,6 +505,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
             if successful:
                 failures = 0
                 self._note_inverter_answered()
+                await self._refresh_settings(cycle=cycle)
                 self.async_set_updated_data(self._coordinator_data())
             else:
                 failures += 1
