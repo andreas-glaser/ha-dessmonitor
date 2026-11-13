@@ -16,7 +16,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
-from .control_values import cloud_control_snapshot, control_value, find_control_value
+from .control_values import (
+    TRANSPORT_CLOUD,
+    cloud_control_snapshot,
+    control_value,
+    find_control_value,
+)
 from .device_support.device_registry import (
     map_control_field,
     temporal_control_kind,
@@ -200,6 +205,7 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         self._api_name = api_name
         self._param_id = param_id
         self._hint = hint
+        self._control_transport = TRANSPORT_CLOUD
         self._last_cloud_sample: object = None
         self._last_raw_value = initial_value
         self._attr_native_unit_of_measurement = unit
@@ -247,7 +253,7 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
                 else "not_loaded"
             )
         return {
-            "control_transport": "cloud",
+            "control_transport": self._control_transport,
             "value_status": status,
         }
 
@@ -351,27 +357,24 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
         _LOGGER.debug("Setting %s to %s", self._attr_unique_id, value)
 
         coordinator = cast(DessMonitorDataUpdateCoordinator, self.coordinator)
-        device = coordinator.data.get(self._device_sn, {}).get("device", {})
-        collector = coordinator.data.get(self._device_sn, {}).get("collector", {})
-
         serialized = _format_control_value(value)
 
         try:
-            await coordinator.api.set_device_control_value(
-                pn=collector.get("pn"),
-                devcode=device.get("devcode"),
-                devaddr=device.get("devaddr"),
-                sn=self._device_sn,
-                param_id=self._param_id,
-                value=serialized,
+            result = await coordinator.async_set_control_value(
+                self._device_sn,
+                self._param_id,
+                serialized,
+                control_name=self._param_name,
             )
-            self._attr_native_value = value
+            # A verified write reports what the device now says the setting
+            # is, which is the value to show; an unverified one can only
+            # report what was sent.
+            written = self._coerce_value(result.value)
+            self._attr_native_value = written if written is not None else value
+            self._control_transport = result.transport
             self._last_cloud_sample = cloud_control_snapshot(
                 coordinator, self._device_sn
             )[0]
-            coordinator.record_control_write(
-                self._device_sn, self._param_id, serialized
-            )
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set value for %s: %s", self._attr_unique_id, err)

@@ -22,6 +22,7 @@ CONF_LOCAL_POLL_INTERVAL: Final = "local_poll_interval"
 CONF_LOCAL_EXPECTED_PN: Final = "local_expected_product_number"
 CONF_LOCAL_REDIRECT_CONFIRMED: Final = "local_redirect_confirmed"
 CONF_LOCAL_MODE: Final = "local_mode"
+CONF_LOCAL_CONTROL: Final = "local_control"
 
 CONNECTION_TYPE_CLOUD: Final = "cloud"
 CONNECTION_TYPE_LOCAL: Final = "local"
@@ -33,6 +34,17 @@ LOCAL_MODE_OPTIONS: Final = {
     LOCAL_MODE_PREFER_LOCAL: "Prefer local, fall back to cloud",
 }
 
+# Writing settings over the local link is opt-in. Local mode was read-only for
+# its whole life, so an upgrade must not start accepting writes on an
+# installation whose owner chose it for telemetry alone.
+LOCAL_CONTROL_DISABLED: Final = "disabled"
+LOCAL_CONTROL_ENABLED: Final = "enabled"
+LOCAL_CONTROL_OPTIONS: Final = {
+    LOCAL_CONTROL_DISABLED: "Read settings only (default)",
+    LOCAL_CONTROL_ENABLED: "Write settings over the local link",
+}
+DEFAULT_LOCAL_CONTROL: Final = LOCAL_CONTROL_DISABLED
+
 DEFAULT_COMPANY_KEY: Final = "bnrl_frRFjEz8Mkn"
 DEFAULT_UPDATE_INTERVAL: Final = 300
 DEFAULT_LOCAL_TCP_PORT: Final = 8899
@@ -40,6 +52,11 @@ DEFAULT_LOCAL_UDP_PORT: Final = 58899
 DEFAULT_LOCAL_DEVICE_ADDRESS: Final = 0
 DEFAULT_LOCAL_DEVICE_CODE: Final = 0
 DEFAULT_LOCAL_POLL_INTERVAL: Final = 5
+# Poll cycles between two reads of the settings block. A setting changed on the
+# inverter's own panel or in the vendor app should appear without a reload,
+# and each read costs frames on a link that carries one transaction at a time,
+# so it is deliberately much slower than telemetry.
+LOCAL_SETTINGS_REFRESH_CYCLES: Final = 24
 LOCAL_POLL_INTERVAL_OPTIONS: Final = {
     2: "2 seconds (fast)",
     5: "5 seconds (recommended)",

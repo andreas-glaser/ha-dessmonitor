@@ -31,6 +31,7 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
     CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_CONTROL,
     CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
@@ -45,6 +46,7 @@ from .const import (
     CONF_USERNAME,
     CONNECTION_TYPE_CLOUD,
     CONNECTION_TYPE_LOCAL,
+    DEFAULT_LOCAL_CONTROL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     LOCAL_MODE_DISABLED,
@@ -54,6 +56,8 @@ from .const import (
     resolve_api_profile,
 )
 from .control_values import (
+    TRANSPORT_CLOUD,
+    ControlWriteResult,
     cloud_control_snapshot,
     control_value,
     find_control_value,
@@ -89,7 +93,16 @@ PLATFORMS: list[Platform] = [
     Platform.TIME,
     Platform.TEXT,
 ]
-LOCAL_PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+# A local entry publishes number and select entities for the settings its
+# inverter reports, and none at all while local control is turned off, so the
+# platform list does not depend on the option and load and unload stay
+# symmetric across an option change.
+LOCAL_PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+    Platform.SELECT,
+]
 
 # Consecutive cloud revisions that may re-read a control value which never
 # resolves. Without a bound, a permanently unreadable field would cost one API
@@ -378,6 +391,11 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the DessMonitor API."""
+
+    # Which transport this coordinator owns. The local and hybrid subclasses
+    # each set one of these to True; everything else is a cloud coordinator.
+    is_local = False
+    is_hybrid = False
 
     def __init__(
         self,
@@ -834,6 +852,33 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             return
         self.ctrl_value_cache.setdefault(sn, {})[field_id] = value
         self._ctrl_write_at[(sn, field_id)] = monotonic()
+
+    async def async_set_control_value(
+        self, sn: str, param_id: str, value: str, *, control_name: str = ""
+    ) -> ControlWriteResult:
+        """Write one control and report which transport carried it.
+
+        Every control entity writes through this one method, so a transport is
+        chosen in one place: the cloud here, the local link in
+        ``local/coordinator.py``, and local-then-cloud in ``local/hybrid.py``.
+        The platform accepts a write without saying whether the inverter
+        applied it, so the result reports the write as unverified.
+        """
+        payload = (self.data or {}).get(sn, {})
+        device = payload.get("device", {})
+        collector = payload.get("collector", {})
+        await self.api.set_device_control_value(
+            pn=collector.get("pn"),
+            devcode=device.get("devcode"),
+            devaddr=device.get("devaddr"),
+            sn=sn,
+            param_id=param_id,
+            value=value,
+        )
+        self.record_control_write(sn, param_id, value)
+        return ControlWriteResult(
+            value=value, transport=TRANSPORT_CLOUD, verified=False
+        )
 
     def _control_value_budget(self, sn: str) -> int:
         """Return how many fruitless read rounds this device still gets.
@@ -1422,6 +1467,10 @@ async def async_get_device_diagnostics(
     if control_error:
         diagnostics["battery_config_error"] = control_error
 
+    local_control = _local_control_diagnostics(coordinator, device_sn, control_config)
+    if local_control is not None:
+        diagnostics["local_control"] = local_control
+
     # The same support report the entry download carries, built from data
     # already in hand so this costs no extra API call. Home Assistant offers
     # "Download diagnostics" on the device as well as on the entry, and a
@@ -1440,7 +1489,7 @@ async def async_get_device_diagnostics(
         device_address=device_info.get("device", {}).get("devaddr"),
         control_fields=control_config,
         parameters=device_parameters,
-        summary_not_merged=coordinator.summary_points_not_merged.get(device_sn),
+        summary_not_merged=_summary_not_merged(coordinator, device_sn),
         api_profile=resolve_api_profile(dict(entry.data)),
         integration_version=VERSION,
         source="device_diagnostics",
@@ -1489,6 +1538,7 @@ _ENTRY_DISCLOSURE: dict[str, str] = {
     CONF_CONNECTION_TYPE: _PUBLISH,
     CONF_UPDATE_INTERVAL: _PUBLISH,
     CONF_LOCAL_MODE: _PUBLISH,
+    CONF_LOCAL_CONTROL: _PUBLISH,
     CONF_LOCAL_POLL_INTERVAL: _PUBLISH,
     CONF_LOCAL_TCP_PORT: _PUBLISH,
     CONF_LOCAL_UDP_PORT: _PUBLISH,
@@ -1618,6 +1668,9 @@ async def async_get_config_entry_diagnostics(
                 CONF_CONNECTION_TYPE, CONNECTION_TYPE_CLOUD
             ),
             "local_mode": entry.options.get(CONF_LOCAL_MODE, LOCAL_MODE_DISABLED),
+            "local_control": {**entry.data, **entry.options}.get(
+                CONF_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL
+            ),
             "api_profile": resolve_api_profile(dict(entry.data)),
         },
         "entry_data": _redacted_entry_values(entry.data, subnets),
@@ -1778,7 +1831,7 @@ async def _build_device_support_report(
         device_address=device_meta.get("devaddr"),
         control_fields=control_fields,
         parameters=parameters,
-        summary_not_merged=coordinator.summary_points_not_merged.get(serial),
+        summary_not_merged=_summary_not_merged(coordinator, serial),
         api_profile=resolve_api_profile(dict(entry.data)),
         integration_version=VERSION,
     )
@@ -1869,6 +1922,102 @@ def _categorize_device_data(
             status[title] = {"value": value, "unit": unit}
 
     return configuration, status
+
+
+def _summary_not_merged(coordinator: Any, serial: str) -> list[dict[str, Any]] | None:
+    """Return the unmerged summary points for a device, where there are any.
+
+    Only the cloud coordinator keeps this bookkeeping: the summary call it
+    describes is an API call. A local-only entry has none, and reaching for the
+    attribute unconditionally made "Download diagnostics" fail on exactly the
+    entries whose owners are asked for a download most often.
+    """
+    not_merged = getattr(coordinator, "summary_points_not_merged", None)
+    if not isinstance(not_merged, dict):
+        return None
+    return not_merged.get(serial)
+
+
+def _local_control_diagnostics(
+    coordinator: Any,
+    device_sn: str,
+    control_fields: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Report what the inverter itself says about its writable settings.
+
+    This is the evidence a devcode profile's ``local_control_settings`` is
+    declared from, and the evidence a failed write is diagnosed from, so it
+    carries three things: the settings the inverter reported, the cloud
+    controls each one looks like, and the outcome of every local write this
+    session attempted.
+    """
+    from .local.settings import pairing_candidates
+
+    for local, serial in _local_routes(coordinator, device_sn):
+        snapshot = local.settings_snapshot(serial)
+        if snapshot is None:
+            error = local.settings_error(serial)
+            if not local.control_enabled and error is None:
+                return {"enabled": False}
+            return {"enabled": local.control_enabled, "error": error}
+        cloud_values = {
+            str(config.get("id")): config.get("value")
+            for config in control_fields.values()
+            if isinstance(config, dict) and config.get("id")
+        }
+        return {
+            "enabled": local.control_enabled,
+            "protocol": local.driver_key,
+            "reported": dict(snapshot.values),
+            "not_reported": list(snapshot.unreported),
+            "accepted_values": {
+                command: list(values)
+                for command, values in snapshot.enumerations.items()
+            },
+            "cloud_pairing": pairing_candidates(
+                snapshot.settings, snapshot.values, control_fields, cloud_values
+            ),
+            "writes": local.write_history(serial),
+        }
+    return None
+
+
+def _local_routes(coordinator: Any, device_sn: str) -> list[tuple[Any, str]]:
+    """Return the local coordinators that may know this device, with its serial.
+
+    Which coordinator this is comes from the class flags the three of them
+    already declare, not from whether some attribute happens to exist: a cloud
+    entry has no local transport, a local entry is its own, and a hybrid entry
+    pairs a cloud serial to a local one the same way the telemetry overlay
+    does, so the download describes the inverter whose readings are published.
+    """
+    # Compared against True rather than merely tested, because this decides
+    # whether an inverter's settings are read into a support download: only a
+    # class that declares the flag qualifies, and anything else fails closed.
+    if getattr(coordinator, "is_local", False) is True:
+        return [(coordinator, device_sn)]
+    if getattr(coordinator, "is_hybrid", False) is not True:
+        return []
+    return [
+        (local, serial)
+        for local, serial in (
+            (local, _paired_local_serial(coordinator, local, device_sn))
+            for local in getattr(coordinator, "locals", ())
+        )
+        if serial is not None
+    ]
+
+
+def _paired_local_serial(coordinator: Any, local: Any, device_sn: str) -> str | None:
+    """Return the local serial a hybrid entry pairs with this cloud device."""
+    from .local.hybrid import _find_local_match
+
+    payload = (coordinator.data or {}).get(device_sn)
+    data = local.data if isinstance(local.data, dict) else {}
+    if not isinstance(payload, dict) or not data:
+        return None
+    match = _find_local_match(device_sn, payload, data, set())
+    return match[0] if match else None
 
 
 async def _fetch_control_details(

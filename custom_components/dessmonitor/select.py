@@ -15,6 +15,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
 from .control_values import (
+    TRANSPORT_CLOUD,
     cloud_control_snapshot,
     control_value,
     first_control_value,
@@ -154,6 +155,7 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
         self._param_name = name
         self._api_name = api_name or name
         self._param_id = param_id
+        self._control_transport = TRANSPORT_CLOUD
         self._last_cloud_sample: object = None
 
         # Titles whose reading carries this control's value, most specific
@@ -192,9 +194,9 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, str]:
-        """Explain why Local telemetry does not make a control locally writable."""
+        """Say which transport last carried a write for this control."""
         return {
-            "control_transport": "cloud",
+            "control_transport": self._control_transport,
             "value_status": (
                 "last_known" if self.current_option is not None else "not_loaded"
             ),
@@ -270,24 +272,19 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
             "Setting %s to %s (API: %s)", self._attr_unique_id, option, api_value
         )
 
-        device = coordinator.data.get(self._device_sn, {}).get("device", {})
-        collector = coordinator.data.get(self._device_sn, {}).get("collector", {})
-
         try:
-            await coordinator.api.set_device_control_value(
-                pn=collector.get("pn"),
-                devcode=device.get("devcode"),
-                devaddr=device.get("devaddr"),
-                sn=self._device_sn,
-                param_id=self._param_id,
-                value=api_value,
+            result = await coordinator.async_set_control_value(
+                self._device_sn,
+                self._param_id,
+                api_value,
+                control_name=self._param_name,
             )
             self._current_value = option
+            self._control_transport = result.transport
             self._last_cloud_sample = cloud_control_snapshot(
                 coordinator, self._device_sn
             )[0]
             self._attr_current_option = option
-            coordinator.record_control_write(self._device_sn, self._param_id, option)
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to set option for %s: %s", self._attr_unique_id, err)

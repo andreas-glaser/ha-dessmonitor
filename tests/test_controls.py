@@ -20,6 +20,8 @@ from custom_components.dessmonitor.select import (
 )
 from custom_components.dessmonitor.utils import async_migrate_control_unique_ids
 
+from .support import bind_cloud_control_writes
+
 
 def _coordinator() -> MagicMock:
     """Create one canonical cloud device with mixed control definitions."""
@@ -56,7 +58,7 @@ def _coordinator() -> MagicMock:
         )
     )
     coordinator.api.set_device_control_value = AsyncMock(return_value={"err": 0})
-    return coordinator
+    return bind_cloud_control_writes(coordinator)
 
 
 async def test_control_shapes_create_one_select_and_one_button() -> None:
@@ -75,8 +77,14 @@ async def test_control_shapes_create_one_select_and_one_button() -> None:
     assert buttons[0].unique_id == "DEVICE-SERIAL_reset_user_settings"
 
 
-async def test_select_write_remains_cloud_backed_in_hybrid() -> None:
-    """Changing a hybrid control uses only the authenticated cloud API."""
+async def test_select_write_takes_the_cloud_when_nothing_pairs_with_it() -> None:
+    """An unpaired control writes through the cloud, as it always has.
+
+    A cloud control and a local setting are the same register under two names,
+    and this one pairs with nothing: no devcode profile declares it and no
+    local setting is named "Output mode". The write therefore takes the cloud
+    path, which is what every installation did before local control existed.
+    """
     coordinator = _coordinator()
     entity = (await _async_build_select_entities(coordinator, set()))[0]
 
@@ -92,14 +100,14 @@ async def test_select_write_remains_cloud_backed_in_hybrid() -> None:
         value="0",
     )
     assert entity.current_option == "Utility"
-    coordinator.record_control_write.assert_called_once_with(
-        "DEVICE-SERIAL", "mode", "Utility"
-    )
+    # The cached value is the option's own key, which is the spelling a write
+    # has to send and the spelling the platform reports it in.
+    assert coordinator.ctrl_value_cache["DEVICE-SERIAL"]["mode"] == "0"
     write_state.assert_called_once_with()
 
 
-async def test_action_button_remains_cloud_backed_in_hybrid() -> None:
-    """A one-shot action never gains a local write path."""
+async def test_action_button_writes_through_the_cloud_seam() -> None:
+    """A one-shot action takes the same single write seam as every control."""
     coordinator = _coordinator()
     entity = (await _async_build_button_entities(coordinator, set()))[0]
 

@@ -7,7 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Local mode can write inverter settings, and reports a change only once the
+inverter confirms it. It is off by default, and an upgrade changes nothing for
+an installation that leaves it off: no extra frame reaches a collector and no
+entity is added, renamed or removed anywhere.
+
 ### Added
+- Inverter settings can be written over the local link, on the PI30 and PI18
+  protocols, once **Settings control over the local link** is turned on for
+  that entry. A setting is offered only where the inverter reports its own
+  value in its rating reply, and a write is reported as done only after the
+  command is acknowledged and that value has moved - the proof a cloud write
+  cannot give, because the platform accepts a write whether or not the inverter
+  applies it. A setter that times out is never sent twice; the setting is read
+  back to find out whether it landed. Output and charger source priority, solar
+  power priority, battery type, the re-charge, re-discharge, cut-off, bulk and
+  float voltages, the AC input range, the output rating frequency and the
+  charging-current limits are covered, as each protocol documents them.
+- A local-only entry publishes those settings as `number` and `select`
+  entities, with the range the protocol documents for the battery class the
+  inverter reported, and with a charging-current limit offered as the list of
+  values the inverter itself enumerates.
+- A device diagnostics download carries a `local_control` section: the settings
+  the inverter reported, the limits it accepts, the ones it did not report, the
+  cloud controls each setting looks like, and the outcome of every local write
+  attempted in that session. The pairing report is the evidence a devcode
+  profile's new `local_control_settings` is declared from.
+- `docs/LOCAL_MODE.md` documents all of it, including the five commands that
+  are deliberately not implemented and what evidence would settle each one.
+  Modbus stays read-only: a register is addressed by number and no vendor map
+  for that inverter family could be obtained.
 - Support for devcode 697, a PV1800 MD PV18-5048 VHM 5 kW 48 V off-grid
   inverter on ShineMonitor (#79, thanks to @clubdeportivotenisitas for the
   diagnostics download). Eighteen of its twenty-one readings already resolved,
@@ -22,6 +51,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#80, thanks to @HVSik for the diagnostics download from a SILA MAX 7200MH).
 
 ### Changed
+- Every control entity writes through one coordinator method, which is where a
+  transport is chosen: the cloud, the local link, or local-then-cloud. A cloud
+  write makes exactly the same request with the same arguments as before.
+- A hybrid entry gains no entities from local control. Its cloud controls keep
+  their identity and history, and local carries the write only for a control
+  that pairs with a local setting - by a devcode profile declaration or by
+  names that normalise alike - falling back to the cloud on any local failure.
+- A control entity's `control_transport` attribute now reports the transport
+  that actually carried the last write rather than always saying `cloud`.
 - `tools/analysis_coverage.py` pairs an unresolved reading with any control
   field sitting at the same value, so the judgement a `SETTING_READINGS`
   declaration rests on comes from the attached file rather than from a
@@ -31,6 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pairing possible (#80).
 
 ### Fixed
+- "Download diagnostics" no longer fails on a local-only entry. Both
+  diagnostics hooks reached for cloud-only bookkeeping without checking for it,
+  so the download raised on exactly the entries whose owners are asked for one
+  most often.
 - Devcode 2449 no longer reports its own setpoints as readings that reach no
   entity, so the Repairs card saying fourteen readings are missing is withdrawn
   and the devcode reports `supported`. Eight setpoints the collector returns
@@ -41,7 +83,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   frequency - and are declared settings rather than rating sensors because both
   move when the owner changes the setting (#80). No entity is renamed or
   removed by this half.
-
+- Support for devcode 697, a PV1800 MD PV18-5048 VHM 5 kW 48 V off-grid
+  inverter on ShineMonitor (#79, thanks to @clubdeportivotenisitas for the
+  diagnostics download). Eighteen of its twenty-one readings already resolved,
+  and the three that reached no entity now do: the lifetime PV counter, which
+  belongs on the energy dashboard, and the charger current and power, which the
+  collector measures on the battery.
+- Canonical names for a charger current and a charger power reported without
+  naming their source, so a collector that sends them reaches a sensor (#79).
 ## [2.8.0] - 2026-11-12
 
 This stable release includes all changes since 2.7.0, including everything
