@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Local mode can write inverter settings, and reports a change only once the
-inverter confirms it. It is off by default, and an upgrade changes nothing for
+## [3.0.0-rc.1] - 2026-11-13
+
+First candidate for 3.0.0. Local mode can write inverter settings, and reports
+a change only once the inverter confirms it. It is off by default, and an upgrade changes nothing for
 an installation that leaves it off: no extra frame reaches a collector and no
 entity is added, renamed or removed anywhere.
 
