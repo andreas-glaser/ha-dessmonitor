@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them reaches a sensor (#82).
 
 ### Fixed
+- The connectivity sensor reports a collector that has stopped reporting. It
+  counted the readings in the payload, and the cloud answers with the readings
+  it stored before a collector went quiet, so it read "connected" for the life
+  of an entry (#78, thanks to @ballhtml for naming the field). It now reads
+  the platform's own status for the device, and turns off only on the vendor's
+  offline code: a fault, a standby, a warning or an error is a device the
+  platform is still hearing from. An account whose payload carries no status
+  at all behaves exactly as before, and the code and its meaning are published
+  as attributes and recorded in the diagnostics download.
 - Local mode reads an SMG/Modbus collector that reports register layout 3.
   The vendor's own November 2024 document describes layouts 3, 4, 5 and 6 as
   one family, differing in which registers exist rather than in what they

@@ -15,7 +15,12 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DessMonitorDataUpdateCoordinator
+from . import (
+    VENDOR_STATUS_OFFLINE,
+    DessMonitorDataUpdateCoordinator,
+    _device_status_code,
+    vendor_status_text,
+)
 from .const import BINARY_SENSOR_TYPES, DOMAIN
 from .sensor_titles import normalize_sensor_title
 from .utils import create_device_info
@@ -183,7 +188,17 @@ class DessMonitorStatusSensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if the device is online."""
+        """Return true unless the platform says it has lost the device.
+
+        The cloud answers ``queryDeviceLastData`` with the readings it stored
+        before a collector went quiet, so the presence of data says nothing
+        about whether anything is still reporting - which is how this sensor
+        came to read connected for as long as an entry existed (#78). The
+        platform's own status code is the signal, and only its offline value
+        is read as disconnected: fault, standby, warning and error are states
+        of a device it is still hearing from. An account whose payload carries
+        no status falls back to what this sensor has always reported.
+        """
         if not self.coordinator.data:
             return False
 
@@ -191,8 +206,17 @@ class DessMonitorStatusSensor(CoordinatorEntity, BinarySensorEntity):
         if not device_info:
             return False
 
+        status = self._vendor_status()
+        if status is not None:
+            return status != VENDOR_STATUS_OFFLINE
+
         device_data = device_info.get("data", [])
         return len(device_data) > 0
+
+    def _vendor_status(self) -> int | None:
+        """Return the platform's status code for this device, if it sent one."""
+        payload = (self.coordinator.data or {}).get(self._device_sn, {})
+        return _device_status_code(self.coordinator, self._device_sn, payload)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -206,7 +230,11 @@ class DessMonitorStatusSensor(CoordinatorEntity, BinarySensorEntity):
 
         device_data = device_info.get("data", [])
 
-        attrs = {}
+        attrs: dict[str, Any] = {}
+        status = self._vendor_status()
+        if status is not None:
+            attrs["cloud_status"] = status
+            attrs["cloud_status_text"] = vendor_status_text(status)
         for data_point in device_data:
             if data_point.get("title") == "Timestamp":
                 attrs["last_seen"] = data_point.get("val")

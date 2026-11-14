@@ -191,6 +191,58 @@ def _normalize_devcode(value: Any) -> int | None:
     return None
 
 
+def _vendor_status_code(meta: dict[str, Any]) -> int | None:
+    """Return the platform's own status code for a device, where it sent one.
+
+    The code set is the vendor's, documented once for collectors and devices
+    alike: 0 online, 1 offline, 2 fault, 3 standby, 4 warning, 5 error, 6
+    protocol error. Only 1 means the platform has lost contact; the rest are
+    states of a device it is still hearing from. A payload without the field
+    says nothing, which is not the same as saying online (#78).
+    """
+    raw = meta.get("status")
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, str):
+        try:
+            return int(raw.strip())
+        except ValueError:
+            return None
+    return None
+
+
+# The vendor's status enumeration, documented once for collectors and devices
+# alike. Only VENDOR_STATUS_OFFLINE means the platform has lost contact.
+VENDOR_STATUS_OFFLINE = 1
+_VENDOR_STATUS_TEXT = {
+    0: "online",
+    VENDOR_STATUS_OFFLINE: "offline",
+    2: "fault",
+    3: "standby",
+    4: "warning",
+    5: "error",
+    6: "protocol error",
+}
+
+
+def _device_status_code(
+    coordinator: Any, serial: str, payload: dict[str, Any]
+) -> int | None:
+    """Return the platform's status for a device, from wherever it arrived."""
+    reported = getattr(coordinator, "cloud_device_status", {})
+    status = reported.get(serial)
+    if isinstance(status, int):
+        return status
+    return _vendor_status_code(payload.get("device", {}))
+
+
+def vendor_status_text(status: int) -> str:
+    """Name a vendor status code, or report the number for one not in the set."""
+    return _VENDOR_STATUS_TEXT.get(status, f"unknown ({status})")
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up DessMonitor from a config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -422,6 +474,13 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         # that answers "the vendor app shows a different daily energy" from an
         # attached file rather than a round trip (#58).
         self.summary_points_not_merged: dict[str, list[dict[str, Any]]] = {}
+        # The vendor's own status code per device, from the plant summary.
+        # The platform documents one enumeration for collectors and devices
+        # alike - 0 online, 1 offline, 2 fault, 3 standby, 4 warning, 5 error,
+        # 6 protocol error - and it is the only thing in the payload that says
+        # a collector has stopped reporting: the last-data endpoint keeps
+        # answering with the readings it stored before it went quiet (#78).
+        self.cloud_device_status: dict[str, int] = {}
         self._ctrl_locks: dict[str, asyncio.Lock] = {}
         self._ctrl_field_attempts: dict[str, int] = {}
         self._ctrl_field_failures: dict[str, int] = {}
@@ -1314,6 +1373,11 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         # account no longer lists leaves nothing behind. A failed fetch keeps
         # what the last one recorded, above.
         self.summary_points_not_merged = {}
+        self.cloud_device_status = {
+            serial: status
+            for serial, payload in summary_data.items()
+            if (status := _vendor_status_code(payload.get("device", {}))) is not None
+        }
 
         for device_sn, device_info in data.items():
             summary_points = summary_data.get(device_sn, {}).get("data", [])
@@ -1838,6 +1902,12 @@ async def _build_device_support_report(
     report["control_reads"] = _control_read_state(coordinator, serial, control_fields)
     report["data_source"] = _extract_sensor_value(readings, "Data Source")
     report["last_update"] = _extract_sensor_value(readings, "Timestamp", "Unknown")
+    # What the platform says about this device, beside what it sent for it. A
+    # reading is not evidence of a live collector: the last-data endpoint
+    # answers with what it stored (#78).
+    status = _device_status_code(coordinator, serial, payload)
+    if status is not None:
+        report["cloud_status"] = {"code": status, "text": vendor_status_text(status)}
     if control_error:
         report["control_error"] = control_error
     report["checksum"] = report_checksum(report)
