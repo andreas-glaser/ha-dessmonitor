@@ -22,15 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them reaches a sensor (#82).
 
 ### Fixed
-- A collector reporting an SMG/Modbus register layout this driver has no map
-  for is now read with the protocol-4 map as well as the standard
-  `201..234` one, and keeps whichever decodes on the hardware. The vendor
-  documents the protocol-4 registers for layouts 3 to 10 in one file, and a
-  layout-3 collector was measured answering them (#76, thanks to @ballhtml for
-  the register dump beside the vendor app's own figures), so inside that range
-  the protocol-4 map is tried first. A layout that decodes today keeps the map
-  it decodes with, and an inverter neither map reads is still refused by name
-  rather than published with wrong values.
+- Local mode reads an SMG/Modbus collector that reports register layout 3.
+  The vendor's own November 2024 document describes layouts 3, 4, 5 and 6 as
+  one family, differing in which registers exist rather than in what they
+  mean, and a layout-3 collector was measured answering them beside the vendor
+  app's own figures at the same minute (#76, thanks to @ballhtml for the
+  register dump). Layout 3 has no totalled output block, so its output power,
+  current and load percentage are read per phase at 347..350, and its second
+  string at 389..391.
+- A collector reporting a layout with no map of its own is now read with both
+  the legacy `201..234` map and the documented one, keeping whichever decodes
+  on the hardware. A layout that decodes today keeps the map it decodes with,
+  and an inverter neither map reads is still refused by name rather than
+  published with wrong values. The diagnostics download records the map that
+  read each inverter beside the layout code it reported.
 - A sensor whose collector sends its title twice now reads the copy that
   carries a value. Devcode 6513 reports "Input frequency" once as an alarm
   word and once as the measured frequency in the same payload, and the sensor

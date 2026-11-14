@@ -25,7 +25,7 @@ from .pi30 import discover_pi30, query_pi30
 from .profile import CommandNotSupported
 from .protocol import P17_DEFAULT_DEVCODE, ProtocolError
 from .smg import (
-    PROTOCOL4_REGISTER_MAP,
+    LEGACY_REGISTER_MAP,
     SMG_CLOUD_DEVICE_CODE,
     SMG_PROTOCOL,
     SMG_REPORTED_COLLECTOR_CODES,
@@ -248,9 +248,11 @@ class SmgModbusDriver:
                 collector_address=item.route.collector_address,
                 device_address=item.route.slave_address,
                 entity_device_code=(
-                    PROTOCOL4_CLOUD_DEVICE_CODE
-                    if item.route.selected_map == PROTOCOL4_REGISTER_MAP
-                    else SMG_CLOUD_DEVICE_CODE
+                    SMG_CLOUD_DEVICE_CODE
+                    if item.route.selected_map == LEGACY_REGISTER_MAP
+                    # Every layout in the 2024 document shares one reading
+                    # vocabulary, which is the one devcode 6544 names.
+                    else PROTOCOL4_CLOUD_DEVICE_CODE
                 ),
                 serial=item.serial,
                 model=item.model,
