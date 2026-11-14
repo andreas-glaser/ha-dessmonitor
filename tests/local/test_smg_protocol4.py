@@ -222,34 +222,61 @@ async def test_mixed_collector_retains_each_inverters_register_layout():
     assert (2, 201, 34) in calls
 
 
-async def test_an_unknown_layout_is_refused_when_the_legacy_map_cannot_read_it():
-    """This hardware is protocol 4, so its legacy block has to be rejected.
+async def test_a_layout_in_the_documented_family_is_read_with_the_protocol_4_map():
+    """Protocol-4 registers behind a layout code of 5, which is the point.
 
-    An unknown layout code is not by itself proof that the legacy register map
-    is wrong - refusing on the code alone took local mode away from a
-    collector that had polled correctly for releases (#64) - so the map is
-    tried and the route kept only if it decodes. Here it must not: these are
-    protocol-4 registers, and reading them as the legacy block is the
-    mis-decode this check exists to prevent.
+    The vendor documents one register map for layouts 3 to 10, and a layout-3
+    collector was measured answering it register for register (#76). This
+    replay is real protocol-4 hardware reporting layout 5: the legacy map
+    would mis-decode it, which is why the code alone cannot select a map, and
+    the protocol-4 map decodes it, which is why it is tried first in that
+    range.
     """
     replay = HardwareReplay(protocol=5)
 
     async def send(payload, code, address):
         response = await replay.send(payload, code, address)
-        # Both candidate collector routes identify the same unsupported layout.
         if int.from_bytes(payload[2:4], "big") == 184:
             return build_read_holding_response(payload[0], [5])
         return response
 
-    # The layout the collector named is what the failure says, not a silence:
-    # losing it sent the reporter in #76 to the devcode-support path for a
-    # collector that answered this register in 250 ms.
+    (device,) = await discover_smg(send, collector_product_number="TEST", device_address=1)
+
+    assert device.route.protocol_number == 5
+    assert device.route.selected_map == "protocol4"
+    # The layout the collector reported is recorded, and so is the map that
+    # read it: a later poll rebuilds the route from both.
+    assert device.metadata["layout_code"] == 5
+    assert device.metadata["register_map"] == "protocol4"
+    assert device.model.startswith("SMG / Modbus protocol 5 (protocol-4 register map)")
+    assert device.initial_values["SOC"] == 75
+    # The legacy block was never read: within this range the protocol-4 map
+    # is tried first, and it decoded.
+    assert 201 in {start for _, start, _ in replay.calls}
+    assert (1, 201, 34) not in replay.calls
+
+
+async def test_a_layout_neither_map_reads_is_refused_by_name():
+    """Nothing decodes, so the failure names the layout rather than a silence.
+
+    Losing that number sent the reporter in #76 to the devcode-support path
+    for a collector that answered this register in 250 ms.
+    """
+
+    async def send(payload, code, address):
+        slave = payload[0]
+        start = int.from_bytes(payload[2:4], "big")
+        count = int.from_bytes(payload[4:6], "big")
+        if start == 184:
+            return build_read_holding_response(slave, [5])
+        return build_read_holding_response(slave, [0] * count)
+
     with pytest.raises(ModbusError, match="register layout 5") as raised:
         await discover_smg(send, collector_product_number="TEST", device_address=1)
+
     assert raised.value.reason == "unsupported_protocol"
     assert raised.value.details == {"layout_code": 5}
-    # The legacy block was read and rejected, and nothing beyond it was.
-    assert {start for _, start, _ in replay.calls} == {184, 201}
+    assert "protocol-4" in str(raised.value)
 
 
 async def test_an_unknown_layout_polls_when_the_legacy_map_does_read_it():

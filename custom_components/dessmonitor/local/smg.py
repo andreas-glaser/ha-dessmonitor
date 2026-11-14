@@ -50,10 +50,26 @@ _OPERATING_MODES = {
 }
 
 
+LEGACY_REGISTER_MAP = "legacy"
+PROTOCOL4_REGISTER_MAP = "protocol4"
+
 # Layout codes register 184 reports that this driver has a register map for.
-# Anything else falls back to the legacy map and has to decode on the hardware
-# before its route is kept; see ``_read_discovery_snapshot``.
-_KNOWN_LAYOUTS = (0, 1, 4)
+# Anything else is read with both maps, in the order that layout code makes
+# likely, and the route is kept only if one of them decodes on the hardware;
+# see ``_read_discovery_snapshot``.
+_KNOWN_LAYOUTS = {
+    0: LEGACY_REGISTER_MAP,
+    1: LEGACY_REGISTER_MAP,
+    4: PROTOCOL4_REGISTER_MAP,
+}
+
+# The protocol-4 map is documented for layouts 3 to 10 in one vendor file,
+# "Communication.Protocol.No.3-10.docx", and a layout-3 collector (a Maxsky
+# EM11000, #76) was measured answering it register for register: 277..281 for
+# the pack, 338..353 for the AC and the first string, 389..391 for the second.
+# Only layout 4 has been verified here end to end, so a code in that range
+# only changes which map is tried first - both still have to decode.
+_PROTOCOL4_FAMILY_LAYOUTS = range(3, 11)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +80,17 @@ class SmgRoute:
     collector_address: int
     slave_address: int
     protocol_number: int = 0
+    # Which register map reads this hardware. Empty means "the one this
+    # layout code implies", which is what every caller that knows only the
+    # code can say.
+    register_map: str = ""
+
+    @property
+    def selected_map(self) -> str:
+        """Return the register map to read, named rather than inferred twice."""
+        if self.register_map:
+            return self.register_map
+        return _KNOWN_LAYOUTS.get(self.protocol_number, LEGACY_REGISTER_MAP)
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,7 +250,7 @@ async def discover_smg(
 
     tunnel_codes = _tunnel_device_codes(configured_device_code, reported_device_code)
     selected: tuple[int, int] | None = None
-    first_snapshot: tuple[int, dict[str, Any]] | None = None
+    first_snapshot: tuple[SmgRoute, dict[str, Any]] | None = None
     # A layout register this driver cannot read is an answer, not a silence,
     # and the routes tried after it cannot produce a better one. Losing it to
     # the fall-through below left discovery reporting that no local protocol
@@ -250,8 +277,9 @@ async def discover_smg(
         if unsupported_layout is not None:
             raise ModbusError(
                 "the collector answered on SMG/Modbus and reported register "
-                f"layout {unsupported_layout}, which this driver does not read; "
-                "only layouts 0, 1 and 4 have been confirmed on hardware",
+                f"layout {unsupported_layout}; neither the legacy register map "
+                "nor the protocol-4 one reads this hardware, and only layouts "
+                "0, 1 and 4 have been confirmed on hardware",
                 reason="unsupported_protocol",
                 details={"layout_code": unsupported_layout},
             )
@@ -262,7 +290,7 @@ async def discover_smg(
     for slave_address in addresses:
         route = SmgRoute(selected[0], selected[1], slave_address)
         try:
-            protocol_number, live_values = (
+            snapshot_route, live_values = (
                 first_snapshot
                 if slave_address == first_address
                 else await _read_discovery_snapshot(send, route)
@@ -272,7 +300,12 @@ async def discover_smg(
                 break
             continue
 
-        route = SmgRoute(*selected, slave_address, protocol_number)
+        route = SmgRoute(
+            *selected,
+            slave_address,
+            snapshot_route.protocol_number,
+            snapshot_route.selected_map,
+        )
         serial = await _read_serial(send, route)
         if serial and serial in seen_serials:
             break
@@ -281,9 +314,7 @@ async def discover_smg(
         metadata = await _read_identity_metadata(send, route)
         rated_power = metadata.get("rated_power")
         model_code = metadata.get("model_code")
-        model_parts = [
-            "SMG / Modbus protocol 4" if protocol_number == 4 else "SMG / Modbus"
-        ]
+        model_parts = [_model_prefix(route)]
         if model_code not in (None, 0, 0xFFFF):
             model_parts.append(f"model {model_code}")
         if isinstance(rated_power, int) and 100 <= rated_power <= 100_000:
@@ -315,10 +346,10 @@ async def poll_smg(
     send: SendCommand, route: SmgRoute, *, include_status: bool = False
 ) -> dict[str, Any]:
     """Poll the live block and, less often, the two read-only status blocks."""
-    if route.protocol_number == 4:
+    if route.selected_map == PROTOCOL4_REGISTER_MAP:
         return await _poll_protocol4(send, route)
-    # Every other layout reads the legacy live map, including a code this
-    # driver does not know. A route carrying one exists only because discovery
+    # Every other route reads the legacy live map, including a layout code
+    # this driver does not know. Such a route exists only because discovery
     # decoded that map on this hardware and it passed the plausibility checks
     # in ``decode_live_registers``; refusing it here would find the inverter
     # and then publish nothing for it.
@@ -338,38 +369,66 @@ async def poll_smg(
 
 async def _read_discovery_snapshot(
     send: SendCommand, route: SmgRoute
-) -> tuple[int, dict[str, Any]]:
-    """Select the register layout before interpreting live values."""
+) -> tuple[SmgRoute, dict[str, Any]]:
+    """Select the register map before interpreting live values."""
     # Some legacy firmware has no layout register. Preserve that route only
     # if the standard live map also passes its non-zero voltage checks.
     try:
         (protocol_number,) = await read_holding_registers(send, route, 184, 1)
     except (TimeoutError, ProtocolError):
         protocol_number = 0
-    selected = SmgRoute(
-        route.device_code, route.collector_address, route.slave_address, protocol_number
-    )
-    if protocol_number in _KNOWN_LAYOUTS:
-        return protocol_number, await poll_smg(send, selected)
-    # A layout code this driver does not know says nothing about whether the
-    # legacy live map reads this hardware, and refusing on the code alone took
-    # local mode away from collectors it had worked on for releases: the
-    # ANENJI 5KW in #64 reports a layout outside this set and polled correctly
-    # on 2.5.0, where the layout register was never read. The map is tried and
-    # the route kept only if it decodes, which means a complete block, a known
-    # operating mode, fields inside their ranges and a non-zero voltage - the
-    # same bar legacy firmware with no layout register has to clear. The
-    # protocol-4 capture in the test fixture fails it, so a layout whose
-    # registers mean something else is still refused rather than published.
-    try:
-        return protocol_number, await poll_smg(send, selected)
-    except (TimeoutError, ProtocolError) as err:
-        raise ModbusError(
-            f"unsupported SMG register layout {protocol_number}: the legacy "
-            f"register map does not read this hardware ({err})",
-            reason="unsupported_protocol",
-            details={"layout_code": protocol_number},
-        ) from err
+    last_error: Exception | None = None
+    for register_map in _candidate_register_maps(protocol_number):
+        selected = SmgRoute(
+            route.device_code,
+            route.collector_address,
+            route.slave_address,
+            protocol_number,
+            register_map,
+        )
+        try:
+            return selected, await poll_smg(send, selected)
+        except (TimeoutError, ProtocolError) as err:
+            last_error = err
+            if protocol_number in _KNOWN_LAYOUTS:
+                raise
+    raise ModbusError(
+        f"unsupported SMG register layout {protocol_number}: neither the "
+        f"legacy register map nor the protocol-4 one reads this hardware "
+        f"({last_error})",
+        reason="unsupported_protocol",
+        details={"layout_code": protocol_number},
+    ) from last_error
+
+
+def _candidate_register_maps(protocol_number: int) -> tuple[str, ...]:
+    """Return the maps to try for a layout code, most likely first.
+
+    A code this driver has a map for names that map and nothing else. A code
+    it does not know says nothing on its own about which map reads the
+    hardware - refusing on the code alone took local mode away from a
+    collector that had polled correctly for releases (#64) - so both are
+    tried and the route is kept only if one decodes: a complete block, a
+    known operating mode, fields inside their ranges and a plausible voltage.
+    The vendor documents the protocol-4 map for layouts 3 to 10 and a layout-3
+    collector was measured answering it (#76), so within that range it is
+    tried first and the legacy map second.
+    """
+    known = _KNOWN_LAYOUTS.get(protocol_number)
+    if known is not None:
+        return (known,)
+    if protocol_number in _PROTOCOL4_FAMILY_LAYOUTS:
+        return (PROTOCOL4_REGISTER_MAP, LEGACY_REGISTER_MAP)
+    return (LEGACY_REGISTER_MAP, PROTOCOL4_REGISTER_MAP)
+
+
+def _model_prefix(route: SmgRoute) -> str:
+    """Name the protocol and, where they differ, the map that reads it."""
+    if route.selected_map != PROTOCOL4_REGISTER_MAP:
+        return "SMG / Modbus"
+    if route.protocol_number == 4:
+        return "SMG / Modbus protocol 4"
+    return f"SMG / Modbus protocol {route.protocol_number} " "(protocol-4 register map)"
 
 
 async def _poll_protocol4(send: SendCommand, route: SmgRoute) -> dict[str, Any]:
@@ -421,10 +480,14 @@ async def _read_identity_metadata(send: SendCommand, route: SmgRoute) -> dict[st
     result: dict[str, Any] = {
         "protocol": SMG_PROTOCOL,
         "layout_code": route.protocol_number,
+        # Which map decoded it, which a layout code outside the three this
+        # driver knows does not say on its own. A later poll rebuilds the
+        # route from this rather than probing again.
+        "register_map": route.selected_map,
     }
     fields = [(171, "model_code")]
-    # In protocol 4, 643 is a battery setting, NOT a power rating.
-    if route.protocol_number != 4:
+    # In the protocol-4 map, 643 is a battery setting, NOT a power rating.
+    if route.selected_map != PROTOCOL4_REGISTER_MAP:
         fields.append((643, "rated_power"))
     for register, key in fields:
         try:
