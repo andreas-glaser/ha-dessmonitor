@@ -195,3 +195,42 @@ async def test_a_device_the_account_stops_listing_leaves_no_record(
         assert "REDACTED-SN" not in coordinator.summary_points_not_merged
     finally:
         await coordinator.async_shutdown()
+
+
+@pytest.mark.parametrize(
+    ("sent", "expected"),
+    [({"status": 1}, {"REDACTED-SN": 1}), ({"status": 0}, {"REDACTED-SN": 0}), ({}, {})],
+)
+async def test_the_refresh_records_the_platform_s_own_device_status(
+    hass, cloud_transport, sent: dict[str, Any], expected: dict[str, int]
+) -> None:
+    """A summary without the field records nothing, rather than recording 0 (#78).
+
+    The connectivity sensor reads this, and a default of "online" would be the
+    integration inventing the one answer the owner in #78 could not get.
+    """
+    devcode, today, total = 2449, "Today generation", "Total generation"
+    routes = _routes(devcode, today, total)
+    routes["webQueryDeviceEs"] = {
+        "device": [
+            {"sn": "REDACTED-SN", "outpower": 0, "energyToday": 0, "energyTotal": 0}
+            | sent
+        ]
+    }
+
+    def respond(request: bytes) -> dict[str, Any]:
+        target = request.split(b"\r\n", 1)[0].decode().split(" ")[1]
+        action = parse_qs(target.split("?", 1)[1])["action"][0]
+        return {"err": 0, "dat": routes[action]}
+
+    session, connector = cloud_transport
+    connector.payload = respond
+    api = DessMonitorAPI("test-user", "test-password", session=session)
+    api.token, api.secret = "test-token", "test-secret"
+    coordinator = DessMonitorDataUpdateCoordinator(hass, api, 300)
+    try:
+        await coordinator.async_refresh()
+        assert coordinator.last_update_success
+        assert coordinator.cloud_device_status == expected
+    finally:
+        await coordinator.async_shutdown()

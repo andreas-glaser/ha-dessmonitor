@@ -685,7 +685,10 @@ class DessMonitorAPI:
                     "device": {
                         "alias": device.get("devalias", "DessMonitor"),
                         "sn": sn,
-                        "status": device.get("status", 0),
+                        # Passed through only when the platform sent it. A
+                        # default of 0 would read as "online" on an account
+                        # whose payload carries no status at all (#78).
+                        **({"status": device["status"]} if "status" in device else {}),
                     },
                 }
 
