@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A sensor whose collector sends its title twice now reads the copy that
+  carries a value. Devcode 6513 reports "Input frequency" once as an alarm
+  word and once as the measured frequency in the same payload, and the sensor
+  took whichever arrived first, so it read unknown for as long as the word led
+  (#82). Where both copies are numbers, as on devcode 6489, the first still
+  wins and nothing changes.
+
 ### Added
 - Devcode 6416 joins the Voltronic PI30 vocabulary devcodes 2477 and 2341
   already share, so the thirty-seven readings an iSolar SMH-III 6.2 kW reported
