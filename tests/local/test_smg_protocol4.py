@@ -276,7 +276,7 @@ async def test_a_layout_neither_map_reads_is_refused_by_name():
 
     assert raised.value.reason == "unsupported_protocol"
     assert raised.value.details == {"layout_code": 5}
-    assert "protocol-4" in str(raised.value)
+    assert "neither the legacy register map" in str(raised.value)
 
 
 async def test_an_unknown_layout_polls_when_the_legacy_map_does_read_it():
@@ -400,3 +400,119 @@ async def test_hardware_values_reach_existing_hybrid_entities(hass):
     }
     assert points["Main Output Priority"] == "SUB"
     assert points["Current output priority"] == "SBU"
+
+
+# The registers a Maxsky EM11000 on layout 3 answered with, reported in #76
+# beside the vendor app's own figures at the same minute: the pack charging at
+# 51.4 V and 60.9 A, 1806 W of load on the AC output, both strings dark. The
+# rest of the block is the vendor document's, not this hardware's.
+_PROTOCOL3_HARDWARE = {
+    201: 2,  # Mains
+    203: 5000,  # 50.00 Hz
+    206: 3130,  # AC charging power
+    227: 5000,  # inverter frequency
+    231: 30,  # inverter module temperature
+    277: 514,
+    278: 609,
+    279: 3130,
+    280: 76,
+    281: 42,
+    302: 0,
+    303: 0,
+    304: 0,
+    305: 30,
+    338: 2188,
+    340: 5295,
+    342: 2300,
+    343: 78,
+    346: 2300,
+    347: 78,
+    348: 1806,
+    349: 1806,
+    350: 16,
+    351: 0,
+    352: 0,
+    353: 0,
+    389: 0,
+    390: 0,
+    391: 0,
+    # 1.42 kWh today and 9794.59 kWh in total, as the vendor's own summary
+    # reported for this device at the same minute.
+    702: 142,
+    703: 14,
+    704: 61955,
+}
+
+
+def _protocol3_collector():
+    """Answer the protocol-3 blocks and nothing else, recording every read."""
+    reads: list[tuple[int, int]] = []
+
+    async def send(payload, code, collector_address):
+        slave = payload[0]
+        start = int.from_bytes(payload[2:4], "big")
+        count = int.from_bytes(payload[4:6], "big")
+        if (code, collector_address, slave) != (1, 255, 1):
+            return b""
+        reads.append((start, count))
+        if start == 184:
+            return build_read_holding_response(slave, [3])
+        # The vendor document says a read that is not a whole block answers
+        # with zeros; registers 252..256 and 384..388 do not exist here.
+        if any(start <= address < start + count for address in (252, 384)):
+            return b""
+        words = [
+            _PROTOCOL3_HARDWARE.get(start + offset, 0) for offset in range(count)
+        ]
+        return build_read_holding_response(slave, words)
+
+    return send, reads
+
+
+async def test_a_layout_3_collector_is_read_with_the_protocol_3_map():
+    """The measured EM11000 registers decode, and protocol 4's are not read."""
+    send, reads = _protocol3_collector()
+
+    (device,) = await discover_smg(
+        send, collector_product_number="TEST", device_address=1
+    )
+
+    assert device.route.protocol_number == 3
+    assert device.route.selected_map == "protocol3"
+    assert device.metadata["register_map"] == "protocol3"
+    assert device.model.startswith("SMG / Modbus protocol 3")
+    values = device.initial_values
+    assert values["Battery Voltage"] == 51.4
+    assert values["Battery Current"] == 60.9
+    assert values["Battery Charging Current"] == 60.9
+    assert values["Battery Discharge Current"] == 0
+    assert values["Battery Power"] == 3130
+    assert values["SOC"] == 76
+    assert values["Grid Voltage"] == 218.8
+    assert values["Output Voltage"] == 230.0
+    assert values["Output Active Power"] == 1806
+    assert values["Load Percent"] == 16
+    assert values["PV1 Charger Power"] == 0
+    assert values["Energy Today"] == 1.42
+    assert values["Energy Total"] == 9794.59
+    # The totalled output and the second output are protocol 4's alone.
+    assert not any(start in (252, 384) for start, _count in reads)
+
+
+async def test_a_layout_3_poll_rebuilds_the_same_map_from_its_metadata():
+    """The driver re-reads the map that decoded rather than probing again."""
+    send, _reads = _protocol3_collector()
+    driver = SmgModbusDriver()
+
+    (device,) = await driver.discover(
+        send,
+        collector_product_number="TEST",
+        configured_device_code=0,
+        reported_device_code=258,
+        max_address=1,
+    )
+    values = await driver.poll(send, device, cycle=1)
+
+    assert device.metadata["register_map"] == "protocol3"
+    assert values["Battery Voltage"] == 51.4
+    assert values["Output Active Power"] == 1806
