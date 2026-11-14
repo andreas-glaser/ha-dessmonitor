@@ -1284,6 +1284,39 @@ SENSOR_TYPES = {
         "icon": "mdi:battery-charging",
         "entity_category": "diagnostic",
     },
+    "BMS State of Health": {
+        "name": "BMS State of Health",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:battery-heart-variant",
+        "entity_category": "diagnostic",
+    },
+    # What the charge controller reports about itself, beside the inverter's
+    # own measurements. On an all-in-one the two can disagree, so neither is
+    # published as the other (#82).
+    "MPPT Battery Voltage": {
+        "name": "MPPT Battery Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+        "entity_category": "diagnostic",
+    },
+    "MPPT Discharge Current": {
+        "name": "MPPT Discharge Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "Controller Max Charging Current": {
+        "name": "Controller Max Charging Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+        "entity_category": "diagnostic",
+    },
 }
 
 # Binary sensor types from API data points

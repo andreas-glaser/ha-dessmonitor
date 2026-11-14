@@ -77,6 +77,10 @@ def _load_device_configurations() -> None:
 
         _register_devcode(6544, config_6544)
 
+        from .devcode_6513 import DEVCODE_CONFIG as config_6513
+
+        _register_devcode(6513, config_6513)
+
         from .devcode_6514 import DEVCODE_CONFIG as config_6514
 
         _register_devcode(6514, config_6514)

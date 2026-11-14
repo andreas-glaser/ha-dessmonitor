@@ -1,0 +1,571 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.8.0",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "api_profile": "dessmonitor_ess"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 2,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": false
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "2.8.0",
+        "devcode": 6513,
+        "device_identity": "sha256:4f4746393054",
+        "collector_identity": "sha256:c9a228ae5de8",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 10,
+          "unresolved": 24,
+          "total": 34,
+          "excluded": {
+            "attribute_readings": 2,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 10,
+          "unresolved_with_unit": [
+            {
+              "title": "BMS lithium battery capacity SOC",
+              "unit": "%",
+              "sample": "97"
+            },
+            {
+              "title": "BMS lithium battery current",
+              "unit": "A",
+              "sample": "0.000"
+            },
+            {
+              "title": "BMS Lithium battery rated capacity",
+              "unit": "AH",
+              "sample": "100.00"
+            },
+            {
+              "title": "BMS lithium battery SOH",
+              "unit": "%",
+              "sample": "100"
+            },
+            {
+              "title": "BMS lithium battery voltage",
+              "unit": "V",
+              "sample": "49.94"
+            },
+            {
+              "title": "Input frequency",
+              "unit": "Hz",
+              "sample": "0.0"
+            },
+            {
+              "title": "Input voltage",
+              "unit": "V",
+              "sample": "4.0"
+            },
+            {
+              "title": "Maximum charging current of the controller",
+              "unit": "A",
+              "sample": "100"
+            },
+            {
+              "title": "MPPT battery voltage",
+              "unit": "V",
+              "sample": "50.2"
+            },
+            {
+              "title": "MPPT discharge current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "PV1 carging current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "PV1 voltagee",
+              "unit": "V",
+              "sample": "31.4"
+            },
+            {
+              "title": "PV2 carging current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "PV2 voltagee",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Remaining capacity of BMS lithium battery",
+              "unit": "AH",
+              "sample": "97.40"
+            },
+            {
+              "title": "Temperature",
+              "unit": "°C",
+              "sample": "43"
+            },
+            {
+              "title": "Total solar power generation",
+              "unit": "kWh",
+              "sample": "666"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Adaptive protocol identification",
+            "BMS lithium battery alarm information",
+            "Input frequency",
+            "Mains voltage",
+            "PV1 low voltage",
+            "PV2 low voltage",
+            "Working state"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-14 18:04:34",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Adaptive protocol identification",
+            "value": "Reverse control integrated machine",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Input voltage",
+            "value": "4.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "Output voltage",
+            "value": "220.2",
+            "unit": "V",
+            "resolved_key": "Output Voltage"
+          },
+          {
+            "title": "Battery voltage",
+            "value": "50.4",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "Load current",
+            "value": "0.2",
+            "unit": "A",
+            "resolved_key": "load current"
+          },
+          {
+            "title": "Load percentage",
+            "value": "0",
+            "unit": "%",
+            "resolved_key": "Load Percent"
+          },
+          {
+            "title": "Load power",
+            "value": "44",
+            "unit": "W",
+            "resolved_key": "PLoad"
+          },
+          {
+            "title": "Temperature",
+            "value": "43",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "Working state",
+            "value": "Inverted state",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "MPPT battery voltage",
+            "value": "50.2",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "PV2 voltagee",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "PV1 carging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "PV2 carging current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "PV1 voltagee",
+            "value": "31.4",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "PV power",
+            "value": "0.00",
+            "unit": "W",
+            "resolved_key": "PV Power"
+          },
+          {
+            "title": "Total solar power generation",
+            "value": "666",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "MPPT discharge current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Maximum charging current of the controller",
+            "value": "100",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS lithium battery capacity SOC",
+            "value": "97",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS lithium battery voltage",
+            "value": "49.94",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS lithium battery current",
+            "value": "0.000",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Remaining capacity of BMS lithium battery",
+            "value": "97.40",
+            "unit": "AH",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS Lithium battery rated capacity",
+            "value": "100.00",
+            "unit": "AH",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS lithium battery SOH",
+            "value": "100",
+            "unit": "%",
+            "resolved_key": null
+          },
+          {
+            "title": "BMS lithium battery alarm information",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Input frequency",
+            "value": "Abnormal input frequency",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Mains voltage",
+            "value": "Mains voltage",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "PV1 low voltage",
+            "value": "PV1 low voltage",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "PV2 low voltage",
+            "value": "--",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Input frequency",
+            "value": "0.0",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "energyToday",
+            "value": "5.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "666.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "Battery low voltage protection value",
+            "value": "11.0",
+            "unit": "",
+            "id": "bat_low_voltage_protection_value"
+          },
+          {
+            "name": "Battery restart",
+            "value": "Battery recovery does not turn on",
+            "unit": "",
+            "options": [
+              "0: Battery recovery does not turn on",
+              "1: Battery restart"
+            ],
+            "id": "battery_restart"
+          },
+          {
+            "name": "Battery Type",
+            "value": "(GROWATT)Lithium",
+            "unit": "",
+            "options": [
+              "0: Lead acid",
+              "1: (GROWATT)Lithium",
+              "2: (Voltronic)Lithium",
+              "3: (PYLONTECH -1)Lithium",
+              "4: (PACEEX)Lithium",
+              "5: (PYLONTECH-2)Lithium",
+              "6: (PYLONTECH-3)Lithium"
+            ],
+            "id": "battery_type_conthigh"
+          },
+          {
+            "name": "Charging Current Setting",
+            "value": "90",
+            "unit": "A",
+            "id": "bat_charging_current"
+          },
+          {
+            "name": "Charging gear setting",
+            "value": "C3",
+            "unit": "",
+            "options": [
+              "0: C0",
+              "1: C1",
+              "2: C2",
+              "3: C3",
+              "4: C4",
+              "5: C5",
+              "6: C6"
+            ],
+            "id": "charging_gear_setting"
+          },
+          {
+            "name": "Current Limit Setting",
+            "value": "500",
+            "unit": "A",
+            "id": "current_limit"
+          },
+          {
+            "name": "Frequency",
+            "value": "50Hz",
+            "unit": "",
+            "options": [
+              "50: 50Hz",
+              "60: 60Hz"
+            ],
+            "id": "frequency_crtl"
+          },
+          {
+            "name": "Generator mode setting",
+            "value": "Normal mode",
+            "unit": "",
+            "options": [
+              "0: Normal mode",
+              "1: Generator mode"
+            ],
+            "id": "generator_mode_setting"
+          },
+          {
+            "name": "Inverter priority mode to inverter power supply battery value",
+            "value": "12.5",
+            "unit": "",
+            "id": "bat_power_supply_value"
+          },
+          {
+            "name": "Inverter priority mode to mains power supply battery value",
+            "value": "12.1",
+            "unit": "",
+            "id": "bat_mains_power_supply_value"
+          },
+          {
+            "name": "Lithium battery charging cut-off SOC",
+            "value": "100",
+            "unit": "",
+            "id": "lithium_battery_charging_conthigh"
+          },
+          {
+            "name": "Lithium battery discharge cut-off SOC",
+            "value": "5",
+            "unit": "",
+            "id": "lithium_battery_charging_contlow"
+          },
+          {
+            "name": "Lithium battery to inverter SOC",
+            "value": "85",
+            "unit": "",
+            "id": "lithium_battery_conthigh"
+          },
+          {
+            "name": "Lithium battery to mains SOC",
+            "value": "15",
+            "unit": "",
+            "id": "lithium_battery_contlow"
+          },
+          {
+            "name": "Low battery recovery value",
+            "value": "12.5",
+            "unit": "",
+            "id": "bat_low_voltage_recovery_value"
+          },
+          {
+            "name": "Output voltage",
+            "value": "220VAC",
+            "unit": "",
+            "options": [
+              "105: 105VAC",
+              "110: 110VAC",
+              "115: 115VAC",
+              "120: 120VAC",
+              "220: 220VAC",
+              "230: 230VAC",
+              "240: 240VAC"
+            ],
+            "id": "output_voltage"
+          },
+          {
+            "name": "Power Value Setting",
+            "value": "5000",
+            "unit": "",
+            "id": "power_value"
+          },
+          {
+            "name": "Remote switch setting",
+            "value": "Off state",
+            "unit": "",
+            "options": [
+              "0: Off state",
+              "1: Power-on state"
+            ],
+            "id": "energy_use_modelph"
+          },
+          {
+            "name": "Set the lithium battery low voltage recovery SOC",
+            "value": "10",
+            "unit": "",
+            "id": "lithium_battery_low_voltage_conthigh"
+          },
+          {
+            "name": "Single Battery Average Charge Setting",
+            "value": "13.3",
+            "unit": "",
+            "id": "bat_single_battery_average_charge_setting"
+          },
+          {
+            "name": "Single Battery Float Charge Setting",
+            "value": "13.0",
+            "unit": "",
+            "id": "bat_single_battery_float_charge_setting"
+          },
+          {
+            "name": "Work pattern",
+            "value": "Inverse priority",
+            "unit": "",
+            "options": [
+              "1: Mains priority",
+              "2: Energy-saving mode",
+              "3: Inverse priority"
+            ],
+            "id": "work_pattern_contlow"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Load power",
+            "value": "44",
+            "unit": "W",
+            "id": "load_active_power"
+          },
+          {
+            "name": "PV power",
+            "value": "0",
+            "unit": "W",
+            "id": "pv_output_power"
+          },
+          {
+            "name": "Total solar power generation",
+            "value": "666",
+            "unit": "kWh",
+            "id": "energy_total"
+          }
+        ],
+        "checksum": "75f94b43c2b57526d1d9ff1dce548276cccb731f1ee8d418b0537b4416d876ef",
+        "control_reads": {
+          "fields": 22,
+          "without_a_value": 0,
+          "rounds_that_recovered_nothing": 0,
+          "rounds_allowed": 3,
+          "still_trying": true,
+          "last_round_went_unanswered": false
+        },
+        "data_source": "Cloud",
+        "last_update": "2026-11-14 18:04:34"
+      }
+    ]
+  }
+}
