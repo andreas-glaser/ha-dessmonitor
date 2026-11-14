@@ -229,14 +229,25 @@ first.
   are not provided. Sustained polling and reconnects still require hardware
   verification after installing this change.
 - A layout code register `184` reports that is none of `0`, `1` or `4` has no
-  register map of its own. The standard SMG `201..234` map is tried on it and
-  the inverter is kept only if that block decodes: a complete block, a known
-  operating mode, every field inside its range and at least one non-zero
-  voltage. That is the same bar firmware with no layout register has to clear,
-  and it is what the layout code alone cannot tell you - an ANENJI 5KW that
-  polled correctly for releases reports a code outside the three above. A
-  layout whose registers mean something else fails the block and is refused,
-  and the failure names the code the collector reported.
+  register map of its own. Both maps are tried on it and the inverter is kept
+  only if one of them decodes: a complete block, a known operating mode, every
+  field inside its range and at least one plausible voltage. That is the same
+  bar firmware with no layout register has to clear, and it is what the layout
+  code alone cannot tell you - an ANENJI 5KW that polled correctly for
+  releases reports a code outside the three above. A layout whose registers
+  mean something else fails both and is refused, and the failure names the
+  code the collector reported.
+
+  Which map is tried first follows the vendor's own document, which covers
+  protocol numbers `3` to `10` in one file: inside that range the protocol-4
+  map goes first, outside it the standard `201..234` map does. A layout-3
+  collector - a Maxsky EM11000 on cloud devcode `6515` - was measured
+  answering the protocol-4 registers for the pack (`277..281`), the AC output
+  and first string (`338..353`) and the second string (`389..391`) with values
+  its vendor app agreed with (#76). Only layout `4` is verified here end to
+  end, so the order is a preference and never a decision: the hardware still
+  has to decode. The diagnostics download records the map that read each
+  inverter beside the layout code it reported.
 
 PI30 reads its 17 or 21-field `QPIGS` status, and on a dual-MPPT inverter it
 also reads `QPIGS2` for the second string's current, voltage and charging
