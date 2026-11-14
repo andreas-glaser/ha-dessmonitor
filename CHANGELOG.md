@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Devcode 6416 joins the Voltronic PI30 vocabulary devcodes 2477 and 2341
+  already share, so the thirty-seven readings an iSolar SMH-III 6.2 kW reported
+  as reaching no entity are accounted for (#81, thanks to @zaSeplos for the
+  diagnostics download). Eight nameplate ratings and the mains status become
+  sensors, and twenty-four setpoints the collector returns among the telemetry
+  are declared as the settings they are, so the Repairs card saying readings
+  are missing is withdrawn. Nothing an installation already publishes is
+  renamed or removed, and the collector's option lists are left as it sends
+  them.
+
 Local mode can write inverter settings, and reports a change only once the
 inverter confirms it. It is off by default, and an upgrade changes nothing for
 an installation that leaves it off: no extra frame reaches a collector and no
