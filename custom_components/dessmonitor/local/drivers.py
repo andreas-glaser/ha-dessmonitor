@@ -344,7 +344,7 @@ class Pi30Driver:
             "PV2 Charger Power",
             "PV2 Charger Current",
             "PV2 Voltage",
-            "outpower",
+            "PV Total Charger Power",
         ):
             device.values.pop(title, None)
         qpigs2_failures = device.optional_query_failures.get("QPIGS2", 0)
@@ -374,7 +374,10 @@ class Pi30Driver:
                 pv2_power = pv2["PV2 Charger Power"]
                 values.update(pv2)
                 values["PV1 Charger Power"] = pv1_power
-                values["outpower"] = round((pv1_power + pv2_power) / 1000, 3)
+                # The array's own total, in watts. Until 3.0.0 this was
+                # published as "outpower", which is the cloud's figure for
+                # the AC output and not the strings at all (#75).
+                values["PV Total Charger Power"] = pv1_power + pv2_power
         if "QMOD" not in device.disabled_queries:
             try:
                 values.update(

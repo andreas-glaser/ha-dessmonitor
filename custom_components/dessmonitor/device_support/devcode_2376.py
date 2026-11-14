@@ -50,7 +50,10 @@ SENSOR_TITLE_MAPPINGS = {
     "INV Module Termperature": "Inverter Temperature",
     "DC Module Termperature": "DC Module Temperature",
     "Output frequency": "Output Frequency",
-    "outpower": "PV Power",
+    # The summary endpoint's AC output figure, which this collector reports
+    # itself in watts. Mapping it onto that reading is what keeps the merge
+    # from publishing a second entity for one measurement (#75).
+    "outpower": "Output Active Power",
     "Battery percentage": "State of Charge",
 }
 

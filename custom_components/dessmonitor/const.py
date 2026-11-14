@@ -881,12 +881,17 @@ SENSOR_TYPES = {
         "icon": "mdi:cog",
         "entity_category": "diagnostic",
     },
+    # The plant-summary endpoint's own figure for the inverter's AC output,
+    # which is not the array's production: a Maxsky EM11000 reported it at
+    # 1.878 kW at night, charging from the grid, with both strings at 0 W and
+    # the vendor's own load_active_power at 1.786 kW (#75). It was published
+    # as "Total PV Power" until 3.0.0.
     "outpower": {
-        "name": "Total PV Power",
+        "name": "Inverter Output Power",
         "unit": UNITS["POWER_KW"],
         "device_class": "power",
         "state_class": "measurement",
-        "icon": "mdi:solar-power",
+        "icon": "mdi:flash",
     },
     "energyToday": {
         "name": "Energy Today",
