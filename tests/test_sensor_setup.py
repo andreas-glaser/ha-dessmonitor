@@ -259,3 +259,33 @@ async def test_a_title_sent_twice_reads_the_copy_that_carries_a_value(order) -> 
 
     entities = {entity.unique_id: entity for entity in added.call_args.args[0]}
     assert entities["TEST-SERIAL_grid_frequency"].native_value == 50.0
+
+
+async def test_the_summary_s_output_power_is_not_published_as_pv_power() -> None:
+    """outpower is the inverter's AC output, measured by the plant summary.
+
+    A Maxsky EM11000 reported it at 1.878 kW at night, charging from the grid
+    with both strings at 0 W and the vendor's own load_active_power at 1.786
+    kW, so publishing it as "Total PV Power" told owners their array produced
+    in the dark (#75). The key, and with it the entity id and the recorded
+    history, are unchanged.
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-SERIAL": {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"alias": "Test inverter", "devcode": 2449, "devaddr": 1},
+            "data": [{"title": "outpower", "val": "1.878", "unit": "kW"}],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+
+    (entity,) = added.call_args.args[0]
+    assert entity.unique_id == "TEST-SERIAL_outpower"
+    assert entity.name == "Test inverter Inverter Output Power"
+    assert entity.native_value == 1.878
+    assert entity.native_unit_of_measurement == "kW"

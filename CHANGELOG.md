@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The sensor published as "Total PV Power" is renamed "Inverter Output
+  Power", because that is what the vendor sends.** It carries the plant
+  summary's `outpower`, and a Maxsky EM11000 reported that field at 1.878 kW
+  at night while charging from the grid, with both strings at 0 W and the
+  platform's own load figure at 1.786 kW (#75, thanks to @ballhtml for the
+  capture beside the local Modbus readings at the same minute). On many
+  accounts the vendor leaves the field at zero, which is how a sensor reading
+  "0 kW of solar" went unquestioned for so long. The entity keeps its id, its
+  unit and its recorded history; only its name and icon change. **If you added
+  this sensor to the energy dashboard as solar production, remove it there**:
+  it is an AC output measurement, and the array's own figure comes from your
+  inverter's PV readings.
+- In local mode on a dual-string PI30 inverter, the sum of the two strings is
+  published as "PV Total Charger Power" in watts, the name every other driver
+  uses for it, instead of being written into the cloud's `outpower` key in
+  kilowatts. A hybrid entry is unaffected, because the cloud still feeds that
+  entity. **A local-only entry loses its kW "Total PV Power" sensor and gains
+  a W "PV Total Charger Power" one**; the per-string sensors are unchanged.
+
 ### Added
 - Support for devcode 6513, a ZAMDON all-in-one off-grid inverter with a
   lithium BMS link (#82, thanks to @hendrikt1479 for the diagnostics
