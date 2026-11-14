@@ -160,6 +160,7 @@ def write_evidence(
     are committed so a later change has to satisfy both.
     """
     written: list[Path] = []
+    output_dir.mkdir(parents=True, exist_ok=True)
     by_devcode: dict[Any, list[dict[str, Any]]] = {}
     for device in evidence["data"]["devices"]:
         by_devcode.setdefault(device.get("devcode"), []).append(device)

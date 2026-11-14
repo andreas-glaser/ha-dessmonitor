@@ -27,7 +27,10 @@ from custom_components.dessmonitor.local.profile import (
     PI18_GS_FIELDS,
     SENSOR_UNITS,
 )
-from custom_components.dessmonitor.local.smg_protocol4 import _FIELDS as SMG_FIELDS
+from custom_components.dessmonitor.local.smg_protocol4 import (
+    _PROTOCOL3_FIELDS,
+    _PROTOCOL4_FIELDS,
+)
 from custom_components.dessmonitor.sensor_titles import resolve_sensor_key
 
 # Titles the SMG decoder derives rather than reading from a register.
@@ -44,7 +47,13 @@ P17_TITLES = sorted(
     {field.title for field in (*GS_FIELDS, *GS2_FIELDS, *PI18_GS_FIELDS)}
     | set(SENSOR_UNITS)
 )
-SMG_TITLES = sorted({title for _address, title, _divisor in SMG_FIELDS} | set(SMG_DERIVED_TITLES))
+SMG_TITLES = sorted(
+    {
+        title
+        for _address, title, _divisor in (*_PROTOCOL3_FIELDS, *_PROTOCOL4_FIELDS)
+    }
+    | set(SMG_DERIVED_TITLES)
+)
 
 
 @pytest.mark.parametrize("title", P17_TITLES + SMG_TITLES)

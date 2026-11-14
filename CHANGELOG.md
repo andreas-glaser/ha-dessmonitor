@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0-rc.2] - 2026-11-14
+
+Second candidate for 3.0.0. It carries the first candidate's local
+settings control unchanged and adds the work below.
+
+**One sensor is renamed and one local sensor is replaced.** Take a backup
+before upgrading, and read the two entries under Changed. No entity id
+changes and no recorded history is lost, but a dashboard card or an
+automation that names one of these sensors needs attention, and so does an
+energy dashboard that was given the renamed sensor as solar production.
+
+### Changed
+- **The sensor published as "Total PV Power" is renamed "Inverter Output
+  Power", because that is what the vendor sends.** It carries the plant
+  summary's `outpower`, and a Maxsky EM11000 reported that field at 1.878 kW
+  at night while charging from the grid, with both strings at 0 W and the
+  platform's own load figure at 1.786 kW (#75, thanks to @ballhtml for the
+  capture beside the local Modbus readings at the same minute). On many
+  accounts the vendor leaves the field at zero, which is how a sensor reading
+  "0 kW of solar" went unquestioned for so long. The entity keeps its id, its
+  unit and its recorded history; only its name and icon change. **If you added
+  this sensor to the energy dashboard as solar production, remove it there**:
+  it is an AC output measurement, and the array's own figure comes from your
+  inverter's PV readings.
+- In local mode on a dual-string PI30 inverter, the sum of the two strings is
+  published as "PV Total Charger Power" in watts, the name every other driver
+  uses for it, instead of being written into the cloud's `outpower` key in
+  kilowatts. A hybrid entry is unaffected, because the cloud still feeds that
+  entity. **A local-only entry loses its kW "Total PV Power" sensor and gains
+  a W "PV Total Charger Power" one**; the per-string sensors are unchanged.
+
+### Added
+- Support for devcode 6513, a ZAMDON all-in-one off-grid inverter with a
+  lithium BMS link (#82, thanks to @hendrikt1479 for the diagnostics
+  download). Nineteen more of its readings reach sensors: the mains voltage
+  and frequency, the operating state, the unit's temperature, both PV strings,
+  the charge controller's own battery voltage, discharge current and current
+  limit, the array's lifetime yield, and the pack's six BMS readings including
+  its state of charge. Nothing an installation already publishes is renamed or
+  removed - the lifetime yield reaches PV Cumulative Energy rather than taking
+  over the Energy Total the summary endpoint feeds.
+- Canonical names for a charge controller's battery voltage, discharge current
+  and charging limit, and for a BMS state of health, so a collector that sends
+  them reaches a sensor (#82).
+- Devcode 6416 joins the Voltronic PI30 vocabulary devcodes 2477 and 2341
+  already share, so the thirty-seven readings an iSolar SMH-III 6.2 kW reported
+  as reaching no entity are accounted for (#81, thanks to @zaSeplos for the
+  diagnostics download). Eight nameplate ratings and the mains status become
+  sensors, and twenty-four setpoints the collector returns among the telemetry
+  are declared as the settings they are, so the Repairs card saying readings
+  are missing is withdrawn. Nothing an installation already publishes is
+  renamed or removed, and the collector's option lists are left as it sends
+  them.
+
+### Fixed
+- The connectivity sensor reports a collector that has stopped reporting. It
+  counted the readings in the payload, and the cloud answers with the readings
+  it stored before a collector went quiet, so it read "connected" for the life
+  of an entry (#78, thanks to @ballhtml for naming the field). It now reads
+  the platform's own status for the device, and turns off only on the vendor's
+  offline code: a fault, a standby, a warning or an error is a device the
+  platform is still hearing from. An account whose payload carries no status
+  at all behaves exactly as before, and the code and its meaning are published
+  as attributes and recorded in the diagnostics download.
+- Local mode reads an SMG/Modbus collector that reports register layout 3.
+  The vendor's own November 2024 document describes layouts 3, 4, 5 and 6 as
+  one family, differing in which registers exist rather than in what they
+  mean, and a layout-3 collector was measured answering them beside the vendor
+  app's own figures at the same minute (#76, thanks to @ballhtml for the
+  register dump). Layout 3 has no totalled output block, so its output power,
+  current and load percentage are read per phase at 347..350, and its second
+  string at 389..391.
+- A collector reporting a layout with no map of its own is now read with both
+  the legacy `201..234` map and the documented one, keeping whichever decodes
+  on the hardware. A layout that decodes today keeps the map it decodes with,
+  and an inverter neither map reads is still refused by name rather than
+  published with wrong values. The diagnostics download records the map that
+  read each inverter beside the layout code it reported.
+- A sensor whose collector sends its title twice now reads the copy that
+  carries a value. Devcode 6513 reports "Input frequency" once as an alarm
+  word and once as the measured frequency in the same payload, and the sensor
+  took whichever arrived first, so it read unknown for as long as the word led
+  (#82). Where both copies are numbers, as on devcode 6489, the first still
+  wins and nothing changes.
+
 ## [3.0.0-rc.1] - 2026-11-13
 
 First candidate for 3.0.0. Local mode can write inverter settings, and reports

@@ -255,8 +255,8 @@ async def test_unsupported_optional_mode_does_not_disable_status_polling() -> No
     assert commands == ["QPIGS", "QPIGS2", "QMOD", "QPIGS"]
 
 
-async def test_dual_pv_power_is_local_and_sums_in_kw() -> None:
-    """Existing power titles and the cloud summary key keep their units."""
+async def test_dual_pv_power_is_local_and_sums_in_watts() -> None:
+    """The strings and their total are the inverter's own, all in watts (#75)."""
 
     async def send(payload, _code, _route):
         command = payload[:-3].decode()
@@ -266,7 +266,7 @@ async def test_dual_pv_power_is_local_and_sums_in_kw() -> None:
     values = await Pi30Driver().poll(send, _device(), cycle=1)
     assert values["PV1 Charger Power"] == 180
     assert values["PV2 Charger Power"] == 320
-    assert values["outpower"] == 0.5
+    assert values["PV Total Charger Power"] == 500
     assert values["Operating mode"] == "Battery"
 
 
@@ -285,12 +285,12 @@ async def test_pv2_timeout_clears_stale_local_power_for_cloud_fallback() -> None
     driver = Pi30Driver()
     first = await driver.poll(send, device, cycle=1)
     device.values.update(first)
-    assert device.values["outpower"] == 0.5
+    assert device.values["PV Total Charger Power"] == 500
 
     unavailable = True
     second = await driver.poll(send, device, cycle=2)
     assert second["PV Charge Power"] == 180
-    for title in ("PV1 Charger Power", "PV2 Charger Power", "outpower"):
+    for title in ("PV1 Charger Power", "PV2 Charger Power", "PV Total Charger Power"):
         assert title not in second
         assert title not in device.values
 
@@ -319,7 +319,7 @@ async def test_silent_or_invalid_pv2_uses_bounded_probe_cadence(failure) -> None
         values = await driver.poll(send, device, cycle=cycle)
         assert values["PV Charge Power"] == 180
         assert "PV2 Charger Power" not in values
-        assert "outpower" not in values
+        assert "PV Total Charger Power" not in values
     assert len(status_polls) == 25
     assert attempts == [1, 2, 3, 12, 24]
     assert device.optional_query_failures["QPIGS2"] == 3
@@ -344,9 +344,9 @@ async def test_pv2_success_restores_every_cycle_polling_after_backoff() -> None:
     for cycle in range(1, 14):
         values = await driver.poll(send, device, cycle=cycle)
         if cycle < 12:
-            assert "outpower" not in values
+            assert "PV Total Charger Power" not in values
         else:
-            assert values["outpower"] == 0.5
+            assert values["PV Total Charger Power"] == 500
     assert attempts == [1, 2, 3, 12, 13]
     assert "QPIGS2" not in device.optional_query_failures
 

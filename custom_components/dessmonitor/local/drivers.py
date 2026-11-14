@@ -25,6 +25,7 @@ from .pi30 import discover_pi30, query_pi30
 from .profile import CommandNotSupported
 from .protocol import P17_DEFAULT_DEVCODE, ProtocolError
 from .smg import (
+    LEGACY_REGISTER_MAP,
     SMG_CLOUD_DEVICE_CODE,
     SMG_PROTOCOL,
     SMG_REPORTED_COLLECTOR_CODES,
@@ -234,8 +235,10 @@ class SmgModbusDriver:
         )
         for item in discovered:
             _LOGGER.info(
-                "Local Modbus register layout %d selected at inverter address %d",
+                "Local Modbus register layout %d read with the %s map at "
+                "inverter address %d",
                 item.route.protocol_number,
+                item.route.selected_map,
                 item.route.slave_address,
             )
         return tuple(
@@ -245,9 +248,11 @@ class SmgModbusDriver:
                 collector_address=item.route.collector_address,
                 device_address=item.route.slave_address,
                 entity_device_code=(
-                    PROTOCOL4_CLOUD_DEVICE_CODE
-                    if item.route.protocol_number == 4
-                    else SMG_CLOUD_DEVICE_CODE
+                    SMG_CLOUD_DEVICE_CODE
+                    if item.route.selected_map == LEGACY_REGISTER_MAP
+                    # Every layout in the 2024 document shares one reading
+                    # vocabulary, which is the one devcode 6544 names.
+                    else PROTOCOL4_CLOUD_DEVICE_CODE
                 ),
                 serial=item.serial,
                 model=item.model,
@@ -268,6 +273,7 @@ class SmgModbusDriver:
                 device.collector_address,
                 device.device_address,
                 int(device.metadata.get("layout_code", 0)),
+                str(device.metadata.get("register_map", "")),
             ),
             include_status=cycle % 6 == 0,
         )
@@ -338,7 +344,7 @@ class Pi30Driver:
             "PV2 Charger Power",
             "PV2 Charger Current",
             "PV2 Voltage",
-            "outpower",
+            "PV Total Charger Power",
         ):
             device.values.pop(title, None)
         qpigs2_failures = device.optional_query_failures.get("QPIGS2", 0)
@@ -368,7 +374,10 @@ class Pi30Driver:
                 pv2_power = pv2["PV2 Charger Power"]
                 values.update(pv2)
                 values["PV1 Charger Power"] = pv1_power
-                values["outpower"] = round((pv1_power + pv2_power) / 1000, 3)
+                # The array's own total, in watts. Until 3.0.0 this was
+                # published as "outpower", which is the cloud's figure for
+                # the AC output and not the strings at all (#75).
+                values["PV Total Charger Power"] = pv1_power + pv2_power
         if "QMOD" not in device.disabled_queries:
             try:
                 values.update(
