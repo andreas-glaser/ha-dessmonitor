@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Support for devcode 6513, a ZAMDON all-in-one off-grid inverter with a
+  lithium BMS link (#82, thanks to @hendrikt1479 for the diagnostics
+  download). Nineteen more of its readings reach sensors: the mains voltage
+  and frequency, the operating state, the unit's temperature, both PV strings,
+  the charge controller's own battery voltage, discharge current and current
+  limit, the array's lifetime yield, and the pack's six BMS readings including
+  its state of charge. Nothing an installation already publishes is renamed or
+  removed - the lifetime yield reaches PV Cumulative Energy rather than taking
+  over the Energy Total the summary endpoint feeds.
+- Canonical names for a charge controller's battery voltage, discharge current
+  and charging limit, and for a BMS state of health, so a collector that sends
+  them reaches a sensor (#82).
+
 ### Fixed
 - A sensor whose collector sends its title twice now reads the copy that
   carries a value. Devcode 6513 reports "Input frequency" once as an alarm
