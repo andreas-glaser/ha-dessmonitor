@@ -328,6 +328,13 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:current-dc",
     },
+    "PV4 Current": {
+        "name": "PV4 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
     "grid current": {
         "name": "Grid Current",
         "unit": UNITS["CURRENT"],
@@ -542,6 +549,13 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:solar-power",
     },
+    "PV4 Voltage": {
+        "name": "PV4 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
     # The DC bus sits between the strings and the inverter bridge. Collectors
     # report it as one voltage, or split into its positive and negative rails.
     "Bus Voltage": {
@@ -560,6 +574,18 @@ SENSOR_TYPES = {
     },
     "Negative Bus Voltage": {
         "name": "Negative Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    # A grid-tie inverter with a split bus reports the midpoint as well. It is
+    # kept as its own reading rather than mapped onto the positive rail above:
+    # the BYD-S-1P5K-2M in docs/evidence/devcodes/analysis_518.json reported
+    # 203.2 V against a 329.2 V bus, which is neither half of it nor a rail
+    # the vendor names, and a guess here would publish a wrong label (#83).
+    "Bus Half Voltage": {
+        "name": "Bus Half Voltage",
         "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
