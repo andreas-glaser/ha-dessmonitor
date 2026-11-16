@@ -81,6 +81,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now fails on any sensor key that measures nothing and is read as a number.
 
 ### Added
+- The twelve readings a devcode 518 grid-tie inverter reported as reaching no
+  entity become sensors (#83, thanks to @trentas for the diagnostics
+  download): the three phase voltages and phase currents, the DC bus and its
+  midpoint, and the third and fourth DC inputs. The collector labels every
+  channel whatever the hardware behind it has, so each one gets its own
+  phase- or string-numbered sensor rather than being mapped onto the plain
+  grid sensors - devcode 518 covers single- and three-phase inverters, and the
+  single-phase unit in the evidence measures on phase C. On hardware that has
+  fewer phases or strings the idle ones read 0.0, which is what the collector
+  sends, and they can be disabled. Nothing an installation already publishes
+  is renamed or removed, and the Repairs card saying readings are missing is
+  withdrawn.
+- Canonical names for a fourth string's voltage and current and for the
+  midpoint of a split DC bus, so a collector that sends them reaches a sensor
+  (#83).
 - Devcode 6416 joins the Voltronic PI30 vocabulary devcodes 2477 and 2341
   already share, so the thirty-seven readings an iSolar SMH-III 6.2 kW reported
   as reaching no entity are accounted for (#81, thanks to @zaSeplos for the
