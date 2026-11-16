@@ -236,9 +236,77 @@ def build_p17_poll(command: str, *, escape_crc: bool = True) -> bytes:
     return content + _encode_crc(content, escape_crc=escape_crc) + b"\r"
 
 
+# Setter command names each ASCII protocol may send. A local write exists to
+# move one declared setting, so the frame builders accept only the commands the
+# setting tables in ``pi30_settings.py`` and ``p17_settings.py`` declare, and
+# ``tests/local/test_write_frames.py`` holds the two lists against each other.
+# Keeping the names here rather than taking whatever string a caller passes
+# means an arbitrary command cannot reach an inverter through this transport.
+PI30_SETTER_COMMANDS = frozenset(
+    ("POP", "PCP", "PBT", "PBCV", "PBDV", "PSDV", "PCVV", "PBFT", "PGR", "F", "MUCHGC")
+)
+P17_SETTER_COMMANDS = frozenset(
+    ("POP", "PCP", "PSP", "PBT", "PSDV", "MCHGV", "BUCD", "MCHGC", "MUCHGC")
+)
+
+
+def _setter_name(command: str, allowed: frozenset[str]) -> str:
+    """Return the vendor command name a setter text starts with."""
+    encoded = _ascii_command(command)
+    name = next(
+        (
+            candidate
+            for candidate in sorted(allowed, key=len, reverse=True)
+            if command.startswith(candidate)
+        ),
+        None,
+    )
+    if name is None:
+        raise ProtocolError(f"{command[:8]!r} is not a declared setter command")
+    argument = encoded[len(name) :]
+    if not argument:
+        raise ProtocolError(f"setter command {name} requires a value")
+    # Every setter these protocols define takes a numeric argument, a pair of
+    # them, or a signed one. The value itself is validated by the setting that
+    # produced it; this is the transport refusing to carry anything else.
+    if any(byte not in b"0123456789.,+-" for byte in argument):
+        raise ProtocolError(f"setter command {name} has a non-numeric argument")
+    return name
+
+
+def build_pi30_setter(command: str) -> bytes:
+    """Frame one declared PI30 setter, such as ``PCVV58.0``."""
+    _setter_name(command, PI30_SETTER_COMMANDS)
+    content = command.encode("ascii")
+    return content + _encode_crc(content) + b"\r"
+
+
+def build_p17_setter(command: str, *, escape_crc: bool = True) -> bytes:
+    """Frame one declared PI18/P17 setter, such as ``MCHGV552,540``.
+
+    The caret form carries its own length field, counted the way the read
+    builder counts it, so ``POP0`` is sent as ``^S007POP0``.
+    """
+    encoded = _ascii_command(command)
+    _setter_name(command, P17_SETTER_COMMANDS)
+    content = b"^S" + f"{3 + len(encoded):03d}".encode("ascii") + encoded
+    return content + _encode_crc(content, escape_crc=escape_crc) + b"\r"
+
+
 def build_pi30_poll(command: str) -> bytes:
     """Encode only the PI30 inquiries implemented by the read-only driver."""
-    if command not in {"QPI", "QID", "QVFW", "QPIRI", "QPIGS", "QPIGS2", "QMOD"}:
+    if command not in {
+        "QPI",
+        "QID",
+        "QVFW",
+        "QPIRI",
+        "QPIGS",
+        "QPIGS2",
+        "QMOD",
+        # Enumerates the utility charging limits this inverter accepts, which
+        # is what makes that setting writable at all.
+        "QMUCHGCR",
+    }:
         raise ProtocolError("unsupported PI30 read-only command")
     content = command.encode("ascii")
     return content + _encode_crc(content) + b"\r"

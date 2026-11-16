@@ -104,7 +104,55 @@ async def test_fixture_through_api_and_sensor_platform(cloud_transport):
     assert apparent_power.native_value == 1871
     assert apparent_power.native_unit_of_measurement == "VA"
     assert apparent_power.device_class == "apparent_power"
-    assert len(entities) == 13
+    assert len(entities) == 25
+
+
+async def test_each_labelled_channel_reaches_its_own_sensor(cloud_transport):
+    """The phases, the four DC inputs and the DC link each get one entity.
+
+    The collector labels every channel whatever the hardware has, so the
+    measuring phase is not assumed: on this single-phase unit the reading is
+    on phase C and the other two publish the 0.0 the collector sends (#83).
+    """
+    payload = json.loads(FIXTURE.read_text())
+    session, connector = cloud_transport
+    connector.payload = payload
+    api = DessMonitorAPI(
+        "test-user", "test-password", session=session, api_profile="shinemonitor_solar"
+    )
+    api.token, api.secret = "test-token", "test-secret"
+    points = await api.get_device_last_data("REDACTED-PN", 518, 1, "REDACTED-SN")
+    coordinator = MagicMock()
+    coordinator.data = {
+        "REDACTED-SN": {
+            "collector": {"pn": "REDACTED-PN"},
+            "device": {"devcode": 518, "devaddr": 1},
+            "data": points,
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+    entities = {entity.unique_id: entity for entity in added.call_args.args[0]}
+
+    expected = {
+        "REDACTED-SN_grid_l1_voltage": 0.0,
+        "REDACTED-SN_grid_l2_voltage": 0.0,
+        "REDACTED-SN_grid_l3_voltage": 210.5,
+        "REDACTED-SN_output_l1_current": 0.0,
+        "REDACTED-SN_output_l2_current": 0.0,
+        "REDACTED-SN_output_l3_current": 1.2,
+        "REDACTED-SN_pv3_voltage": 0.0,
+        "REDACTED-SN_pv4_voltage": 0.0,
+        "REDACTED-SN_pv3_current": 0.1,
+        "REDACTED-SN_pv4_current": 0.1,
+        "REDACTED-SN_bus_voltage": 329.2,
+        "REDACTED-SN_bus_half_voltage": 203.2,
+    }
+    for unique_id, value in expected.items():
+        assert unique_id in entities, f"{unique_id} reaches no entity"
+        assert entities[unique_id].native_value == value
 
 
 async def test_solar_refresh_does_not_create_duplicate_energy_sensors(

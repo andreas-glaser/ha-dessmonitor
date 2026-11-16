@@ -122,8 +122,13 @@ def test_a_control_matching_a_resolved_reading_is_not_listed_as_unmatched() -> N
     assert result.control_names == ["Restore Defaults"]
 
 
-def test_a_cli_analysis_records_no_control_template() -> None:
-    """Only a diagnostics download carries one, and the tool must not invent it."""
+def test_a_record_without_a_control_template_gets_no_controls() -> None:
+    """The tool must not invent one.
+
+    Both report shapes carry the control template now - a CLI analysis records
+    the fields without their readbacks - so what this asserts is the remaining
+    case: a device the platform advertises no controls for, as devcode 684 is.
+    """
     result = COVERAGE.coverage(
         {
             "devcode": 2477,
@@ -135,3 +140,86 @@ def test_a_cli_analysis_records_no_control_template() -> None:
 
     assert result.controls == ()
     assert result.control_names == []
+
+
+def test_a_control_sitting_at_a_reading_s_value_is_offered_as_a_candidate(
+    capsys: Any,
+) -> None:
+    """The judgement every ``SETTING_READINGS`` declaration rests on.
+
+    The spellings differ on both sides, so the names cannot make the pairing:
+    devcode 2449 reports "Battery Re-Charge Voltage" 44.0 V against a "Back to
+    Grid Voltage" control reading 44.0 (#80). Both sides format the number
+    their own way, which is why the comparison is numeric.
+    """
+    record = {
+        "devcode": 9999,
+        "titles": ["Battery Re-Charge Voltage"],
+        "units": {"Battery Re-Charge Voltage": "V"},
+        "values": {"Battery Re-Charge Voltage": "44.0"},
+        "controls": ["Back to Grid Voltage", "Battery Cut-off Voltage"],
+        "control_values": {
+            "Back to Grid Voltage": "44",
+            "Battery Cut-off Voltage": "42.0",
+        },
+        "source": "integration_diagnostics",
+    }
+
+    COVERAGE._report_one(Path("download.json"), record)
+
+    out = capsys.readouterr().out
+    assert "Back to Grid Voltage" in out
+    assert "Battery Cut-off Voltage" not in out
+
+
+def test_a_title_already_named_as_a_control_is_not_paired_again(capsys: Any) -> None:
+    """The name match is the stronger claim, and two lines would say it twice."""
+    record = {
+        "devcode": 9999,
+        "titles": ["Battery Type"],
+        "units": {},
+        "values": {"Battery Type": "Lib"},
+        "controls": ["Battery Type"],
+        "control_values": {"Battery Type": "Lib"},
+        "source": "integration_diagnostics",
+    }
+
+    COVERAGE._report_one(Path("download.json"), record)
+
+    out = capsys.readouterr().out
+    assert "Battery Type  (control on this device)" in out
+    assert "a setting to declare" not in out
+
+
+def test_a_text_valued_setting_pairs_on_its_text() -> None:
+    """A battery type or an input range is not a number, and still pairs."""
+    result = COVERAGE.coverage(
+        {
+            "devcode": 9999,
+            "titles": ["Input Range"],
+            "units": {},
+            "values": {"Input Range": "UPS"},
+            "controls": ["AC Input Range"],
+            "control_values": {"AC Input Range": "ups"},
+            "source": "integration_diagnostics",
+        }
+    )
+
+    assert result.controls_reading_the_same_value("Input Range") == [
+        ("AC Input Range", "ups")
+    ]
+
+
+def test_a_reading_with_no_recorded_value_pairs_with_nothing() -> None:
+    """A CLI analysis samples its values, and records no control readback."""
+    result = COVERAGE.coverage(
+        {
+            "devcode": 9999,
+            "titles": ["Battery Re-Charge Voltage"],
+            "units": {"Battery Re-Charge Voltage": "V"},
+            "controls": ["Back to Grid Voltage"],
+            "source": "cli_analysis",
+        }
+    )
+
+    assert result.controls_reading_the_same_value("Battery Re-Charge Voltage") == []

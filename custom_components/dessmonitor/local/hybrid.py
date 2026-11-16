@@ -15,10 +15,15 @@ from homeassistant.core import HomeAssistant
 from .. import DessMonitorDataUpdateCoordinator
 from ..api import DessMonitorAPI
 from ..const import CONF_LOCAL_COLLECTOR_IP, CONF_LOCAL_COLLECTOR_IPS
+from ..control_values import ControlWriteResult
 from ..data_sources import with_data_source
-from ..device_support import map_sensor_title
+from ..device_support import local_control_setting, map_sensor_title
+from ..device_support.device_registry import map_control_field
 from ..sensor_titles import cumulative_sensor_key
 from .coordinator import DessMonitorLocalCoordinator
+from .protocol import ProtocolError
+from .settings import SettingNotWritable, normalized_name
+from .writer import SettingsSnapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -224,6 +229,90 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
                 self._cumulative_high[mark] = (value, point["val"])
         return merged
 
+    async def async_set_control_value(
+        self, sn: str, param_id: str, value: str, *, control_name: str = ""
+    ) -> ControlWriteResult:
+        """Write through the local link where it can be proven, else the cloud.
+
+        A cloud control and a local setting are two different names for the
+        same register, and nothing in either payload says they are the same
+        one. The pairing is therefore made only on evidence: a declaration in
+        the devcode profile, or names that normalise to the same string. Where
+        neither holds, the write takes the cloud path it has always taken.
+
+        A local failure is never the end of the attempt. The owner asked for a
+        setting to change, so an unverified or refused local write falls back
+        to the cloud, which is what this installation did before local control
+        existed.
+        """
+        route = self._local_control_route(sn, param_id)
+        if route is not None:
+            local, local_serial, key = route
+            try:
+                return await local.async_set_control_value(
+                    local_serial, key, value, control_name=control_name or key
+                )
+            except (
+                SettingNotWritable,
+                ProtocolError,
+                TimeoutError,
+                ConnectionError,
+                OSError,
+            ) as err:
+                _LOGGER.warning(
+                    "Local write of %s on %s did not succeed, so it is being "
+                    "written through the cloud instead: %s",
+                    control_name or param_id,
+                    sn,
+                    err,
+                )
+        return await super().async_set_control_value(
+            sn, param_id, value, control_name=control_name
+        )
+
+    def _local_control_route(
+        self, sn: str, param_id: str
+    ) -> tuple[DessMonitorLocalCoordinator, str, str] | None:
+        """Return the local transport that can write this cloud control, if any."""
+        cloud_payload = (self.data or {}).get(sn)
+        if not isinstance(cloud_payload, dict) or not param_id:
+            return None
+        devcode = cloud_payload.get("device", {}).get("devcode")
+        declared = local_control_setting(devcode, param_id)
+        candidates = self._control_names(sn, param_id, devcode)
+        for local in self.locals:
+            if not local.control_enabled:
+                continue
+            data = local.data if isinstance(local.data, dict) else {}
+            match = _find_local_match(sn, cloud_payload, data, set())
+            if match is None:
+                continue
+            local_serial = match[0]
+            snapshot = local.settings_snapshot(local_serial)
+            if snapshot is None:
+                continue
+            if declared and declared in snapshot.values:
+                return local, local_serial, declared
+            named = _setting_named(snapshot, candidates)
+            if named is not None:
+                return local, local_serial, named
+        return None
+
+    def _control_names(self, sn: str, param_id: str, devcode: Any) -> frozenset[str]:
+        """Return the names this cloud control is known by, normalised.
+
+        Both are compared: the platform's own field name, and the name the
+        devcode profile renames it to. A vendor spells the field either way,
+        and a local setting carries the vendor's documented name for it.
+        """
+        names: set[str] = set()
+        for name, config in self.ctrl_field_cache.get(sn, {}).items():
+            if config.get("id") != param_id:
+                continue
+            names.add(name)
+            names.add(map_control_field(devcode, name))
+        return frozenset(normalized_name(name) for name in names if name)
+
     def _handle_local_update(self) -> None:
         """Coalesce near-simultaneous collector polls into one HA update."""
         if (
@@ -277,6 +366,18 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
                     key = f"{serial}@{collector_pn}"
                 combined[key] = payload
         return combined
+
+
+def _setting_named(
+    snapshot: SettingsSnapshot, candidates: Container[str]
+) -> str | None:
+    """Return the reported setting whose own name is one of these names."""
+    for setting in snapshot.settings:
+        if setting.key not in snapshot.values:
+            continue
+        if normalized_name(setting.name) in candidates:
+            return setting.key
+    return None
 
 
 def _configured_collector_ips(local_config: dict[str, Any]) -> tuple[str, ...]:

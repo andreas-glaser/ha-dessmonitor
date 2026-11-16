@@ -1,0 +1,403 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.8.0",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "api_profile": "shinemonitor_solar"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 2,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": false
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "shinemonitor_solar",
+        "integration_version": "2.8.0",
+        "devcode": 697,
+        "device_identity": "sha256:bdd77372fdb1",
+        "collector_identity": "sha256:d54e1b76d4e3",
+        "device_address": 4,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 18,
+          "unresolved": 3,
+          "total": 21,
+          "excluded": {
+            "attribute_readings": 2,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 18,
+          "unresolved_with_unit": [
+            {
+              "title": "Accumulated PV Power",
+              "unit": "kWh",
+              "sample": "3920"
+            },
+            {
+              "title": "Charger Current",
+              "unit": "A",
+              "sample": "2.2"
+            },
+            {
+              "title": "Charger Power",
+              "unit": "W",
+              "sample": "108"
+            }
+          ],
+          "unresolved_without_unit": []
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-12 08:29:54",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "49.0",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "PV Voltage",
+            "value": "53.5",
+            "unit": "V",
+            "resolved_key": "PV Voltage"
+          },
+          {
+            "title": "Inverter Voltage",
+            "value": "229.8",
+            "unit": "V",
+            "resolved_key": "Inverter Voltage"
+          },
+          {
+            "title": "Batt Current",
+            "value": "3",
+            "unit": "A",
+            "resolved_key": "Batt Current"
+          },
+          {
+            "title": "Charger Current",
+            "value": "2.2",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Charger Power",
+            "value": "108",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "PLoad",
+            "value": "218",
+            "unit": "W",
+            "resolved_key": "PLoad"
+          },
+          {
+            "title": "PGrid",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "PGrid"
+          },
+          {
+            "title": "work state",
+            "value": "OffGrid",
+            "unit": "",
+            "resolved_key": "work state"
+          },
+          {
+            "title": "rated power",
+            "value": "5000",
+            "unit": "W",
+            "resolved_key": "rated power"
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "PInverter",
+            "value": "217",
+            "unit": "W",
+            "resolved_key": "PInverter"
+          },
+          {
+            "title": "Accumulated Sell Power",
+            "value": "0",
+            "unit": "kWh",
+            "resolved_key": "Accumulated Sell Power"
+          },
+          {
+            "title": "Accumulated Load Power",
+            "value": "3249",
+            "unit": "kWh",
+            "resolved_key": "Accumulated Load Power"
+          },
+          {
+            "title": "Accumulated Self_Use Power",
+            "value": "3362",
+            "unit": "kWh",
+            "resolved_key": "Accumulated Self_Use Power"
+          },
+          {
+            "title": "charger work enable",
+            "value": "ON",
+            "unit": "",
+            "resolved_key": "charger work enable"
+          },
+          {
+            "title": "Accumulated PV Power",
+            "value": "3920",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "battery high voltage",
+            "value": "60.0",
+            "unit": "",
+            "id": "battery_high_voltage"
+          },
+          {
+            "name": "battery low voltage",
+            "value": "40.8",
+            "unit": "",
+            "id": "battery_low_voltage"
+          },
+          {
+            "name": "battery voltage calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "battery_voltage_calibration_coefficient"
+          },
+          {
+            "name": "bus voltage calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "buf_voltage_calibration_coefficient"
+          },
+          {
+            "name": "charger source priority",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Soalr first",
+              "2: Solar and Utility",
+              "3: Only Solar"
+            ],
+            "id": "charger_source_priority"
+          },
+          {
+            "name": "control current calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "control_current_calibration_coefficient"
+          },
+          {
+            "name": "energy use mode",
+            "value": "FS",
+            "unit": "",
+            "options": [
+              "0: PL",
+              "1: FL",
+              "2: FS",
+              "3: UPS",
+              "4: PO"
+            ],
+            "id": "energy_use_mode"
+          },
+          {
+            "name": "grid current calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "grid_current_calibration_coefficient"
+          },
+          {
+            "name": "grid protect standard",
+            "value": "GEN",
+            "unit": "",
+            "options": [
+              "0: VDE4105",
+              "1: UPS",
+              "2: home",
+              "3: GEN"
+            ],
+            "id": "grid_protect_standard"
+          },
+          {
+            "name": "grid voltage calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "grid_voltage_calibration_coefficient"
+          },
+          {
+            "name": "inverter current calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "inverter_current_calibration_coefficient"
+          },
+          {
+            "name": "inverter discharger to grid enable",
+            "value": "ON",
+            "unit": "",
+            "options": [
+              "0: ON",
+              "1: OFF"
+            ],
+            "id": "inverter_discharger_to_grid_enable"
+          },
+          {
+            "name": "inverter max discharger current",
+            "value": "21.7",
+            "unit": "",
+            "id": "inverter_max_discharger_current"
+          },
+          {
+            "name": "inverter offline working enable",
+            "value": "ON",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "inverter_offline_working_enable"
+          },
+          {
+            "name": "inverter output frequency Set",
+            "value": "50.00",
+            "unit": "",
+            "id": "inverter_output_frequency_set"
+          },
+          {
+            "name": "inverter output voltage Set",
+            "value": "230.0",
+            "unit": "",
+            "id": "inverter_output_voltage_set"
+          },
+          {
+            "name": "inverter search mode enable",
+            "value": "OFF",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "inverter_search_mode_enable"
+          },
+          {
+            "name": "inverter voltage calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "inverter_voltage_calibration_coefficient"
+          },
+          {
+            "name": "load current calibration coefficient",
+            "value": "65535",
+            "unit": "",
+            "id": "load_current_calibration_coefficient"
+          },
+          {
+            "name": "max combine charger current",
+            "value": "45.0",
+            "unit": "",
+            "id": "max_combine_charger_current"
+          },
+          {
+            "name": "Offgrid Switch",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "0: Deactivate",
+              "1: Enable"
+            ],
+            "id": "shutdown"
+          },
+          {
+            "name": "Ongrid Switch",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "0: Deactivate",
+              "1: Enable"
+            ],
+            "id": "shutdown_work"
+          },
+          {
+            "name": "serial number",
+            "value": "",
+            "unit": "",
+            "id": "sn",
+            "val": ""
+          },
+          {
+            "name": "solaruse_aim",
+            "value": "BLU",
+            "unit": "",
+            "options": [
+              "0: LBU",
+              "1: BLU"
+            ],
+            "id": "solaruse_aim"
+          }
+        ],
+        "parameters": [],
+        "checksum": "fa4609b3614f7f052194f499cf0db5a6cda371f41df3caa54e80ca954d8384ca",
+        "control_reads": {
+          "fields": 24,
+          "without_a_value": 1,
+          "rounds_that_recovered_nothing": 1,
+          "rounds_allowed": 3,
+          "still_trying": true,
+          "last_round_went_unanswered": false
+        },
+        "data_source": "Cloud",
+        "last_update": "2026-11-12 08:29:54"
+      }
+    ]
+  }
+}

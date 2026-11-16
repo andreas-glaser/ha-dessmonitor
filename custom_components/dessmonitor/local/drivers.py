@@ -1,8 +1,15 @@
-"""Small read-only driver boundary for local inverter protocols.
+"""Small driver boundary for local inverter protocols.
 
 The coordinator owns connection lifecycle and scheduling; drivers own only
 protocol detection, validation, and value decoding. New collector/inverter
 families can therefore be added without duplicating network or HA logic.
+
+A driver may also carry a ``settings`` backend, which is what makes local
+writes possible for its protocol. The two ASCII protocols have one: their
+setters are named commands the inverter acknowledges and then reports back,
+so a write can be verified. The Modbus driver has ``None``, because a holding
+register is addressed by number and no vendor register map for this family has
+been obtained; see ``modbus.py``.
 """
 
 from __future__ import annotations
@@ -18,6 +25,7 @@ from .pi30 import discover_pi30, query_pi30
 from .profile import CommandNotSupported
 from .protocol import P17_DEFAULT_DEVCODE, ProtocolError
 from .smg import (
+    LEGACY_REGISTER_MAP,
     SMG_CLOUD_DEVICE_CODE,
     SMG_PROTOCOL,
     SMG_REPORTED_COLLECTOR_CODES,
@@ -26,6 +34,7 @@ from .smg import (
     poll_smg,
 )
 from .smg_protocol4 import PROTOCOL4_CLOUD_DEVICE_CODE
+from .writer import P17SettingsBackend, Pi30SettingsBackend, SettingsBackend
 
 SendCommand = Callable[[bytes, int, int], Awaitable[bytes]]
 
@@ -52,10 +61,12 @@ class LocalDevice:
     address_verified: bool = True
 
 
-class ReadOnlyLocalDriver(Protocol):
-    """Interface implemented by every auditable, read-only local driver."""
+class LocalDriver(Protocol):
+    """Interface implemented by every auditable local protocol driver."""
 
     key: str
+    #: Set only where a write can be acknowledged and then read back.
+    settings: SettingsBackend | None
 
     async def discover(
         self,
@@ -76,9 +87,10 @@ class ReadOnlyLocalDriver(Protocol):
 
 
 class P17Driver:
-    """Read-only PI18/P17 ASCII driver."""
+    """PI18/P17 ASCII driver, with verified setting writes."""
 
     key = P17_PROTOCOL
+    settings: SettingsBackend | None = P17SettingsBackend()
 
     async def discover(
         self,
@@ -191,9 +203,17 @@ class P17Driver:
 
 
 class SmgModbusDriver:
-    """Read-only SMG Modbus RTU driver."""
+    """Read-only SMG Modbus RTU driver.
+
+    No setting writes: a Modbus write names a register by number, and nothing
+    in this repository or in any source reviewed for it documents which
+    holding register this family keeps each setting in. A wrong address is a
+    changed setting on someone's inverter, so this driver stays read-only
+    until a vendor register map is in hand.
+    """
 
     key = SMG_PROTOCOL
+    settings: SettingsBackend | None = None
 
     async def discover(
         self,
@@ -215,8 +235,10 @@ class SmgModbusDriver:
         )
         for item in discovered:
             _LOGGER.info(
-                "Local Modbus register layout %d selected at inverter address %d",
+                "Local Modbus register layout %d read with the %s map at "
+                "inverter address %d",
                 item.route.protocol_number,
+                item.route.selected_map,
                 item.route.slave_address,
             )
         return tuple(
@@ -226,9 +248,11 @@ class SmgModbusDriver:
                 collector_address=item.route.collector_address,
                 device_address=item.route.slave_address,
                 entity_device_code=(
-                    PROTOCOL4_CLOUD_DEVICE_CODE
-                    if item.route.protocol_number == 4
-                    else SMG_CLOUD_DEVICE_CODE
+                    SMG_CLOUD_DEVICE_CODE
+                    if item.route.selected_map == LEGACY_REGISTER_MAP
+                    # Every layout in the 2024 document shares one reading
+                    # vocabulary, which is the one devcode 6544 names.
+                    else PROTOCOL4_CLOUD_DEVICE_CODE
                 ),
                 serial=item.serial,
                 model=item.model,
@@ -249,15 +273,17 @@ class SmgModbusDriver:
                 device.collector_address,
                 device.device_address,
                 int(device.metadata.get("layout_code", 0)),
+                str(device.metadata.get("register_map", "")),
             ),
             include_status=cycle % 6 == 0,
         )
 
 
 class Pi30Driver:
-    """Read-only standard PI30 driver; never selected from a cloud family hint."""
+    """Standard PI30 driver; never selected from a cloud family hint."""
 
     key = "pi30"
+    settings: SettingsBackend | None = Pi30SettingsBackend()
 
     async def discover(
         self,
@@ -318,7 +344,7 @@ class Pi30Driver:
             "PV2 Charger Power",
             "PV2 Charger Current",
             "PV2 Voltage",
-            "outpower",
+            "PV Total Charger Power",
         ):
             device.values.pop(title, None)
         qpigs2_failures = device.optional_query_failures.get("QPIGS2", 0)
@@ -348,7 +374,10 @@ class Pi30Driver:
                 pv2_power = pv2["PV2 Charger Power"]
                 values.update(pv2)
                 values["PV1 Charger Power"] = pv1_power
-                values["outpower"] = round((pv1_power + pv2_power) / 1000, 3)
+                # The array's own total, in watts. Until 3.0.0 this was
+                # published as "outpower", which is the cloud's figure for
+                # the AC output and not the strings at all (#75).
+                values["PV Total Charger Power"] = pv1_power + pv2_power
         if "QMOD" not in device.disabled_queries:
             try:
                 values.update(
@@ -367,7 +396,7 @@ class Pi30Driver:
         return values
 
 
-DRIVERS: tuple[ReadOnlyLocalDriver, ...] = (
+DRIVERS: tuple[LocalDriver, ...] = (
     P17Driver(),
     SmgModbusDriver(),
     Pi30Driver(),
@@ -384,7 +413,7 @@ async def discover_supported_devices(
     device_address: int = 0,
     diagnostics: ProbeDiagnostics | None = None,
     preferred_driver_key: str | None = None,
-) -> tuple[ReadOnlyLocalDriver, tuple[LocalDevice, ...]]:
+) -> tuple[LocalDriver, tuple[LocalDevice, ...]]:
     """Try a bounded driver order and return the first verified protocol.
 
     ``preferred_driver_key`` names a driver that already worked for this
@@ -444,7 +473,7 @@ async def discover_supported_devices(
 
 
 def _driver_failure(
-    diagnostics: ProbeDiagnostics, driver: ReadOnlyLocalDriver, err: BaseException
+    diagnostics: ProbeDiagnostics, driver: LocalDriver, err: BaseException
 ) -> str:
     """Describe why one driver failed, preferring what the probe observed.
 

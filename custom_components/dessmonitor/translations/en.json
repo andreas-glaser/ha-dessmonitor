@@ -159,26 +159,30 @@
           "local_collector_ips": "Collector LAN IP addresses",
           "local_poll_interval": "Local polling interval",
           "local_redirect_confirmed": "Allow Home Assistant to request local data from these collectors",
-          "local_device_address": "Inverter address (0 = automatic)"
+          "local_device_address": "Inverter address (0 = automatic)",
+          "local_control": "Settings control over the local link"
         },
         "data_description": {
           "local_listen_ip": "The fixed IPv4 address on this machine that the collector can reach.",
           "local_collector_ips": "Enter one or more fixed private addresses separated by commas, spaces, or new lines. Each connection is pinned to its exact address.",
           "local_poll_interval": "How often to read local inverter telemetry. Five seconds is recommended and is independent of the cloud API interval.",
           "local_redirect_confirmed": "Home Assistant sends UDP to the listed collectors on port 58899. Each collector must be allowed to connect back to Home Assistant on TCP port 8899. Check host and VLAN firewalls, allow only the configured private addresses, and do not expose either port to the internet. API fallback remains enabled.",
-          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter.",
+          "local_control": "Read settings only keeps local mode exactly as every earlier release behaved: it reads telemetry and the inverter's own settings, and writes nothing. Write settings sends a change straight to the inverter and reports it as done only once the inverter acknowledges the command and reports the new value. Only settings the inverter itself reports are offered, and a write that cannot be carried locally still goes through the cloud."
         }
       },
       "local": {
         "title": "DessMonitor Local Options",
-        "description": "Configure local read-only polling.",
+        "description": "Configure local polling, and whether this entry may write inverter settings over the local link.",
         "data": {
           "local_poll_interval": "Polling interval",
-          "local_device_address": "Inverter address (0 = automatic)"
+          "local_device_address": "Inverter address (0 = automatic)",
+          "local_control": "Settings control over the local link"
         },
         "data_description": {
           "local_poll_interval": "How often to poll primary inverter status.",
-          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter."
+          "local_device_address": "Leave 0 for automatic discovery starting at address 1. Set 1-247 to read only that inverter address. This does not change the address configured on the inverter.",
+          "local_control": "Read settings only keeps local mode exactly as every earlier release behaved: it reads telemetry and the inverter's own settings, and writes nothing. Write settings sends a change straight to the inverter and reports it as done only once the inverter acknowledges the command and reports the new value. Only settings the inverter itself reports are offered, and a write that cannot be carried locally still goes through the cloud."
         }
       }
     }

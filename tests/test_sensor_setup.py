@@ -229,3 +229,63 @@ async def test_the_reading_a_summary_field_duplicates_is_the_one_kept() -> None:
     (entity,) = added.call_args.args[0]
     assert entity.unique_id == "TEST-SERIAL_energy_today"
     assert entity.native_value == 7.65
+
+
+@pytest.mark.parametrize("order", [("alarm", "measured"), ("measured", "alarm")])
+async def test_a_title_sent_twice_reads_the_copy_that_carries_a_value(order) -> None:
+    """One title, two kinds of value: the sensor takes the usable one (#82).
+
+    Devcode 6513 reports "Input frequency" as an alarm word and again as the
+    measured frequency in the same payload. Reading only the first match left
+    the sensor unknown whenever the word arrived first.
+    """
+    points = {
+        "alarm": {"title": "Input frequency", "val": "Abnormal input frequency"},
+        "measured": {"title": "Input frequency", "val": "50.0", "unit": "Hz"},
+    }
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-SERIAL": {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"alias": "Test inverter", "devcode": 6489, "devaddr": 1},
+            "data": [points[name] for name in order],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+
+    entities = {entity.unique_id: entity for entity in added.call_args.args[0]}
+    assert entities["TEST-SERIAL_grid_frequency"].native_value == 50.0
+
+
+async def test_the_summary_s_output_power_is_not_published_as_pv_power() -> None:
+    """outpower is the inverter's AC output, measured by the plant summary.
+
+    A Maxsky EM11000 reported it at 1.878 kW at night, charging from the grid
+    with both strings at 0 W and the vendor's own load_active_power at 1.786
+    kW, so publishing it as "Total PV Power" told owners their array produced
+    in the dark (#75). The key, and with it the entity id and the recorded
+    history, are unchanged.
+    """
+    coordinator = MagicMock()
+    coordinator.data = {
+        "TEST-SERIAL": {
+            "collector": {"pn": "TEST-COLLECTOR"},
+            "device": {"alias": "Test inverter", "devcode": 2449, "devaddr": 1},
+            "data": [{"title": "outpower", "val": "1.878", "unit": "kW"}],
+        }
+    }
+    hass = MagicMock()
+    hass.data = {DOMAIN: {"entry": coordinator}}
+    added = MagicMock()
+
+    await async_setup_entry(hass, MagicMock(entry_id="entry"), added)
+
+    (entity,) = added.call_args.args[0]
+    assert entity.unique_id == "TEST-SERIAL_outpower"
+    assert entity.name == "Test inverter Inverter Output Power"
+    assert entity.native_value == 1.878
+    assert entity.native_unit_of_measurement == "kW"

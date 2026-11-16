@@ -73,14 +73,15 @@ def test_per_string_power_is_not_published(title: str) -> None:
 
 
 def test_total_pv_power_stays_in_watts() -> None:
-    """Without the mapping this title lands on a kilowatt sensor.
+    """This collector reports the array's total in watts, and says so.
 
-    ``outpower`` carries the friendly name "Total PV Power" and is defined in
-    kW, so the raw title resolves onto it by name and a 1552 W reading would be
-    published as 1552 kW.
+    The mapping dates from when ``outpower`` carried the friendly name "Total
+    PV Power" in kW, which this title resolved onto by name, publishing a
+    1552 W reading as 1552 kW. That name is gone (#75) and the title now
+    resolves to nothing without the mapping, so the mapping is what gives it
+    a sensor at all.
     """
-    assert resolve_sensor_key("Total PV power") == "outpower"
-    assert SENSOR_TYPES["outpower"]["unit"] == "kW"
+    assert resolve_sensor_key("Total PV power") is None
 
     assert _resolved_key("Total PV power") == "PV Power"
     assert SENSOR_TYPES["PV Power"]["unit"] == "W"

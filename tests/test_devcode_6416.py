@@ -107,3 +107,135 @@ async def test_reported_telemetry_through_api_and_sensor_platform(
 def test_observed_modes_and_documented_priority_options(title, raw, expected):
     result = apply_devcode_transformations(6416, {"title": title, "val": raw})
     assert result["val"] == expected
+
+
+# The titles the iSolar SMH-III 6.2 kW download reported as reaching no entity
+# (#81), which are the ones devcodes 2477 and 2341 already name. The four this
+# family leaves unmapped identify the hardware and carry no unit, so none of
+# them holds a Repairs card open.
+REPORTED_UNMAPPED = [
+    "AC Input Range",
+    "Auto Return To Default Display Screen",
+    "Battery Equalization",
+    "Battery Equalization Activated Immediately",
+    "Battery Equalization Interval",
+    "Battery Equalization Voltage",
+    "Battery Equalized Time",
+    "Battery Equalized Timeout",
+    "Battery Type",
+    "Beeps While Primary Source Interupt",
+    "Bulk Charging Voltage",
+    "Buzzer Alarm",
+    "Comeback Battery Mode Voltage Point Under (SBU Priority)",
+    "Comeback Utility Mode Voltage Point Under (SBU Priority)",
+    "Floating Charging Voltage",
+    "LCD Backlight",
+    "Low Battery Cut-off Voltage",
+    "Mains Status",
+    "Max Total Charge Current",
+    "Max Utility Charge Current",
+    "Nominal AC Current",
+    "Nominal AC Voltage",
+    "Nominal Output Current",
+    "Nominal Output Frequency",
+    "Nominal Output Voltage",
+    "Nonimal Output Active Power",
+    "Nonimal Output Apparent Power",
+    "Over Temperature Auto Restart",
+    "Overload Auto Restart",
+    "Power Saving Mode",
+    "Rated Battery Voltage",
+    "Record Fault Code",
+    "Transfer To Bypass @ Overload",
+]
+
+IDENTITY_TITLES = {
+    "Battery Piece",
+    "Machine Type",
+    "Main CPU Version",
+    "Secondary CPU Version",
+}
+
+
+def _resolved_key(title: str) -> str | None:
+    from custom_components.dessmonitor.support_report import resolved_key_for
+
+    return resolved_key_for(6416, {"title": title, "val": "1"})
+
+
+def test_every_reported_title_is_accounted_for() -> None:
+    """Each one reaches a sensor, is a declared setting, or names the hardware."""
+    from custom_components.dessmonitor.device_support import is_setting_reading
+
+    unaccounted = [
+        title
+        for title in REPORTED_UNMAPPED
+        if _resolved_key(title) is None
+        and not is_setting_reading(6416, title)
+        and title not in IDENTITY_TITLES
+    ]
+
+    assert unaccounted == []
+
+
+def test_the_two_pv_strings_stay_this_devcode_s_own() -> None:
+    """The family is single-string; this collector reports PV1, PV2 and a total."""
+    assert _resolved_key("PV1 Input Voltage") == "PV1 Voltage"
+    assert _resolved_key("PV1 Input Power") == "PV1 Charger Power"
+    assert _resolved_key("PV2 input voltage") == "PV2 Voltage"
+    assert _resolved_key("PV2 input power") == "PV2 Charger Power"
+    assert _resolved_key("PV total Power") == "PV Total Charger Power"
+
+
+def test_the_nameplate_ratings_become_their_own_sensors() -> None:
+    """A rating is a fact about the hardware, not a setting (#53)."""
+    assert _resolved_key("Nominal AC Voltage") == "grid rated voltage"
+    assert _resolved_key("Nominal AC Current") == "grid rated current"
+    assert _resolved_key("Nominal Output Voltage") == "rated voltage"
+    assert _resolved_key("Nominal Output Current") == "rated current"
+    assert _resolved_key("Nominal Output Frequency") == "rated frequency"
+    assert _resolved_key("Nonimal Output Active Power") == "rated power"
+    assert _resolved_key("Nonimal Output Apparent Power") == "rated apparent power"
+    assert _resolved_key("Rated Battery Voltage") == "battery rated voltage"
+    assert _resolved_key("Mains Status") == "Grid Status"
+
+
+def test_the_setpoints_are_settings_not_missing_readings() -> None:
+    """The reporter's 37 unmapped readings are mostly the inverter's setpoints."""
+    from custom_components.dessmonitor.device_support import is_setting_reading
+
+    for title in (
+        "Bulk Charging Voltage",
+        "Floating Charging Voltage",
+        "Low Battery Cut-off Voltage",
+        "Max Total Charge Current",
+        "Max Utility Charge Current",
+        "Comeback Battery Mode Voltage Point Under (SBU Priority)",
+        "Comeback Utility Mode Voltage Point Under (SBU Priority)",
+        "Battery Type",
+        "AC Input Range",
+        # Spelled one way as a reading and another as a control.
+        "Beeps While Primary Source Interupt",
+        "Transfer To Bypass @ Overload",
+        "Auto Return To Default Display Screen",
+    ):
+        assert is_setting_reading(6416, title), title
+
+
+def test_the_option_lists_are_left_as_the_collector_sends_them() -> None:
+    """Narrowing them to the battery class would move an existing select (#40)."""
+    from custom_components.dessmonitor.device_support.device_registry import (
+        filter_control_options,
+    )
+
+    options = {"25.0": "25.0V", "61.0": "61.0V"}
+
+    assert (
+        filter_control_options(
+            6416,
+            "bat_sp_bulk_charging_voltage",
+            options,
+            [{"title": "Rated Battery Voltage", "val": "48.0"}],
+        )
+        == options
+    )

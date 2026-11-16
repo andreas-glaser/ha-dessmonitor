@@ -1,17 +1,22 @@
 # Local and Hybrid Telemetry
 
 The integration can monitor inverter readings and change supported settings
-through DessMonitor or ShineMonitor. Local telemetry adds a read-only path from
-an Eybond-compatible Wi-Fi collector to Home Assistant. It does not require
-inverter firmware changes. Settings changes continue to use the cloud API.
+through DessMonitor or ShineMonitor. Local telemetry adds a direct path from an
+Eybond-compatible Wi-Fi collector to Home Assistant. It does not require
+inverter firmware changes.
+
+Local mode reads by default. It can also **write** inverter settings, on the
+two ASCII protocols and only when you turn it on; see
+[Writing settings over the local link](#writing-settings-over-the-local-link).
+Everything else continues to use the cloud API.
 
 ## Choose a mode
 
 | Setup mode | Monitoring | Inverter configuration |
 |---|---|---|
 | Cloud API | Cloud readings | Supported settings through the cloud |
-| Cloud API + preferred local telemetry | Local readings with cloud fallback | Supported settings through the cloud |
-| Local network only (read-only) | Local readings without a cloud account | No configuration controls |
+| Cloud API + preferred local telemetry | Local readings with cloud fallback | Through the cloud, or over the local link where the two can be paired |
+| Local network only | Local readings without a cloud account | Settings the inverter reports, once local control is turned on |
 
 Cloud modes use your selected DessMonitor or ShineMonitor account. Hybrid mode
 keeps the same config entry, entity IDs, and recorder history while fresh local
@@ -211,27 +216,40 @@ first.
   17- or 21-field `QPIGS` status response. Reports grid/output voltage and
   frequency, output power/load, battery voltage/current/charge estimate,
   temperature, PV voltage and charging current. The 21-field layout also
-  supplies PV charging power. Other layouts and protocol IDs fail closed;
-  energy totals and local controls are not implemented for PI30.
+  supplies PV charging power. Other layouts and protocol IDs fail closed.
+  Energy totals are not implemented for PI30; settings are, from `QPIRI`.
 - Standard SMG-family Modbus RTU telemetry, including cloud family devcode
   `2376`, with strict function-03, route, byte-count, and CRC validation.
 
-- Modbus protocol-number `4` (register `184`), verified with read-only samples
-  from an ANENJI ANJ-11KW-48V-W-P (cloud devcode `6544`). This layout uses
-  separate output, battery, grid, dual-PV and energy blocks; it must not use
-  the standard SMG `201..234` field positions. Detection selects the layout
+- Modbus protocol-numbers `3` and `4` (register `184`). Protocol 4 is verified
+  with read-only samples from an ANENJI ANJ-11KW-48V-W-P (cloud devcode
+  `6544`); protocol 3 with the registers a Maxsky EM11000 (cloud devcode
+  `6515`) answered beside the vendor app's own figures at the same minute
+  (#76). The two share one layout and differ in which registers exist:
+  protocol 3 has neither the totalled output block (`252..256`) nor a second
+  output (`384..388`), so its output current, power and load percentage come
+  from `347..350`, which both carry. Both use separate output, battery, grid,
+  dual-PV and energy blocks; neither may use the standard SMG `201..234` field
+  positions. Detection selects the layout
   per inverter address and retains it for subsequent polling. Local controls
   are not provided. Sustained polling and reconnects still require hardware
   verification after installing this change.
 - A layout code register `184` reports that is none of `0`, `1` or `4` has no
-  register map of its own. The standard SMG `201..234` map is tried on it and
-  the inverter is kept only if that block decodes: a complete block, a known
-  operating mode, every field inside its range and at least one non-zero
-  voltage. That is the same bar firmware with no layout register has to clear,
-  and it is what the layout code alone cannot tell you - an ANENJI 5KW that
-  polled correctly for releases reports a code outside the three above. A
-  layout whose registers mean something else fails the block and is refused,
-  and the failure names the code the collector reported.
+  register map of its own. Both maps are tried on it and the inverter is kept
+  only if one of them decodes: a complete block, a known operating mode, every
+  field inside its range and at least one plausible voltage. That is the same
+  bar firmware with no layout register has to clear, and it is what the layout
+  code alone cannot tell you - an ANENJI 5KW that polled correctly for
+  releases reports a code outside the three above. A layout whose registers
+  mean something else fails both and is refused, and the failure names the
+  code the collector reported.
+
+  Which map is tried first follows the vendor's own November 2024 document,
+  which covers protocol numbers `3`, `4`, `5` and `6`: a collector reporting
+  `5` or `6` reads the documented map first, anything else the standard
+  `201..234` map. The order is a preference and never a decision - the
+  hardware still has to decode - and the diagnostics download records the map
+  that read each inverter beside the layout code it reported.
 
 PI30 reads its 17 or 21-field `QPIGS` status, and on a dual-MPPT inverter it
 also reads `QPIGS2` for the second string's current, voltage and charging
@@ -252,9 +270,11 @@ Firmware metadata preserves all three CPU versions. Existing sensor identifiers
 are retained; installing a decoder correction does not require deleting entities
 or recorder history. Earlier incorrect readings are not rewritten.
 
-Device detection is bounded and uses read queries only. Unsupported firmware
-fails closed instead of guessing register layouts. Local write frame builders
-and local control entities are intentionally absent.
+Device detection is bounded and uses read queries only, whether or not local
+control is turned on. Unsupported firmware fails closed instead of guessing
+register layouts. The Modbus helpers still implement function 03 alone: no
+write frame builder for them exists, because no vendor register map for that
+inverter family has been obtained.
 
 An explicitly configured tunnel code `2452` tries the P17/PI18 driver first,
 including when the collector reports `258` or `1`. Code `258` is shared by
@@ -277,6 +297,159 @@ coverage. The [SP-2200 report in issue #39](https://github.com/andreas-glaser/ha
 confirms hardware discovery and polling through tunnel code `258` at address
 `1`, with 16 local readings and a matching cloud inverter serial. Long-running
 Home Assistant operation and recovery on that hardware still need testing.
+
+## Writing settings over the local link
+
+Local mode was read-only for its whole life, and the reason was never that the
+tunnel cannot carry a write. The reason was that there was no way to prove one
+had worked. Over the local link there is, and that is what this does.
+
+Two rules hold everywhere in it.
+
+1. **A setting is offered only if the inverter reports its own value.** The
+   rating reply the driver already reads during discovery - `QPIRI` on PI30,
+   `PIRI` on PI18 - is the evidence. A command no read-back confirms is not
+   offered at all, however well documented it is.
+2. **A write is not finished until the read-back agrees.** The command is sent,
+   the acknowledgement is required, the rating reply is read again, and the two
+   are compared. An acknowledged command that moved nothing is reported to you
+   as a failure instead of being shown as a success. A cloud write cannot do
+   this: the platform accepts it whether or not the inverter ever applies it.
+
+### Turning it on
+
+It is off by default, and an upgrade never turns it on. With it off nothing
+changes at all: no extra frame is sent to your collector and no entity is
+added.
+
+**Settings → Devices & services → DessMonitor → Configure**, then set
+**Settings control over the local link** to *Write settings over the local
+link*. Local-only entries have the choice on their options form; a cloud entry
+using preferred-local telemetry has it on the preferred-local form.
+
+Turn it on after local telemetry is working, not before. The settings read
+costs frames on a link that carries one transaction at a time, and a collector
+that is not yet polling cleanly is not a collector to start writing through.
+
+### What you get
+
+The settings the inverter reports appear as `number` and `select` entities in
+the device's configuration section, beside the sensors. A setpoint's slider
+range is the range the protocol documents for the battery class the inverter
+reported, not a guess: the published tables give every range for a 48 V unit,
+and the two they also give for 24 V and 12 V units are exactly that range
+halved and quartered, so the ratio is applied to the rest on that evidence. A
+rating that matches no class gets no voltage controls at all.
+
+A charging-current limit is offered as the list of values the inverter itself
+enumerates, because that list is per model. Until the inverter answers it,
+nothing is offered.
+
+| Setting | PI30 | PI18 |
+|---|---|---|
+| Output source priority | `POP` | `POP` |
+| Charger source priority | `PCP` | `PCP` |
+| Solar power priority | - | `PSP` |
+| Battery type | `PBT` | `PBT` |
+| Battery re-charge voltage | `PBCV` | `BUCD` |
+| Battery re-discharge voltage | `PBDV` | `BUCD` |
+| Battery cut-off voltage | `PSDV` | `PSDV` |
+| Battery bulk voltage | `PCVV` | `MCHGV` |
+| Battery float voltage | `PBFT` | `MCHGV` |
+| AC input range | `PGR` | - |
+| AC output rating frequency | `F` | - |
+| Max charging current | - | `MCHGC` |
+| Max AC charging current | `MUCHGC` | `MUCHGC` |
+
+Two PI18 commands carry two settings at once: `MCHGV` writes the bulk and
+float voltages together, and `BUCD` the re-charge and re-discharge voltages.
+Changing one therefore sends the other unchanged, and its value is taken from
+a rating reply read immediately before the write rather than from the cached
+one - so a value you changed on the inverter's own panel since the last poll
+is not written back to what it used to be.
+
+A setting changed on the panel or in the vendor app reaches Home Assistant on
+the settings refresh, which is deliberately much slower than the telemetry
+poll for the same reason.
+
+### Hybrid mode
+
+A cloud entry with preferred-local telemetry gains no new entities. Its
+existing cloud controls keep their identity, history and names, and local
+becomes the transport for a write where the two sides can be paired. Anything
+that is not paired takes the cloud path it always took, and any local failure
+falls back to the cloud: you asked for a setting to change, not for a
+particular transport.
+
+A cloud control and a local setting are the same register under two names, and
+nothing in either payload says they are the same one. The pairing is made only
+on evidence: a declaration in the devcode profile, or names that normalise to
+the same string. A device diagnostics download reports the candidates it saw,
+which is how a declaration gets added; see
+[ADDING_DEVCODES.md](ADDING_DEVCODES.md).
+
+### Diagnosing a write
+
+**Settings → Devices & services → DessMonitor → your inverter → Download
+diagnostics** carries a `local_control` section with the settings the inverter
+reported, the limits it says it accepts, the ones it did not report, the cloud
+controls each setting looks like, and the outcome of every local write this
+session attempted - including the command name, whether it was acknowledged
+and whether the read-back confirmed it.
+
+A write that fails tells you which of the three things happened:
+
+- *the inverter refused the command* - it answered NAK. The value is one the
+  firmware will not take in its current state; a float voltage above the bulk
+  voltage is the usual one, and that pairing is refused by name before it is
+  sent.
+- *the inverter acknowledged the command but still reports ...* - it accepted
+  the command and did not apply it. Nothing is cached, and the entity stays
+  where it was.
+- *the inverter did not acknowledge the command in time* - the reply did not
+  arrive inside the request timeout. The command is **not** sent again: the
+  collector may well have delivered it, so the setting is read instead to find
+  out, and a write that did land is reported as verified.
+
+### Deliberately not implemented
+
+Each of these is a command that exists and is left out, with what would settle
+it:
+
+- **PI30 total max charging current.** The `mpp-solar` command table says
+  `MNCHGC` writes the utility limit; the vendor-derived protocol page says it
+  writes the total. A wrong write changes a real charging limit. A reporter's
+  `QPIRI` before and after one `MNCHGC` write, or the vendor PDF, settles it.
+- **A PI30 utility charging limit above 99 A.** Both published tables give
+  that command a unit digit and two current digits. The notes say a limit
+  above 99 A is sent as three digits for the *total* charging current, and
+  nothing says it is for this one. Values above 99 A are left out of the
+  offered list.
+- **SMG / Modbus writes.** A Modbus write names a holding register by number,
+  and no vendor register map for this inverter family could be obtained. The
+  driver carries no write support at all rather than a plausible address.
+- **The inverter clock (`DAT`).** Sources disagree on whether PI30 takes 12 or
+  14 digits, and the PI18 read-back is a `T` query this integration does not
+  issue. A vendor protocol document for one model settles it.
+- **The `PE`/`PD` enable-and-disable flags** (buzzer, overload bypass,
+  restarts, backlight). These would be switch entities, which this integration
+  does not have, and their read-back is a `QFLAG`/`FLAG` query it does not
+  issue.
+
+### Safety
+
+- Writes are refused unless you turned them on for that entry.
+- Only the commands a setting declares can be framed at all, and only with a
+  numeric argument, so no other command can reach an inverter through this
+  transport.
+- A value outside the documented range is refused before a frame is built. The
+  inverter is not the first line of defence.
+- A field whose reported value the documented range cannot contain is treated
+  as evidence that the protocol's field order is not what this integration
+  expects, and the setting is not published - so a firmware that moves a field
+  leaves the control absent rather than writing to the wrong one.
+- Writes and polls share the collector's send lock, so frames never interleave,
+  and two writes cannot each build a command from state the other replaced.
 
 ## Contributor probe
 
@@ -364,6 +537,15 @@ then start it again; the configured integration reconnects automatically.
   it, and probing stops when that driver receives nothing at all, because
   silence says nothing about which protocol a collector speaks. A collector
   that answers is still probed in full, so new hardware is still identified.
+- **The collector drops the session a fraction of a second after its first
+  reply:** look for something else on the network steering it before blaming
+  its firmware. A collector takes a `set>server=` command from any host that
+  sends one, so a second tool that points it somewhere else - another bridge,
+  a monitoring script, a watchdog that reconnects it to the vendor cloud -
+  takes the session away as soon as this integration starts using it. On the
+  Eybond firmware 3.6.6.6 collector in #76 that looked exactly like a 300 ms
+  firmware timeout, and the collector held a continuous session once the other
+  tool was stopped. Only one local client can own a collector at a time.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
 - **Telemetry keeps switching between local and cloud:** read the log lines

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from typing import Any, cast
 
 from homeassistant.components.sensor import (
@@ -55,11 +56,23 @@ ENUM_SENSOR_TITLES = {
 # Readings whose value is free-form text rather than one of a fixed set of
 # states. Coercing these to a float would publish nothing at all, and giving
 # them the enum device class would reject any word not in an option list.
+#
+# A key that belongs here and is missing reads unknown for ever, which is how
+# the four per-subsystem status sensors below shipped: they were added to
+# SENSOR_TYPES as text sensors and never declared here, so every value the
+# vendor sent ("Battery Discharge", "Load On (Normal)") was offered to float()
+# and discarded (#81). ``test_sensor_value_types`` fails on the next one.
 TEXT_SENSOR_TITLES = {
     "Inverter Status",
     # Devcode 6489 names the charger's stage ("Stop charging") rather than
     # measuring it, and no report carries the vendor's full set of strings.
     "Charge Mode",
+    # The per-subsystem status texts a Voltronic-family collector sends
+    # alongside the operating mode.
+    "Battery Status",
+    "PV Status",
+    "Grid Status",
+    "Load Status",
 }
 
 
@@ -422,21 +435,21 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
         if not device_payload:
             return None
 
-        match = self._find_matching_data_point(device_payload)
-        if not match:
-            return None
-
-        data_point, devcode = match
-        value = self._extract_transformed_value(data_point, devcode)
-        value = self._coerce_native_value(value)
-        # Keep the entity in VA even when cloud and local readings use different units.
-        if (
-            self.native_unit_of_measurement == UNITS["APPARENT_POWER"]
-            and data_point.get("unit") == "kVA"
-            and isinstance(value, float)
-        ):
-            return value * 1000
-        return value
+        for data_point, devcode in self._matching_data_points(device_payload):
+            value = self._extract_transformed_value(data_point, devcode)
+            value = self._coerce_native_value(value)
+            if value is None:
+                continue
+            # Keep the entity in VA even when cloud and local readings use
+            # different units.
+            if (
+                self.native_unit_of_measurement == UNITS["APPARENT_POWER"]
+                and data_point.get("unit") == "kVA"
+                and isinstance(value, float)
+            ):
+                return value * 1000
+            return value
+        return None
 
     def _get_device_payload(self) -> dict[str, Any] | None:
         """Return cached device payload for this sensor."""
@@ -457,28 +470,38 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
 
         return device_info
 
-    def _find_matching_data_point(
+    def _matching_data_points(
         self, device_payload: dict[str, Any]
-    ) -> tuple[dict[str, Any], Any] | None:
-        """Locate the matching data point for the current sensor."""
+    ) -> Iterator[tuple[dict[str, Any], Any]]:
+        """Yield every data point this sensor reads, in the order sent.
+
+        A collector can send one title twice. Devcode 6489 repeats its whole
+        dashboard block in the detailed sections, and devcode 6513 reports
+        "Input frequency" once as the measured frequency and once as an alarm
+        word. Taking the first match alone left a sensor reading unknown for
+        as long as the unusable copy arrived first, so the caller walks these
+        until one yields a value (#82).
+        """
         device_data = device_payload.get("data", [])
         device_meta = device_payload.get("device", {})
         devcode = _normalize_devcode(device_meta.get("devcode"))
 
+        found = False
         for data_point in device_data:
             title = data_point.get("title")
             if (
                 isinstance(title, str)
                 and normalize_sensor_title(title) in self._source_title_keys
             ):
-                return data_point, devcode
+                found = True
+                yield data_point, devcode
 
-        _LOGGER.debug(
-            "No matching data point found for sensor %s (looking for: %s)",
-            self._attr_unique_id,
-            ", ".join(sorted(self._source_titles)),
-        )
-        return None
+        if not found:
+            _LOGGER.debug(
+                "No matching data point found for sensor %s (looking for: %s)",
+                self._attr_unique_id,
+                ", ".join(sorted(self._source_titles)),
+            )
 
     def _extract_transformed_value(
         self, data_point: dict[str, Any], devcode: Any

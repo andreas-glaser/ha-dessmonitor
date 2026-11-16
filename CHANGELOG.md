@@ -7,6 +7,411 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-17
+
+This stable release includes all changes since 2.8.0, including everything
+shipped in 3.0.0-rc.1, 3.0.0-rc.2 and 3.0.0-rc.3.
+
+**One sensor is renamed, and one sensor is replaced on local-only entries.
+Take a backup before upgrading and read the first two entries under Changed.**
+No entity id changes on a cloud or hybrid entry and no recorded history is
+lost, but a dashboard card or an automation that names the renamed sensor
+needs attention, and so does an energy dashboard that was given it as solar
+production.
+
+Measured against v2.8.0 by building every entity the integration publishes for
+every device in `docs/evidence/devcodes/`: 48 sensors added, none removed, one
+sensor renamed per device (the one under Changed below, which keeps its id,
+unit, device class and history), seven sensors that read unknown start
+carrying a value, and one option added to the operating-mode list. No unit,
+device class, state class or entity category changes anywhere. What a harness
+cannot reach is local mode, which is why this went out as three candidates
+first.
+
+The major version is for the renamed sensor and for local settings control,
+not for a change to the cloud path: a cloud-only entry that ignores both is
+upgraded by the 48 additions and the seven revived sensors alone.
+
+### Changed
+- **The sensor published as "Total PV Power" is renamed "Inverter Output
+  Power", because that is what the vendor sends.** It carries the plant
+  summary's `outpower`, and a Maxsky EM11000 reported that field at 1.878 kW
+  at night while charging from the grid, with both strings at 0 W and the
+  platform's own load figure at 1.786 kW (#75, thanks to @ballhtml for the
+  capture beside the local Modbus readings at the same minute). On many
+  accounts the vendor leaves the field at zero, which is how a sensor reading
+  "0 kW of solar" went unquestioned for so long. The entity keeps its id, its
+  unit and its recorded history; only its name and icon change. **If you added
+  this sensor to the energy dashboard as solar production, remove it there**:
+  it is an AC output measurement, and the array's own figure comes from your
+  inverter's PV readings.
+- In local mode on a dual-string PI30 inverter, the sum of the two strings is
+  published as "PV Total Charger Power" in watts, the name every other driver
+  uses for it, instead of being written into the cloud's `outpower` key in
+  kilowatts. A hybrid entry is unaffected, because the cloud still feeds that
+  entity. **A local-only entry loses its kW "Total PV Power" sensor and gains
+  a W "PV Total Charger Power" one**; the per-string sensors are unchanged.
+- Every control entity writes through one coordinator method, which is where a
+  transport is chosen: the cloud, the local link, or local-then-cloud. A cloud
+  write makes exactly the same request with the same arguments as before.
+- A hybrid entry gains no entities from local control. Its cloud controls keep
+  their identity and history, and local carries the write only for a control
+  that pairs with a local setting - by a devcode profile declaration or by
+  names that normalise alike - falling back to the cloud on any local failure.
+- A control entity's `control_transport` attribute now reports the transport
+  that actually carried the last write rather than always saying `cloud`.
+- `tools/analysis_coverage.py` pairs an unresolved reading with any control
+  field sitting at the same value, so the judgement a `SETTING_READINGS`
+  declaration rests on comes from the attached file rather than from a
+  reviewer's reading of the title. Both report shapes now carry the control
+  template, so a CLI analysis marks its settings too, and a diagnostics
+  download, which records each control's readback, is what makes the value
+  pairing possible (#80).
+
+### Added
+- Inverter settings can be written over the local link, on the PI30 and PI18
+  protocols, once **Settings control over the local link** is turned on for
+  that entry. It is off by default, and an upgrade changes nothing for an
+  installation that leaves it off: no extra frame reaches a collector and no
+  entity is added, renamed or removed anywhere. A setting is offered only
+  where the inverter reports its own value in its rating reply, and a write is
+  reported as done only after the command is acknowledged and that value has
+  moved - the proof a cloud write cannot give, because the platform accepts a
+  write whether or not the inverter applies it. A setter that times out is
+  never sent twice; the setting is read back to find out whether it landed.
+  Output and charger source priority, solar power priority, battery type, the
+  re-charge, re-discharge, cut-off, bulk and float voltages, the AC input
+  range, the output rating frequency and the charging-current limits are
+  covered, as each protocol documents them.
+- A local-only entry publishes those settings as `number` and `select`
+  entities, with the range the protocol documents for the battery class the
+  inverter reported, and with a charging-current limit offered as the list of
+  values the inverter itself enumerates.
+- A device diagnostics download carries a `local_control` section: the settings
+  the inverter reported, the limits it accepts, the ones it did not report, the
+  cloud controls each setting looks like, and the outcome of every local write
+  attempted in that session. The pairing report is the evidence a devcode
+  profile's new `local_control_settings` is declared from.
+- `docs/LOCAL_MODE.md` documents all of it, including the five commands that
+  are deliberately not implemented and what evidence would settle each one.
+  Modbus stays read-only: a register is addressed by number and no vendor map
+  for that inverter family could be obtained.
+- Support for devcode 697, a PV1800 MD PV18-5048 VHM 5 kW 48 V off-grid
+  inverter on ShineMonitor (#79, thanks to @clubdeportivotenisitas for the
+  diagnostics download). Eighteen of its twenty-one readings already resolved,
+  and the three that reached no entity now do: the lifetime PV counter, which
+  belongs on the energy dashboard, and the charger current and power, which the
+  collector measures on the battery.
+- Support for devcode 6513, a ZAMDON all-in-one off-grid inverter with a
+  lithium BMS link (#82, thanks to @hendrikt1479 for the diagnostics
+  download). Nineteen more of its readings reach sensors: the mains voltage
+  and frequency, the operating state, the unit's temperature, both PV strings,
+  the charge controller's own battery voltage, discharge current and current
+  limit, the array's lifetime yield, and the pack's six BMS readings including
+  its state of charge. Nothing an installation already publishes is renamed or
+  removed - the lifetime yield reaches PV Cumulative Energy rather than taking
+  over the Energy Total the summary endpoint feeds.
+- Devcode 6416 joins the Voltronic PI30 vocabulary devcodes 2477 and 2341
+  already share, so the thirty-seven readings an iSolar SMH-III 6.2 kW reported
+  as reaching no entity are accounted for (#81, thanks to @zaSeplos for the
+  diagnostics download). Eight nameplate ratings and the mains status become
+  sensors, and twenty-four setpoints the collector returns among the telemetry
+  are declared as the settings they are, so the Repairs card saying readings
+  are missing is withdrawn. Nothing an installation already publishes is
+  renamed or removed, and the collector's option lists are left as it sends
+  them.
+- Six nameplate ratings devcode 2449 reports beside its telemetry now reach
+  diagnostic sensors: the grid's rated voltage and current, the battery's rated
+  voltage, and the AC output's rated current, apparent power and active power
+  (#80, thanks to @HVSik for the diagnostics download from a SILA MAX 7200MH).
+- The twelve readings a devcode 518 grid-tie inverter reported as reaching no
+  entity become sensors (#83, thanks to @trentas for the diagnostics
+  download): the three phase voltages and phase currents, the DC bus and its
+  midpoint, and the third and fourth DC inputs. The collector labels every
+  channel whatever the hardware behind it has, so each one gets its own
+  phase- or string-numbered sensor rather than being mapped onto the plain
+  grid sensors - devcode 518 covers single- and three-phase inverters, and the
+  single-phase unit in the evidence measures on phase C. On hardware that has
+  fewer phases or strings the idle ones read 0.0, which is what the collector
+  sends, and they can be disabled. Nothing an installation already publishes
+  is renamed or removed, and the Repairs card saying readings are missing is
+  withdrawn.
+- Canonical names for a charger current and a charger power reported without
+  naming their source (#79), for a charge controller's battery voltage,
+  discharge current and charging limit and for a BMS state of health (#82),
+  and for a fourth string's voltage and current and the midpoint of a split DC
+  bus (#83), so a collector that sends any of them reaches a sensor.
+
+### Fixed
+- The Battery Status, PV Status, Grid Status and Load Status sensors publish
+  the words the collector sends. They were added as text sensors and never
+  declared as such, so each value - "Battery Discharge", "PV Undervoltage",
+  "Mains OK", "Load On (Normal)" - was offered to `float()` and discarded, and
+  all four read unknown from the day they appeared (#81, thanks to @zaSeplos
+  for reporting it on an iSolar SMH-III 6.2 kW). No entity is added, renamed
+  or removed: the four start carrying the state they were created for. A test
+  now fails on any sensor key that measures nothing and is read as a number.
+- The connectivity sensor reports a collector that has stopped reporting. It
+  counted the readings in the payload, and the cloud answers with the readings
+  it stored before a collector went quiet, so it read "connected" for the life
+  of an entry (#78, thanks to @ballhtml for naming the field, and for the
+  measurement that confirmed it: on a collector taken off the network the
+  platform's status flipped to offline eight minutes after the last frame, and
+  the sensor followed). It now reads the platform's own status for the device,
+  and turns off only on the vendor's offline code: a fault, a standby, a
+  warning or an error is a device the platform is still hearing from. An
+  account whose payload carries no status at all behaves exactly as before,
+  and the code and its meaning are published as attributes and recorded in the
+  diagnostics download.
+- Local mode reads an SMG/Modbus collector that reports register layout 3.
+  The vendor's own November 2024 document describes layouts 3, 4, 5 and 6 as
+  one family, differing in which registers exist rather than in what they
+  mean, and a layout-3 collector was measured answering them beside the vendor
+  app's own figures at the same minute (#76, thanks to @ballhtml for the
+  register dump). Layout 3 has no totalled output block, so its output power,
+  current and load percentage are read per phase at 347..350, and its second
+  string at 389..391.
+- A collector reporting a layout with no map of its own is now read with both
+  the legacy `201..234` map and the documented one, keeping whichever decodes
+  on the hardware. A layout that decodes today keeps the map it decodes with,
+  and an inverter neither map reads is still refused by name rather than
+  published with wrong values. The diagnostics download records the map that
+  read each inverter beside the layout code it reported.
+- A sensor whose collector sends its title twice now reads the copy that
+  carries a value. Devcode 6513 reports "Input frequency" once as an alarm
+  word and once as the measured frequency in the same payload, and the sensor
+  took whichever arrived first, so it read unknown for as long as the word led
+  (#82). Where both copies are numbers, as on devcode 6489, the first still
+  wins and nothing changes.
+- "Download diagnostics" no longer fails on a local-only entry. Both
+  diagnostics hooks reached for cloud-only bookkeeping without checking for it,
+  so the download raised on exactly the entries whose owners are asked for one
+  most often.
+- Devcode 2449 no longer reports its own setpoints as readings that reach no
+  entity, so the Repairs card saying fourteen readings are missing is withdrawn
+  and the devcode reports `supported`. Eight setpoints the collector returns
+  among the telemetry, plus the battery type and AC input range, are the values
+  of controls the account already publishes as number and select entities, and
+  the committed download shows each reading agreeing with its control. Two of
+  the eight are spelled as ratings - the output's rating voltage and rating
+  frequency - and are declared settings rather than rating sensors because both
+  move when the owner changes the setting (#80). No entity is renamed or
+  removed by this half.
+
+## [3.0.0-rc.3] - 2026-11-16
+
+Third candidate for 3.0.0. It carries the first candidate's local settings
+control and the second candidate's work unchanged, and adds the two entries
+below.
+
+**Nothing is renamed, moved or removed.** Against v3.0.0-rc.2, the entities
+the integration publishes from every committed devcode download differ by
+twelve added sensors on devcode 518 and nothing else: no entity id, name,
+unit, device class, state class or category changes anywhere. Four sensors
+that existed already start carrying a value instead of reading unknown.
+
+Owners of a Voltronic-family inverter - devcodes 2341, 2449, 2477 and 6416 -
+are the testers for the status sensors, and the devcode 518 owner for the new
+grid and string sensors.
+
+### Added
+- The twelve readings a devcode 518 grid-tie inverter reported as reaching no
+  entity become sensors (#83, thanks to @trentas for the diagnostics
+  download): the three phase voltages and phase currents, the DC bus and its
+  midpoint, and the third and fourth DC inputs. The collector labels every
+  channel whatever the hardware behind it has, so each one gets its own
+  phase- or string-numbered sensor rather than being mapped onto the plain
+  grid sensors - devcode 518 covers single- and three-phase inverters, and the
+  single-phase unit in the evidence measures on phase C. On hardware that has
+  fewer phases or strings the idle ones read 0.0, which is what the collector
+  sends, and they can be disabled. Nothing an installation already publishes
+  is renamed or removed, and the Repairs card saying readings are missing is
+  withdrawn.
+- Canonical names for a fourth string's voltage and current and for the
+  midpoint of a split DC bus, so a collector that sends them reaches a sensor
+  (#83).
+
+### Fixed
+- The Battery Status, PV Status, Grid Status and Load Status sensors publish
+  the words the collector sends. They were added as text sensors and never
+  declared as such, so each value - "Battery Discharge", "PV Undervoltage",
+  "Mains OK", "Load On (Normal)" - was offered to `float()` and discarded, and
+  all four read unknown from the day they appeared (#81, thanks to @zaSeplos
+  for reporting it on an iSolar SMH-III 6.2 kW). No entity is added, renamed
+  or removed: the four start carrying the state they were created for. A test
+  now fails on any sensor key that measures nothing and is read as a number.
+
+## [3.0.0-rc.2] - 2026-11-14
+
+Second candidate for 3.0.0. It carries the first candidate's local
+settings control unchanged and adds the work below.
+
+**One sensor is renamed and one local sensor is replaced.** Take a backup
+before upgrading, and read the two entries under Changed. No entity id
+changes and no recorded history is lost, but a dashboard card or an
+automation that names one of these sensors needs attention, and so does an
+energy dashboard that was given the renamed sensor as solar production.
+
+### Changed
+- **The sensor published as "Total PV Power" is renamed "Inverter Output
+  Power", because that is what the vendor sends.** It carries the plant
+  summary's `outpower`, and a Maxsky EM11000 reported that field at 1.878 kW
+  at night while charging from the grid, with both strings at 0 W and the
+  platform's own load figure at 1.786 kW (#75, thanks to @ballhtml for the
+  capture beside the local Modbus readings at the same minute). On many
+  accounts the vendor leaves the field at zero, which is how a sensor reading
+  "0 kW of solar" went unquestioned for so long. The entity keeps its id, its
+  unit and its recorded history; only its name and icon change. **If you added
+  this sensor to the energy dashboard as solar production, remove it there**:
+  it is an AC output measurement, and the array's own figure comes from your
+  inverter's PV readings.
+- In local mode on a dual-string PI30 inverter, the sum of the two strings is
+  published as "PV Total Charger Power" in watts, the name every other driver
+  uses for it, instead of being written into the cloud's `outpower` key in
+  kilowatts. A hybrid entry is unaffected, because the cloud still feeds that
+  entity. **A local-only entry loses its kW "Total PV Power" sensor and gains
+  a W "PV Total Charger Power" one**; the per-string sensors are unchanged.
+
+### Added
+- Support for devcode 6513, a ZAMDON all-in-one off-grid inverter with a
+  lithium BMS link (#82, thanks to @hendrikt1479 for the diagnostics
+  download). Nineteen more of its readings reach sensors: the mains voltage
+  and frequency, the operating state, the unit's temperature, both PV strings,
+  the charge controller's own battery voltage, discharge current and current
+  limit, the array's lifetime yield, and the pack's six BMS readings including
+  its state of charge. Nothing an installation already publishes is renamed or
+  removed - the lifetime yield reaches PV Cumulative Energy rather than taking
+  over the Energy Total the summary endpoint feeds.
+- Canonical names for a charge controller's battery voltage, discharge current
+  and charging limit, and for a BMS state of health, so a collector that sends
+  them reaches a sensor (#82).
+- Devcode 6416 joins the Voltronic PI30 vocabulary devcodes 2477 and 2341
+  already share, so the thirty-seven readings an iSolar SMH-III 6.2 kW reported
+  as reaching no entity are accounted for (#81, thanks to @zaSeplos for the
+  diagnostics download). Eight nameplate ratings and the mains status become
+  sensors, and twenty-four setpoints the collector returns among the telemetry
+  are declared as the settings they are, so the Repairs card saying readings
+  are missing is withdrawn. Nothing an installation already publishes is
+  renamed or removed, and the collector's option lists are left as it sends
+  them.
+
+### Fixed
+- The connectivity sensor reports a collector that has stopped reporting. It
+  counted the readings in the payload, and the cloud answers with the readings
+  it stored before a collector went quiet, so it read "connected" for the life
+  of an entry (#78, thanks to @ballhtml for naming the field). It now reads
+  the platform's own status for the device, and turns off only on the vendor's
+  offline code: a fault, a standby, a warning or an error is a device the
+  platform is still hearing from. An account whose payload carries no status
+  at all behaves exactly as before, and the code and its meaning are published
+  as attributes and recorded in the diagnostics download.
+- Local mode reads an SMG/Modbus collector that reports register layout 3.
+  The vendor's own November 2024 document describes layouts 3, 4, 5 and 6 as
+  one family, differing in which registers exist rather than in what they
+  mean, and a layout-3 collector was measured answering them beside the vendor
+  app's own figures at the same minute (#76, thanks to @ballhtml for the
+  register dump). Layout 3 has no totalled output block, so its output power,
+  current and load percentage are read per phase at 347..350, and its second
+  string at 389..391.
+- A collector reporting a layout with no map of its own is now read with both
+  the legacy `201..234` map and the documented one, keeping whichever decodes
+  on the hardware. A layout that decodes today keeps the map it decodes with,
+  and an inverter neither map reads is still refused by name rather than
+  published with wrong values. The diagnostics download records the map that
+  read each inverter beside the layout code it reported.
+- A sensor whose collector sends its title twice now reads the copy that
+  carries a value. Devcode 6513 reports "Input frequency" once as an alarm
+  word and once as the measured frequency in the same payload, and the sensor
+  took whichever arrived first, so it read unknown for as long as the word led
+  (#82). Where both copies are numbers, as on devcode 6489, the first still
+  wins and nothing changes.
+
+## [3.0.0-rc.1] - 2026-11-13
+
+First candidate for 3.0.0. Local mode can write inverter settings, and reports
+a change only once the inverter confirms it. It is off by default, and an upgrade changes nothing for
+an installation that leaves it off: no extra frame reaches a collector and no
+entity is added, renamed or removed anywhere.
+
+### Added
+- Inverter settings can be written over the local link, on the PI30 and PI18
+  protocols, once **Settings control over the local link** is turned on for
+  that entry. A setting is offered only where the inverter reports its own
+  value in its rating reply, and a write is reported as done only after the
+  command is acknowledged and that value has moved - the proof a cloud write
+  cannot give, because the platform accepts a write whether or not the inverter
+  applies it. A setter that times out is never sent twice; the setting is read
+  back to find out whether it landed. Output and charger source priority, solar
+  power priority, battery type, the re-charge, re-discharge, cut-off, bulk and
+  float voltages, the AC input range, the output rating frequency and the
+  charging-current limits are covered, as each protocol documents them.
+- A local-only entry publishes those settings as `number` and `select`
+  entities, with the range the protocol documents for the battery class the
+  inverter reported, and with a charging-current limit offered as the list of
+  values the inverter itself enumerates.
+- A device diagnostics download carries a `local_control` section: the settings
+  the inverter reported, the limits it accepts, the ones it did not report, the
+  cloud controls each setting looks like, and the outcome of every local write
+  attempted in that session. The pairing report is the evidence a devcode
+  profile's new `local_control_settings` is declared from.
+- `docs/LOCAL_MODE.md` documents all of it, including the five commands that
+  are deliberately not implemented and what evidence would settle each one.
+  Modbus stays read-only: a register is addressed by number and no vendor map
+  for that inverter family could be obtained.
+- Support for devcode 697, a PV1800 MD PV18-5048 VHM 5 kW 48 V off-grid
+  inverter on ShineMonitor (#79, thanks to @clubdeportivotenisitas for the
+  diagnostics download). Eighteen of its twenty-one readings already resolved,
+  and the three that reached no entity now do: the lifetime PV counter, which
+  belongs on the energy dashboard, and the charger current and power, which the
+  collector measures on the battery.
+- Canonical names for a charger current and a charger power reported without
+  naming their source, so a collector that sends them reaches a sensor (#79).
+- Six nameplate ratings devcode 2449 reports beside its telemetry now reach
+  diagnostic sensors: the grid's rated voltage and current, the battery's rated
+  voltage, and the AC output's rated current, apparent power and active power
+  (#80, thanks to @HVSik for the diagnostics download from a SILA MAX 7200MH).
+
+### Changed
+- Every control entity writes through one coordinator method, which is where a
+  transport is chosen: the cloud, the local link, or local-then-cloud. A cloud
+  write makes exactly the same request with the same arguments as before.
+- A hybrid entry gains no entities from local control. Its cloud controls keep
+  their identity and history, and local carries the write only for a control
+  that pairs with a local setting - by a devcode profile declaration or by
+  names that normalise alike - falling back to the cloud on any local failure.
+- A control entity's `control_transport` attribute now reports the transport
+  that actually carried the last write rather than always saying `cloud`.
+- `tools/analysis_coverage.py` pairs an unresolved reading with any control
+  field sitting at the same value, so the judgement a `SETTING_READINGS`
+  declaration rests on comes from the attached file rather than from a
+  reviewer's reading of the title. Both report shapes now carry the control
+  template, so a CLI analysis marks its settings too, and a diagnostics
+  download, which records each control's readback, is what makes the value
+  pairing possible (#80).
+
+### Fixed
+- "Download diagnostics" no longer fails on a local-only entry. Both
+  diagnostics hooks reached for cloud-only bookkeeping without checking for it,
+  so the download raised on exactly the entries whose owners are asked for one
+  most often.
+- Devcode 2449 no longer reports its own setpoints as readings that reach no
+  entity, so the Repairs card saying fourteen readings are missing is withdrawn
+  and the devcode reports `supported`. Eight setpoints the collector returns
+  among the telemetry, plus the battery type and AC input range, are the values
+  of controls the account already publishes as number and select entities, and
+  the committed download shows each reading agreeing with its control. Two of
+  the eight are spelled as ratings - the output's rating voltage and rating
+  frequency - and are declared settings rather than rating sensors because both
+  move when the owner changes the setting (#80). No entity is renamed or
+  removed by this half.
+- Support for devcode 697, a PV1800 MD PV18-5048 VHM 5 kW 48 V off-grid
+  inverter on ShineMonitor (#79, thanks to @clubdeportivotenisitas for the
+  diagnostics download). Eighteen of its twenty-one readings already resolved,
+  and the three that reached no entity now do: the lifetime PV counter, which
+  belongs on the energy dashboard, and the charger current and power, which the
+  collector measures on the battery.
+- Canonical names for a charger current and a charger power reported without
+  naming their source, so a collector that sends them reaches a sensor (#79).
 ## [2.8.0] - 2026-11-12
 
 This stable release includes all changes since 2.7.0, including everything
@@ -2364,7 +2769,11 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.8.0...v3.0.0
+[3.0.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0-rc.2...v3.0.0-rc.3
+[3.0.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0-rc.1...v3.0.0-rc.2
+[3.0.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.8.0...v3.0.0-rc.1
 [2.8.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.7.0...v2.8.0
 [2.8.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.8.0-rc.1...v2.8.0-rc.2
 [2.8.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.7.0...v2.8.0-rc.1

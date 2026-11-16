@@ -119,3 +119,4 @@ async def cloud_transport() -> (
     connector = MemoryConnector()
     async with aiohttp.ClientSession(connector=connector) as session:
         yield session, connector
+

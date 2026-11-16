@@ -102,10 +102,17 @@ async def test_existing_api_entry_can_enable_hybrid_in_place(
     assert hass.data[DOMAIN][entry.entry_id] is coordinator
 
 
-async def test_local_only_skips_api_and_write_platforms(
+async def test_local_only_skips_api_and_cloud_only_platforms(
     hass: HomeAssistant,
 ) -> None:
-    """Local-only never requires credentials or loads control entities."""
+    """Local-only never requires credentials, and loads no cloud-only platform.
+
+    The number and select platforms are forwarded, because a local entry
+    publishes the settings its inverter reports. They build nothing while
+    local control is turned off, and the list does not depend on the option,
+    so loading and unloading stay symmetric when it is changed. The platforms
+    that only a cloud control template can populate are still absent.
+    """
     entry = _entry(data={CONF_CONNECTION_TYPE: CONNECTION_TYPE_LOCAL})
 
     with (
@@ -119,16 +126,15 @@ async def test_local_only_skips_api_and_write_platforms(
 
     setup_local.assert_awaited_once_with(hass, entry)
     create_api.assert_not_called()
-    assert LOCAL_PLATFORMS == [Platform.SENSOR, Platform.BINARY_SENSOR]
+    assert LOCAL_PLATFORMS == [
+        Platform.SENSOR,
+        Platform.BINARY_SENSOR,
+        Platform.NUMBER,
+        Platform.SELECT,
+    ]
     assert all(
         platform not in LOCAL_PLATFORMS
-        for platform in (
-            Platform.BUTTON,
-            Platform.NUMBER,
-            Platform.SELECT,
-            Platform.TIME,
-            Platform.TEXT,
-        )
+        for platform in (Platform.BUTTON, Platform.TIME, Platform.TEXT)
     )
 
 

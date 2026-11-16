@@ -124,8 +124,16 @@ SETTING_READINGS: set[str] = {
 # stayed empty. The ids and the two value shapes are the account's own control
 # readback in ``docs/evidence/devcodes/analysis_2452.json``: the four schedule
 # boundaries read "00:00" and the clock reads "2026-11-04 21:29:38". The write
-# format is the string the API returned, unchanged, and is not confirmed on
-# this hardware by a write.
+# format is the string the API returned, unchanged.
+#
+# All five entities read their values on the reporter's hardware, and one
+# write has been attempted: Set Date Time, which the platform refused with
+# ``ERR_FAIL(1C 5E 00 01 00 02 01 04)`` (#53). The rejection is the platform's
+# and is reported as it came; nothing here retries it or rewrites the value.
+# What it does not say is whether the format is wrong or the inverter refused
+# the command, and no second account has written one of these fields. A write
+# that is accepted on another devcode's clock field, or one accepted here
+# after a different format, is what would tell the two apart.
 TEMPORAL_CONTROLS: dict[str, str] = {
     "cts_start_time_for_enable_ac_charger_working": "time",
     "cts_endin_time_for_enable_ac_charger_working": "time",

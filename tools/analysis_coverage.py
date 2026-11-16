@@ -14,10 +14,14 @@ Unresolved titles that do carry a unit are the ones worth mapping.
 
 A title marked "(control on this device)" is one the same report lists in the
 device's control template, so it is a setting rather than a dropped reading and
-belongs in the profile's ``SETTING_READINGS``. Pass ``--controls`` to also list
-the control fields whose names no reading title matches: a collector does not
-always spell the two the same, and devcode 2477 reports "Transfer To Bypass @
-Overload" as a reading against a "Transfer To Bypass Overload" control (#61).
+belongs in the profile's ``SETTING_READINGS``. A collector does not always spell
+the two the same, though - devcode 2477 reports "Transfer To Bypass @ Overload"
+as a reading against a "Transfer To Bypass Overload" control (#61) - so where a
+report carries the control readbacks, an unresolved title is also printed with
+any control sitting at the same value. That pairing is a candidate for the
+reviewer to confirm, not a declaration: two settings can share a value and a
+live reading can pass through one. Pass ``--controls`` to also list the control
+fields whose names no reading title matches.
 """
 
 from __future__ import annotations
@@ -25,7 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +67,8 @@ class Coverage:
     unresolved: list[str]
     units: dict[str, str]
     controls: tuple[str, ...] = ()
+    values: dict[str, str] = field(default_factory=dict)
+    control_values: dict[str, str] = field(default_factory=dict)
 
     @property
     def total(self) -> int:
@@ -110,6 +116,31 @@ class Coverage:
             if normalize_sensor_title(name) not in reported
         ]
 
+    def controls_reading_the_same_value(self, title: str) -> list[tuple[str, str]]:
+        """Controls whose readback equals this title's value, name and value.
+
+        This is the one judgement a new devcode needs and the one the names
+        cannot answer, because a collector does not spell a reading and its
+        control alike: devcode 2449 reports "Battery Re-Charge Voltage" 44.0 V
+        against a "Back to Grid Voltage" control reading 44.0, and declaring
+        that pair one setting is what withdrew a Repairs card naming fourteen
+        missing readings (#80).
+
+        A match is a candidate, not a conclusion. Two settings of one hardware
+        can sit at the same value, and a live reading can pass through a
+        setpoint's value - which is why devcode 2477's measured Output Voltage
+        must stay a sensor however much it looks like its own setting. The
+        reviewer confirms against the control's own name and option list.
+        """
+        value = self.values.get(title)
+        if value is None:
+            return []
+        return [
+            (name, readback)
+            for name, readback in sorted(self.control_values.items())
+            if _same_value(value, readback)
+        ]
+
     @property
     def declared_settings(self) -> list[str]:
         """Unresolved titles the profile declares to be settings, not readings."""
@@ -125,6 +156,18 @@ class Coverage:
         return [
             title for title in self.unresolved if is_absent_reading(self.devcode, title)
         ]
+
+
+def _same_value(reading: str, readback: str) -> bool:
+    """Whether a reading and a control readback report the same value.
+
+    Numeric where both parse, because the two sides are formatted differently
+    - 44.0 against 44 - and textual otherwise, where "Lib" is "Lib".
+    """
+    try:
+        return float(reading) == float(readback)
+    except (TypeError, ValueError):
+        return reading.strip().casefold() == readback.strip().casefold()
 
 
 def coverage(record: dict[str, Any]) -> Coverage:
@@ -151,6 +194,8 @@ def coverage(record: dict[str, Any]) -> Coverage:
         unresolved=unresolved,
         units=dict(record.get("units", {})),
         controls=tuple(record.get("controls") or ()),
+        values=dict(record.get("values") or {}),
+        control_values=dict(record.get("control_values") or {}),
     )
 
 
@@ -219,6 +264,13 @@ def _report_one(
         else:
             marker = ""
         print(f"    {title}{f'  [{unit}]' if unit else ''}{marker}")
+        if marker:
+            continue
+        for name, readback in result.controls_reading_the_same_value(title):
+            print(
+                f"        reads {readback}, as the control {name!r} does - "
+                "a setting to declare if the two are one"
+            )
 
     unmatched = result.control_names if show_controls else []
     if unmatched:

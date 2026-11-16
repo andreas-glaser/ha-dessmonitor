@@ -78,7 +78,7 @@ async def test_2376_title_cleanup_preserves_sensor_identities_and_values() -> No
         ("Output frequency", "60.15", "output_frequency"),
         ("energyToday", "12.5", "energytoday"),
         ("energyTotal", "1234.5", "energytotal"),
-        ("outpower", "441", "pv_power"),
+        ("outpower", "441", "output_active_power"),
         ("PV Charge Power", "440", "pv_charge_power"),
         ("AC charging power", "0", "ac_charging_power"),
         ("Battery Power", "12", "battery_power"),

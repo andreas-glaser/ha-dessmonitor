@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any, Final
 
 DOMAIN: Final = "dessmonitor"
-VERSION: Final = "2.8.0"
+VERSION: Final = "3.0.0"
 
 CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
@@ -22,6 +22,7 @@ CONF_LOCAL_POLL_INTERVAL: Final = "local_poll_interval"
 CONF_LOCAL_EXPECTED_PN: Final = "local_expected_product_number"
 CONF_LOCAL_REDIRECT_CONFIRMED: Final = "local_redirect_confirmed"
 CONF_LOCAL_MODE: Final = "local_mode"
+CONF_LOCAL_CONTROL: Final = "local_control"
 
 CONNECTION_TYPE_CLOUD: Final = "cloud"
 CONNECTION_TYPE_LOCAL: Final = "local"
@@ -33,6 +34,17 @@ LOCAL_MODE_OPTIONS: Final = {
     LOCAL_MODE_PREFER_LOCAL: "Prefer local, fall back to cloud",
 }
 
+# Writing settings over the local link is opt-in. Local mode was read-only for
+# its whole life, so an upgrade must not start accepting writes on an
+# installation whose owner chose it for telemetry alone.
+LOCAL_CONTROL_DISABLED: Final = "disabled"
+LOCAL_CONTROL_ENABLED: Final = "enabled"
+LOCAL_CONTROL_OPTIONS: Final = {
+    LOCAL_CONTROL_DISABLED: "Read settings only (default)",
+    LOCAL_CONTROL_ENABLED: "Write settings over the local link",
+}
+DEFAULT_LOCAL_CONTROL: Final = LOCAL_CONTROL_DISABLED
+
 DEFAULT_COMPANY_KEY: Final = "bnrl_frRFjEz8Mkn"
 DEFAULT_UPDATE_INTERVAL: Final = 300
 DEFAULT_LOCAL_TCP_PORT: Final = 8899
@@ -40,6 +52,11 @@ DEFAULT_LOCAL_UDP_PORT: Final = 58899
 DEFAULT_LOCAL_DEVICE_ADDRESS: Final = 0
 DEFAULT_LOCAL_DEVICE_CODE: Final = 0
 DEFAULT_LOCAL_POLL_INTERVAL: Final = 5
+# Poll cycles between two reads of the settings block. A setting changed on the
+# inverter's own panel or in the vendor app should appear without a reload,
+# and each read costs frames on a link that carries one transaction at a time,
+# so it is deliberately much slower than telemetry.
+LOCAL_SETTINGS_REFRESH_CYCLES: Final = 24
 LOCAL_POLL_INTERVAL_OPTIONS: Final = {
     2: "2 seconds (fast)",
     5: "5 seconds (recommended)",
@@ -311,6 +328,13 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:current-dc",
     },
+    "PV4 Current": {
+        "name": "PV4 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
     "grid current": {
         "name": "Grid Current",
         "unit": UNITS["CURRENT"],
@@ -525,6 +549,13 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:solar-power",
     },
+    "PV4 Voltage": {
+        "name": "PV4 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
     # The DC bus sits between the strings and the inverter bridge. Collectors
     # report it as one voltage, or split into its positive and negative rails.
     "Bus Voltage": {
@@ -543,6 +574,18 @@ SENSOR_TYPES = {
     },
     "Negative Bus Voltage": {
         "name": "Negative Bus Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:current-dc",
+    },
+    # A grid-tie inverter with a split bus reports the midpoint as well. It is
+    # kept as its own reading rather than mapped onto the positive rail above:
+    # the BYD-S-1P5K-2M in docs/evidence/devcodes/analysis_518.json reported
+    # 203.2 V against a 329.2 V bus, which is neither half of it nor a rail
+    # the vendor names, and a guess here would publish a wrong label (#83).
+    "Bus Half Voltage": {
+        "name": "Bus Half Voltage",
         "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
         "state_class": "measurement",
@@ -736,6 +779,25 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:transmission-tower",
     },
+    # The battery-side charging figures a PV1800-family collector reports as
+    # "Charger Current" and "Charger Power" (#79). The vendor does not say
+    # which source is charging and the hardware can use either, so the names
+    # stay as the collector sends them rather than claiming the array or the
+    # mains.
+    "Charger Current": {
+        "name": "Charger Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
+    "Charger Power": {
+        "name": "Charger Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+    },
     "Battery Charging Power": {
         "name": "Battery Charging Power",
         "unit": UNITS["POWER"],
@@ -845,12 +907,17 @@ SENSOR_TYPES = {
         "icon": "mdi:cog",
         "entity_category": "diagnostic",
     },
+    # The plant-summary endpoint's own figure for the inverter's AC output,
+    # which is not the array's production: a Maxsky EM11000 reported it at
+    # 1.878 kW at night, charging from the grid, with both strings at 0 W and
+    # the vendor's own load_active_power at 1.786 kW (#75). It was published
+    # as "Total PV Power" until 3.0.0.
     "outpower": {
-        "name": "Total PV Power",
+        "name": "Inverter Output Power",
         "unit": UNITS["POWER_KW"],
         "device_class": "power",
         "state_class": "measurement",
-        "icon": "mdi:solar-power",
+        "icon": "mdi:flash",
     },
     "energyToday": {
         "name": "Energy Today",
@@ -1244,6 +1311,39 @@ SENSOR_TYPES = {
         "name": "BMS CV Point Voltage",
         "unit": UNITS["VOLTAGE"],
         "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery-charging",
+        "entity_category": "diagnostic",
+    },
+    "BMS State of Health": {
+        "name": "BMS State of Health",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:battery-heart-variant",
+        "entity_category": "diagnostic",
+    },
+    # What the charge controller reports about itself, beside the inverter's
+    # own measurements. On an all-in-one the two can disagree, so neither is
+    # published as the other (#82).
+    "MPPT Battery Voltage": {
+        "name": "MPPT Battery Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+        "entity_category": "diagnostic",
+    },
+    "MPPT Discharge Current": {
+        "name": "MPPT Discharge Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "Controller Max Charging Current": {
+        "name": "Controller Max Charging Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
         "state_class": "measurement",
         "icon": "mdi:battery-charging",
         "entity_category": "diagnostic",

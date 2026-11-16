@@ -43,14 +43,39 @@ from tests.local.test_pi30 import STATUS, wire
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
+# One inverter's complete PI18/P17 rating reply, in the published field order.
+# Indices 6 and 7 carry the rated power and battery voltage the discovery
+# tests assert on, and are unchanged from when this fixture was shorter.
+FULL_PIRI = (
+    "2300,100,2300,500,100,5000,4500,480,440,520,460,560,540,2,010,060,0,1,2,"
+    "1,0,0,0,1,2"
+)
+
 
 class SimulatedCollector:
     """Minimal Eybond collector exposing one PI17, PI18 or PI30 inverter."""
 
-    def __init__(self, port: int, protocol_id: str = "17", address: int = 1) -> None:
+    def __init__(
+        self,
+        port: int,
+        protocol_id: str = "17",
+        address: int = 1,
+        *,
+        allow_writes: bool = False,
+    ) -> None:
         self.port = port
         self.protocol_id = protocol_id
         self.address = address
+        # Writes are refused unless a test asks for them, so every test of the
+        # read-only path proves local mode sent no setter.
+        self.allow_writes = allow_writes
+        self.ack_writes = True
+        self.apply_writes = True
+        # Inquiries this inverter answers with a refusal, as firmware without
+        # a command does.
+        self.refuse_commands: set[str] = set()
+        # The ratings this inverter reports, which a setter changes.
+        self.ratings = list(FULL_PIRI.split(","))
         self.commands: list[str] = []
         self.writer: asyncio.StreamWriter | None = None
         self.task: asyncio.Task[None] | None = None
@@ -120,6 +145,11 @@ class SimulatedCollector:
                             "QMOD": "B",
                         }.get(command, "NAK")
                         response = wire(b"(" + data.encode())
+                elif payload.startswith(b"^S"):
+                    assert self.allow_writes, "local mode sent a setter command"
+                    command = payload[5:-3].decode("ascii")
+                    self.commands.append(command)
+                    response = self._acknowledge(command)
                 else:
                     assert payload.startswith(
                         b"^P"
@@ -140,14 +170,16 @@ class SimulatedCollector:
             await writer.drain()
 
     def _response(self, address: int, command: str) -> bytes:
-        if address != self.address:
+        if address != self.address or command in self.refuse_commands:
             return build_p17_response("N")
         responses = {
             "PI": "17",
             "ID": "08ABCD12340000",
             "GMN": "04TEST0000",
             "VFW": "031.0000",
-            "PIRI": "2300,100,2300,500,100,5000,4500,480,440,420,460,560,540,2",
+            "PIRI": ",".join(self.ratings),
+            "MCHGCR": "010,020,030,040,050,060,070,080",
+            "MUCHGCR": "002,010,020,030",
             "GS": "2300,500,2295,499,1200,987,42,544,0,12,3,0,88,31,0,0,650,0,3210,0",
             "MOD": "03",
             "GS2": "0,0,0",
@@ -167,6 +199,41 @@ class SimulatedCollector:
             content = f"^D{len(data) + 3:03d}{data}".encode("ascii")
             return content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
         return build_p17_response("D", responses[command])
+
+
+    def _acknowledge(self, command: str) -> bytes:
+        """Apply one setter to the reported ratings and acknowledge it.
+
+        The field positions are taken from the published PI18 command table,
+        not from the integration's own setting table, so a wrong index on
+        either side surfaces as a failed verification rather than passing.
+        """
+        if self.ack_writes and self.apply_writes:
+            if command.startswith("MCHGV"):
+                self.ratings[11], self.ratings[12] = command[5:].split(",")
+            elif command.startswith("BUCD"):
+                self.ratings[8], self.ratings[9] = command[4:].split(",")
+            elif command.startswith("PSDV"):
+                self.ratings[10] = command[4:]
+            elif command.startswith("MUCHGC"):
+                self.ratings[14] = command.split(",")[1]
+            elif command.startswith("MCHGC"):
+                self.ratings[15] = command.split(",")[1]
+            elif command.startswith("PCP"):
+                self.ratings[18] = command.split(",")[1]
+            elif command.startswith("POP"):
+                self.ratings[17] = command[3:]
+            elif command.startswith("PSP"):
+                self.ratings[23] = command[3:]
+            elif command.startswith("PBT"):
+                self.ratings[13] = command[3:]
+            else:
+                raise AssertionError(f"unexpected setter {command}")
+        marker = "1" if self.ack_writes else "0"
+        if self.protocol_id == "18":
+            content = f"^{marker}".encode("ascii")
+            return content + crc_hqx(content, 0).to_bytes(2, "big") + b"\r"
+        return build_p17_response("A" if self.ack_writes else "N")
 
 
 class SimulatedSmgCollector:

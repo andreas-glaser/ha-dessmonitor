@@ -117,7 +117,7 @@ nothing else, dropping 58 of its 76 titles until two reporters noticed eight
 months apart (#35, then #56).
 
 `test_every_registered_devcode_is_guarded_by_committed_evidence` fails on a new
-devcode with no evidence file. It carries a list of the ten devcodes registered
+devcode with no evidence file. It carries a list of the devcodes registered
 before this was a requirement, and that list only shrinks: a second test fails
 if an entry on it has since gained evidence. If you own one of those devices, a
 diagnostics download is all it takes to clear an entry.
@@ -547,13 +547,87 @@ It prints every raw title with the canonical key it resolves to, then the
 unresolved ones, marking those the collector labelled with a unit, those a
 profile declares a setting, and those the same report lists in the device's
 control template - a title marked `(control on this device)` is a setting to
-declare rather than a reading being dropped. Pass `--controls` to also list the
-control fields whose names no reading title matches, which is where a collector
-that spells a reading and its control differently shows up. A unit means the title is a reading and should
+declare rather than a reading being dropped.
+
+Where the report carries the control readbacks, which a diagnostics download
+does and a CLI analysis does not, an unresolved title is also printed with any
+control sitting at the same value:
+
+```
+    Battery Re-Charge Voltage  [V]
+        reads 44, as the control 'Back to Grid Voltage' does - a setting to
+        declare if the two are one
+```
+
+That is the pairing the names cannot make, because a collector does not spell a
+reading and its control alike. It is a candidate and not a declaration: two
+settings of one inverter can sit at the same value, and a live reading can pass
+through a setpoint's, so confirm it against the control's own name and option
+list before declaring it. Pass `--controls` to also list the control fields
+whose names no reading title matches. A unit means the title is a reading and should
 become a sensor, unless it is a setting; unresolved titles without one
 are settings, identity fields and timestamps, which reach Home Assistant through
 the number, select and button platforms instead. Work through the marked titles
 until none remain, then re-run the report.
+
+## 6.1 Declare a local control pairing
+
+Only for a devcode whose owner runs local mode with control enabled. Skip it
+otherwise; nothing here is required for cloud support.
+
+A cloud control and a local setting are the same register under two names. The
+cloud names it with a platform field id such as `bse_bulk_charging_voltage`,
+and the local side names it with the command that writes it. Nothing connects
+the two but evidence, so the hybrid coordinator pairs them itself only where
+the two names normalise to the same string, and otherwise writes through the
+cloud as it always did.
+
+A device diagnostics download from such an installation carries the evidence
+for the rest, under `local_control.cloud_pairing`:
+
+```json
+{
+  "setting": "battery_bulk_voltage",
+  "name": "Battery Bulk Voltage",
+  "command": "MCHGV",
+  "reported": "56.0",
+  "paired_by_name": null,
+  "candidates": [
+    {"control": "Bulk Charging Voltage", "id": "bse_bulk_charging_voltage",
+     "value": "56.0", "name_matches": false}
+  ]
+}
+```
+
+`paired_by_name` is `null`, so this control writes through the cloud today. The
+candidate is reported because the two figures agree, which is a candidate and
+not a declaration: a second control at the same voltage would be reported the
+same way. Confirm it the way any pairing is confirmed - the two sides move
+together - and then declare it in the profile:
+
+```python
+# docs/evidence/devcodes/analysis_2452.json reports the cloud control
+# "Bulk Charging Voltage" at 56.0 V beside the inverter's own PIRI bulk
+# voltage of 56.0 V, under names that are not spelled alike.
+LOCAL_CONTROL_SETTINGS: dict[str, str] = {
+    "bse_bulk_charging_voltage": "battery_bulk_voltage",
+}
+```
+
+and wire it into `DEVCODE_CONFIG` as `"local_control_settings":
+LOCAL_CONTROL_SETTINGS`.
+
+A declaration decides which transport a write takes, so a wrong entry writes
+the wrong setting. The local write is still verified against the setting it
+names, so a mistake is reported rather than cached - but the inverter will
+already have been changed. Declare only from a download, never from a name
+that merely looks right. Selection codes are never paired by their value:
+every one of them reads 0, 1 or 2, so agreement proves nothing.
+
+The setting keys are the ones declared in
+`custom_components/dessmonitor/local/pi30_settings.py` and
+`local/p17_settings.py`, and `docs/LOCAL_MODE.md` lists them with the command
+that writes each.
 
 ## 7. Commit the analysis as evidence
 

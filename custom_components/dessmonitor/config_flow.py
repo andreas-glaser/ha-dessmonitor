@@ -28,6 +28,7 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_LOCAL_COLLECTOR_IP,
     CONF_LOCAL_COLLECTOR_IPS,
+    CONF_LOCAL_CONTROL,
     CONF_LOCAL_DEVICE_ADDRESS,
     CONF_LOCAL_DEVICE_CODE,
     CONF_LOCAL_EXPECTED_PN,
@@ -45,6 +46,7 @@ from .const import (
     CONNECTION_TYPE_LOCAL,
     DEFAULT_API_PROFILE,
     DEFAULT_COMPANY_KEY,
+    DEFAULT_LOCAL_CONTROL,
     DEFAULT_LOCAL_DEVICE_ADDRESS,
     DEFAULT_LOCAL_DEVICE_CODE,
     DEFAULT_LOCAL_POLL_INTERVAL,
@@ -52,6 +54,7 @@ from .const import (
     DEFAULT_LOCAL_UDP_PORT,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    LOCAL_CONTROL_OPTIONS,
     LOCAL_MODE_DISABLED,
     LOCAL_MODE_OPTIONS,
     LOCAL_MODE_PREFER_LOCAL,
@@ -288,6 +291,12 @@ def _normalize_hybrid_local_input(
         CONF_LOCAL_DEVICE_CODE: current.get(
             CONF_LOCAL_DEVICE_CODE, DEFAULT_LOCAL_DEVICE_CODE
         ),
+        CONF_LOCAL_CONTROL: _normalized_control(
+            user_input.get(
+                CONF_LOCAL_CONTROL,
+                current.get(CONF_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL),
+            )
+        ),
         CONF_LOCAL_POLL_INTERVAL: _normalized_choice(
             user_input.get(
                 CONF_LOCAL_POLL_INTERVAL,
@@ -301,6 +310,11 @@ def _normalize_hybrid_local_input(
     return options, errors
 
 
+def _normalized_control(value: Any) -> str:
+    """Keep an unrecognised stored choice read-only rather than guessing."""
+    return str(value) if str(value) in LOCAL_CONTROL_OPTIONS else DEFAULT_LOCAL_CONTROL
+
+
 def _hybrid_local_schema(
     *,
     default_listen_ip: str,
@@ -308,6 +322,7 @@ def _hybrid_local_schema(
     local_poll_interval: int = DEFAULT_LOCAL_POLL_INTERVAL,
     redirect_confirmed: bool | None = None,
     device_address: int = DEFAULT_LOCAL_DEVICE_ADDRESS,
+    local_control: str = DEFAULT_LOCAL_CONTROL,
 ) -> vol.Schema:
     """Build the same minimal local-first form for setup and options."""
     if isinstance(configured_collectors, list):
@@ -330,6 +345,10 @@ def _hybrid_local_schema(
                 CONF_LOCAL_DEVICE_ADDRESS,
                 default=device_address,
             ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
+            vol.Optional(
+                CONF_LOCAL_CONTROL,
+                default=local_control,
+            ): vol.In(LOCAL_CONTROL_OPTIONS),
             vol.Required(
                 CONF_LOCAL_REDIRECT_CONFIRMED,
                 default=(
@@ -823,6 +842,12 @@ class OptionsFlow(config_entries.OptionsFlow):
                         LOCAL_POLL_INTERVAL_OPTIONS,
                         DEFAULT_LOCAL_POLL_INTERVAL,
                     ),
+                    CONF_LOCAL_CONTROL: _normalized_control(
+                        user_input.get(
+                            CONF_LOCAL_CONTROL,
+                            existing.get(CONF_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL),
+                        )
+                    ),
                 },
             )
         current = self._config_entry.options.get(
@@ -847,6 +872,12 @@ class OptionsFlow(config_entries.OptionsFlow):
                             CONF_LOCAL_DEVICE_ADDRESS, DEFAULT_LOCAL_DEVICE_ADDRESS
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
+                    vol.Optional(
+                        CONF_LOCAL_CONTROL,
+                        default=_normalized_control(
+                            existing.get(CONF_LOCAL_CONTROL, DEFAULT_LOCAL_CONTROL)
+                        ),
+                    ): vol.In(LOCAL_CONTROL_OPTIONS),
                 }
             ),
         )

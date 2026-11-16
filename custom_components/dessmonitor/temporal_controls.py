@@ -215,18 +215,12 @@ class DessMonitorTemporalControl(CoordinatorEntity[DessMonitorDataUpdateCoordina
             raise ValueError("Device route is unavailable")
         if temporal_control_kind(device.get("devcode"), self._field_id) is None:
             raise ValueError("Unsupported temporal control route")
-        await self.coordinator.api.set_device_control_value(
-            pn=collector["pn"],
-            devcode=device["devcode"],
-            devaddr=device["devaddr"],
-            sn=self._serial,
-            param_id=self._field_id,
-            value=raw,
+        await self.coordinator.async_set_control_value(
+            self._serial, self._field_id, raw, control_name=self._field_id
         )
         self._last_cloud_sample = cloud_control_snapshot(
             self.coordinator, self._serial
         )[0]
-        self.coordinator.record_control_write(self._serial, self._field_id, raw)
         self._last_raw_value = raw
         self._attr_native_value = value
         self.async_write_ha_state()

@@ -2,7 +2,28 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
+
+TRANSPORT_CLOUD = "cloud"
+TRANSPORT_LOCAL = "local"
+
+
+@dataclass(frozen=True, slots=True)
+class ControlWriteResult:
+    """What one accepted control write is known to have achieved.
+
+    ``verified`` is the difference between the two transports. The cloud
+    accepts a write and says nothing about whether the inverter applied it, so
+    a cloud write reports ``False``. A local write is only reported at all once
+    the inverter has acknowledged the command and reported the new value, so it
+    reports ``True``.
+    """
+
+    value: str
+    transport: str
+    verified: bool
+
 
 _MISSING = {
     "",

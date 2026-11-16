@@ -14,7 +14,8 @@ Monitor your solar inverter and configure supported settings in Home Assistant t
 - Track solar production, battery status, grid use, and inverter health across multiple devices.
 - Adjust supported charging priorities, battery settings, and current limits from dashboards and automations.
 - Discover devices on your cloud account and set up the integration through the UI.
-- Read telemetry **locally** off the collector on your own network, every few seconds, with no cloud round trip. Local monitoring is read-only and available on compatible hardware; hybrid mode keeps the cloud as a fallback and for settings.
+- Read telemetry **locally** off the collector on your own network, every few seconds, with no cloud round trip. Available on compatible hardware; hybrid mode keeps the cloud as a fallback.
+- Change inverter settings **over the local link**, where the inverter reports the setting and confirms the change. Off by default, and on the two ASCII protocols only; see [writing settings over the local link](docs/LOCAL_MODE.md#writing-settings-over-the-local-link).
 
 ## Contents
 
@@ -54,9 +55,9 @@ SmartClient for Solar is listed as **SmartClient** on Google Play.
 
 ## Supported Inverters
 
-The device profiles include known models from ANENJI, Axpert, BYD, EASUN, MUST, Novopal, PowMr, SRNE, and WKS.
+The device profiles include known models from ANENJI, Axpert, BYD, EASUN, MUST, Novopal, PowMr, PV1800, SILA, SRNE, and WKS.
 
-**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, ANENJI ANJ-11KW-48V-W-P, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, EASUN hybrid (devcode 2341), JSD Solar 5.5 kW 48 V hybrid, Maxsky EM11000 11kW 48V, Aninerel 6.2KW 48V, Aninerel 4.2KW 24V, MUST PH19-6048 EXP, Novopal NP35PEU24, Panther Solar PES-3000TL-SS, PowMr MPS-V plus 3.5 kW, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, SPI-12K-H3 (ASF48120S260-H) 12 kW three-phase, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V.
+**Known models:** ANENJI 5KW 48V Hybrid Solar Inverter, ANENJI ANJ-6200W-48PL-WIFI, ANENJI ANJ-HHS-11KW-48V, ANENJI ANJ-HHS-11KW-48V-WIFI, ANENJI ANJ-11KW-48V-W-P, Axpert MKS IV 5600VA, BYD BYD-S-1P5K-2M, EASUN 6.2KW Hybrid Solar Inverter, EASUN 8KWA, EASUN 11KWA, EASUN hybrid (devcode 2341), iSolar SMH-III 6.2 kW, JSD Solar 5.5 kW 48 V hybrid, Maxsky EM11000 11kW 48V, Aninerel 6.2KW 48V, Aninerel 4.2KW 24V, MUST PH19-6048 EXP, Novopal NP35PEU24, Panther Solar PES-3000TL-SS, PowMr MPS-V plus 3.5 kW, PowMr POW-HVM6.2K-48V-LIP, PowMr POW-HVM6.2M-48V-N, PV1800 MD PV18-5048 VHM 5 kW 48 V, SILA MAX 7200MH, SPI-12K-H3 (ASF48120S260-H) 12 kW three-phase, SRNE SR-EOV24-3.5K-5KWh, WKS Evo MAX II 10kVA 48V, ZAMDON all-in-one off-grid.
 
 Devcodes 632, 684 and 4743 cover grid-connected PV inverters, which report strings, AC export and energy counters but no battery, charger or priority settings. Other profiles cover rebranded Axpert PI18 inverters and units whose exact model is not yet recorded. See the [device support reference](custom_components/dessmonitor/device_support/README.md#currently-supported-collectors) for the full devcode list and known pairings.
 
@@ -91,8 +92,8 @@ Go to **Settings > Devices & Services > Add Integration**, search for **DessMoni
 | Mode | Monitoring | Inverter settings |
 |---|---|---|
 | Cloud API | Reads from the selected platform | Supported controls through the cloud |
-| Cloud API + preferred local telemetry | Prefers local readings, with cloud fallback | Supported controls through the cloud |
-| Local network only (read-only) | Reads directly from compatible collectors; no account required | Not available |
+| Cloud API + preferred local telemetry | Prefers local readings, with cloud fallback | Through the cloud, or over the local link where the two can be paired |
+| Local network only | Reads directly from compatible collectors; no account required | The settings the inverter reports, once local control is turned on |
 
 ### Cloud account
 
@@ -140,7 +141,9 @@ In cloud and hybrid modes, supported settings appear as **select**, **number**, 
 | Time | Daily schedule boundaries such as secondary charging and output priority start and end times, in the inverter's own local time |
 | Text | The inverter's wall clock, as a `YYYY-MM-DD HH:MM:SS` calendar string, with no timezone conversion |
 
-Available controls, options, and numeric ranges come from the device. Control discovery runs in the background, so settings may appear after the first sensor readings. Changes always use the cloud API, including in hybrid mode; local-only mode provides sensors without configuration controls.
+Available controls, options, and numeric ranges come from the device. Control discovery runs in the background, so settings may appear after the first sensor readings.
+
+Changes go through the cloud API by default. A cloud write is accepted by the platform whether or not the inverter applies it, which the platform never reports. Local control is the opposite: the inverter acknowledges the command and then reports the new value, so a change is only shown as done once it is confirmed. It is off by default, covers the settings the inverter reports on the PI30 and PI18 protocols, and adds no entities to a hybrid installation - there it only carries the write for a control that can be paired with a local setting, falling back to the cloud. See [writing settings over the local link](docs/LOCAL_MODE.md#writing-settings-over-the-local-link).
 
 ## Screenshots
 

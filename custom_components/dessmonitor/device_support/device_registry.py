@@ -77,6 +77,10 @@ def _load_device_configurations() -> None:
 
         _register_devcode(6544, config_6544)
 
+        from .devcode_6513 import DEVCODE_CONFIG as config_6513
+
+        _register_devcode(6513, config_6513)
+
         from .devcode_6514 import DEVCODE_CONFIG as config_6514
 
         _register_devcode(6514, config_6514)
@@ -120,6 +124,10 @@ def _load_device_configurations() -> None:
         from .devcode_684 import DEVCODE_CONFIG as config_684
 
         _register_devcode(684, config_684)
+
+        from .devcode_697 import DEVCODE_CONFIG as config_697
+
+        _register_devcode(697, config_697)
 
         from .devcode_4743 import DEVCODE_CONFIG as config_4743
 
@@ -262,6 +270,34 @@ def control_value_reading(devcode: Any, field_id: Any) -> str | None:
         return None
     title = declared.get(field_id)
     return title if isinstance(title, str) and title.strip() else None
+
+
+def local_control_setting(devcode: Any, field_id: Any) -> str | None:
+    """Return the local setting a cloud control writes, if a profile declares it.
+
+    A cloud control is identified by a platform field id such as
+    ``bat_charging_float_voltage``, and a local setting by the key of the
+    command that writes it. Nothing connects the two but evidence: a
+    diagnostics download that shows the cloud control and the inverter's own
+    rating reply carrying the same value under names that are not spelled
+    alike. Where the two names do normalise to the same thing, the hybrid
+    coordinator pairs them itself; this is for the rest, and a declaration here
+    always wins.
+
+    Pairing is what decides which transport a write takes, so a wrong entry
+    would write the wrong setting. The local write is still verified against
+    the setting it names, so a mistake is reported rather than cached, but the
+    inverter would already have been changed - declare only from a download.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config or not isinstance(field_id, str):
+        return None
+    declared = config.get("local_control_settings")
+    if not isinstance(declared, dict):
+        return None
+    setting = declared.get(field_id)
+    return setting if isinstance(setting, str) and setting.strip() else None
 
 
 def filter_control_options(
