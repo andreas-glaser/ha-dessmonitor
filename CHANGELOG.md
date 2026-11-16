@@ -71,6 +71,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   took whichever arrived first, so it read unknown for as long as the word led
   (#82). Where both copies are numbers, as on devcode 6489, the first still
   wins and nothing changes.
+- The Battery Status, PV Status, Grid Status and Load Status sensors publish
+  the words the collector sends. They were added as text sensors and never
+  declared as such, so each value - "Battery Discharge", "PV Undervoltage",
+  "Mains OK", "Load On (Normal)" - was offered to `float()` and discarded, and
+  all four read unknown from the day they appeared (#81, thanks to @zaSeplos
+  for reporting it on an iSolar SMH-III 6.2 kW). No entity is added, renamed
+  or removed: the four start carrying the state they were created for. A test
+  now fails on any sensor key that measures nothing and is read as a number.
 
 ### Added
 - Devcode 6416 joins the Voltronic PI30 vocabulary devcodes 2477 and 2341
