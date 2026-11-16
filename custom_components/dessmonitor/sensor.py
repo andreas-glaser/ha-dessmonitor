@@ -56,11 +56,23 @@ ENUM_SENSOR_TITLES = {
 # Readings whose value is free-form text rather than one of a fixed set of
 # states. Coercing these to a float would publish nothing at all, and giving
 # them the enum device class would reject any word not in an option list.
+#
+# A key that belongs here and is missing reads unknown for ever, which is how
+# the four per-subsystem status sensors below shipped: they were added to
+# SENSOR_TYPES as text sensors and never declared here, so every value the
+# vendor sent ("Battery Discharge", "Load On (Normal)") was offered to float()
+# and discarded (#81). ``test_sensor_value_types`` fails on the next one.
 TEXT_SENSOR_TITLES = {
     "Inverter Status",
     # Devcode 6489 names the charger's stage ("Stop charging") rather than
     # measuring it, and no report carries the vendor's full set of strings.
     "Charge Mode",
+    # The per-subsystem status texts a Voltronic-family collector sends
+    # alongside the operating mode.
+    "Battery Status",
+    "PV Status",
+    "Grid Status",
+    "Load Status",
 }
 
 

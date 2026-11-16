@@ -1,7 +1,8 @@
 {
   "_comment": [
     "Devcode 518 field titles and units supplied by the contributor, with synthetic readings.",
-    "The response envelope follows the documented queryDeviceLastData list format."
+    "The response envelope follows the documented queryDeviceLastData list format.",
+    "The per-phase, DC-input and DC-bus titles are the ones the BYD-S-1P5K-2M in docs/evidence/devcodes/analysis_518.json reports, with that unit's own samples: a single-phase two-string inverter measures on phase C and leaves A, B and inputs 3 and 4 idle (#83)."
   ],
   "err": 0,
   "desc": "ERR_NONE",
@@ -70,6 +71,66 @@
       "title": "grid voltage",
       "unit": "V",
       "val": "223.6"
+    },
+    {
+      "title": "DC voltage 3",
+      "unit": "V",
+      "val": "0.0"
+    },
+    {
+      "title": "DC current 3",
+      "unit": "A",
+      "val": "0.1"
+    },
+    {
+      "title": "DC voltage 4",
+      "unit": "V",
+      "val": "0.0"
+    },
+    {
+      "title": "DC current 4",
+      "unit": "A",
+      "val": "0.1"
+    },
+    {
+      "title": "DC bus voltage",
+      "unit": "V",
+      "val": "329.2"
+    },
+    {
+      "title": "DC bus half voltage",
+      "unit": "V",
+      "val": "203.2"
+    },
+    {
+      "title": "AB voltage/A phase voltage",
+      "unit": "V",
+      "val": "0.0"
+    },
+    {
+      "title": "BC voltage/B phase voltage",
+      "unit": "V",
+      "val": "0.0"
+    },
+    {
+      "title": "CA voltage/C phase voltage",
+      "unit": "V",
+      "val": "210.5"
+    },
+    {
+      "title": "A phase current",
+      "unit": "A",
+      "val": "0.0"
+    },
+    {
+      "title": "B phase current",
+      "unit": "A",
+      "val": "0.0"
+    },
+    {
+      "title": "C phase current",
+      "unit": "A",
+      "val": "1.2"
     }
   ]
 }

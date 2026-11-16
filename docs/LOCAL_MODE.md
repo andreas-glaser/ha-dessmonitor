@@ -537,6 +537,15 @@ then start it again; the configured integration reconnects automatically.
   it, and probing stops when that driver receives nothing at all, because
   silence says nothing about which protocol a collector speaks. A collector
   that answers is still probed in full, so new hardware is still identified.
+- **The collector drops the session a fraction of a second after its first
+  reply:** look for something else on the network steering it before blaming
+  its firmware. A collector takes a `set>server=` command from any host that
+  sends one, so a second tool that points it somewhere else - another bridge,
+  a monitoring script, a watchdog that reconnects it to the vendor cloud -
+  takes the session away as soon as this integration starts using it. On the
+  Eybond firmware 3.6.6.6 collector in #76 that looked exactly like a 300 ms
+  firmware timeout, and the collector held a continuous session once the other
+  tool was stopped. Only one local client can own a collector at a time.
 - **Cloud data is selected:** inspect the Data Source sensor and Home Assistant
   logs. Local failures do not delete cloud-only fields or recorder history.
 - **Telemetry keeps switching between local and cloud:** read the log lines

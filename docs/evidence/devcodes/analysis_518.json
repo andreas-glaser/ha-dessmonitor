@@ -1,0 +1,514 @@
+{
+  "data": {
+    "integration": {
+      "version": "2.8.0",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "api_profile": "shinemonitor_solar"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 5,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": false
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "shinemonitor_solar",
+        "integration_version": "2.8.0",
+        "devcode": 518,
+        "device_identity": "sha256:22bb6b2ec61c",
+        "collector_identity": "sha256:b6ad9fabb1d6",
+        "device_address": 1,
+        "support": {
+          "status": "partial",
+          "profile": "Solar Grid-Tie Inverter (devcode 518)",
+          "known_inverters": [
+            "BYD BYD-S-1P5K-2M"
+          ],
+          "resolved": 14,
+          "unresolved": 15,
+          "total": 29,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 14,
+          "unresolved_with_unit": [
+            {
+              "title": "A phase current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "AB voltage/A phase voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "B phase current",
+              "unit": "A",
+              "sample": "0.0"
+            },
+            {
+              "title": "BC voltage/B phase voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "C phase current",
+              "unit": "A",
+              "sample": "1.2"
+            },
+            {
+              "title": "CA voltage/C phase voltage",
+              "unit": "V",
+              "sample": "210.5"
+            },
+            {
+              "title": "DC bus half voltage",
+              "unit": "V",
+              "sample": "203.2"
+            },
+            {
+              "title": "DC bus voltage",
+              "unit": "V",
+              "sample": "329.2"
+            },
+            {
+              "title": "DC current 3",
+              "unit": "A",
+              "sample": "0.1"
+            },
+            {
+              "title": "DC current 4",
+              "unit": "A",
+              "sample": "0.1"
+            },
+            {
+              "title": "DC voltage 3",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "DC voltage 4",
+              "unit": "V",
+              "sample": "0.0"
+            }
+          ],
+          "unresolved_without_unit": [
+            "DSP version",
+            "HMI version",
+            "National standard number"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-14 18:45:07",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "HMI version",
+            "value": "0080",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "DSP version",
+            "value": "0037",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "serial number",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "active power",
+            "value": "20",
+            "unit": "W",
+            "resolved_key": "Output Active Power"
+          },
+          {
+            "title": "DC output power",
+            "value": "17",
+            "unit": "W",
+            "resolved_key": "PV Power"
+          },
+          {
+            "title": "total energy",
+            "value": "9495",
+            "unit": "kWh",
+            "resolved_key": "Energy Total"
+          },
+          {
+            "title": "today energy",
+            "value": "24.3",
+            "unit": "kWh",
+            "resolved_key": "Energy Today"
+          },
+          {
+            "title": "current year generating capacity",
+            "value": "5253",
+            "unit": "kWh",
+            "resolved_key": "Energy Year"
+          },
+          {
+            "title": "DC voltage 1",
+            "value": "92.1",
+            "unit": "V",
+            "resolved_key": "PV1 Voltage"
+          },
+          {
+            "title": "DC current 1",
+            "value": "0.1",
+            "unit": "A",
+            "resolved_key": "PV1 Charger Current"
+          },
+          {
+            "title": "DC voltage 2",
+            "value": "83.1",
+            "unit": "V",
+            "resolved_key": "PV2 Voltage"
+          },
+          {
+            "title": "DC current 2",
+            "value": "0.1",
+            "unit": "A",
+            "resolved_key": "PV2 Charger Current"
+          },
+          {
+            "title": "DC voltage 3",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "DC current 3",
+            "value": "0.1",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "DC voltage 4",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "DC current 4",
+            "value": "0.1",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "DC bus voltage",
+            "value": "329.2",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "DC bus half voltage",
+            "value": "203.2",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "AB voltage/A phase voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "BC voltage/B phase voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "CA voltage/C phase voltage",
+            "value": "210.5",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "A phase current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "B phase current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "C phase current",
+            "value": "1.2",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "inverter temperature",
+            "value": "31.9",
+            "unit": "°C",
+            "resolved_key": "INV Module Termperature"
+          },
+          {
+            "title": "grid frequency",
+            "value": "59.92",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency"
+          },
+          {
+            "title": "National standard number",
+            "value": "BRAZIL-H",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "apparent power value",
+            "value": "0.080",
+            "unit": "kVA",
+            "resolved_key": "Output Apparent Power"
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "Failure recovery time",
+            "value": "Not read",
+            "unit": "",
+            "id": "cts_failure_recovery_time"
+          },
+          {
+            "name": "Grid level overfrequency delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_level_overfrequency_delay_threshold"
+          },
+          {
+            "name": "Grid level overfrequency threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_level_overfrequency_threshold"
+          },
+          {
+            "name": "Grid level overvoltage delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_level_overvoltage_delay_threshold"
+          },
+          {
+            "name": "Grid level overvoltage threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_level_overvoltage_threshold"
+          },
+          {
+            "name": "Grid level underfrequency delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_level_underfrequency_delay_threshold"
+          },
+          {
+            "name": "Grid level underfrequency threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_level_underfrequency_threshold"
+          },
+          {
+            "name": "Grid level undervoltage delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_level_undervoltage_delay_threshold"
+          },
+          {
+            "name": "Grid level undervoltage threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_level_undervoltage_threshold"
+          },
+          {
+            "name": "Grid secondary overfrequency delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_secondary_overfrequency_delay_threshold"
+          },
+          {
+            "name": "Grid secondary overfrequency threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_secondary_overfrequency_threshold"
+          },
+          {
+            "name": "Grid secondary overvoltage delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_secondary_overvoltage_delay_threshold"
+          },
+          {
+            "name": "Grid secondary overvoltage threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_secondary_overvoltage_threshold"
+          },
+          {
+            "name": "Grid secondary underfrequency delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_secondary_underfrequency_delay_threshold"
+          },
+          {
+            "name": "Grid secondary underfrequency threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_grid_secondary_underfrequency_threshold"
+          },
+          {
+            "name": "Grid secondary undervoltage delay threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_secondary_undervoltage_delay_threshold"
+          },
+          {
+            "name": "Grid secondary undervoltage threshold",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_grid_secondary_undervoltage_threshold"
+          },
+          {
+            "name": "HMI password setting",
+            "value": "Not read",
+            "unit": "",
+            "id": "hml_password_setting"
+          },
+          {
+            "name": "On/off",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "190: Boot",
+              "222: Shut down"
+            ],
+            "id": "bse_switching_machine_setting_1"
+          },
+          {
+            "name": "Power factor setting",
+            "value": "Not read",
+            "unit": "",
+            "id": "pvs_power_factor_setting"
+          },
+          {
+            "name": "Power limit setting",
+            "value": "Not read",
+            "unit": "",
+            "id": "pvs_actual_power_limit_1"
+          },
+          {
+            "name": "Power-on startup time",
+            "value": "Not read",
+            "unit": "",
+            "id": "cts_power_on_startup_time"
+          },
+          {
+            "name": "Reactive power value",
+            "value": "Not read",
+            "unit": "",
+            "id": "pvs_actual_power_limit"
+          },
+          {
+            "name": "Restore  High Limit Frequency",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_after_the_recovery_needs_of_the_grid_frequency_upper_limit"
+          },
+          {
+            "name": "Restore  High Limit Voltage",
+            "value": "Not read",
+            "unit": "V",
+            "id": "grd_after_recovery_ceiling_grid_voltage_needed"
+          },
+          {
+            "name": "Restore  Low Limit Frequency",
+            "value": "Not read",
+            "unit": "",
+            "id": "grd_after_the_recovery_lower_limit_frequency_of_the_grid_needs"
+          },
+          {
+            "name": "Restore  Low Limit Voltage",
+            "value": "Not read",
+            "unit": "V",
+            "id": "grd_after_the_recovery_of_lower_voltage_power_grid_needs"
+          },
+          {
+            "name": "Retain output power setting",
+            "value": "Not read",
+            "unit": "",
+            "id": "support_power_down_save_function"
+          },
+          {
+            "name": "Standard",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "10: User-define"
+            ],
+            "id": "safety_standards"
+          }
+        ],
+        "parameters": [],
+        "summary_not_merged": [
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh"
+          }
+        ],
+        "checksum": "806d2a4be75b4e8113c6a786106cbf812deec804e37d1cf40551c93b27e7d433",
+        "control_reads": {
+          "fields": 29,
+          "without_a_value": 29,
+          "rounds_that_recovered_nothing": 1,
+          "rounds_allowed": 12,
+          "still_trying": true,
+          "last_round_went_unanswered": true
+        },
+        "data_source": "Cloud",
+        "last_update": "2026-11-14 18:45:07"
+      }
+    ]
+  }
+}

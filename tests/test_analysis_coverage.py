@@ -388,7 +388,6 @@ def _device_reports(path: Path) -> list[dict[str, Any]]:
 # guard needs. Adding a devcode here instead of its evidence is not an option
 # a new profile has.
 _DEVCODES_WITHOUT_COMMITTED_EVIDENCE = {
-    518,
     2334,
     2341,
     2361,

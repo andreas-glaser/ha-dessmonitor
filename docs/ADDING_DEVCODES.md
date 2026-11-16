@@ -117,7 +117,7 @@ nothing else, dropping 58 of its 76 titles until two reporters noticed eight
 months apart (#35, then #56).
 
 `test_every_registered_devcode_is_guarded_by_committed_evidence` fails on a new
-devcode with no evidence file. It carries a list of the ten devcodes registered
+devcode with no evidence file. It carries a list of the devcodes registered
 before this was a requirement, and that list only shrinks: a second test fails
 if an entry on it has since gained evidence. If you own one of those devices, a
 diagnostics download is all it takes to clear an entry.

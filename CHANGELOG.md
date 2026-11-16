@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0-rc.3] - 2026-11-16
+
+Third candidate for 3.0.0. It carries the first candidate's local settings
+control and the second candidate's work unchanged, and adds the two entries
+below.
+
+**Nothing is renamed, moved or removed.** Against v3.0.0-rc.2, the entities
+the integration publishes from every committed devcode download differ by
+twelve added sensors on devcode 518 and nothing else: no entity id, name,
+unit, device class, state class or category changes anywhere. Four sensors
+that existed already start carrying a value instead of reading unknown.
+
+Owners of a Voltronic-family inverter - devcodes 2341, 2449, 2477 and 6416 -
+are the testers for the status sensors, and the devcode 518 owner for the new
+grid and string sensors.
+
+### Added
+- The twelve readings a devcode 518 grid-tie inverter reported as reaching no
+  entity become sensors (#83, thanks to @trentas for the diagnostics
+  download): the three phase voltages and phase currents, the DC bus and its
+  midpoint, and the third and fourth DC inputs. The collector labels every
+  channel whatever the hardware behind it has, so each one gets its own
+  phase- or string-numbered sensor rather than being mapped onto the plain
+  grid sensors - devcode 518 covers single- and three-phase inverters, and the
+  single-phase unit in the evidence measures on phase C. On hardware that has
+  fewer phases or strings the idle ones read 0.0, which is what the collector
+  sends, and they can be disabled. Nothing an installation already publishes
+  is renamed or removed, and the Repairs card saying readings are missing is
+  withdrawn.
+- Canonical names for a fourth string's voltage and current and for the
+  midpoint of a split DC bus, so a collector that sends them reaches a sensor
+  (#83).
+
+### Fixed
+- The Battery Status, PV Status, Grid Status and Load Status sensors publish
+  the words the collector sends. They were added as text sensors and never
+  declared as such, so each value - "Battery Discharge", "PV Undervoltage",
+  "Mains OK", "Load On (Normal)" - was offered to `float()` and discarded, and
+  all four read unknown from the day they appeared (#81, thanks to @zaSeplos
+  for reporting it on an iSolar SMH-III 6.2 kW). No entity is added, renamed
+  or removed: the four start carrying the state they were created for. A test
+  now fails on any sensor key that measures nothing and is read as a number.
+
 ## [3.0.0-rc.2] - 2026-11-14
 
 Second candidate for 3.0.0. It carries the first candidate's local
