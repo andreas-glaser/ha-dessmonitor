@@ -63,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no cloud payload to retain. The tests for both buttons now run against the
   real local coordinator, because a mock answers for any attribute, which is
   how this reached a stable release.
+- A local entry no longer reports its collector's tunnel code as an
+  unsupported devcode. The log asked the owner to request devcode support for
+  the number 258 while the entry published all of its readings, because a
+  PI30 or P17 device has no cloud devcode profile and reports the tunnel code
+  in its place; a local driver resolves every title itself, so nothing is
+  missing (#86). A device download on a local entry also stops reporting a
+  failed API call for control fields there is no cloud client to ask for.
 
 ### Added
 - **A `Last Reading Received` diagnostic sensor per device, carrying when this
@@ -127,13 +134,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   command takes, beside the cloud control's own. One list alone cannot be
   read as a mapping, which is what a `local_control_option_values`
   declaration has to state (#87, #63).
-- A local entry no longer reports its collector's tunnel code as an
-  unsupported devcode. The log asked the owner to request devcode support for
-  the number 258 while the entry published all of its readings, because a
-  PI30 or P17 device has no cloud devcode profile and reports the tunnel code
-  in its place; a local driver resolves every title itself, so nothing is
-  missing (#86). A device download on a local entry also stops reporting a
-  failed API call for control fields there is no cloud client to ask for.
 
 ## [3.0.0] - 2026-11-17
 
