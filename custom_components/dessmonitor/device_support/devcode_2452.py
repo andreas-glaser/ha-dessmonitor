@@ -142,6 +142,20 @@ TEMPORAL_CONTROLS: dict[str, str] = {
     "cts_set_date_time": "text",
 }
 
+# Which local P17 option each cloud option code means.
+#
+# The committed download offers Output source priority as 0 and 1, labelled
+# "Solar-Utility-Battery" and "Solar-Battery-Utility", which are POP0 and POP1
+# in the P17 command table under the spelling this integration gives them
+# ("Solar - Utility - Battery"). The platform's code is the command's code.
+#
+# Charger source priority needs no entry: the same download labels its codes
+# "Solar first", "Solar and Utility" and "Only solar", which are the command's
+# own labels, so the two vocabularies pair on the words alone.
+LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
+    "bse_output_source_priority": {"0": "0", "1": "1"},
+}
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -153,4 +167,5 @@ DEVCODE_CONFIG = {
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
     "temporal_controls": TEMPORAL_CONTROLS,
+    "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
 }

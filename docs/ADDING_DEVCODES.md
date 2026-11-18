@@ -629,6 +629,47 @@ The setting keys are the ones declared in
 `local/p17_settings.py`, and `docs/LOCAL_MODE.md` lists them with the command
 that writes each.
 
+### Pairing the options as well as the control
+
+Pairing a control names the register. It does not say what its values mean,
+and for a selection that is a second declaration. The pairing report carries
+both lists for an option setting - the `options` the local command takes, and
+the cloud control's own `options` under `control_fields` - because the two
+vocabularies are usually different:
+
+```json
+{"setting": "output_source_priority", "name": "Output Source Priority",
+ "command": "POP", "kind": "options", "reported": "1",
+ "options": {"0": "Utility first", "1": "Solar first",
+             "2": "Solar → Battery → Utility"}}
+```
+
+against a cloud control offering `12336: Utility Solar Bat`,
+`12337: Solar Utility Bat` and `12338: Solar Bat Utility`. Declare which is
+which:
+
+```python
+LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
+    "bse_output_source_priority": {"12336": "0", "12337": "1", "12338": "2"},
+}
+```
+
+wired in as `"local_control_option_values": LOCAL_CONTROL_OPTION_VALUES`.
+
+Two option sets pair themselves and need no declaration: a quantity offered
+as a list, such as a charging current or an output frequency, because one of
+the platform's code and its label is the figure; and a selection whose label
+is the same word on both sides, such as `UPS` or `AGM`.
+
+Everything else is undeclared until a download shows it, and an undeclared
+selection has no local route - the write takes the cloud path it always took.
+That is deliberate. A positional guess is not safe here: devcode 2477 offers
+Charger Source Priority as 0, 1 and 2 labelled "Solar priority", "Solar and
+mains" and "Solar only", which are the PI30 codes 1, 2 and 3, so sending the
+platform's own code would set utility first when the owner asked for solar -
+and the inverter reports that value back, so the write is verified. A refused
+write is visible; this one would not be (#87).
+
 ## 7. Commit the analysis as evidence
 
 Save the reporter's redacted analysis to `docs/evidence/devcodes/analysis_XXXX.json`

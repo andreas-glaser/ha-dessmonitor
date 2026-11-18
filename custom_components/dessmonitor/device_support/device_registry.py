@@ -300,6 +300,33 @@ def local_control_setting(devcode: Any, field_id: Any) -> str | None:
     return setting if isinstance(setting, str) and setting.strip() else None
 
 
+def local_control_options(devcode: Any, field_id: Any) -> dict[str, str] | None:
+    """Return the local option each of a cloud control's options means.
+
+    Keyed by the platform's own option code, valued by the wire value the
+    local command takes. ``None`` means no profile declares this control's
+    vocabulary, and a selection code is then written over the cloud rather
+    than guessed at (#87).
+
+    Declare only from a download that shows both vocabularies: the cloud
+    control's options are in the device report's ``control_fields``, and the
+    local setting's are in ``local_control.cloud_pairing``. A wrong entry
+    changes a setting the owner did not choose, and the inverter's own
+    read-back agrees with it, so nothing downstream can catch it.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config or not isinstance(field_id, str):
+        return None
+    declared = config.get("local_control_option_values")
+    if not isinstance(declared, dict):
+        return None
+    options = declared.get(field_id)
+    if not isinstance(options, dict) or not options:
+        return None
+    return {str(code): str(local) for code, local in options.items()}
+
+
 def filter_control_options(
     devcode: int,
     param_id: str,

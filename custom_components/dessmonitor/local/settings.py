@@ -274,6 +274,61 @@ def _same_number(left: str, right: str) -> bool:
         return False
 
 
+def local_option_for(
+    setting: LocalSetting,
+    value: str,
+    cloud_options: Mapping[str, str],
+    enumerations: Mapping[str, tuple[str, ...]] | None = None,
+    declared: Mapping[str, str] | None = None,
+) -> str | None:
+    """Return the wire value this setting takes for a cloud control's value.
+
+    A cloud control and a local setting are the same register under two names,
+    and their option vocabularies are two different things as well: devcode
+    2449 offers Output Source Priority as 12336, 12337 and 12338 while the
+    PI30 command behind it takes 0, 1 and 2. Handing the platform's code
+    straight to the inverter was refused outright in that case (#87), and the
+    quieter half of the same defect is worse: where a platform code happens to
+    be a value the local setting also offers, the inverter accepts it, reports
+    it back, and the write is reported as verified although it set something
+    the owner did not choose.
+
+    So nothing is positional and nothing is assumed. ``None`` means this write
+    has no local route, which sends it down the cloud path it has always taken:
+
+    * A setpoint is a figure in both vocabularies and passes through, where
+      ``accept`` judges it against the inverter's own range.
+    * A quantity offered as a list - a charging current, an output frequency -
+      is matched as a number, against the platform's code and then against
+      its label, because one of the two is the figure.
+    * A selection code means nothing outside its own vocabulary. It pairs only
+      on a declaration in the devcode profile, or on a label that is the same
+      word on both sides.
+    """
+    if setting.kind != KIND_OPTIONS:
+        return value
+    options = setting.options_in(enumerations or {})
+    label = cloud_options.get(value)
+    if declared is not None:
+        mapped = declared.get(value)
+        # A profile that declares this control's vocabulary and not this value
+        # has said that this option is not one the local command covers.
+        return mapped if mapped is not None and mapped in options else None
+    if setting.unit:
+        for candidate in (value, label):
+            if not candidate:
+                continue
+            for wire in options:
+                if wire == candidate or _same_number(wire, candidate):
+                    return wire
+        return None
+    if label:
+        for wire, option_label in options.items():
+            if normalized_name(option_label) == normalized_name(label):
+                return wire
+    return None
+
+
 def template_for(
     settings: tuple[LocalSetting, ...],
     readback: Mapping[str, str],
@@ -323,6 +378,7 @@ def pairing_candidates(
     values: Mapping[str, str],
     cloud_controls: Mapping[str, Any],
     cloud_values: Mapping[str, Any],
+    enumerations: Mapping[str, tuple[str, ...]] | None = None,
 ) -> list[dict[str, Any]]:
     """Report which cloud control each local setting looks like.
 
@@ -366,16 +422,22 @@ def pairing_candidates(
                 )
             )
         ]
-        report.append(
-            {
-                "setting": setting.key,
-                "name": setting.name,
-                "command": setting.command,
-                "kind": setting.kind,
-                "unit": setting.unit,
-                "reported": local_value,
-                "paired_by_name": matched[1].get("id") if matched else None,
-                "candidates": candidates,
-            }
-        )
+        entry: dict[str, Any] = {
+            "setting": setting.key,
+            "name": setting.name,
+            "command": setting.command,
+            "kind": setting.kind,
+            "unit": setting.unit,
+            "reported": local_value,
+            "paired_by_name": matched[1].get("id") if matched else None,
+            "candidates": candidates,
+        }
+        if setting.kind == KIND_OPTIONS:
+            # Which value the command takes for each of its own options. A
+            # cloud control offers a different vocabulary for the same
+            # register - devcode 2449 offers 12336, 12337 and 12338 where the
+            # PI30 command takes 0, 1 and 2 - and a report showing one side
+            # only is not enough to declare the mapping from (#87).
+            entry["options"] = dict(setting.options_in(enumerations or {}))
+        report.append(entry)
     return report

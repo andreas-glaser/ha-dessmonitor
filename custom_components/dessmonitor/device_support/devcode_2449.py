@@ -140,6 +140,34 @@ SETTING_READINGS: set[str] = {
     "Max Charging Current",
 }
 
+# Which local PI30 option each of this platform's option codes means.
+#
+# This collector offers its selection codes as numbers above 12288, and they
+# are not an enumeration: each one is the two ASCII digits of the inverter's
+# own PI30 parameter read as a big-endian 16-bit integer. "00" is 0x3030 =
+# 12336, "01" is 12337, "02" is 12338, and the same rule decodes the other
+# option lists in the committed download - AC Input Range at 12336 and 12337
+# for PGR00 and PGR01, Battery Type from 12336 for PBT00, and Output
+# Frequency at 13616 and 13872, which are "50" and "60".
+#
+# Every label agrees with the code that rule produces: 12338 is POP02, the
+# SBU order the vendor spells "Solar Bat Utility", and the reporter in #87
+# watched the inverter move to battery about ten seconds after that write
+# went through the cloud. The local link refused 12338 outright - "this
+# inverter accepts 0, 1, 2" - which is also what confirms that the cloud
+# control and the PI30 command are paired by name on this devcode.
+#
+# The charger list starts at 12337, so it decodes to PCP01, PCP02 and PCP03,
+# and those are exactly the three the labels name; PCP00, utility first, is
+# the one the platform does not offer. Its cloud control is spelled "Charging
+# Source Priority" against the command's "Charger Source Priority", so
+# nothing pairs the two yet and this vocabulary waits for a download that
+# shows the local side (#87).
+LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
+    "bse_output_source_priority": {"12336": "0", "12337": "1", "12338": "2"},
+    "bat_charging_source": {"12337": "1", "12338": "2", "12339": "3"},
+}
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -149,4 +177,5 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "source_units": SOURCE_UNITS,
     "setting_readings": SETTING_READINGS,
+    "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
 }

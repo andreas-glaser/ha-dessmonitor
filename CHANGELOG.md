@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- A dropdown written over the local link now sends the value the inverter's
+  own command takes. A cloud control and a local setting are the same
+  register, and their option vocabularies are not: devcode 2449 offers Output
+  Source Priority as 12336, 12337 and 12338, which are the two ASCII digits
+  of the PI30 parameter read as one 16-bit number, where the POP command
+  takes 0, 1 and 2. The platform's code went to the inverter unchanged, was
+  refused, and the write fell back to the cloud (#87, thanks to
+  @DennisAppelman for the report and for naming the mapping). Devcodes 2449,
+  2452, 2477 and 6416 declare the vocabularies their downloads show, and a
+  label that is the same word on both sides - `UPS`, `AGM` - pairs without a
+  declaration, as does a quantity offered as a list.
+- **A selection the platform and the inverter number differently is no longer
+  written over the local link at all.** This is the same defect without the
+  refusal, and it is the worse half: devcode 2477 offers Charger Source
+  Priority as 0, 1 and 2 labelled "Solar priority", "Solar and mains" and
+  "Solar only", which are the PI30 codes 1, 2 and 3, so a write of "Solar
+  priority" sent PCP00 and set utility first - and the inverter reported that
+  value back, so the write was reported as verified (#87). An undeclared
+  selection now has no local route and takes the cloud path it took before
+  local control existed. Local control is off by default, so this affected
+  only entries that had turned it on.
 - "Download diagnostics" works on a local-only entry. Both downloads read a
   cloud-only counter off the coordinator, so the request failed with
   `AttributeError: 'DessMonitorLocalCoordinator' object has no attribute
@@ -21,6 +42,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no cloud payload to retain. The tests for both buttons now run against the
   real local coordinator, because a mock answers for any attribute, which is
   how this reached a stable release.
+
+### Added
+- The download on the integration card carries the `local_control` section
+  per device - the settings the inverter reported, the limits it accepts, the
+  cloud control each one pairs with, and the outcome of every local write in
+  the session. Only the device button produced it, while the support guide
+  names the entry download first, so an owner who attached that file sent
+  nothing about local control at all (#87, #63).
+- The pairing report names both option vocabularies: the values the local
+  command takes, beside the cloud control's own. One list alone cannot be
+  read as a mapping, which is what a `local_control_option_values`
+  declaration has to state (#87, #63).
 - A local entry no longer reports its collector's tunnel code as an
   unsupported devcode. The log asked the owner to request devcode support for
   the number 258 while the entry published all of its readings, because a
