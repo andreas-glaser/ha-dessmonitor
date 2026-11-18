@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The Software Version sensor publishes the version the collector sent,
+  as text.** It was the one key in `SENSOR_TYPES` that measures nothing and
+  was still read as a number, so a version written `V1.08`, `1.08.3` or
+  `0080-A` could not survive `float()` and the sensor read unknown with
+  nothing in the log to say why - the same defect the four per-subsystem
+  status sensors had (#81) - while a version written `1.080` was published as
+  1.08, losing the vendor's last digit (#84).
+
+  *Upgrade note:* no entity is added, renamed or removed, and no unit, device
+  class, state class or category changes. On an installation whose collector
+  answers a numeric-looking version the published state changes from `1.08`
+  to the vendor's own `1.080`, so a template or automation that compares it
+  as a number needs to compare it as a string instead. On one whose collector
+  answers anything else the sensor starts carrying a value for the first
+  time. None of the nineteen downloads committed under
+  `docs/evidence/devcodes/` carries this reading at all, so no account is
+  known to publish the sensor; this was shipped separately from #81 rather
+  than ridden along with it because it is a change to a published state
+  either way.
+
 ### Fixed
 - A dropdown written over the local link now sends the value the inverter's
   own command takes. A cloud control and a local setting are the same
