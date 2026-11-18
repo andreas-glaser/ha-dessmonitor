@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import logging
 from datetime import datetime, timezone
+from time import monotonic
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -35,6 +36,7 @@ from ..control_values import TRANSPORT_LOCAL, ControlWriteResult
 from ..device_support.device_registry import note_local_transport_devcode
 from ..sensor_titles import resolve_sensor_key, sensor_unit
 from .announcer import CollectorAnnouncer
+from .diagnostics import ProbeDiagnostics
 from .discovery import inverter_addresses
 from .drivers import LocalDevice, LocalDriver, discover_supported_devices
 from .protocol import ProtocolError
@@ -99,6 +101,18 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
             ),
         )
         self._session_task: asyncio.Task[None] | None = None
+        # The discovery evidence from the last probe, and from the last one
+        # that failed. ``ProbeDiagnostics.as_dict()`` used to reach the debug
+        # log and nothing else, which is the difference between a local-mode
+        # report costing one attached file and costing two weeks of logs
+        # (#63). Both are kept because they answer different questions: a
+        # collector that failed twice and then worked leaves the diagnosis in
+        # the failure, and a collector that works leaves the timings in the
+        # success. Each is bounded to MAX_PROBE_ATTEMPTS queries and carries
+        # command names and numbers only.
+        self._probe: ProbeDiagnostics | None = None
+        self._failed_probe: ProbeDiagnostics | None = None
+        self._last_poll_at: float | None = None
         self._identity: CollectorIdentity | None = None
         self._device_code: int | None = None
         self._driver: LocalDriver | None = None
@@ -444,6 +458,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
 
     def _note_inverter_answered(self) -> None:
         """Close an open silence window, so the next one starts its own grace."""
+        self._last_poll_at = monotonic()
         if self._silence_started is None:
             return
         _LOGGER.info(
@@ -460,9 +475,12 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         a full blind probe on every reconnect, which is time spent with no
         local telemetry at all.
         """
+        probe = ProbeDiagnostics()
+        self._probe = probe
         try:
             driver, devices = await discover_supported_devices(
                 self._send_command,
+                diagnostics=probe,
                 collector_product_number=identity.product_number,
                 configured_device_code=int(
                     self._entry_data.get(
@@ -475,6 +493,7 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
                 preferred_driver_key=self._driver.key if self._driver else None,
             )
         except (TimeoutError, ProtocolError) as err:
+            self._failed_probe = probe
             raise InverterSilent(str(err)) from err
         self._driver = driver
         self._devices = {device.serial: device for device in devices}
@@ -559,6 +578,53 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
             device_code=device_code,
             device_address=device_address,
         )
+
+    def diagnostics(self) -> dict[str, Any]:
+        """Return payload-free evidence about this local transport.
+
+        Everything here was already in memory and reached nothing but the
+        debug log, which is what #63 names as the highest-value gap in the
+        download: the local-mode threads are the expensive ones, and they are
+        expensive because this had to be reconstructed from a reporter's logs.
+        """
+        now = monotonic()
+        facts: dict[str, Any] = {
+            "poll_interval_seconds": self._poll_interval,
+            "driver": self.driver_key,
+            "tunnel_device_code": self._device_code,
+            "control_enabled": self._control_enabled,
+            "configured_device_address": self._device_address,
+            "seconds_since_a_successful_poll": (
+                None if self._last_poll_at is None else round(now - self._last_poll_at)
+            ),
+            # Set while the collector answers for itself and the inverter
+            # behind it does not, which is a different fault from a dropped
+            # session and was reported as one before #53.
+            "inverter_silent": self._silence_started is not None,
+            "session": self._server.session_facts,
+            "devices": {
+                serial: {
+                    # Queries this driver has stopped sending for this
+                    # inverter, and the optional ones it has seen fail. "My
+                    # PV2 sensors stopped" is answered by these two and by
+                    # nothing else in the file (#63).
+                    "disabled_queries": sorted(device.disabled_queries),
+                    "optional_query_failures": dict(device.optional_query_failures),
+                    "protocol": device.driver_key,
+                    "collector_address": device.collector_address,
+                    "device_address": device.device_address,
+                    "address_verified": device.address_verified,
+                    "settings_error": self._settings_errors.get(serial),
+                    "polled": serial in self._polled_serials,
+                }
+                for serial, device in sorted(self._devices.items())
+            },
+        }
+        if self._probe is not None:
+            facts["discovery"] = self._probe.as_dict()
+        if self._failed_probe is not None and self._failed_probe is not self._probe:
+            facts["last_failed_discovery"] = self._failed_probe.as_dict()
+        return facts
 
     def _coordinator_data(self) -> dict[str, Any]:
         """Convert local state to the integration's stable coordinator schema."""

@@ -88,6 +88,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   README.md and docs/LOCAL_MODE.md show one. The `observed_change` attribute
   is `false` until the timestamp has been seen to move, which says plainly
   that the age implied just after a restart is a lower bound.
+- **The download carries the local-mode evidence that used to exist only in
+  the debug log.** Per transport: the bounded, payload-free probe record from
+  discovery - every query with its protocol, command, response size, elapsed
+  milliseconds and outcome - and the last failed discovery beside the last
+  one, because a collector that failed twice and then worked leaves the
+  diagnosis in the failure. Also the collector session: how long it has been
+  up, how long since its last heartbeat, how many requests are in flight,
+  the request timeout, and whether this collector has been seen to answer a
+  query we had already given up on, which is the flag that explains a
+  collector failing at a short polling interval and working at a long one
+  (#53). Also the configured poll interval and how long ago a poll last
+  succeeded. Per inverter: the queries its driver has stopped sending and the
+  optional ones it has seen fail, which is what answers "my PV2 sensors
+  stopped". All of it was already in memory; none of it reached the file
+  (#63).
+- Every reading row in a support report names the unit its entity publishes
+  beside the unit the payload declared. The row carried the raw unit and the
+  resolved key, so a value sitting on a sensor of a different scale was
+  invisible until someone noticed a wrong figure: the PI18 watt-hour total on
+  a kWh sensor had to be inferred by comparing it against the cloud's own
+  parameters (#63, item 5).
 - The download on the integration card carries the `local_control` section
   per device - the settings the inverter reported, the limits it accepts, the
   cloud control each one pairs with, and the outcome of every local write in
