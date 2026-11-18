@@ -103,6 +103,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   optional ones it has seen fail, which is what answers "my PV2 sensors
   stopped". All of it was already in memory; none of it reached the file
   (#63).
+- `tools/entity_inventory.py` builds every sensor the integration would
+  publish for every device under `docs/evidence/`, one line per entity with
+  its unique id, name, unit, device class, state class and category, so two
+  checkouts can be diffed. That comparison is how a release states what it
+  moves, and it was done by hand until now; docs/RELEASE_GUIDE.md makes it a
+  pre-release step. Against v3.0.0 this branch adds 20 lines - the new
+  freshness sensor, one per device in the committed evidence - and changes or
+  removes none.
 - Every reading row in a support report names the unit its entity publishes
   beside the unit the payload declared. The row carried the raw unit and the
   resolved key, so a value sitting on a sensor of a different scale was

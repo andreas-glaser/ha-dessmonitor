@@ -497,9 +497,9 @@ async def test_diagnostics_report_the_control_values_the_entities_show(
     hass.data[DOMAIN] = {"entry-1": coordinator}
     device = DeviceEntry(identifiers={(DOMAIN, "SN-1")})
 
-    config = (await diagnostics_platform.async_get_device_diagnostics(hass, entry, device))[
-        "configuration"
-    ]
+    config = (
+        await diagnostics_platform.async_get_device_diagnostics(hass, entry, device)
+    )["configuration"]
 
     # Read through an explicit control read, and reported as its label.
     assert config["Buzzer Mode"]["value"] == "Beeps only in fault mode"
@@ -589,9 +589,7 @@ async def test_a_local_setup_error_does_not_print_an_address(
     assert "private ipv4 in subnet 1" in error
     # The subnet numbering is shared with the options, so a reader can still
     # see that the failing bind and the configured listen address are one.
-    assert report["entry_options"][CONF_LOCAL_LISTEN_IP] == (
-        "private ipv4 in subnet 1"
-    )
+    assert report["entry_options"][CONF_LOCAL_LISTEN_IP] == ("private ipv4 in subnet 1")
     assert "8899" in error and "Errno 98" in error
 
 
@@ -611,8 +609,7 @@ def test_every_config_key_is_classified() -> None:
     reporter's collector and listen addresses ended up in an attachment. Adding
     a `CONF_*` constant now fails here until its disclosure is decided.
     """
-    from custom_components.dessmonitor import _ENTRY_DISCLOSURE
-    from custom_components.dessmonitor import const
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, const
 
     config_keys = {
         getattr(const, name)
@@ -638,8 +635,7 @@ async def test_no_configured_value_reaches_the_download_verbatim(
     This sets every known configuration key to a recognisable value and
     asserts that none of them appears in the file as written.
     """
-    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, _PUBLISH
-    from custom_components.dessmonitor import const
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, _PUBLISH, const
 
     sentinels: dict[str, str] = {}
     for name in dir(const):

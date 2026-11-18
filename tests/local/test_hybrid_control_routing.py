@@ -34,7 +34,9 @@ CLOUD_SERIAL = "CLOUD-SERIAL"
 LOCAL_SERIAL = "LOCAL-SERIAL"
 
 
-def _hybrid(hass: HomeAssistant, *, control: bool = True) -> DessMonitorHybridCoordinator:
+def _hybrid(
+    hass: HomeAssistant, *, control: bool = True
+) -> DessMonitorHybridCoordinator:
     """Create a hybrid coordinator without opening sockets."""
     api = MagicMock(token="token", secret="secret", close=AsyncMock())
     api.set_device_control_value = AsyncMock(return_value={"err": 0})
@@ -96,7 +98,9 @@ def _wire_local(coordinator, *, snapshot=None, writes=None) -> MagicMock:
             }
         }
     )
-    local._settings[LOCAL_SERIAL] = snapshot if snapshot is not None else _local_snapshot()
+    local._settings[LOCAL_SERIAL] = (
+        snapshot if snapshot is not None else _local_snapshot()
+    )
     local.async_set_control_value = writes or AsyncMock(
         return_value=ControlWriteResult(
             value="57.0", transport=TRANSPORT_LOCAL, verified=True
@@ -180,7 +184,9 @@ async def test_a_declared_pairing_routes_a_differently_named_control(
 
         declared.assert_called_once_with(2452, "vendor_bulk")
         assert result.transport == TRANSPORT_LOCAL
-        assert local.async_set_control_value.await_args.args[1] == "battery_bulk_voltage"
+        assert (
+            local.async_set_control_value.await_args.args[1] == "battery_bulk_voltage"
+        )
     finally:
         await coordinator.async_shutdown()
 

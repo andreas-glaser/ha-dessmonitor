@@ -23,6 +23,28 @@
    `make check` covers Black, isort, flake8, mypy and the changelog, failing
    when a section for an already-released version no longer matches its tag.
 
+2b. **Prove the release moves no existing entity**
+
+   The test suite says the code is consistent; it does not say that an
+   installation still publishes what it published. Build every sensor the
+   integration would create for every device under `docs/evidence/` on the
+   last tag and on `dev`, and diff the two:
+
+   ```bash
+   last_tag=$(git describe --tags --abbrev=0)
+   git worktree add /tmp/${last_tag} ${last_tag}
+   .venv/bin/python tools/entity_inventory.py /tmp/${last_tag} > /tmp/before.txt
+   .venv/bin/python tools/entity_inventory.py . > /tmp/after.txt
+   diff /tmp/before.txt /tmp/after.txt
+   git worktree remove /tmp/${last_tag}
+   ```
+
+   An added line is a new sensor and belongs in the changelog under Added. A
+   removed or changed line is an entity that moved: its unique id, name, unit,
+   device class, state class or category is not what it was, which needs its
+   own entry, its own upgrade note, and a release candidate first. The figures
+   quoted in a release's own changelog entry come from this diff.
+
 3. **Update version files**
   - `custom_components/dessmonitor/manifest.json` → `"version": "X.Y.Z"`
   - `custom_components/dessmonitor/const.py` → `VERSION = "X.Y.Z"`

@@ -24,8 +24,8 @@ from custom_components.dessmonitor.const import (
     DOMAIN,
     LOCAL_CONTROL_ENABLED,
 )
-from custom_components.dessmonitor.local.writer import SettingsSnapshot, WriteOutcome
 from custom_components.dessmonitor.local.settings import pairing_candidates
+from custom_components.dessmonitor.local.writer import SettingsSnapshot, WriteOutcome
 
 SERIAL = "SN-LOCAL"
 
@@ -355,9 +355,9 @@ async def test_the_entry_download_carries_the_local_control_section(
     (device,) = report["devices"]
     assert device["local_control"]["enabled"] is True
     assert device["local_control"]["reported"]["battery_bulk_voltage"] == "56.0"
-    assert json.loads(json.dumps(report))["devices"][0]["local_control"]["protocol"] == (
-        "p17"
-    )
+    assert json.loads(json.dumps(report))["devices"][0]["local_control"][
+        "protocol"
+    ] == ("p17")
 
 
 def test_the_pairing_report_names_both_option_vocabularies() -> None:
