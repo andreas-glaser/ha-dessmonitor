@@ -65,6 +65,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how this reached a stable release.
 
 ### Added
+- **A `Last Reading Received` diagnostic sensor per device, carrying when this
+  integration last saw that device report something new.** The vendor cloud
+  answers `queryDeviceLastData` with the reading it stored before a collector
+  went quiet, so the refresh succeeds, the device stays in the snapshot, Data
+  Source still says `Cloud`, and every entity goes on publishing values that
+  are no longer live - which is what #78 was filed for, after a collector
+  dropped off Wi-Fi and automations kept acting on the numbers.
+
+  The value is this host's clock, never the vendor's: the payload's own
+  timestamp is the inverter's wall clock in a timezone this integration
+  deliberately does not assume, so what is used is that the string *changes*.
+  @ballhtml's measurement is what made that possible - a collector taken off
+  the network held its stored timestamp for the whole outage and advanced it
+  on the next frame.
+
+  No existing entity's availability is touched, and no threshold is chosen
+  here: marking measurement entities unavailable past some age would change
+  what 13,000 installations publish on a figure nobody has the evidence to
+  pick, and entities going unavailable is the symptom #54 and #55 were filed
+  for. The threshold belongs to the automation that reads the sensor, and
+  README.md and docs/LOCAL_MODE.md show one. The `observed_change` attribute
+  is `false` until the timestamp has been seen to move, which says plainly
+  that the age implied just after a restart is a lower bound.
 - The download on the integration card carries the `local_control` section
   per device - the settings the inverter reported, the limits it accepts, the
   cloud control each one pairs with, and the outcome of every local write in

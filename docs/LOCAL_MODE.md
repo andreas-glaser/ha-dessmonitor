@@ -179,6 +179,27 @@ retention never keeps hardware alive that was taken off the account. Readings
 labelled `Cached Cloud` can be arbitrarily old; the device's `Timestamp` sensor
 shows when the cloud last answered for it.
 
+A collector that has gone quiet is a different condition and has its own
+signal. Nothing fails there: the cloud answers with the reading it stored
+before the collector went silent, so `Data Source` still says `Cloud` and the
+numbers are historical. The `Last Reading Received` diagnostic sensor carries
+when this integration last saw that device report something new, measured on
+this host's clock from the payload's own timestamp *changing* rather than from
+its value, because the inverter's wall clock is in a timezone this integration
+does not assume. An automation can gate on an age of its own choosing:
+
+```yaml
+condition:
+  - condition: template
+    value_template: >
+      {{ now() - states('sensor.my_inverter_last_reading_received') | as_datetime
+         < timedelta(minutes=15) }}
+```
+
+Its `observed_change` attribute is `false` until the timestamp has been seen to
+move, which is the case just after a restart: the state is then when the
+integration started watching, so the age it implies is a lower bound.
+
 If one inverter's status poll fails while another on the same collector succeeds,
 only the responding inverter contributes to the new local snapshot. Hybrid uses
 cloud data for the failed inverter until it responds again. Its device and sensor
