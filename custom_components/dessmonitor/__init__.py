@@ -1801,7 +1801,14 @@ def _local_transport_facts(local: Any) -> dict[str, Any]:
     in local mode attached said nothing about the only transport the entry
     has (#86).
     """
-    return {
+    # What the transport itself recorded: the probe evidence from discovery,
+    # the collector session, the poll interval and age, and the queries each
+    # inverter has stopped answering. All of it was already in memory and
+    # reached nothing but the debug log, which is why the local-mode threads
+    # cost weeks of log files (#63).
+    recorded = local.diagnostics()
+    query_state = recorded.pop("devices", {})
+    facts = {
         "connected": local.connected,
         "last_update_success": local.last_update_success,
         "device_code": local.device_code,
@@ -1814,13 +1821,17 @@ def _local_transport_facts(local: Any) -> dict[str, Any]:
         # and the cloud listing it at another could not be seen in it at all
         # (#61).
         "devices_seen": [
-            _local_device_facts(serial, payload)
+            _local_device_facts(serial, payload, query_state.get(serial))
             for serial, payload in sorted((local.data or {}).items())
         ],
     }
+    facts.update(recorded)
+    return facts
 
 
-def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _local_device_facts(
+    serial: str, payload: dict[str, Any], recorded: Any = None
+) -> dict[str, Any]:
     """Describe one locally seen device, without naming it.
 
     Identities are the same correlation hashes the device reports carry, so a
@@ -1829,7 +1840,7 @@ def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
     """
     device = payload.get("device") or {}
     collector = payload.get("collector") or {}
-    return {
+    facts: dict[str, Any] = {
         "device_identity": short_identity(serial),
         "collector_identity": short_identity(collector.get("pn")),
         "device_address": device.get("devaddr"),
@@ -1837,6 +1848,13 @@ def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
         "protocol": device.get("local_protocol"),
         "readings": len(payload.get("data") or []),
     }
+    if recorded:
+        # The driver's own state for this inverter, including the queries it
+        # has stopped sending: "my PV2 sensors stopped" is answered by those
+        # and by nothing else in the file (#63). Absent for a device the local
+        # side published and has since dropped from its own device list.
+        facts.update(recorded)
+    return facts
 
 
 def _control_read_state(

@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import re
+from collections.abc import Mapping
 from typing import Any
 
 # Intentionally no intra-package imports at module scope. The contributor CLI
@@ -96,6 +97,19 @@ def resolved_key_for(devcode: Any, point: dict[str, Any]) -> str | None:
     return resolve_sensor_key(mapped, title)
 
 
+def _sensor_unit_for(key: str | None) -> str | None:
+    """Return the unit the entity for this key publishes, if it has one."""
+    if not key:
+        return None
+    from .const import SENSOR_TYPES
+
+    config = SENSOR_TYPES.get(key)
+    if not isinstance(config, Mapping):
+        return None
+    unit = str(config.get("unit") or "").strip()
+    return unit or None
+
+
 def build_support_report(
     *,
     devcode: Any,
@@ -146,7 +160,19 @@ def build_support_report(
         key = resolved_key_for(devcode, point)
 
         reading_rows.append(
-            {"title": title, "value": value, "unit": unit, "resolved_key": key}
+            {
+                "title": title,
+                "value": value,
+                "unit": unit,
+                "resolved_key": key,
+                # The unit the entity publishes, beside the one the payload
+                # declared. A row carried the raw unit and the key and not
+                # this, so a value sitting on a sensor of a different scale
+                # was invisible until someone noticed a wrong figure: the
+                # PI18 watt-hour total on a kWh sensor had to be inferred by
+                # comparing it against the cloud's own parameters (#63, #71).
+                "sensor_unit": _sensor_unit_for(key),
+            }
         )
 
         if key:

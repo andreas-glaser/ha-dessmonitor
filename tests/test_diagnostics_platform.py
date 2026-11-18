@@ -291,6 +291,12 @@ async def test_the_hub_report_is_json_serializable(hass: HomeAssistant) -> None:
     local.control_enabled = False
     local.settings_snapshot.return_value = None
     local.settings_error.return_value = None
+    local.diagnostics.return_value = {
+        "poll_interval_seconds": 60,
+        "driver": "p17",
+        "session": {"connected": True, "answers_late": False},
+        "devices": {},
+    }
     local.device_code = 2452
     local.data = {"SN-1": {}}
     coordinator.locals = (local,)
@@ -343,6 +349,12 @@ async def test_a_local_transport_reports_the_devices_it_saw(
     local.control_enabled = False
     local.settings_snapshot.return_value = None
     local.settings_error.return_value = None
+    local.diagnostics.return_value = {
+        "poll_interval_seconds": 60,
+        "driver": "p17",
+        "session": {"connected": True, "answers_late": False},
+        "devices": {},
+    }
     local.device_code = 258
     local.data = {
         "LOCAL-SN": {
@@ -872,3 +884,120 @@ def test_a_local_tunnel_code_is_not_a_missing_devcode_profile(
 
     assert point["title"] == "Battery Voltage"
     assert "Unsupported devcode" not in caplog.text
+
+
+@pytest.mark.usefixtures("socket_enabled")
+async def test_a_local_entry_download_carries_the_probe_evidence(
+    hass: HomeAssistant,
+) -> None:
+    """The highest-value gap in #63, asserted on the real objects.
+
+    ``ProbeDiagnostics.as_dict()`` reached the debug log and nothing else, and
+    so did the queries a driver had stopped sending, the collector session and
+    the poll age. That is the difference between a local-mode thread costing
+    one attached file and costing two weeks of logs.
+    """
+    from custom_components.dessmonitor.local.diagnostics import (
+        ProbeAttempt,
+        ProbeDiagnostics,
+    )
+    from custom_components.dessmonitor.local.drivers import LocalDevice
+
+    entry_data: dict[str, object] = {
+        "connection_type": "local",
+        CONF_LOCAL_LISTEN_IP: "192.168.18.134",
+        "local_collector_ip": "192.168.18.27",
+        "local_tcp_port": 0,
+        "local_poll_interval": 30,
+    }
+    coordinator = _local_only_coordinator(hass, entry_data)
+    probe = ProbeDiagnostics()
+    probe.record(
+        ProbeAttempt(
+            protocol="pi30",
+            command="QPIRI",
+            device_code=258,
+            collector_address=1,
+            device_address=1,
+            response_bytes=98,
+            elapsed_ms=240,
+        )
+    )
+    probe.record(
+        ProbeAttempt(
+            protocol="pi30",
+            command="QPIGS",
+            device_code=258,
+            collector_address=1,
+            device_address=1,
+            outcome="timeout",
+        )
+    )
+    coordinator._probe = probe
+    coordinator._devices = {
+        "SN-LOCAL-1": LocalDevice(
+            driver_key="pi30",
+            transport_device_code=258,
+            collector_address=1,
+            device_address=1,
+            entity_device_code=258,
+            serial="SN-LOCAL-1",
+            model="PI30 inverter",
+            firmware="00073.08",
+            disabled_queries={"QPIGS2"},
+            optional_query_failures={"QPIGS2": 3},
+        )
+    }
+    coordinator._polled_serials = {"SN-LOCAL-1"}
+    entry = MagicMock()
+    entry.entry_id = "entry-local"
+    entry.data = dict(entry_data)
+    entry.options = {}
+    hass.data[DOMAIN] = {"entry-local": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    (transport,) = report["local"]["transports"]
+    assert transport["poll_interval_seconds"] == 30
+    assert transport["discovery"]["outcomes"] == {"success": 1, "timeout": 1}
+    assert [attempt["command"] for attempt in transport["discovery"]["attempts"]] == [
+        "QPIRI",
+        "QPIGS",
+    ]
+    assert transport["session"]["request_timeout_seconds"] == 3.0
+    assert transport["seconds_since_a_successful_poll"] is None
+    (seen,) = transport["devices_seen"]
+    assert seen["disabled_queries"] == ["QPIGS2"]
+    assert seen["optional_query_failures"] == {"QPIGS2": 3}
+
+    # Payload-free and identifier-free, like the rest of the file: command
+    # names and numbers only, no serial, no collector product number, no
+    # network address.
+    serialized = json.dumps(report)
+    for secret in ("SN-LOCAL-1", "Q0000PN0001", "192.168.18.27", "192.168.18.134"):
+        assert secret not in serialized
+
+
+def test_a_reading_row_carries_the_unit_its_entity_publishes() -> None:
+    """Item 5 of #63: the raw unit alone could not show a scale mismatch.
+
+    The PI18 watt-hour total sitting on a kWh sensor had to be inferred by
+    comparing it against the cloud's own parameters; with both units on the
+    row it is legible at a glance.
+    """
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    report = build_support_report(
+        devcode=6515,
+        readings=[
+            {"title": "Energy Total", "val": "10104399", "unit": "Wh"},
+            {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+            {"title": "Timestamp", "val": "2026-11-16 18:26:52", "unit": ""},
+        ],
+    )
+
+    rows = {row["title"]: row for row in report["readings"]}
+    assert rows["Energy Total"]["sensor_unit"] == "kWh"
+    assert rows["Battery Voltage"]["sensor_unit"] == "V"
+    # A row that reaches no sensor has no sensor unit to report.
+    assert rows["Timestamp"]["sensor_unit"] is None
