@@ -23,14 +23,9 @@ from custom_components.dessmonitor.sensor import (
 
 # A key with no unit, no device class and no state class measures nothing, so
 # its value is a word rather than a number. Each one is declared as an
-# enumeration or as text; this names the exceptions and why they are exceptions.
-#
-# "Software version" is numeric today. A collector that answers "V1.08" already
-# reads unknown on it, but one that answers "1.080" publishes 1.08, and moving
-# the key to text would change that state to "1.080" on an installation that
-# has the sensor. It is a change to what an existing install publishes rather
-# than an addition, so it is tracked separately (#84).
-_NUMERIC_WITHOUT_A_UNIT = {"Software version"}
+# enumeration or as text, and there is no longer an exception: "Software
+# version" was the last one and moved to text in #84.
+_NUMERIC_WITHOUT_A_UNIT: set[str] = set()
 
 
 def _sensor(title: str, value: Any, devcode: int = 6416) -> DessMonitorSensor:
@@ -95,3 +90,25 @@ def test_a_status_reading_publishes_the_vendors_own_words(
 
 def test_a_status_reading_the_collector_leaves_empty_reads_unknown() -> None:
     assert _sensor("Grid Status", "").native_value is None
+
+
+@pytest.mark.parametrize(
+    ("reported", "published"),
+    [
+        # What a version actually looks like. Each of the first three read
+        # unknown before #84, because float() could not take them.
+        ("V1.08", "V1.08"),
+        ("1.08.3", "1.08.3"),
+        ("0080-A", "0080-A"),
+        # The numeric-looking case, and the one that changes: this used to be
+        # published as the float 1.08, losing the vendor's last digit.
+        ("1.080", "1.080"),
+    ],
+)
+def test_a_software_version_is_published_as_the_vendor_wrote_it(
+    reported: str, published: str
+) -> None:
+    """A version is a label, not a quantity (#84)."""
+    sensor = _sensor("Software version", reported)
+
+    assert sensor.native_value == published

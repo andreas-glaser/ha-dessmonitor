@@ -73,6 +73,12 @@ TEXT_SENSOR_TITLES = {
     "PV Status",
     "Grid Status",
     "Load Status",
+    # A version is a label, not a quantity. Read as a number it either
+    # vanished - "V1.08", "1.08.3" and "0080-A" cannot survive float(), so
+    # the sensor read unknown with nothing in the log to say why - or lost a
+    # digit, publishing "1.080" as 1.08. This is the one key in SENSOR_TYPES
+    # that measures nothing and was still read as a number (#84).
+    "Software version",
 }
 
 
