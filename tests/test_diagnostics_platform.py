@@ -737,3 +737,126 @@ async def test_a_device_download_is_read_as_evidence(hass: HomeAssistant) -> Non
     assert [record["devcode"] for record in records] == [2341]
     assert records[0]["units"] == {"Battery Capacity": "%"}
     assert records[0]["checksum_valid"] is True
+
+
+def _local_only_coordinator(hass: HomeAssistant, entry_data: dict[str, object]):
+    """Build the real local coordinator, without binding any socket."""
+    from custom_components.dessmonitor.local.coordinator import (
+        DessMonitorLocalCoordinator,
+    )
+
+    coordinator = DessMonitorLocalCoordinator(hass, entry_data)
+    coordinator.async_set_updated_data(
+        {
+            "SN-LOCAL-1": {
+                "collector": {"pn": "Q0000PN0001", "ip": "192.168.18.27"},
+                "device": {
+                    "devcode": 258,
+                    "devaddr": 1,
+                    "local_protocol": "pi30",
+                    "local_address_verified": True,
+                    "connection_type": "local",
+                },
+                "data": [
+                    {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+                    {"title": "Data Source", "val": "Local", "unit": ""},
+                    {"title": "Timestamp", "val": "2026-11-17 18:29:05", "unit": ""},
+                ],
+            }
+        }
+    )
+    return coordinator
+
+
+@pytest.mark.usefixtures("socket_enabled")
+async def test_a_local_only_entry_can_be_downloaded(hass: HomeAssistant) -> None:
+    """The hub download raised AttributeError on every local-only entry (#86).
+
+    Asserted against the real local coordinator rather than a mock of one:
+    a mock answers for any attribute, which is why the entry download could
+    reach a stable release while failing on the mode whose owners are asked
+    for a download most often.
+    """
+    entry_data: dict[str, object] = {
+        "connection_type": "local",
+        CONF_LOCAL_LISTEN_IP: "192.168.18.134",
+        "local_collector_ip": "192.168.18.27",
+        "local_tcp_port": 0,
+        "local_udp_port": 58899,
+        "local_poll_interval": 60,
+        "local_device_address": 1,
+    }
+    coordinator = _local_only_coordinator(hass, entry_data)
+    entry = MagicMock()
+    entry.entry_id = "entry-local"
+    entry.data = dict(entry_data)
+    entry.options = {}
+    hass.data[DOMAIN] = {"entry-local": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    serialized = json.dumps(report)
+    assert "192.168.18.134" not in serialized
+    assert "192.168.18.27" not in serialized
+    assert report["coordinator"]["local_only"] is True
+    assert report["coordinator"]["hybrid"] is False
+    # Retention is a cloud mechanism and a local entry has no cloud payload,
+    # so the counter that depends on one is absent rather than invented.
+    assert "devices_on_a_retained_cloud_payload" not in report["coordinator"]
+    (transport,) = report["local"]["transports"]
+    assert transport["devices"] == 1
+    (seen,) = transport["devices_seen"]
+    assert seen["protocol"] == "pi30"
+    assert seen["device_identity"].startswith("sha256:")
+    (device,) = report["devices"]
+    assert device["devcode"] == 258
+    # No cloud client exists here, so the file says nothing was asked for
+    # rather than reporting a failed API call.
+    assert "control_error" not in device
+
+
+@pytest.mark.usefixtures("socket_enabled")
+async def test_a_local_device_can_be_downloaded(hass: HomeAssistant) -> None:
+    """The device button has to work on a local entry too (#86)."""
+    coordinator = _local_only_coordinator(
+        hass,
+        {
+            "connection_type": "local",
+            CONF_LOCAL_LISTEN_IP: "192.168.18.134",
+            "local_collector_ip": "192.168.18.27",
+            "local_tcp_port": 0,
+        },
+    )
+    entry = MagicMock()
+    entry.entry_id = "entry-local"
+    entry.data = {}
+    entry.options = {}
+    hass.data[DOMAIN] = {"entry-local": coordinator}
+    device = DeviceEntry(identifiers={(DOMAIN, "SN-LOCAL-1")})
+
+    report = await diagnostics_platform.async_get_device_diagnostics(
+        hass, entry, device
+    )
+
+    assert report["support_report"]["devcode"] == 258
+    assert "battery_config_error" not in report
+    assert report["local_control"] == {"enabled": False}
+
+
+def test_a_local_tunnel_code_is_not_a_missing_devcode_profile(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The log told owners to request support for a collector tunnel code (#86)."""
+    from custom_components.dessmonitor.device_support.device_registry import (
+        _WARNED_UNSUPPORTED_DEVCODES,
+        apply_devcode_transformations,
+        note_local_transport_devcode,
+    )
+
+    _WARNED_UNSUPPORTED_DEVCODES.discard(258)
+    note_local_transport_devcode(258)
+    with caplog.at_level("WARNING"):
+        point = apply_devcode_transformations(258, {"title": "Battery Voltage"})
+
+    assert point["title"] == "Battery Voltage"
+    assert "Unsupported devcode" not in caplog.text

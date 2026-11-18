@@ -464,13 +464,36 @@ def normalize_reading_scale(devcode: Any, transformed_data: dict[str, Any]) -> N
     transformed_data["unit"] = canonical
 
 
+# Device codes that name a local collector tunnel rather than a cloud devcode.
+# A local driver resolves every title itself, so no profile is missing for one,
+# and the warning below would tell the owner to request support for a number
+# the cloud's own devcode table does not contain: a local PI30 entry reported
+# "Unsupported devcode 258" while publishing all 23 of its readings (#86).
+_LOCAL_TRANSPORT_DEVCODES: set[int] = set()
+
+
+def note_local_transport_devcode(devcode: Any) -> None:
+    """Record that a device code came from a local tunnel, not from the cloud."""
+    key = _as_devcode(devcode)
+    if key is not None:
+        _LOCAL_TRANSPORT_DEVCODES.add(key)
+
+
+def is_local_transport_devcode(devcode: Any) -> bool:
+    """Return whether this device code was reported by a local collector."""
+    return _as_devcode(devcode) in _LOCAL_TRANSPORT_DEVCODES
+
+
 def apply_devcode_transformations(
     devcode: int, sensor_data: dict[str, Any]
 ) -> dict[str, Any]:
     """Apply all devcode-specific transformations to sensor data."""
     config = get_devcode_config(devcode)
     if not config:
-        if devcode not in _WARNED_UNSUPPORTED_DEVCODES:
+        if (
+            devcode not in _WARNED_UNSUPPORTED_DEVCODES
+            and not is_local_transport_devcode(devcode)
+        ):
             _LOGGER.warning(
                 "Unsupported devcode %s - no device-specific mappings available. "
                 "Using raw sensor titles and values; sensor support may be limited. "
