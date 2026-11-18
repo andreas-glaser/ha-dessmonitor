@@ -1071,6 +1071,24 @@ SENSOR_TYPES = {
         "state_class": "total_increasing",
         "icon": "mdi:battery-minus",
     },
+    # Our own clock, not the vendor's. The platform answers
+    # queryDeviceLastData with the reading it stored before a collector went
+    # quiet, so a successful refresh is no evidence that the numbers are
+    # current, and the only thing in the payload that moves is its own
+    # Timestamp - whose timezone this integration deliberately does not assume
+    # (#78). This sensor therefore carries when the integration first saw the
+    # reading the device is reporting now, measured here, so an automation can
+    # gate on an age of its own choosing without any existing entity's
+    # availability being touched. Confirmed on hardware: a collector taken off
+    # the network held its stored Timestamp for the whole outage and advanced
+    # it on reconnect.
+    "Last Reading Received": {
+        "name": "Last Reading Received",
+        "unit": "",
+        "device_class": "timestamp",
+        "icon": "mdi:clock-check-outline",
+        "entity_category": "diagnostic",
+    },
     "Software version": {
         "name": "Software Version",
         "unit": "",

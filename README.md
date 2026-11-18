@@ -126,6 +126,7 @@ The exact entities and units vary by device. Common readings include:
 | Status | Load percentage, operating mode, connectivity, and inverter temperatures |
 | Per output leg | On split-phase and dual-output collectors, Output L1/L2 power, apparent power, voltage, current, and load percentage, alongside the summed totals |
 | Provenance | `Data Source` shows `Cloud`, `Local`, or `Cached Cloud` per device, and `Timestamp` shows when that device last answered |
+| Freshness | `Last Reading Received` is a diagnostic sensor carrying when this integration last saw that device report something new, on your own clock |
 
 Diagnostic sensors can also show configured values such as output priority, charger source priority, and output voltage. These are disabled by default. To enable one, open the inverter's device page under **Settings > Devices & Services > DessMonitor**, select the disabled entity, and enable it in its settings.
 
@@ -188,7 +189,7 @@ The trigger fires when the reading crosses the threshold. Adjust the threshold t
 | Integration not found | Confirm `config/custom_components/dessmonitor/manifest.json` exists, restart Home Assistant, and check **Settings > System > Logs**. |
 | Authentication fails | Confirm the account works on the selected platform's website, then check the username, password, and company key. |
 | No cloud devices or sensors | Confirm the website shows your collector and live readings. Review the logs for device discovery or unsupported-devcode messages. |
-| Cloud readings are stale | Compare with the website's latest readings. Check connectivity to `api.dessmonitor.com` for DessMonitor or `ios.shinemonitor.com` for ShineMonitor. A shorter polling interval cannot refresh stale upstream data. |
+| Cloud readings are stale | Compare with the website's latest readings. Check connectivity to `api.dessmonitor.com` for DessMonitor or `ios.shinemonitor.com` for ShineMonitor. A shorter polling interval cannot refresh stale upstream data. The `Last Reading Received` sensor says when that device last reported something new; an automation can refuse to act on readings older than it is willing to trust. |
 | Local connection fails or falls back to cloud | Follow the [local troubleshooting guide](docs/LOCAL_MODE.md#troubleshooting) for network and protocol checks. Cloud support alone does not establish local compatibility. |
 | Settings are missing | Confirm you use cloud or hybrid mode, allow background discovery to finish, and check the logs. Controls depend on what the device exposes. |
 | Diagnostic sensors are missing | Check disabled entities on the device page; see [Available sensors](#available-sensors). |
