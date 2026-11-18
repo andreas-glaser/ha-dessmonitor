@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from .eybond_voltronic import (
     CHARGER_PRIORITY_MAPPING,
+    LOCAL_CONTROL_OPTION_VALUES,
     OUTPUT_PRIORITY_MAPPING,
     SENSOR_TITLE_MAPPINGS,
     SETTING_READINGS,
@@ -57,4 +58,5 @@ DEVCODE_CONFIG = {
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "control_options_filter": filter_control_options,
     "setting_readings": SETTING_READINGS,
+    "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
 }

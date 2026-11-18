@@ -1923,6 +1923,13 @@ async def _build_device_support_report(
         integration_version=VERSION,
     )
     report["control_reads"] = _control_read_state(coordinator, serial, control_fields)
+    # The same local-control evidence the device download carries. Only the
+    # device button produced it, so an owner who attached the entry file - the
+    # one the support guide names first - sent nothing about the settings
+    # their inverter reports or the writes it refused (#87).
+    local_control = _local_control_diagnostics(coordinator, serial, control_fields)
+    if local_control is not None:
+        report["local_control"] = local_control
     report["data_source"] = _extract_sensor_value(readings, "Data Source")
     report["last_update"] = _extract_sensor_value(readings, "Timestamp", "Unknown")
     # What the platform says about this device, beside what it sent for it. A
@@ -2068,7 +2075,11 @@ def _local_control_diagnostics(
                 for command, values in snapshot.enumerations.items()
             },
             "cloud_pairing": pairing_candidates(
-                snapshot.settings, snapshot.values, control_fields, cloud_values
+                snapshot.settings,
+                snapshot.values,
+                control_fields,
+                cloud_values,
+                snapshot.enumerations,
             ),
             "writes": local.write_history(serial),
         }

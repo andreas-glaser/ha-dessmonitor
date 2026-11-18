@@ -285,6 +285,12 @@ async def test_the_hub_report_is_json_serializable(hass: HomeAssistant) -> None:
     local = MagicMock()
     local.connected = True
     local.last_update_success = True
+    # Local control is off on this entry, which is the default, so the local
+    # side offers no settings; a mock that answers for every attribute would
+    # otherwise put objects in the file that cannot be written as JSON.
+    local.control_enabled = False
+    local.settings_snapshot.return_value = None
+    local.settings_error.return_value = None
     local.device_code = 2452
     local.data = {"SN-1": {}}
     coordinator.locals = (local,)
@@ -331,6 +337,12 @@ async def test_a_local_transport_reports_the_devices_it_saw(
     local = MagicMock()
     local.connected = True
     local.last_update_success = True
+    # Local control is off on this entry, which is the default, so the local
+    # side offers no settings; a mock that answers for every attribute would
+    # otherwise put objects in the file that cannot be written as JSON.
+    local.control_enabled = False
+    local.settings_snapshot.return_value = None
+    local.settings_error.return_value = None
     local.device_code = 258
     local.data = {
         "LOCAL-SN": {

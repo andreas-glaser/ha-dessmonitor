@@ -384,14 +384,25 @@ particular transport.
 A cloud control and a local setting are the same register under two names, and
 nothing in either payload says they are the same one. The pairing is made only
 on evidence: a declaration in the devcode profile, or names that normalise to
-the same string. A device diagnostics download reports the candidates it saw,
-which is how a declaration gets added; see
+the same string. A diagnostics download reports the candidates it saw, which
+is how a declaration gets added; see
 [ADDING_DEVCODES.md](ADDING_DEVCODES.md).
+
+A dropdown needs one more thing than a setpoint does. The platform's option
+codes are its own: devcode 2449 offers Output Source Priority as 12336, 12337
+and 12338 where the PI30 command takes 0, 1 and 2, and sending the platform's
+code was refused outright (#87). So a selection takes the local link only
+where its two vocabularies are tied together - by a declaration, or by a
+label that is the same word on both sides - while a quantity offered as a
+list, such as a charging current, pairs on its figure. An undeclared
+selection takes the cloud path, and `control_transport` on the entity says
+which transport carried the write.
 
 ### Diagnosing a write
 
 **Settings → Devices & services → DessMonitor → your inverter → Download
-diagnostics** carries a `local_control` section with the settings the inverter
+diagnostics**, or the download on the integration card, carries a
+`local_control` section with the settings the inverter
 reported, the limits it says it accepts, the ones it did not report, the cloud
 controls each setting looks like, and the outcome of every local write this
 session attempted - including the command name, whether it was acknowledged

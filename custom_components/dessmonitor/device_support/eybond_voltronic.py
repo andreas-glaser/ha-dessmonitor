@@ -39,6 +39,28 @@ CHARGER_PRIORITY_MAPPING: dict[str, str] = {
     "Solar only": "Only Solar",
 }
 
+# Which local PI30 option each of this family's cloud option codes means.
+#
+# The collectors in this family offer Output Source Priority as 0, 1 and 2
+# under the vendor's own short forms - Utility, Solar, SBU - which are the
+# three PI30 POP codes in the protocol's own order, so the platform's code is
+# the command's code. Evidence is the control template in
+# docs/evidence/devcodes/analysis_2477.json and analysis_6416.json.
+#
+# Charger Source Priority is deliberately absent. The same collectors offer
+# it as 0, 1 and 2 labelled "Solar priority", "Solar and mains" and "Solar
+# only", and those three are PCP01, PCP02 and PCP03: the list leaves out
+# utility first, so the platform's code would be one less than the command's,
+# the opposite of the output list beside it. Nothing in a download says which
+# of the two the platform sends, and a wrong entry here sets utility first
+# when the owner asks for solar - a write the inverter then reports back and
+# the integration reports as verified. It therefore has no local route and
+# takes the cloud path, until a download shows a local write of it moving the
+# setting the label names (#87).
+LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
+    "los_output_source_priority": {"0": "0", "1": "1", "2": "2"},
+}
+
 SENSOR_TITLE_MAPPINGS: dict[str, str] = {
     "AC Input Frequency": "Grid Frequency",
     "AC Input Voltage": "Grid Voltage",

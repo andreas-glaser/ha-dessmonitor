@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from .eybond_voltronic import (
     CHARGER_PRIORITY_MAPPING,
+    LOCAL_CONTROL_OPTION_VALUES,
     OUTPUT_PRIORITY_MAPPING,
 )
 from .eybond_voltronic import SENSOR_TITLE_MAPPINGS as FAMILY_SENSOR_TITLE_MAPPINGS
@@ -73,4 +74,5 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
+    "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
 }
