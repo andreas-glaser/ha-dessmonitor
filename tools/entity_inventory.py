@@ -21,6 +21,19 @@ and an upgrade note rather than riding along with other work.
 This covers the sensor platform, which is where nearly all of them are. The
 control platforms build from a live control template rather than from a
 payload, so they are not reachable this way and still need a reporter.
+
+Two things it deliberately does not do, each of which cost a run when the
+comparison was done by hand:
+
+* It does not print the readings' values, and every data point is given the
+  same placeholder. Each checkout runs its own copy of the normaliser that
+  reads the evidence files, and an older one answers differently about values,
+  which made 521 entities look changed when none had. What must not move is an
+  entity's identity and metadata, and that is what the line carries.
+* It reads each checkout's own ``docs/evidence/``. A devcode whose evidence
+  file is new on the branch therefore shows up as added lines under a file
+  name the other side does not have, which is a new devcode rather than a
+  moved entity.
 """
 
 from __future__ import annotations
