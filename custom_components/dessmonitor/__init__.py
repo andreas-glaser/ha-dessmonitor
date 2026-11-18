@@ -1748,6 +1748,8 @@ async def async_get_config_entry_diagnostics(
         report["error"] = "The config entry is not loaded"
         return report
 
+    local_only = getattr(coordinator, "is_local", False) is True
+    hybrid = getattr(coordinator, "is_hybrid", False) is True
     report["coordinator"] = {
         "last_update_success": coordinator.last_update_success,
         "update_interval_seconds": (
@@ -1757,37 +1759,32 @@ async def async_get_config_entry_diagnostics(
         ),
         "cloud_revision": coordinator.cloud_revision,
         "devices_in_snapshot": len(coordinator.data or {}),
-        "devices_on_a_retained_cloud_payload": len(coordinator.stale_cloud_serials),
-        "hybrid": getattr(coordinator, "is_hybrid", False),
+        "hybrid": hybrid,
+        "local_only": local_only,
     }
+    if not local_only:
+        # Retention is a cloud mechanism: a local-only entry has no stored
+        # cloud payload to keep. Reading the attribute unconditionally made
+        # "Download diagnostics" fail with an ``AttributeError`` on every
+        # local-only entry, which is the mode whose owners are asked for a
+        # download most often (#86).
+        report["coordinator"]["devices_on_a_retained_cloud_payload"] = len(
+            coordinator.stale_cloud_serials
+        )
 
-    if getattr(coordinator, "is_hybrid", False):
+    if local_only or hybrid:
+        # A hybrid entry reports this even when no transport started, because
+        # why none started is the whole diagnosis; a local-only entry is its
+        # own single transport.
+        transports = (
+            [coordinator] if local_only else list(getattr(coordinator, "locals", ()))
+        )
         report["local"] = {
             "setup_errors": [
                 _redacted_message(error, subnets)
                 for error in getattr(coordinator, "local_setup_errors", ())
             ],
-            "transports": [
-                {
-                    "connected": local.connected,
-                    "last_update_success": local.last_update_success,
-                    "device_code": local.device_code,
-                    "devices": len(local.data or {}),
-                    # What the local side actually saw. The hybrid overlay
-                    # matches a local device to a cloud one by serial, or by
-                    # collector and RS485 address together, and a device that
-                    # matches nothing stays on cloud telemetry in silence. The
-                    # file recorded only that a transport was connected, so a
-                    # mismatch between an inverter answering locally at one
-                    # address and the cloud listing it at another could not be
-                    # seen in it at all (#61).
-                    "devices_seen": [
-                        _local_device_facts(serial, payload)
-                        for serial, payload in sorted((local.data or {}).items())
-                    ],
-                }
-                for local in getattr(coordinator, "locals", ())
-            ],
+            "transports": [_local_transport_facts(local) for local in transports],
         }
 
     report["devices"] = [
@@ -1795,6 +1792,32 @@ async def async_get_config_entry_diagnostics(
         for serial, payload in sorted((coordinator.data or {}).items())
     ]
     return report
+
+
+def _local_transport_facts(local: Any) -> dict[str, Any]:
+    """Describe one local transport, for a hybrid entry or a local-only one.
+
+    A local-only entry carried no local section at all, so the file an owner
+    in local mode attached said nothing about the only transport the entry
+    has (#86).
+    """
+    return {
+        "connected": local.connected,
+        "last_update_success": local.last_update_success,
+        "device_code": local.device_code,
+        "devices": len(local.data or {}),
+        # What the local side actually saw. The hybrid overlay matches a local
+        # device to a cloud one by serial, or by collector and RS485 address
+        # together, and a device that matches nothing stays on cloud telemetry
+        # in silence. The file recorded only that a transport was connected,
+        # so a mismatch between an inverter answering locally at one address
+        # and the cloud listing it at another could not be seen in it at all
+        # (#61).
+        "devices_seen": [
+            _local_device_facts(serial, payload)
+            for serial, payload in sorted((local.data or {}).items())
+        ],
+    }
 
 
 def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -2097,6 +2120,13 @@ async def _fetch_control_details(
     device_data: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     """Fetch control fields and parameters for diagnostics."""
+    if getattr(coordinator, "is_local", False) is True:
+        # There is no cloud client on a local-only entry. Asking for one
+        # raised an ``AttributeError`` that was caught and then logged as a
+        # failed API call, which is not what happened: the settings this
+        # inverter reports are in the ``local_control`` section instead.
+        return {}, {}, None
+
     collector_meta = device_info.get("collector", {})
     device_meta = device_info.get("device", {})
 

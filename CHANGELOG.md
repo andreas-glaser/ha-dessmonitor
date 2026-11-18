@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- "Download diagnostics" works on a local-only entry. Both downloads read a
+  cloud-only counter off the coordinator, so the request failed with
+  `AttributeError: 'DessMonitorLocalCoordinator' object has no attribute
+  'stale_cloud_serials'` and Home Assistant answered HTTP 500 - on the one
+  mode whose owners are asked for a download most often (#86, thanks to
+  @onslaugh2 for reporting it on an Axpert VM IV 6 kW). A local entry's file
+  now also carries its transport, the inverters the local side saw and their
+  protocol, which no local download used to contain at all. The entry
+  download drops `devices_on_a_retained_cloud_payload` on a local entry
+  rather than inventing a figure: retention is a cloud mechanism and there is
+  no cloud payload to retain. The tests for both buttons now run against the
+  real local coordinator, because a mock answers for any attribute, which is
+  how this reached a stable release.
+- A local entry no longer reports its collector's tunnel code as an
+  unsupported devcode. The log asked the owner to request devcode support for
+  the number 258 while the entry published all of its readings, because a
+  PI30 or P17 device has no cloud devcode profile and reports the tunnel code
+  in its place; a local driver resolves every title itself, so nothing is
+  missing (#86). A device download on a local entry also stops reporting a
+  failed API call for control fields there is no cloud client to ask for.
+
 ## [3.0.0] - 2026-11-17
 
 This stable release includes all changes since 2.8.0, including everything

@@ -32,6 +32,7 @@ from ..const import (
     LOCAL_SETTINGS_REFRESH_CYCLES,
 )
 from ..control_values import TRANSPORT_LOCAL, ControlWriteResult
+from ..device_support.device_registry import note_local_transport_devcode
 from ..sensor_titles import resolve_sensor_key, sensor_unit
 from .announcer import CollectorAnnouncer
 from .discovery import inverter_addresses
@@ -478,6 +479,13 @@ class DessMonitorLocalCoordinator(DataUpdateCoordinator):
         self._driver = driver
         self._devices = {device.serial: device for device in devices}
         self._device_code = devices[0].transport_device_code
+        for device in devices:
+            # A driver that maps its inverters onto a cloud devcode profile
+            # reports that code; PI30 and P17 have none, so they report the
+            # collector's tunnel code and the devcode table has nothing to
+            # say about it (#86).
+            if device.entity_device_code == device.transport_device_code:
+                note_local_transport_devcode(device.entity_device_code)
         _LOGGER.info(
             "Local mode discovered %d inverter(s) using %s (tunnel code %d)",
             len(self._devices),
