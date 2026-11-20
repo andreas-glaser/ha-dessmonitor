@@ -184,12 +184,61 @@ def test_the_checksum_covers_the_report_it_ships_with() -> None:
         ("id", True),
         ("collector alias", True),
         ("token", True),
+        # Devcode 567's electronic serial number, under both spellings the
+        # download carried it (#89).
+        ("Device e-SN", True),
+        ("e-SN", True),
+        ("sn", True),
         ("Battery Voltage", False),
         ("Grid frequency", False),
     ],
 )
 def test_identifier_names_are_recognized(name: str, expected: bool) -> None:
     assert is_identifier_name(name) is expected
+
+
+def test_the_electronic_serial_number_does_not_reach_the_file() -> None:
+    """Devcode 567 reports it as a reading and advertises it as a control.
+
+    Neither seam blanked it, so the serial was in the attached file in plain
+    text and the owner removed it by hand - which broke the checksum their
+    report is signed with, and with it the only thing that makes a committed
+    evidence file checkable (#89).
+    """
+    serial = "ESN-0001-REPORTER"
+    report = build_support_report(
+        devcode=567,
+        readings=[
+            {"title": "Device e-SN", "val": serial, "unit": ""},
+            {"title": "Grid Frequency", "val": "49.97", "unit": "Hz"},
+        ],
+        control_fields={"Device e-SN": {"value": serial, "unit": "", "id": "sn"}},
+    )
+
+    assert serial not in json.dumps(report)
+    assert report["readings"][0] == {
+        "title": "Device e-SN",
+        "value": "",
+        "unit": "",
+        "resolved_key": None,
+        "sensor_unit": None,
+    }
+    assert report["control_fields"][0]["value"] == ""
+
+
+def test_a_control_whose_identifying_name_is_only_its_id_is_blanked() -> None:
+    """The id and the display name are two spellings of one field.
+
+    Matching on the name alone let devcode 567's serial through under a
+    display name no suffix rule would catch.
+    """
+    report = build_support_report(
+        devcode=567,
+        readings=[],
+        control_fields={"Machine code": {"value": "ESN-0001", "id": "device_sn"}},
+    )
+
+    assert report["control_fields"][0]["value"] == ""
 
 
 def test_the_module_loads_without_the_integration_package() -> None:
