@@ -121,6 +121,77 @@ def test_a_non_numeric_value_is_not_scaled() -> None:
     assert point["val"] == "--"
 
 
+def test_a_kilowatt_nameplate_reaches_a_watt_sensor_scaled() -> None:
+    """The reading the owner of a devcode 567 inverter reported (#89).
+
+    A 10 kW three-phase grid-tie inverter published its nameplate rating as
+    10.0 W, because the collector labels its whole AC side in kW and the
+    sensor publishes watts.
+    """
+    point = apply_devcode_transformations(567, _reading("Rated power", "10", "kW"))
+
+    assert point["title"] == "Rated power"
+    assert point["val"] == 10000.0
+    assert point["unit"] == "W"
+
+
+def test_a_kilowatt_live_reading_is_scaled_too() -> None:
+    """The same collector's live AC output, 0.95 kW on a watt sensor."""
+    point = apply_devcode_transformations(
+        567, _reading("Output Active Power", "0.95", "kW")
+    )
+
+    assert point["val"] == 950.0
+    assert point["unit"] == "W"
+
+
+def test_a_collector_reporting_watts_on_a_watt_sensor_is_untouched() -> None:
+    """The guard for the 134 watt-labelled rows in the committed evidence."""
+    point = apply_devcode_transformations(518, _reading("active power", "20", "W"))
+
+    assert point["val"] == "20"
+    assert point["unit"] == "W"
+
+
+def test_the_summary_field_published_in_kilowatts_is_untouched() -> None:
+    """``outpower`` is the one power sensor whose own unit is kW.
+
+    Every kilowatt-labelled row in the committed evidence is this field, so a
+    pair that scaled it would be the thousand-fold error in the other
+    direction on every account that fills it.
+    """
+    point = apply_devcode_transformations(6416, _reading("outpower", "2.4110", "kW"))
+
+    assert point["val"] == "2.4110"
+    assert point["unit"] == "kW"
+
+
+def test_a_kilovoltampere_reading_is_left_for_the_entity_to_convert() -> None:
+    """The one reading with a converter of its own, so it needs no pair here.
+
+    ``DessMonitorSensor.native_value`` multiplies a kVA-labelled apparent
+    power by a thousand, so a pair in the table would scale devcode 518's
+    0.080 kVA twice and publish 80000 VA.
+    """
+    point = apply_devcode_transformations(
+        518, _reading("apparent power value", "0.080", "kVA")
+    )
+
+    assert point["title"] == "Output Apparent Power"
+    assert point["val"] == "0.080"
+    assert point["unit"] == "kVA"
+
+
+def test_reactive_power_declared_in_kilovar_reaches_its_sensor() -> None:
+    """Reactive power is published in the unit apparent power uses."""
+    point = apply_devcode_transformations(
+        567, _reading("Output Reactive Power", "0.45", "kVar")
+    )
+
+    assert point["val"] == 450.0
+    assert point["unit"] == "VA"
+
+
 def test_an_unlisted_unit_pair_is_left_alone() -> None:
     """The table holds only pairs a committed download shows.
 
