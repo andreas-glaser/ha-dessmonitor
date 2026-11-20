@@ -29,6 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either way.
 
 ### Fixed
+- The inverter's electronic serial number no longer reaches the diagnostics
+  download in plain text. Devcode 567 reports it as a reading titled
+  `Device e-SN` and advertises it as a control field with the id `sn`, and
+  neither seam blanked it: the reading matched none of the identifying names,
+  and a control was matched on its display name alone rather than on its id
+  as well (#89, thanks to @eimantasq for spotting it in their own file before
+  attaching it). The cost was not only the disclosure. Removing it by hand is
+  what the support guide asks for, and it breaks the checksum the report is
+  signed with, which is the one thing that makes a committed evidence file
+  checkable - so a carefully redacted download could no longer be committed
+  as the evidence for the devcode it was taken for.
 - A dropdown written over the local link now sends the value the inverter's
   own command takes. A cloud control and a local setting are the same
   register, and their option vocabularies are not: devcode 2449 offers Output

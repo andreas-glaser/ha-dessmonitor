@@ -387,7 +387,11 @@ def _redacted_controls(fields: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for name, config in fields.items():
         row = {"name": str(name), **copy.deepcopy(config or {})}
-        if is_identifier_name(str(name)):
+        # The vendor's display name and the field id are two spellings of the
+        # same field and either can be the identifying one: devcode 567's
+        # serial is advertised as a control named "Device e-SN" with the id
+        # "sn", and matching on the name alone let it through (#89).
+        if is_identifier_name(str(name)) or is_identifier_name(str(row.get("id", ""))):
             row["val"] = ""
             row["value"] = ""
         rows.append(row)
@@ -433,6 +437,18 @@ def is_identifier_name(name: str) -> bool:
         "devicesn",
         "collectorsn",
         "invertersn",
+        # The electronic serial number, which devcode 567 reports both as a
+        # reading titled "Device e-SN" and as a control field, and which
+        # reached the file in plain text because neither spelling matched the
+        # names above nor the suffixes below. The owner redacted it by hand,
+        # which broke the checksum their file is signed with and made it
+        # uncommittable as evidence (#89). Listed exactly rather than as an
+        # "esn" suffix: a three-letter suffix is the kind of rule that blanks
+        # a reading nobody meant it to.
+        "esn",
+        "deviceesn",
+        "collectoresn",
+        "inverteresn",
         "pn",
         "collectorpn",
         "mac",
