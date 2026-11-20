@@ -392,13 +392,32 @@ def map_operating_mode(devcode: int, api_value: str) -> str:
 # counter goes into long-term statistics, and multiplying 15.0452 MWh by 1000.0
 # yields 15045.199999999999 where dividing keeps the figure the vendor sent.
 #
-# Only the energy scales are listed, because those are the only ones any
-# evidence in this repository shows a collector disagreeing with the sensor
-# about, and a factor applied to a reading that did not need one is a
-# thousand-fold error in the other direction. Add a pair here when a committed
-# download shows it, not in anticipation.
+# A pair is listed only once a committed download shows a collector declaring
+# it, because a factor applied to a reading that did not need one is a
+# thousand-fold error in the other direction.
+#
+# The energy pair came from devcode 2449's generation counters (#71). The two
+# kilo-prefixed pairs below came from the devcode 567 download in #89, a 10 kW
+# three-phase grid-tie inverter that labels its whole AC side in kW and kVar:
+# its nameplate "Rated power" of 10 kW was published as 10.0 W, which is what
+# the owner reported, and its live AC Active Power of 0.95 kW would have been
+# published as 0.95 W.
+#
+# Reactive power is scaled onto VA because that is the unit SENSOR_TYPES
+# publishes it in, which is a decision of its own: a grid-tie inverter reports
+# reactive power in the unit its apparent power uses. The devcode 567 download
+# was taken after sunset and its reactive power reads 0.00, so the kVar label
+# is the evidence here and no figure confirms it.
+#
+# ("kva", "va") deliberately does not belong here: an apparent-power reading
+# labelled kVA is already converted at the entity, in
+# ``DessMonitorSensor.native_value``, so a pair here would scale it a second
+# time and publish 0.080 kVA as 80000 VA. That is the only reading with a
+# converter of its own.
 _UNIT_SCALES: dict[tuple[str, str], tuple[int, int]] = {
     ("wh", "kwh"): (1, 1000),
+    ("kw", "w"): (1000, 1),
+    ("kvar", "va"): (1000, 1),
 }
 
 

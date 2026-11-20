@@ -29,6 +29,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either way.
 
 ### Fixed
+- A reading a collector labels in kilowatts now reaches its watt sensor as
+  watts. The devcode 567 download in #89 comes from a 10 kW three-phase
+  grid-tie inverter that labels its whole AC side in kW and kVar, and its
+  nameplate rating was published as **10.0 W** (#89, thanks to @eimantasq for
+  the report and for naming the unit as the cause). This uses the same
+  mechanism as the watt-hour scale from #71: the unit the collector declares
+  decides it, so a collector that already reports watts is untouched. None of
+  the twenty downloads committed under `docs/evidence/devcodes/` carries a
+  kilowatt-labelled reading on a watt sensor, so no supported devcode is
+  known to change what it publishes.
+
+  *Upgrade note:* no entity is added, renamed or removed. On an installation
+  whose collector labels a power reading in kilowatts, that sensor's state
+  becomes a thousand times larger - which is the correct figure - and its
+  long-term statistics carry the old one before the upgrade. The summary
+  endpoint's **Inverter Output Power** is unaffected: it is the one power
+  sensor whose own unit is kilowatts.
 - The inverter's electronic serial number no longer reaches the diagnostics
   download in plain text. Devcode 567 reports it as a reading titled
   `Device e-SN` and advertises it as a control field with the id `sn`, and
