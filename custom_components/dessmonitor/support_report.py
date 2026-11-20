@@ -295,6 +295,7 @@ def build_support_report(
     readings: list[dict[str, Any]],
     cloud_readings: list[dict[str, Any]] | None = None,
     observed_values: dict[str, dict[str, Any]] | None = None,
+    entity_inventory: dict[str, Any] | None = None,
     device_serial: Any = None,
     collector_product_number: Any = None,
     device_address: Any = None,
@@ -365,6 +366,14 @@ def build_support_report(
                 observed_values.items(), key=lambda item: item[0].casefold()
             )
         }
+
+    if entity_inventory:
+        # What this device actually publishes, keyed by sensor rather than by
+        # entity id. The report said which readings reach a sensor and nothing
+        # about the entities, so a renamed entity could not be told from a
+        # recorder fault (#53) and two entities under one name went unnoticed
+        # until an owner saw one of the pair reading zero (#58).
+        report["entity_inventory"] = entity_inventory
 
     if control_fields is not None:
         report["control_fields"] = _redacted_controls(control_fields)

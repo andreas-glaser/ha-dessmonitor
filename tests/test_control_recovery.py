@@ -702,7 +702,7 @@ async def test_the_download_says_whether_reads_have_been_given_up_on(hass):
 
     async def _state():
         report = await _build_device_support_report(
-            coordinator, entry, "TEST", coordinator.data["TEST"]
+            hass, coordinator, entry, "TEST", coordinator.data["TEST"]
         )
         return report["control_reads"]
 

@@ -29,6 +29,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either way.
 
 ### Added
+- **The download records what a device actually publishes**, keyed by sensor
+  rather than by name: how many entities exist for each sensor, how many are
+  disabled, whether each reads a value or `unknown` or `unavailable`, whether
+  the owner has renamed one, and any display name that more than one sensor
+  publishes. The file said which readings reach a sensor and nothing about the
+  entities, and two defects cost weeks for want of it - a reporter was asked
+  twice for an entity id from Developer tools because a renamed entity and a
+  recorder problem cannot be told apart from a download (#53), and a device
+  published two entities under one name with the one the plant summary fed
+  reading 0 kWh, which nobody saw until an owner happened to look at the pair
+  (#58). That second defect now names itself in the file (#63, item 4).
+
+  No entity id and no friendly name go in it. Both carry whatever the owner
+  called the thing and these files are attached to public issues, so the
+  section is keyed by the integration's own sensor key and says only *that*
+  something was renamed.
 - **The download records every value a reading has been seen to answer with
   a word**, per device, with how many times it was seen since the entry was
   loaded. A snapshot carries whichever value was current when it was taken,

@@ -35,7 +35,15 @@ multi-inverter account, because it covers all of them at once.
 company key and token are redacted, and serial numbers, collector aliases and
 collector product numbers appear only as a `sha256:` correlation hash, so two
 downloads of the same account can still be compared without disclosing either.
-Review it before attaching it, as you should with any diagnostics file.
+The names you have given your own entities are not in it either: the file
+records what each sensor publishes, keyed by the integration's own name for
+it, and says only *that* one was renamed. Review it before attaching it, as
+you should with any diagnostics file.
+
+If you do redact something further, say so in the issue. It changes the
+checksum the report is signed with, and a file that no longer matches its own
+checksum cannot be committed as the evidence for your devcode, so a
+maintainer will ask for a fresh one.
 
 If Home Assistant shows a **Repairs** card saying a devcode has no mappings or
 is missing readings, that card is raised by this check and links here.
