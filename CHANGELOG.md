@@ -7,27 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **The Software Version sensor publishes the version the collector sent,
-  as text.** It was the one key in `SENSOR_TYPES` that measures nothing and
-  was still read as a number, so a version written `V1.08`, `1.08.3` or
-  `0080-A` could not survive `float()` and the sensor read unknown with
-  nothing in the log to say why - the same defect the four per-subsystem
-  status sensors had (#81) - while a version written `1.080` was published as
-  1.08, losing the vendor's last digit (#84).
-
-  *Upgrade note:* no entity is added, renamed or removed, and no unit, device
-  class, state class or category changes. On an installation whose collector
-  answers a numeric-looking version the published state changes from `1.08`
-  to the vendor's own `1.080`, so a template or automation that compares it
-  as a number needs to compare it as a string instead. On one whose collector
-  answers anything else the sensor starts carrying a value for the first
-  time. None of the nineteen downloads committed under
-  `docs/evidence/devcodes/` carries this reading at all, so no account is
-  known to publish the sensor; this was shipped separately from #81 rather
-  than ridden along with it because it is a change to a published state
-  either way.
-
 ### Added
 - **The download records what a device actually publishes**, keyed by sensor
   rather than by name: how many entities exist for each sensor, how many are
@@ -77,6 +56,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it discloses nothing the readings did not: the serial, the collector
   product number and the network addresses are redacted there as they are
   everywhere else in the file.
+- **A `Last Reading Received` diagnostic sensor per device, carrying when this
+  integration last saw that device report something new.** The vendor cloud
+  answers `queryDeviceLastData` with the reading it stored before a collector
+  went quiet, so the refresh succeeds, the device stays in the snapshot, Data
+  Source still says `Cloud`, and every entity goes on publishing values that
+  are no longer live - which is what #78 was filed for, after a collector
+  dropped off Wi-Fi and automations kept acting on the numbers.
+
+  The value is this host's clock, never the vendor's: the payload's own
+  timestamp is the inverter's wall clock in a timezone this integration
+  deliberately does not assume, so what is used is that the string *changes*.
+  @ballhtml's measurement is what made that possible - a collector taken off
+  the network held its stored timestamp for the whole outage and advanced it
+  on the next frame.
+
+  No existing entity's availability is touched, and no threshold is chosen
+  here: marking measurement entities unavailable past some age would change
+  what 13,000 installations publish on a figure nobody has the evidence to
+  pick, and entities going unavailable is the symptom #54 and #55 were filed
+  for. The threshold belongs to the automation that reads the sensor, and
+  README.md and docs/LOCAL_MODE.md show one. The `observed_change` attribute
+  is `false` until the timestamp has been seen to move, which says plainly
+  that the age implied just after a restart is a lower bound.
+- **The download carries the local-mode evidence that used to exist only in
+  the debug log.** Per transport: the bounded, payload-free probe record from
+  discovery - every query with its protocol, command, response size, elapsed
+  milliseconds and outcome - and the last failed discovery beside the last
+  one, because a collector that failed twice and then worked leaves the
+  diagnosis in the failure. Also the collector session: how long it has been
+  up, how long since its last heartbeat, how many requests are in flight,
+  the request timeout, and whether this collector has been seen to answer a
+  query we had already given up on, which is the flag that explains a
+  collector failing at a short polling interval and working at a long one
+  (#53). Also the configured poll interval and how long ago a poll last
+  succeeded. Per inverter: the queries its driver has stopped sending and the
+  optional ones it has seen fail, which is what answers "my PV2 sensors
+  stopped". All of it was already in memory; none of it reached the file
+  (#63).
+- `tools/entity_inventory.py` builds every sensor the integration would
+  publish for every device under `docs/evidence/`, one line per entity with
+  its unique id, name, unit, device class, state class and category, so two
+  checkouts can be diffed. That comparison is how a release states what it
+  moves, and it was done by hand until now; docs/RELEASE_GUIDE.md makes it a
+  pre-release step. Against v3.0.0 this branch adds 20 lines - the new
+  freshness sensor, one per device in the committed evidence - and changes or
+  removes none.
+- Every reading row in a support report names the unit its entity publishes
+  beside the unit the payload declared. The row carried the raw unit and the
+  resolved key, so a value sitting on a sensor of a different scale was
+  invisible until someone noticed a wrong figure: the PI18 watt-hour total on
+  a kWh sensor had to be inferred by comparing it against the cloud's own
+  parameters (#63, item 5).
+- The download on the integration card carries the `local_control` section
+  per device - the settings the inverter reported, the limits it accepts, the
+  cloud control each one pairs with, and the outcome of every local write in
+  the session. Only the device button produced it, while the support guide
+  names the entry download first, so an owner who attached that file sent
+  nothing about local control at all (#87, #63).
+- The pairing report names both option vocabularies: the values the local
+  command takes, beside the cloud control's own. One list alone cannot be
+  read as a mapping, which is what a `local_control_option_values`
+  declaration has to state (#87, #63).
+
+### Changed
+- **The Software Version sensor publishes the version the collector sent,
+  as text.** It was the one key in `SENSOR_TYPES` that measures nothing and
+  was still read as a number, so a version written `V1.08`, `1.08.3` or
+  `0080-A` could not survive `float()` and the sensor read unknown with
+  nothing in the log to say why - the same defect the four per-subsystem
+  status sensors had (#81) - while a version written `1.080` was published as
+  1.08, losing the vendor's last digit (#84).
+
+  *Upgrade note:* no entity is added, renamed or removed, and no unit, device
+  class, state class or category changes. On an installation whose collector
+  answers a numeric-looking version the published state changes from `1.08`
+  to the vendor's own `1.080`, so a template or automation that compares it
+  as a number needs to compare it as a string instead. On one whose collector
+  answers anything else the sensor starts carrying a value for the first
+  time. None of the nineteen downloads committed under
+  `docs/evidence/devcodes/` carries this reading at all, so no account is
+  known to publish the sensor; this was shipped separately from #81 rather
+  than ridden along with it because it is a change to a published state
+  either way.
 
 ### Fixed
 - A reading a collector labels in kilowatts now reaches its watt sensor as
@@ -148,70 +210,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in its place; a local driver resolves every title itself, so nothing is
   missing (#86). A device download on a local entry also stops reporting a
   failed API call for control fields there is no cloud client to ask for.
-
-### Added
-- **A `Last Reading Received` diagnostic sensor per device, carrying when this
-  integration last saw that device report something new.** The vendor cloud
-  answers `queryDeviceLastData` with the reading it stored before a collector
-  went quiet, so the refresh succeeds, the device stays in the snapshot, Data
-  Source still says `Cloud`, and every entity goes on publishing values that
-  are no longer live - which is what #78 was filed for, after a collector
-  dropped off Wi-Fi and automations kept acting on the numbers.
-
-  The value is this host's clock, never the vendor's: the payload's own
-  timestamp is the inverter's wall clock in a timezone this integration
-  deliberately does not assume, so what is used is that the string *changes*.
-  @ballhtml's measurement is what made that possible - a collector taken off
-  the network held its stored timestamp for the whole outage and advanced it
-  on the next frame.
-
-  No existing entity's availability is touched, and no threshold is chosen
-  here: marking measurement entities unavailable past some age would change
-  what 13,000 installations publish on a figure nobody has the evidence to
-  pick, and entities going unavailable is the symptom #54 and #55 were filed
-  for. The threshold belongs to the automation that reads the sensor, and
-  README.md and docs/LOCAL_MODE.md show one. The `observed_change` attribute
-  is `false` until the timestamp has been seen to move, which says plainly
-  that the age implied just after a restart is a lower bound.
-- **The download carries the local-mode evidence that used to exist only in
-  the debug log.** Per transport: the bounded, payload-free probe record from
-  discovery - every query with its protocol, command, response size, elapsed
-  milliseconds and outcome - and the last failed discovery beside the last
-  one, because a collector that failed twice and then worked leaves the
-  diagnosis in the failure. Also the collector session: how long it has been
-  up, how long since its last heartbeat, how many requests are in flight,
-  the request timeout, and whether this collector has been seen to answer a
-  query we had already given up on, which is the flag that explains a
-  collector failing at a short polling interval and working at a long one
-  (#53). Also the configured poll interval and how long ago a poll last
-  succeeded. Per inverter: the queries its driver has stopped sending and the
-  optional ones it has seen fail, which is what answers "my PV2 sensors
-  stopped". All of it was already in memory; none of it reached the file
-  (#63).
-- `tools/entity_inventory.py` builds every sensor the integration would
-  publish for every device under `docs/evidence/`, one line per entity with
-  its unique id, name, unit, device class, state class and category, so two
-  checkouts can be diffed. That comparison is how a release states what it
-  moves, and it was done by hand until now; docs/RELEASE_GUIDE.md makes it a
-  pre-release step. Against v3.0.0 this branch adds 20 lines - the new
-  freshness sensor, one per device in the committed evidence - and changes or
-  removes none.
-- Every reading row in a support report names the unit its entity publishes
-  beside the unit the payload declared. The row carried the raw unit and the
-  resolved key, so a value sitting on a sensor of a different scale was
-  invisible until someone noticed a wrong figure: the PI18 watt-hour total on
-  a kWh sensor had to be inferred by comparing it against the cloud's own
-  parameters (#63, item 5).
-- The download on the integration card carries the `local_control` section
-  per device - the settings the inverter reported, the limits it accepts, the
-  cloud control each one pairs with, and the outcome of every local write in
-  the session. Only the device button produced it, while the support guide
-  names the entry download first, so an owner who attached that file sent
-  nothing about local control at all (#87, #63).
-- The pairing report names both option vocabularies: the values the local
-  command takes, beside the cloud control's own. One list alone cannot be
-  read as a mapping, which is what a `local_control_option_values`
-  declaration has to state (#87, #63).
 
 ## [3.0.0] - 2026-11-17
 
