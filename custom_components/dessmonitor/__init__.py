@@ -20,6 +20,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -1599,6 +1600,7 @@ async def async_get_device_diagnostics(
         readings=device_data,
         cloud_readings=_cloud_readings_under_overlay(coordinator, device_sn),
         observed_values=_observed_values(coordinator, device_sn),
+        entity_inventory=_entity_inventory(hass, entry, device_sn),
         device_serial=device_sn,
         collector_product_number=device_info.get("collector", {}).get("pn"),
         device_address=device_info.get("device", {}).get("devaddr"),
@@ -1839,7 +1841,7 @@ async def async_get_config_entry_diagnostics(
         }
 
     report["devices"] = [
-        await _build_device_support_report(coordinator, entry, serial, payload)
+        await _build_device_support_report(hass, coordinator, entry, serial, payload)
         for serial, payload in sorted((coordinator.data or {}).items())
     ]
     return report
@@ -1954,6 +1956,7 @@ def _int_for(mapping: Any, key: str) -> int:
 
 
 async def _build_device_support_report(
+    hass: HomeAssistant,
     coordinator: DessMonitorDataUpdateCoordinator,
     entry: ConfigEntry,
     serial: str,
@@ -1984,6 +1987,7 @@ async def _build_device_support_report(
         readings=readings,
         cloud_readings=_cloud_readings_under_overlay(coordinator, serial),
         observed_values=_observed_values(coordinator, serial),
+        entity_inventory=_entity_inventory(hass, entry, serial),
         device_serial=serial,
         collector_product_number=collector_meta.get("pn"),
         device_address=device_meta.get("devaddr"),
@@ -2491,3 +2495,93 @@ def _build_diagnostics_summary(
         "control_fields_found": len(diagnostics.get("configuration", {})),
         "parameters_found": len(diagnostics.get("parameters", {})),
     }
+
+
+# The entity state Home Assistant publishes when it has nothing to show.
+_UNAVAILABLE_STATES = {"unavailable", "unknown"}
+
+
+def _entity_inventory(
+    hass: HomeAssistant, entry: ConfigEntry, device_sn: str
+) -> dict[str, Any] | None:
+    """Return what this device publishes, keyed by sensor rather than by name.
+
+    The download recorded which readings reach a sensor and nothing about the
+    entities themselves, and two defects cost weeks for want of it. In #53 the
+    reporter was asked twice for the Data Source entity id from Developer
+    tools, because a renamed entity and a recorder problem cannot be told
+    apart from here. In #58 a device published two entities under one name and
+    the one the summary fed read 0 kWh, which nobody saw until an owner
+    happened to look at the pair.
+
+    It is keyed by the sensor key, with no entity id and no friendly name:
+    both carry whatever the owner called the thing, and these files are
+    attached to public issues. What #53 actually needed is answered without an
+    entity id at all: the entity either exists and holds a value, which makes
+    it a recorder question, or it does not. ``name_customised`` says the owner
+    has renamed one, so an assumption about what it is called does not hold,
+    and ``names_published_by_more_than_one_sensor`` is the #58 defect itself
+    (#63, item 4).
+    """
+    registry = er.async_get(hass)
+    entries = [
+        entity
+        for entity in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if entity.unique_id.startswith(f"{device_sn}_")
+    ]
+    if not entries:
+        return None
+
+    from .const import SENSOR_TYPES
+    from .utils import entity_unique_id_suffix
+
+    # A sensor's unique id is its device serial and its SENSOR_TYPES key, so
+    # the key is recoverable from the registry without the entity id.
+    sensor_key_for = {entity_unique_id_suffix(key): key for key in SENSOR_TYPES}
+    names: dict[str, set[str]] = {}
+    by_key: dict[str, dict[str, Any]] = {}
+    for entity in entries:
+        suffix = entity.unique_id[len(device_sn) + 1 :]
+        key = sensor_key_for.get(suffix, suffix)
+        record = by_key.setdefault(
+            key,
+            {
+                "platform": entity.domain,
+                "entities": 0,
+                "disabled": 0,
+                "name_customised": False,
+                "states": [],
+            },
+        )
+        record["entities"] += 1
+        if entity.disabled_by is not None:
+            record["disabled"] += 1
+            continue
+        if entity.name is not None:
+            # The owner has given this entity a name of their own, so an
+            # assumption about what it is called does not hold. The name
+            # itself stays out of the file.
+            record["name_customised"] = True
+        state = hass.states.get(entity.entity_id)
+        record["states"].append(
+            "absent"
+            if state is None
+            else (
+                state.state
+                if state.state in _UNAVAILABLE_STATES
+                else ("ok" if state.state else "empty")
+            )
+        )
+        display = entity.original_name
+        if display:
+            names.setdefault(str(display), set()).add(key)
+
+    collisions = {name: sorted(keys) for name, keys in names.items() if len(keys) > 1}
+    inventory: dict[str, Any] = {
+        "by_sensor": {key: by_key[key] for key in sorted(by_key)},
+    }
+    if collisions:
+        # Two keys publishing one name is the #58 defect: Home Assistant keeps
+        # both entities, one of them fed by a source the vendor leaves at zero.
+        inventory["names_published_by_more_than_one_sensor"] = collisions
+    return inventory
