@@ -418,6 +418,11 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         # directly and leave the existing cloud schedule untouched.
         self.async_update_listeners()
 
+    @property
+    def local_overlay_active(self) -> bool:
+        """Whether a healthy local snapshot is being overlaid right now."""
+        return bool(self._current_local_data())
+
     def _current_local_data(self) -> dict[str, Any]:
         """Combine only healthy local snapshots without losing duplicate serials."""
         combined: dict[str, Any] = {}

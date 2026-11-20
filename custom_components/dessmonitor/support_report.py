@@ -110,31 +110,18 @@ def _sensor_unit_for(key: str | None) -> str | None:
     return unit or None
 
 
-def build_support_report(
-    *,
-    devcode: Any,
-    readings: list[dict[str, Any]],
-    device_serial: Any = None,
-    collector_product_number: Any = None,
-    device_address: Any = None,
-    control_fields: dict[str, Any] | None = None,
-    parameters: dict[str, Any] | None = None,
-    local: dict[str, Any] | None = None,
-    summary_not_merged: list[dict[str, Any]] | None = None,
-    api_profile: str | None = None,
-    integration_version: str | None = None,
-    source: str = "integration_diagnostics",
-) -> dict[str, Any]:
-    """Build one device's support report from readings already in hand.
+def _classify_readings(
+    devcode: Any, readings: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Return one row per reading, and what those rows cover.
 
-    ``readings`` are raw cloud or local data points, each with ``title``,
-    ``val`` and ``unit``. Every reading carries its unit here, where a CLI
-    analysis records one only for the first twenty, so a report built from this
-    is the better evidence for the coverage guard (#60).
+    Separated from ``build_support_report`` because a hybrid device's download
+    classifies two sets of readings: the ones Home Assistant published and the
+    cloud's own, which the local overlay replaced (#63).
     """
     from .device_support import is_absent_reading, is_setting_reading
 
-    reading_rows: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     unresolved_with_unit: list[dict[str, str]] = []
     unresolved_without_unit: list[str] = []
     resolved_keys: set[str] = set()
@@ -156,10 +143,10 @@ def build_support_report(
         title = title.strip()
         unit = str(point.get("unit") or "").strip()
         identifying = is_identifier_name(title)
-        value = "" if identifying else _as_text(point.get("val"))
+        value = "" if identifying else _as_text(point.get("val", point.get("value")))
         key = resolved_key_for(devcode, point)
 
-        reading_rows.append(
+        rows.append(
             {
                 "title": title,
                 "value": value,
@@ -180,23 +167,68 @@ def build_support_report(
             resolved_rows += 1
         elif is_attribute_reading(title):
             attribute_rows += 1
-            continue
         elif is_setting_reading(devcode, title):
             setting_rows += 1
-            continue
         elif is_absent_reading(devcode, title):
             # A field the protocol defines that this hardware never fills: an
             # unused phase, or a per-string power the collector leaves at zero.
             # Counting it as a reading that reaches no entity told the owner in
             # #58 that sixteen readings were missing when none were.
             absent_rows += 1
-            continue
         elif unit:
             unresolved_rows += 1
             unresolved_with_unit.append({"title": title, "unit": unit, "sample": value})
         else:
             unresolved_rows += 1
             unresolved_without_unit.append(title)
+
+    coverage = {
+        "resolved": resolved_rows,
+        # Rows, so that resolved + unresolved == total exactly, even where
+        # a collector repeats a title and the lists below deduplicate it.
+        "unresolved": unresolved_rows,
+        "total": len(rows) - attribute_rows - setting_rows - absent_rows,
+        "excluded": {
+            "attribute_readings": attribute_rows,
+            "declared_settings": setting_rows,
+            "declared_absent": absent_rows,
+        },
+        "sensors": len(resolved_keys),
+        "unresolved_with_unit": sorted(
+            unresolved_with_unit, key=lambda item: item["title"].casefold()
+        ),
+        "unresolved_without_unit": sorted(
+            set(unresolved_without_unit), key=str.casefold
+        ),
+    }
+    return rows, coverage
+
+
+def build_support_report(
+    *,
+    devcode: Any,
+    readings: list[dict[str, Any]],
+    cloud_readings: list[dict[str, Any]] | None = None,
+    device_serial: Any = None,
+    collector_product_number: Any = None,
+    device_address: Any = None,
+    control_fields: dict[str, Any] | None = None,
+    parameters: dict[str, Any] | None = None,
+    local: dict[str, Any] | None = None,
+    summary_not_merged: list[dict[str, Any]] | None = None,
+    api_profile: str | None = None,
+    integration_version: str | None = None,
+    source: str = "integration_diagnostics",
+) -> dict[str, Any]:
+    """Build one device's support report from readings already in hand.
+
+    ``readings`` are raw cloud or local data points, each with ``title``,
+    ``val`` and ``unit``. Every reading carries its unit here, where a CLI
+    analysis records one only for the first twenty, so a report built from this
+    is the better evidence for the coverage guard (#60).
+    """
+
+    reading_rows, coverage = _classify_readings(devcode, readings)
 
     profile = _profile_facts(devcode)
     report: dict[str, Any] = {
@@ -209,29 +241,29 @@ def build_support_report(
         "collector_identity": short_identity(collector_product_number),
         "device_address": device_address,
         "support": {
-            "status": classify_support(devcode, unresolved_with_unit),
+            "status": classify_support(devcode, coverage["unresolved_with_unit"]),
             "profile": profile["name"],
             "known_inverters": profile["known_inverters"],
-            "resolved": resolved_rows,
-            # Rows, so that resolved + unresolved == total exactly, even where
-            # a collector repeats a title and the lists below deduplicate it.
-            "unresolved": unresolved_rows,
-            "total": len(reading_rows) - attribute_rows - setting_rows - absent_rows,
-            "excluded": {
-                "attribute_readings": attribute_rows,
-                "declared_settings": setting_rows,
-                "declared_absent": absent_rows,
-            },
-            "sensors": len(resolved_keys),
-            "unresolved_with_unit": sorted(
-                unresolved_with_unit, key=lambda item: item["title"].casefold()
-            ),
-            "unresolved_without_unit": sorted(
-                set(unresolved_without_unit), key=str.casefold
-            ),
+            **coverage,
         },
         "readings": reading_rows,
     }
+
+    if cloud_readings:
+        # What the cloud sent for a device a local overlay is publishing. The
+        # overlay keeps the local title for every reading it replaces, so a
+        # hybrid owner's download carried the local spellings and the vendor's
+        # own titles for those same readings were gone - which made the file
+        # weak devcode evidence precisely because their setup works well
+        # (#63). It is the same row shape as ``readings`` so the tooling reads
+        # one and the other alike, and it is classified against the same
+        # profile so this says what the devcode covers rather than what the
+        # local driver does.
+        cloud_rows, cloud_coverage = _classify_readings(devcode, cloud_readings)
+        report["cloud_under_overlay"] = {
+            "readings": cloud_rows,
+            "coverage": cloud_coverage,
+        }
 
     if control_fields is not None:
         report["control_fields"] = _redacted_controls(control_fields)
@@ -581,7 +613,20 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
         ]
 
     if "readings" in payload:
-        readings = payload.get("readings") or []
+        # A hybrid device's own rows carry the local driver's spellings, and
+        # the cloud's titles for the same readings sit in the overlay section
+        # beside them. Both are this devcode's evidence, so the record carries
+        # the union: without it a hybrid owner's file guards none of the cloud
+        # titles their devcode sends, which is the shape of evidence #63 item
+        # 3 set out to fix.
+        readings = list(payload.get("readings") or [])
+        overlay = payload.get("cloud_under_overlay")
+        if isinstance(overlay, dict):
+            readings += [
+                reading
+                for reading in overlay.get("readings") or []
+                if isinstance(reading, dict)
+            ]
         return [
             {
                 "devcode": payload.get("devcode"),
