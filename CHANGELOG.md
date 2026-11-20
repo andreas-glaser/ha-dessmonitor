@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0-rc.1] - 2026-11-20
+
+First candidate for 3.1.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v3.1.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+Nothing in it moves, renames or removes an entity. `tools/entity_inventory.py`
+builds every sensor the integration would publish for all twenty devices in
+the committed evidence, and against v3.0.0 this branch changes and removes no
+line; the twenty it adds are the freshness sensor, one per device.
+
+**Testing focus:** one change here cannot be verified without hardware, and it
+is the reason this is a candidate rather than a release.
+
+Power readings a collector labels in kilowatts are now scaled to the watts
+their sensor publishes. That is the #89 fix - a 10 kW inverter whose nameplate
+rating read 10.0 W - and like the watt-hour scale in 2.8.0 it is deliberately
+generic, so it applies to any collector that labels a reading that way rather
+than to one devcode. If your power figures were already correct they must stay
+correct: a power sensor that suddenly reads a thousand times high is the thing
+to report, and please report it with a diagnostics download. None of the twenty
+committed downloads carries a kilowatt-labelled reading on a watt sensor, so no
+supported devcode is expected to change what it publishes.
+
+Two reporters have a specific check each:
+
+- @DennisAppelman (#87, #88): with **Settings control over the local link** on,
+  set Output Source Priority and then Charging Source Priority, and attach a
+  diagnostics download from the integration card. The questions are whether
+  `control_transport` reads `local` for the first, and what
+  `local_control.cloud_pairing` reports for the second, which is what #88 is
+  waiting on.
+- @eimantasq (#89): take a diagnostics download and check that `Device e-SN` is
+  blank in it before attaching anything, and that **Rated Power** now reads
+  10 kW rather than 10.0 W.
+
+Everything else in this candidate is the diagnostics download: it now carries
+the values a collector has been seen to send, what each device actually
+publishes, and the cloud's own titles behind a local overlay. None of that
+changes an entity.
+
 ### Added
 - **The download records what a device actually publishes**, keyed by sensor
   rather than by name: how many entities exist for each sensor, how many are
