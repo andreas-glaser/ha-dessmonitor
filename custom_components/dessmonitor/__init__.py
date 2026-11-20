@@ -626,6 +626,29 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.warning("Unable to save cached DessMonitor snapshot: %s", err)
 
+    def cloud_readings_under_overlay(self, device_sn: str) -> list[dict[str, Any]]:
+        """Return the cloud's own readings for a device a local overlay publishes.
+
+        The hybrid overlay keeps the local title for every reading it replaces,
+        so the published snapshot no longer carries the vendor's spellings and
+        a hybrid owner's download was weak devcode evidence (#63). The cloud
+        snapshot behind the overlay is already in memory; this is what reaches
+        the file. An entry with no overlay publishes the cloud readings
+        themselves, so there is nothing to add and this returns nothing.
+        """
+        if not self.local_overlay_active:
+            return []
+        payload = self._cached_cloud_data.get(device_sn)
+        if not isinstance(payload, dict):
+            return []
+        readings = payload.get("data")
+        return readings if isinstance(readings, list) else []
+
+    @property
+    def local_overlay_active(self) -> bool:
+        """Whether local readings are overlaid on the cloud snapshot."""
+        return False
+
     def _cached_cloud_fallback(self, err: Exception) -> dict[str, Any] | None:
         """Return an explicitly stale snapshot when API-only continuity is enabled."""
         if not self._allow_cached_fallback or not self._cached_cloud_data:
@@ -1548,6 +1571,7 @@ async def async_get_device_diagnostics(
     diagnostics["support_report"] = build_support_report(
         devcode=device_info.get("device", {}).get("devcode"),
         readings=device_data,
+        cloud_readings=_cloud_readings_under_overlay(coordinator, device_sn),
         device_serial=device_sn,
         collector_product_number=device_info.get("collector", {}).get("pn"),
         device_address=device_info.get("device", {}).get("devaddr"),
@@ -1931,6 +1955,7 @@ async def _build_device_support_report(
     report = build_support_report(
         devcode=device_meta.get("devcode"),
         readings=readings,
+        cloud_readings=_cloud_readings_under_overlay(coordinator, serial),
         device_serial=serial,
         collector_product_number=collector_meta.get("pn"),
         device_address=device_meta.get("devaddr"),
@@ -2040,6 +2065,26 @@ def _categorize_device_data(
             status[title] = {"value": value, "unit": unit}
 
     return configuration, status
+
+
+def _cloud_readings_under_overlay(
+    coordinator: Any, serial: str
+) -> list[dict[str, Any]]:
+    """Return the cloud's own readings for a device an overlay is publishing.
+
+    Only a cloud-backed coordinator has them, and only a hybrid one overlays
+    anything. Asked of a local-only entry this is nothing, and asking for the
+    attribute unconditionally is what broke "Download diagnostics" on exactly
+    the entries whose owners are asked for a download most often (#86).
+    """
+    reader = getattr(coordinator, "cloud_readings_under_overlay", None)
+    if not callable(reader):
+        return []
+    readings = reader(serial)
+    # A list, or nothing. The #86 defect reached a stable release because a
+    # mock answers for any attribute, so the shape is checked here rather than
+    # trusted.
+    return readings if isinstance(readings, list) else []
 
 
 def _summary_not_merged(coordinator: Any, serial: str) -> list[dict[str, Any]] | None:

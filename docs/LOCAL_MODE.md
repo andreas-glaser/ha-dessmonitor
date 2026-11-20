@@ -409,6 +409,16 @@ the same string. A diagnostics download reports the candidates it saw, which
 is how a declaration gets added; see
 [ADDING_DEVCODES.md](ADDING_DEVCODES.md).
 
+A hybrid download is also full devcode evidence. The overlay keeps the local
+driver's own title for every reading it replaces, so the published readings
+carry the local spellings and the vendor's names for those same readings used
+to be gone - which made a working hybrid setup the weakest kind of file to
+answer a devcode question from. The report now carries a
+`cloud_under_overlay` section: the cloud's own title, value and unit for each
+reading behind the overlay, classified against the devcode profile rather than
+against the local driver, so the file says what the devcode covers as well as
+what the local link delivers.
+
 A dropdown needs one more thing than a setpoint does. The platform's option
 codes are its own: devcode 2449 offers Output Source Priority as 12336, 12337
 and 12338 where the PI30 command takes 0, 1 and 2, and sending the platform's

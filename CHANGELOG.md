@@ -28,6 +28,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   than ridden along with it because it is a change to a published state
   either way.
 
+### Added
+- **A hybrid download is now full devcode evidence.** The local overlay keeps
+  the local driver's own title for every reading it replaces, so the readings
+  in the file carried the local spellings and the vendor's names for those
+  same readings were gone - which made a working hybrid setup the weakest
+  kind of file to answer a devcode question from, and in the #53 download it
+  left nothing of the cloud's own titles but the readings no local driver
+  answers. The report now carries a `cloud_under_overlay` section with the
+  cloud's title, value and unit for each reading behind the overlay,
+  classified against the devcode profile rather than against the local
+  driver, and inside the report's checksum. `tools/triage.py` and
+  `tools/analysis_coverage.py` read those titles with the published ones, so
+  a hybrid owner's download guards their devcode's mappings as a cloud
+  owner's does (#63, item 3). It is the cloud snapshot already in memory and
+  it discloses nothing the readings did not: the serial, the collector
+  product number and the network addresses are redacted there as they are
+  everywhere else in the file.
+
 ### Fixed
 - A reading a collector labels in kilowatts now reaches its watt sensor as
   watts. The devcode 567 download in #89 comes from a 10 kW three-phase

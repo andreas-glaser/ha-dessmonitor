@@ -520,3 +520,83 @@ def test_a_device_with_nothing_dropped_carries_no_such_section() -> None:
     )
 
     assert "summary_not_merged" not in report
+
+
+def test_the_clouds_own_titles_survive_a_local_overlay() -> None:
+    """Item 3 of #63: a hybrid download was weak devcode evidence.
+
+    The overlay keeps the local driver's title for every reading it replaces,
+    so a hybrid owner's file carried "Battery Voltage" from the PI30 driver
+    and the vendor's own spelling for that same reading was gone - and the
+    better their setup worked, the less their file said about their devcode.
+    """
+    report = build_support_report(
+        devcode=6515,
+        readings=[
+            {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+            {"title": "SOC", "val": "37", "unit": "%"},
+        ],
+        cloud_readings=[
+            {"title": "Battery voltage", "val": "53.0", "unit": "V"},
+            {"title": "Battery capacity", "val": "37", "unit": "%"},
+            {"title": "Fan speed 1", "val": "2400", "unit": "RPM"},
+        ],
+    )
+
+    overlay = report["cloud_under_overlay"]
+    assert [row["title"] for row in overlay["readings"]] == [
+        "Battery voltage",
+        "Battery capacity",
+        "Fan speed 1",
+    ]
+    assert overlay["coverage"]["total"] == 3
+    assert overlay["readings"][0]["resolved_key"] == "Battery Voltage"
+    # Classified against the devcode, not the local driver, so this says what
+    # the profile covers. The local driver resolves its own state of charge
+    # and devcode 6515 does not map the cloud's "Battery capacity", which is
+    # the kind of gap this section exists to make visible.
+    assert {item["title"] for item in overlay["coverage"]["unresolved_with_unit"]} == {
+        "Battery capacity",
+        "Fan speed 1",
+    }
+    # The published readings are untouched by it.
+    assert [row["title"] for row in report["readings"]] == ["Battery Voltage", "SOC"]
+
+
+def test_the_overlay_section_is_absent_without_one() -> None:
+    """A cloud-only entry publishes the cloud readings themselves."""
+    report = build_support_report(devcode=6515, readings=_readings())
+
+    assert "cloud_under_overlay" not in report
+    assert (
+        "cloud_under_overlay"
+        not in build_support_report(devcode=6515, readings=[], cloud_readings=[])
+    )
+
+
+def test_the_overlay_section_discloses_no_identifier() -> None:
+    """It is readings, so it is redacted as readings are."""
+    report = build_support_report(
+        devcode=6515,
+        readings=[{"title": "SOC", "val": "37", "unit": "%"}],
+        cloud_readings=[
+            {"title": "Devise serial number", "val": SERIAL, "unit": ""},
+            {"title": "Device e-SN", "val": SERIAL, "unit": ""},
+        ],
+    )
+
+    assert SERIAL not in json.dumps(report)
+
+
+def test_the_overlay_section_is_inside_the_checksum() -> None:
+    report = build_support_report(
+        devcode=6515,
+        readings=[{"title": "SOC", "val": "37", "unit": "%"}],
+        cloud_readings=[{"title": "Battery capacity", "val": "37", "unit": "%"}],
+    )
+
+    assert report["checksum"] == report_checksum(report)
+
+    edited = json.loads(json.dumps(report))
+    edited["cloud_under_overlay"]["readings"][0]["title"] = "Something else"
+    assert edited["checksum"] != report_checksum(edited)
