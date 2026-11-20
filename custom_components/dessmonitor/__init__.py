@@ -80,6 +80,7 @@ from .support_report import UNSUPPORTED as SUPPORT_UNSUPPORTED
 from .support_report import (
     build_support_report,
     device_support_status,
+    record_observed_values,
     report_checksum,
     short_identity,
 )
@@ -514,6 +515,10 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._support_issues: set[int] = set()
         self._allow_cached_fallback = allow_cached_fallback
         self._cached_cloud_data: dict[str, Any] = {}
+        # Per device, every value a reading has been seen to answer with a
+        # word rather than a number, since this entry was loaded. Bounded in
+        # support_report; see record_observed_values (#63, item 2).
+        self.observed_reading_values: dict[str, dict[str, dict[str, Any]]] = {}
         self._cloud_snapshot_store: Store[dict[str, Any]] | None = (
             Store(hass, 1, f"{DOMAIN}_{entry_id}_cloud_snapshot") if entry_id else None
         )
@@ -625,6 +630,26 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             await self._cloud_snapshot_store.async_save({"data": data})
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.warning("Unable to save cached DessMonitor snapshot: %s", err)
+
+    def _record_observed_values(self, data: dict[str, Any]) -> None:
+        """Collect the state words each device has sent, for the download.
+
+        A snapshot records whichever value was current when it was taken, and
+        a mapping is written from the set: this runs on every successful cloud
+        refresh so the file carries what no single snapshot can (#63, item 2).
+        A device the account stops listing keeps what it sent until the entry
+        is reloaded, which is also what the cached-cloud fallback does with
+        its payload.
+        """
+        for serial, payload in data.items():
+            if not isinstance(payload, dict):
+                continue
+            readings = payload.get("data")
+            if not isinstance(readings, list):
+                continue
+            record_observed_values(
+                self.observed_reading_values.setdefault(serial, {}), readings
+            )
 
     def cloud_readings_under_overlay(self, device_sn: str) -> list[dict[str, Any]]:
         """Return the cloud's own readings for a device a local overlay publishes.
@@ -1087,6 +1112,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 len(self.stale_cloud_serials),
             )
             await self._async_store_cloud_snapshot(data)
+            self._record_observed_values(data)
             self.cloud_revision += 1
             self._async_update_support_issues(data)
             for sn in self.ctrl_field_cache:
@@ -1572,6 +1598,7 @@ async def async_get_device_diagnostics(
         devcode=device_info.get("device", {}).get("devcode"),
         readings=device_data,
         cloud_readings=_cloud_readings_under_overlay(coordinator, device_sn),
+        observed_values=_observed_values(coordinator, device_sn),
         device_serial=device_sn,
         collector_product_number=device_info.get("collector", {}).get("pn"),
         device_address=device_info.get("device", {}).get("devaddr"),
@@ -1956,6 +1983,7 @@ async def _build_device_support_report(
         devcode=device_meta.get("devcode"),
         readings=readings,
         cloud_readings=_cloud_readings_under_overlay(coordinator, serial),
+        observed_values=_observed_values(coordinator, serial),
         device_serial=serial,
         collector_product_number=collector_meta.get("pn"),
         device_address=device_meta.get("devaddr"),
@@ -2085,6 +2113,21 @@ def _cloud_readings_under_overlay(
     # mock answers for any attribute, so the shape is checked here rather than
     # trusted.
     return readings if isinstance(readings, list) else []
+
+
+def _observed_values(coordinator: Any, serial: str) -> dict[str, dict[str, Any]]:
+    """Return the state words a device has been seen to send, if any were kept.
+
+    Only a cloud-backed coordinator collects them. A local-only entry has
+    none, and reaching for the attribute unconditionally is what broke
+    "Download diagnostics" on exactly the entries whose owners are asked for a
+    download most often (#86).
+    """
+    observed = getattr(coordinator, "observed_reading_values", None)
+    if not isinstance(observed, dict):
+        return {}
+    record = observed.get(serial)
+    return record if isinstance(record, dict) else {}
 
 
 def _summary_not_merged(coordinator: Any, serial: str) -> list[dict[str, Any]] | None:
