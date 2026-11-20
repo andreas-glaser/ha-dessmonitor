@@ -283,6 +283,15 @@ The Home Assistant enum sensor marks any value outside this list as `unavailable
 
 Only list modes that are either (a) observed in the analysis, or (b) documented in the inverter manual and likely to appear.
 
+A diagnostics download carries an `observed_values` section per device: every
+value a reading has answered with a word rather than a number since the entry
+was loaded, with how many times it was seen. That is the set this mapping is
+written from, and it is what no single snapshot can show - a download taken
+at midday records one mode and says nothing about the other six. Run
+`tools/triage.py` on the file and it names the values an enum sensor would
+reject outright, which is a sensor reading `Unknown` on the owner's system
+whether or not they have noticed yet.
+
 ### 4.4 `SENSOR_TITLE_MAPPINGS`
 
 The shared resolver in `sensor_titles.py`, used by both the cloud and local

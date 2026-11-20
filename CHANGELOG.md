@@ -29,6 +29,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either way.
 
 ### Added
+- **The download records every value a reading has been seen to answer with
+  a word**, per device, with how many times it was seen since the entry was
+  loaded. A snapshot carries whichever value was current when it was taken,
+  and the mapping tables - `OPERATING_MODE_MAPPING` and the two priority
+  tables - are written from the *set* of values a collector emits, so a
+  download taken at midday said nothing about the other six modes. This is
+  the one thing the integration can report that no snapshot can, because it
+  polls continuously (#63, item 2). `tools/triage.py` now names the values an
+  enum sensor would reject outright, which is a sensor reading `Unknown` on
+  the owner's system whether or not anyone has noticed.
+
+  Bounded and narrow by design: text only, never a number and never a clock
+  or a date, at most twelve distinct values per reading and 128 readings per
+  device, with a flag on any reading that reached the cap. Identifying titles
+  are excluded as they are everywhere else in the file, and only what a
+  collector sent is kept - never a value this integration derived.
 - **A hybrid download is now full devcode evidence.** The local overlay keeps
   the local driver's own title for every reading it replaces, so the readings
   in the file carried the local spellings and the vendor's names for those

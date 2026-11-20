@@ -110,6 +110,91 @@ def _sensor_unit_for(key: str | None) -> str | None:
     return unit or None
 
 
+# How many distinct values one reading may collect, and how many readings one
+# device may collect them for. A vendor's state set is small - the canonical
+# operating mode list is eight long - so a reading that reaches the cap is
+# reporting something other than a state, and the cap is what stops it growing
+# without bound. Both are per device.
+OBSERVED_VALUES_PER_READING = 12
+OBSERVED_READINGS_PER_DEVICE = 128
+
+# A value that is a date or a clock. These are not states: an inverter clock
+# reading fills the cap with twelve different strings inside twelve minutes and
+# evicts the state words the cap exists to hold. The schedule boundaries on a
+# devcode 6515 account read "16:32" and "OFF" through one sensor, and it is
+# "OFF" that a mapping needs.
+_TEMPORAL_VALUE = re.compile(r"^\s*(\d{4}-\d{2}-\d{2}|\d{1,2}:\d{2}(:\d{2})?)\b")
+
+
+def is_enum_shaped_value(value: Any) -> bool:
+    """Return whether a value is a vendor's word for a state.
+
+    A reading the vendor answers with a word needs a mapping - its operating
+    mode, its priorities, its status texts - and the set of words a collector
+    emits is what a mapping is written from. A number needs none, and a number
+    collected as if it were a state is how an enumeration ends up with a
+    hundred options, so this is deliberately narrow: text, not a number, not a
+    clock.
+    """
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if not text or len(text) > 64:
+        return False
+    try:
+        float(text)
+    except ValueError:
+        pass
+    else:
+        return False
+    return not _TEMPORAL_VALUE.match(text)
+
+
+def record_observed_values(
+    store: dict[str, dict[str, Any]], readings: list[dict[str, Any]]
+) -> None:
+    """Add this refresh's state words to what a device has been seen to send.
+
+    The mapping tables need the set of values a collector emits, and a CLI
+    analysis collects a few of them where the diagnostics download carried
+    only whichever value was current when it was taken. The integration runs
+    continuously, so it can do better than either: no single snapshot can
+    produce this (#63, item 2).
+
+    ``store`` is mutated in place and is bounded in both directions. It holds
+    only what a collector sent, never a value this integration derived, so a
+    mapping can be written from it.
+    """
+    for point in readings:
+        title = point.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        title = title.strip()
+        if is_identifier_name(title) or is_attribute_reading(title):
+            continue
+        value = point.get("val", point.get("value"))
+        if not is_enum_shaped_value(value):
+            continue
+        text = str(value).strip()
+        record = store.get(title)
+        if record is None:
+            if len(store) >= OBSERVED_READINGS_PER_DEVICE:
+                continue
+            record = {"values": [], "observations": 0, "truncated": False}
+            store[title] = record
+        record["observations"] += 1
+        values: list[str] = record["values"]
+        if text in values:
+            continue
+        if len(values) >= OBSERVED_VALUES_PER_READING:
+            # Kept rather than rotated: the first values a collector sends are
+            # the ones a mapping is written from, and a reading that overflows
+            # this is not reporting a state. The flag says so in the file.
+            record["truncated"] = True
+            continue
+        values.append(text)
+
+
 def _classify_readings(
     devcode: Any, readings: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -209,6 +294,7 @@ def build_support_report(
     devcode: Any,
     readings: list[dict[str, Any]],
     cloud_readings: list[dict[str, Any]] | None = None,
+    observed_values: dict[str, dict[str, Any]] | None = None,
     device_serial: Any = None,
     collector_product_number: Any = None,
     device_address: Any = None,
@@ -263,6 +349,21 @@ def build_support_report(
         report["cloud_under_overlay"] = {
             "readings": cloud_rows,
             "coverage": cloud_coverage,
+        }
+
+    if observed_values:
+        # Every value this collector has been seen to answer a word with,
+        # since the entry was last loaded. A download records whichever value
+        # was current when it was taken, and the mapping tables need the set:
+        # OPERATING_MODE_MAPPING for a mode an enum sensor would otherwise
+        # reject, and the priority tables for a label the vendor spells its
+        # own way. The integration polls continuously, so this is the one
+        # thing it can report that no snapshot can (#63, item 2).
+        report["observed_values"] = {
+            title: dict(record)
+            for title, record in sorted(
+                observed_values.items(), key=lambda item: item[0].casefold()
+            )
         }
 
     if control_fields is not None:
@@ -706,3 +807,68 @@ def _units_from_analysis(analysis: dict[str, Any]) -> dict[str, str]:
             if title and unit:
                 units[str(title)] = unit
     return units
+
+
+def unmapped_state_words(report: dict[str, Any]) -> dict[str, list[str]]:
+    """Return the state words a device sent that its enum sensor would reject.
+
+    An enum sensor publishes a fixed option list and Home Assistant discards
+    anything that is not on it, so a mode or priority the vendor spells its
+    own way reads Unknown with nothing in the log to say why. The value that
+    happened to be current when a download was taken says nothing about the
+    rest, which is why this reads ``observed_values`` (#63, item 2): with the
+    set in the file, a missing ``OPERATING_MODE_MAPPING`` entry is visible
+    without waiting for the owner to catch the sensor in that state.
+    """
+    from .const import SENSOR_TYPES
+    from .device_support import (
+        get_all_charger_priorities,
+        get_all_operating_modes,
+        get_all_output_priorities,
+    )
+
+    observed = report.get("observed_values")
+    if not isinstance(observed, Mapping):
+        return {}
+    devcode = report.get("devcode")
+
+    option_sources = {
+        "Operating mode": get_all_operating_modes,
+        "work state": get_all_operating_modes,
+        "Output priority": get_all_output_priorities,
+        "Charger Source Priority": get_all_charger_priorities,
+    }
+
+    rejected: dict[str, list[str]] = {}
+    for title, record in observed.items():
+        if not isinstance(record, Mapping):
+            continue
+        key = resolved_key_for(devcode, {"title": title})
+        config = SENSOR_TYPES.get(key) if key else None
+        if not isinstance(config, Mapping) or config.get("device_class") != "enum":
+            continue
+        source = option_sources.get(str(key))
+        options = set(source() if source else config.get("options") or [])
+        unknown = [
+            str(value)
+            for value in record.get("values") or []
+            # The devcode's own value mapping runs first: that is what an
+            # entity reads, so a value a profile already translates is not a
+            # gap.
+            if _mapped_value(devcode, title, str(value)) not in options
+        ]
+        if unknown:
+            rejected[title] = unknown
+    return rejected
+
+
+def _mapped_value(devcode: Any, title: str, value: str) -> str:
+    """Return a reading's value as the entity reads it, after the profile."""
+    from .device_support import apply_devcode_transformations
+
+    if not devcode:
+        return value
+    mapped = apply_devcode_transformations(
+        int(devcode), {"title": title, "val": value}
+    ).get("val")
+    return str(mapped)
