@@ -38,6 +38,26 @@ This directory contains device profiles for inverters connected through DessMoni
 
 Each `devcode_XXXX.py` exposes a `DEVICE_INFO` block that describes the collector. When known, populate the optional `known_inverters` list with inverter model names (e.g., `["POW-HVM6.2K-48V-LIP"]`) so contributors quickly see which hardware has been validated for that devcode.
 
+## Control entities and the review declaration
+
+A control entity is created **disabled** unless the devcode's profile declares
+that someone has read its control template. Every field the vendor platform
+advertises for an account becomes an entity, and on devcode 567 that is 96 of
+them including shutdown, reset, firmware upgrade and the grid protection
+setpoints, which used to arrive ready to use (#90).
+
+A profile declares `controls_reviewed` plus a `protected_controls` set of the
+fields that stay disabled within a reviewed template - restoring defaults,
+clearing a lifetime counter, switching the inverter off, a grid-compliance
+setting, or devcode 697's factory calibration coefficients. Devcodes 518 and
+567 declare nothing on purpose: both templates are an installer's throughout.
+
+The declaration affects only entities being registered for the first time, so
+it never changes what an existing installation publishes. See
+[docs/ADDING_DEVCODES.md](../../../docs/ADDING_DEVCODES.md) section 6.2 for how
+to decide one, and `tests/test_control_default_enabled.py` for what is
+enforced.
+
 ## Adding Support for a New Devcode
 
 For the full workflow (CLI analysis, mapping rules, changelog, commit style), see [`docs/ADDING_DEVCODES.md`](../../../docs/ADDING_DEVCODES.md). The short version below is a quick reference.

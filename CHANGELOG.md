@@ -183,6 +183,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declaration has to state (#87, #63).
 
 ### Changed
+- **A control entity on a devcode whose template nobody has reviewed is now
+  created disabled** (#90, reported by @eimantasq in #89, who found it on
+  their own account and disabled all of it before anything was written).
+  Every field an account's control template advertises becomes an entity, and
+  the template belongs to the vendor's platform. On devcode 567 that is 96
+  fields, among them shutdown, start, reset, firmware upgrade, "format M4 SPI
+  flash", four internal debugging parameters and three levels each of grid
+  over- and undervoltage and over- and underfrequency protection with their
+  trip times - the settings a grid operator approves a three-phase unit
+  against. They were all created ready to use.
+
+  So the default is now off, and a devcode profile turns it on for the
+  template it has actually read. Eleven profiles declare theirs reviewed -
+  devcodes 2376, 2449, 2452, 2477, 2500, 6416, 6489, 6513, 6514, 6544 and
+  697 - and within those, 30 individual fields are still created disabled:
+  restoring factory defaults, clearing a lifetime generation counter,
+  switching the inverter off, a grid-compliance standard, and devcode 697's
+  nine factory calibration coefficients, which do not change what the
+  inverter does but change what it reports. Devcodes 518 and 567 were read
+  and declare nothing on purpose: both advertise installer templates and not
+  one field in either is an owner's setting.
+
+  A rule on the field itself was tried first and the committed templates rule
+  it out. Searching all of them for shutdown, restart, upgrade and reset
+  matches 25 fields of which 19 are ordinary settings - six spellings of
+  "Overload automatic restart" alone - while the field that restores factory
+  defaults is called `eybond_ctrl_99`. The ids collide outright: `shutdown`
+  is "Shutdown command" on devcode 567 and "Offgrid Switch" on devcode 697,
+  so a rule keyed on it would disable the wrong control.
+
+  *Upgrade note:* **nothing an existing installation publishes changes.** The
+  default applies only to an entity being registered for the first time, so
+  every control you already have stays exactly as it is, enabled or disabled
+  as you left it. It takes effect on a new installation, on a new inverter
+  added to an account, and on a control a devcode starts advertising. If a
+  control you want is missing on a new install, enable it in **Settings >
+  Devices & services > Entities**; on a devcode not in the list above, that
+  is because no diagnostics download of its control template has been
+  contributed yet, and attaching one is what turns it on for everybody.
 - **The Software Version sensor publishes the version the collector sent,
   as text.** It was the one key in `SENSOR_TYPES` that measures nothing and
   was still read as a number, so a version written `V1.08`, `1.08.3` or

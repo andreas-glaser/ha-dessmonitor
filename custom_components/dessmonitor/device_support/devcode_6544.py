@@ -97,6 +97,29 @@ PARAMETER_SENSOR_NAMES: set[str] = set()
 # "missing 20 readings" card its owner saw (#77). The two that are not controls
 # are "Equipment type" and "Protocol Number".
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 50 owner settings, the Eybond ESS setpoint
+# vocabulary this profile shares with devcodes 6514 and 6515, plus the
+# secondary output and charging windows.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Remote switch, which stops the inverter
+        "sys_eybond_read_44021",
+        # Clean Generation Power, which clears a lifetime counter
+        "sys_eybond_ctrl_44026",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -107,4 +130,6 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

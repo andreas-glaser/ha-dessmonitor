@@ -23,6 +23,7 @@ from .control_values import (
     find_control_value,
 )
 from .device_support.device_registry import (
+    control_enabled_by_default,
     map_control_field,
     temporal_control_kind,
 )
@@ -219,6 +220,9 @@ class DessMonitorNumber(CoordinatorEntity, NumberEntity):
             device_sn, device_meta, collector_meta
         )
         self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_entity_registry_enabled_default = control_enabled_by_default(
+            device_meta.get("devcode"), param_id
+        )
 
         # Parse the current value before evaluating the API range hint.
         current_value = self._coerce_value(initial_value)

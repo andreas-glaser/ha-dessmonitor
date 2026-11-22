@@ -14,6 +14,7 @@ from __future__ import annotations
 from .device_registry import (
     absent_reading_reason,
     apply_devcode_transformations,
+    control_enabled_by_default,
     control_value_reading,
     devcode_has_temporal_controls,
     get_all_charger_priorities,
@@ -38,6 +39,7 @@ from .device_registry import (
 __all__ = [
     "absent_reading_reason",
     "apply_devcode_transformations",
+    "control_enabled_by_default",
     "devcode_has_temporal_controls",
     "get_all_charger_priorities",
     "get_all_operating_modes",
