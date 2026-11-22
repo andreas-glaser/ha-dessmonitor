@@ -8,6 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Devcode 567 is supported**: a three-phase on-grid string inverter with up
+  to four trackers and twenty strings, reported through ShineMonitor (#89,
+  thanks to @eimantasq for the download, for naming the unit as the cause of
+  the nameplate figure, and for finding the serial number in their own file
+  before attaching it). Of the 53 readings that carry a unit, 45 reached no
+  sensor at all and every one of them now does: the whole three-phase AC side
+  including the line-to-line voltages, all four trackers, all twenty string
+  currents, both energy counters, the efficiency, the insulation resistance
+  and the running times.
+  The plant summary's `outpower`, `energyToday` and `energyTotal` read
+  `0.0000` on this devcode while the inverter reports the real figures, which
+  is why Output Power and both energy sensors read zero on a working
+  inverter; all three summary titles are mapped onto the device's own
+  readings, so the zero stops publishing an entity beside the real one.
+
+  Twelve new canonical sensors come with it, plus the twenty string currents,
+  none of which existed: the three line-to-line grid voltages, the three grid
+  phase currents, per-tracker DC power, inverter efficiency, insulation
+  resistance, daily running time, the inverter switch status, the PID status
+  and the vendor's CO2 figure. The per-tracker keys are named `MPPT1 Power`
+  to `MPPT4 Power` rather than `PV1 Power`: devcodes 4743 and 6544 already
+  send that title and 4743 declares its three in `ABSENT_READINGS` because
+  the collector reports 0 while the string produces, so a key of that name
+  would have given those installations three sensors reading zero in
+  daylight. The CO2 figure is published in tonnes although the collector
+  labels it kg: it is the lifetime generation counter times 0.997 divided by
+  a thousand, and the owner's app shows 24024.3 kg against the collector's
+  24.02 for the same moment (#89).
+
+  Its two clock controls are declared in `TEMPORAL_CONTROLS`, which retires
+  the number entity a clock value cannot be shown in. *Upgrade note:* that
+  applies only to devcode 567, which no release has published controls for
+  under a profile, so no existing entity moves.
 - **The download records what a device actually publishes**, keyed by sensor
   rather than by name: how many entities exist for each sensor, how many are
   disabled, whether each reads a value or `unknown` or `unavailable`, whether

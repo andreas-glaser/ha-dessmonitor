@@ -137,6 +137,10 @@ def _load_device_configurations() -> None:
 
         _register_devcode(6489, config_6489)
 
+        from .devcode_567 import DEVCODE_CONFIG as config_567
+
+        _register_devcode(567, config_567)
+
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
 

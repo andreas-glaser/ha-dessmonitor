@@ -1366,7 +1366,173 @@ SENSOR_TYPES = {
         "icon": "mdi:battery-charging",
         "entity_category": "diagnostic",
     },
+    # Readings first reported on devcode 567, a 10 kW three-phase on-grid
+    # inverter with four trackers and twenty strings, reported through
+    # ShineMonitor (#89). Each carries a unit and none of them had a canonical
+    # key, so all of them were being dropped in silence.
+    #
+    # A line-to-line voltage is not a phase voltage: this unit reports 404 V
+    # between phases on a 400 V system, and mapping that onto one of the
+    # Grid L1/L2/L3 Voltage sensors would publish it under a name that means
+    # something else.
+    "Grid L1-L2 Voltage": {
+        "name": "Grid L1-L2 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L2-L3 Voltage": {
+        "name": "Grid L2-L3 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L3-L1 Voltage": {
+        "name": "Grid L3-L1 Voltage",
+        "unit": UNITS["VOLTAGE"],
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    # The current each phase exports. Grid L1/L2/L3 Voltage existed with no
+    # current beside it, and the generic "grid current" is one figure.
+    "Grid L1 Current": {
+        "name": "Grid L1 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L2 Current": {
+        "name": "Grid L2 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L3 Current": {
+        "name": "Grid L3 Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    # Per-tracker DC power. The PV1 and PV2 charger-power sensors are a
+    # hybrid's, and a grid-tie inverter has nothing to charge; there was
+    # nothing at all for a third and fourth tracker.
+    #
+    # Named for the tracker rather than "PV1 Power", which is a title devcodes
+    # 4743 and 6544 already send: 4743 declares its three in ABSENT_READINGS
+    # because the collector reports 0 while the string produces, and a key of
+    # that name would have given those installations three sensors reading
+    # zero in daylight. The test suite caught it; the lesson is that a new
+    # canonical key has to be checked against every committed title before it
+    # is named.
+    "MPPT1 Power": {
+        "name": "MPPT1 Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "MPPT2 Power": {
+        "name": "MPPT2 Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "MPPT3 Power": {
+        "name": "MPPT3 Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "MPPT4 Power": {
+        "name": "MPPT4 Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:solar-power",
+    },
+    "Inverter Efficiency": {
+        "name": "Inverter Efficiency",
+        "unit": UNITS["PERCENTAGE"],
+        "state_class": "measurement",
+        "icon": "mdi:gauge",
+        "entity_category": "diagnostic",
+    },
+    # The array's insulation to earth, which a grid-tie inverter measures
+    # before it connects. Its own unit: no device class covers resistance.
+    "Insulation Resistance": {
+        "name": "Insulation Resistance",
+        "unit": "kΩ",
+        "state_class": "measurement",
+        "icon": "mdi:omega",
+        "entity_category": "diagnostic",
+    },
+    # Hours generating today, beside the lifetime figure that reaches
+    # "Operating Time". The vendor labels both "Hour".
+    "Daily Running Time": {
+        "name": "Daily Running Time",
+        "unit": "h",
+        "device_class": "duration",
+        "state_class": "total_increasing",
+        "icon": "mdi:clock-outline",
+    },
+    # The inverter's own switch, reported beside the operating state: this
+    # unit answers "Stop state" and "On-grid operation", which are words and
+    # not a fixed set anything here knows, so it is text.
+    "Inverter Switch Status": {
+        "name": "Inverter Switch Status",
+        "unit": "",
+        "icon": "mdi:electric-switch",
+        "entity_category": "diagnostic",
+    },
+    # The vendor's own carbon figure, which it computes from the lifetime
+    # generation counter rather than measuring. The unit is read from the
+    # arithmetic rather than from the label: devcode 567 labels it "kg" and
+    # reported 24.02 in two captures whose lifetime totals were 24095.64 and
+    # 24096.62 kWh, and 24096.62 x 0.997 / 1000 = 24.02, so the collector is
+    # computing tonnes at the 0.997 kg/kWh factor and labelling them kg. The
+    # owner confirmed it against the vendor app, which showed 24024.3 kg of
+    # cumulative reduction against 24096.6 kWh generated for that same
+    # moment (#89).
+    # Published without a state class, so an inferred unit cannot reach
+    # long-term statistics; it is derived from a counter already published.
+    "CO2 Reduction": {
+        "name": "CO2 Reduction",
+        "unit": "t",
+        "icon": "mdi:molecule-co2",
+        "entity_category": "diagnostic",
+    },
+    # Whether the anti-PID module is running, which is a word too ("Not
+    # running").
+    "PID Status": {
+        "name": "PID Status",
+        "unit": "",
+        "icon": "mdi:shield-sun",
+        "entity_category": "diagnostic",
+    },
 }
+
+# Per-string input current, which a multi-tracker grid-tie inverter reports one
+# figure at a time: the unit in #89 has twenty strings across four trackers.
+# Written as a loop because twenty literal blocks differing in one digit are
+# twenty chances to mistype one, and this is the only place in SENSOR_TYPES
+# where a reading is numbered that far.
+for _string in range(1, 21):
+    SENSOR_TYPES[f"String{_string:02d} Current"] = {
+        "name": f"String {_string:02d} Current",
+        "unit": UNITS["CURRENT"],
+        "device_class": "current",
+        "state_class": "measurement",
+        "icon": "mdi:solar-panel",
+    }
+del _string
 
 # Binary sensor types from API data points
 # Currently empty but structure is in place for future binary sensors
