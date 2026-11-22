@@ -1434,6 +1434,129 @@ SENSOR_TYPES = {
         "state_class": "measurement",
         "icon": "mdi:transmission-tower",
     },
+    # Readings first reported on devcode 659, a three-phase on-grid inverter
+    # with two trackers that measures each phase separately (#92). Devcode
+    # 567 is three-phase too and reports one frequency and one total, so
+    # these had no key: it is the per-phase breakdown that is new, not the
+    # quantities.
+    #
+    # A frequency per phase, which this collector reports as 50.00, 49.98 and
+    # 49.95 against the single "Grid Frequency" key everything else sends.
+    "Grid L1 Frequency": {
+        "name": "Grid L1 Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+    },
+    "Grid L2 Frequency": {
+        "name": "Grid L2 Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+    },
+    "Grid L3 Frequency": {
+        "name": "Grid L3 Frequency",
+        "unit": UNITS["FREQUENCY"],
+        "device_class": "frequency",
+        "state_class": "measurement",
+        "icon": "mdi:sine-wave",
+    },
+    # The active power each phase exports, which sums to the figure that
+    # reaches Output Power: 333 + 332 + 319 against a reported total of 984.
+    "Grid L1 Active Power": {
+        "name": "Grid L1 Active Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L2 Active Power": {
+        "name": "Grid L2 Active Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L3 Active Power": {
+        "name": "Grid L3 Active Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    # Apparent power per phase, published in volt-amperes although devcode
+    # 659 labels it "W". The label is the vendor's mistake and the magnitude
+    # is right: 366 VA against 333 W of active power on the same phase, which
+    # is the order apparent and active power come in. No unit pair converts
+    # W to VA, so the figure is published as it arrives rather than scaled.
+    "Grid L1 Apparent Power": {
+        "name": "Grid L1 Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "device_class": "apparent_power",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L2 Apparent Power": {
+        "name": "Grid L2 Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "device_class": "apparent_power",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    "Grid L3 Apparent Power": {
+        "name": "Grid L3 Apparent Power",
+        "unit": UNITS["APPARENT_POWER"],
+        "device_class": "apparent_power",
+        "state_class": "measurement",
+        "icon": "mdi:transmission-tower",
+    },
+    # Insulation to earth measured per tracker rather than once for the
+    # array, which is what the single "Insulation Resistance" key from #89
+    # holds. Same unit, and no device class covers resistance.
+    "PV1 Insulation Resistance": {
+        "name": "PV1 Insulation Resistance",
+        "unit": "kΩ",
+        "state_class": "measurement",
+        "icon": "mdi:omega",
+        "entity_category": "diagnostic",
+    },
+    "PV2 Insulation Resistance": {
+        "name": "PV2 Insulation Resistance",
+        "unit": "kΩ",
+        "state_class": "measurement",
+        "icon": "mdi:omega",
+        "entity_category": "diagnostic",
+    },
+    # Two heatsinks, reported separately and 11 degrees apart in the
+    # download, so neither is the "Inside Temperature" the single-sensor
+    # devcodes send.
+    "Radiator 1 Temperature": {
+        "name": "Radiator 1 Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+        "entity_category": "diagnostic",
+    },
+    "Radiator 2 Temperature": {
+        "name": "Radiator 2 Temperature",
+        "unit": UNITS["TEMPERATURE"],
+        "device_class": "temperature",
+        "state_class": "measurement",
+        "icon": "mdi:thermometer",
+        "entity_category": "diagnostic",
+    },
+    # Whether the inverter restarts itself once its fault clears. Devcode 659
+    # answers "Automatically Boot", which is a word and not a fixed set
+    # anything here knows, so it is text.
+    "Automatic Startup": {
+        "name": "Automatic Startup",
+        "unit": "",
+        "icon": "mdi:restart",
+        "entity_category": "diagnostic",
+    },
     # Per-tracker DC power. The PV1 and PV2 charger-power sensors are a
     # hybrid's, and a grid-tie inverter has nothing to charge; there was
     # nothing at all for a third and fourth tracker.
