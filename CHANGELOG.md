@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Devcode 2500 is supported**: a MUST PH18 5.5KW grid-tied hybrid on
+  DessMonitor, behind a WI-FI PLUG14 RTU (#91, thanks to @spintexroad for the
+  download). It speaks the same vocabulary as devcode 697, so twenty-three of
+  its twenty-five readings already reached a sensor; the two that did not are
+  the lifetime array counter, 2556.30 kWh, and the exported counter
+  attributed to the array, both of which carry a unit and so held the Repairs
+  card open. One new sensor comes with it, **Accumulated PV Sell Energy**.
+  That counter reads the same figure as Accumulated Sell Energy in the
+  download and still gets a sensor of its own, because a system exporting
+  only solar reports the same figure on both whether or not they are one
+  register.
 - **Devcode 567 is supported**: a three-phase on-grid string inverter with up
   to four trackers and twenty strings, reported through ShineMonitor (#89,
   thanks to @eimantasq for the download, for naming the unit as the cause of
