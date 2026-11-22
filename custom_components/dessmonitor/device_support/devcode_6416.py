@@ -65,6 +65,28 @@ VALUE_TRANSFORMATIONS: dict = {}
 # Battery Capacity is already present in queryDeviceLastData for this collector.
 PARAMETER_SENSOR_NAMES: set[str] = set()
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 36 owner settings, the same vocabulary
+# devcode 2477 reports.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore Defaults
+        "cts_restore_defaults",
+        # Clear All Historical Power Generation
+        "pvs_clear_all_generation",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -75,4 +97,6 @@ DEVCODE_CONFIG = {
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
     "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

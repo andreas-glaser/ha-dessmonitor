@@ -22,6 +22,7 @@ from .control_values import (
     option_key_for,
 )
 from .device_support.device_registry import (
+    control_enabled_by_default,
     control_value_reading,
     filter_control_options,
     map_control_field,
@@ -179,6 +180,9 @@ class DessMonitorSelect(CoordinatorEntity, SelectEntity):
             device_sn, device_meta, collector_meta
         )
         self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_entity_registry_enabled_default = control_enabled_by_default(
+            device_meta.get("devcode"), param_id
+        )
 
         self._refresh_options()
 

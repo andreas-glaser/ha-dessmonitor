@@ -187,6 +187,27 @@ LOCAL_CONTROL_SETTINGS: dict[str, str] = {
     "bat_charging_source": "charger_source_priority",
 }
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 39 owner settings: the battery voltages and
+# currents this profile already declares as setpoint readings, both
+# priorities, equalization, the LED strip and the bypass switches.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore To Default
+        "sys_set_default",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -198,4 +219,6 @@ DEVCODE_CONFIG = {
     "setting_readings": SETTING_READINGS,
     "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
     "local_control_settings": LOCAL_CONTROL_SETTINGS,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

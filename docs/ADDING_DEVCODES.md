@@ -110,6 +110,7 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 4. Write devcode_XXXX.py following the sibling pattern
 5. Register in device_registry.py
 6. Check sensor coverage against the analysis and close the remaining gaps
+6b. Review the control template so its controls are not created disabled
 7. Commit the redacted analysis under docs/evidence/devcodes/  (required)
 8. Update README.md, device_support/README.md, CHANGELOG.md
 9. Run lint/type/format checks
@@ -686,6 +687,87 @@ mains" and "Solar only", which are the PI30 codes 1, 2 and 3, so sending the
 platform's own code would set utility first when the owner asked for solar -
 and the inverter reports that value back, so the write is verified. A refused
 write is visible; this one would not be (#87).
+
+## 6.2 Review the control template
+
+Do this whenever the download carries a `control_fields` section. Until a
+profile declares the review, **every control entity for that devcode is
+created disabled**, so an owner on a new install finds no controls at all.
+That default is deliberate - see below - but it is not where a supported
+devcode should stay.
+
+Every field the account's template advertises becomes an entity, and the
+template is the vendor platform's. Devcode 567 advertises 96 fields including
+shutdown, start, reset, firmware upgrade, "format M4 SPI flash", four internal
+debugging parameters and three levels each of grid over- and undervoltage and
+over- and underfrequency protection with their trip times. Those last ones are
+the settings a grid operator approves a three-phase unit against. All of them
+used to be created ready to use (#90).
+
+No rule on the field itself works. Searching every committed template for
+shutdown, restart, upgrade and reset matches 25 fields of which 19 are
+ordinary settings - six spellings of "Overload automatic restart" alone -
+while the field that restores factory defaults is called `eybond_ctrl_99`.
+The ids collide outright: `shutdown` is "Shutdown command" on devcode 567 and
+**"Offgrid Switch"** on devcode 697. Only a person reading one vendor's
+template can tell them apart, which is what this declaration records.
+
+Read the `control_fields` list in the download and decide, field by field:
+
+```python
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore To Default
+        "sys_set_default",
+    }
+)
+```
+
+and register both in `DEVCODE_CONFIG`:
+
+```python
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
+```
+
+Protect a field when it acts rather than sets. The four shapes already
+declared are:
+
+- **Restoring factory defaults** - `sys_set_default`, `cts_restore_defaults`,
+  `cltd_restore_default`, `sys_eybond_ctrl_96` ("Reset User Settings").
+- **Clearing a lifetime counter** - `pvs_clear_all_generation`,
+  `cts_reset_pv_energy_storage`, `sys_eybond_ctrl_44026`, `sys_eybond_ctrl_95`.
+  Irreversible, and the energy dashboard reads those counters.
+- **Switching the inverter off** - `shutdown`/`shutdown_work` where they are
+  the Offgrid and Ongrid switches, `cltd_inverter_remote_switch`, the
+  "Remote switch" fields, `sys_eybond_ctrl_97` ("Output control").
+- **A grid-compliance setting** - `grid_protect_standard`, `safety_standards`,
+  any over/under voltage or frequency threshold or trip time, the
+  residual-current and insulation limits. A grid operator approved the unit
+  against these.
+
+Devcode 697 adds a fifth: nine **calibration coefficients**. A coefficient
+does not change what the inverter does, it changes what the inverter reports,
+so a nudged one falsifies every reading downstream of it and nothing says so.
+
+If every field in the template falls into those shapes, the template is an
+installer's and not an owner's. Declare nothing at all rather than reviewing
+it and protecting all of it - that is what devcodes 518 and 567 do, and
+`tests/test_control_default_enabled.py` asserts both end up with nothing
+enabled.
+
+Two tests guard the declaration. One fails if a protected id matches no field
+in that devcode's committed template, because a typo there leaves a
+destructive control enabled and nothing else would show it. The other fails if
+a profile claims a review for a devcode with no committed template at all.
+
+*What this does to existing installations: nothing.*
+`entity_registry_enabled_default` applies only to an entity being registered
+for the first time, so an owner already using a control keeps it whatever this
+declaration says. It decides what a new install, a newly added inverter, or a
+newly advertised field starts out as.
 
 ## 7. Commit the analysis as evidence
 
