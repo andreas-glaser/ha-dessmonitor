@@ -174,6 +174,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either way.
 
 ### Fixed
+- **Devcode 2449's Charging Source Priority now writes over the local link**
+  when settings control over the local link is on, instead of going through
+  the cloud (#88, thanks to @DennisAppelman for testing the candidate and for
+  the download that settled it). The platform spells it "Charging Source
+  Priority" and the inverter's own PI30 command is "Charger Source Priority",
+  one letter apart, so the two names did not pair and nothing declared them.
+  The download shows the inverter reporting the setting under `PCP` at the
+  value the reporter had just set from Home Assistant, which confirms the
+  option codes on hardware rather than by decoding them, and shows the
+  pairing report finding no candidate of its own. A local write is reported
+  only once the inverter has acknowledged it and read the new value back.
 - A reading a collector labels in kilowatts now reaches its watt sensor as
   watts. The devcode 567 download in #89 comes from a 10 kW three-phase
   grid-tie inverter that labels its whole AC side in kW and kVar, and its

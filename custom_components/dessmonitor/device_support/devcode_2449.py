@@ -159,13 +159,32 @@ SETTING_READINGS: set[str] = {
 #
 # The charger list starts at 12337, so it decodes to PCP01, PCP02 and PCP03,
 # and those are exactly the three the labels name; PCP00, utility first, is
-# the one the platform does not offer. Its cloud control is spelled "Charging
-# Source Priority" against the command's "Charger Source Priority", so
-# nothing pairs the two yet and this vocabulary waits for a download that
-# shows the local side (#87).
+# the one the platform does not offer.
 LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
     "bse_output_source_priority": {"12336": "0", "12337": "1", "12338": "2"},
     "bat_charging_source": {"12337": "1", "12338": "2", "12339": "3"},
+}
+
+# Which local setting each cloud control writes, where the two names are not
+# spelled alike. The hybrid coordinator pairs the rest itself.
+#
+# "Charging Source Priority" against the command's "Charger Source Priority":
+# one letter, so the two do not normalise to the same string and no pairing
+# was inferred. The download in #88 is what settles it rather than the
+# spelling. On that capture the inverter reported ``charger_source_priority``
+# as 3 under the PCP command, whose own option list is 0 utility first, 1
+# solar first, 2 solar and utility, 3 only solar, while the cloud control
+# ``bat_charging_source`` read "Only Solar Charging Permitted", which is
+# 12339. That is the 12339 -> 3 entry above, observed on the hardware rather
+# than decoded from the ASCII rule, and the reporter had set the control to
+# that value from Home Assistant minutes earlier.
+#
+# The pairing report named no candidate for this setting at all
+# (``paired_by_name`` null, ``candidates`` empty), which is the other half of
+# the evidence: nothing else on this platform could be the register PCP
+# writes.
+LOCAL_CONTROL_SETTINGS: dict[str, str] = {
+    "bat_charging_source": "charger_source_priority",
 }
 
 DEVCODE_CONFIG = {
@@ -178,4 +197,5 @@ DEVCODE_CONFIG = {
     "source_units": SOURCE_UNITS,
     "setting_readings": SETTING_READINGS,
     "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
+    "local_control_settings": LOCAL_CONTROL_SETTINGS,
 }
