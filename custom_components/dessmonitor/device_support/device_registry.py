@@ -137,6 +137,18 @@ def _load_device_configurations() -> None:
 
         _register_devcode(6489, config_6489)
 
+        from .devcode_567 import DEVCODE_CONFIG as config_567
+
+        _register_devcode(567, config_567)
+
+        from .devcode_2500 import DEVCODE_CONFIG as config_2500
+
+        _register_devcode(2500, config_2500)
+
+        from .devcode_659 import DEVCODE_CONFIG as config_659
+
+        _register_devcode(659, config_659)
+
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
 
@@ -243,6 +255,52 @@ def _temporal_controls(devcode: Any) -> dict[str, str]:
         return {}
     controls = config.get("temporal_controls")
     return controls if isinstance(controls, dict) else {}
+
+
+def control_enabled_by_default(devcode: Any, field_id: Any) -> bool:
+    """Return whether a control entity should be registered already enabled.
+
+    Every field an account's control template advertises becomes an entity,
+    and the template is the platform's, not ours. On a devcode nobody has
+    read a template for, that is 96 fields of unknown purpose published ready
+    to use: the devcode 567 account in #89 was handed shutdown, start, reset,
+    firmware upgrade, "format M4 SPI flash", four internal debugging
+    parameters and three levels each of grid over- and undervoltage and over-
+    and underfrequency protection with their trip times (#90). The owner
+    found them and disabled them by hand.
+
+    So the default is off, and a profile turns it on for the template it has
+    actually read. The alternative was a rule on the field, and the committed
+    templates rule it out: searching all of them for shutdown, restart,
+    upgrade, reset and the rest matches 25 fields of which 19 are ordinary
+    settings - six spellings of "Overload automatic restart" alone - while
+    the field that restores factory defaults is called ``eybond_ctrl_99``.
+    The ids collide outright: ``shutdown`` is "Shutdown command" on devcode
+    567 and "Offgrid Switch" on devcode 697, so a rule keyed on it would
+    disable the wrong control. Only a person reading one vendor's template
+    can tell those apart, and this is where that reading is recorded.
+
+    Devcodes 518 and 567 declare nothing on purpose rather than for want of
+    evidence: both advertise installer templates - grid protection
+    thresholds, safety standard, insulation limits, HMI password - and not
+    one field in either is an owner's setting, so every one of them stays
+    disabled.
+
+    ``entity_registry_enabled_default`` applies only to an entity being
+    registered for the first time, so nothing an installation already
+    publishes is affected: an owner using a control this would have disabled
+    keeps it, because its registry entry already exists.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config or not config.get("controls_reviewed"):
+        return False
+    if not isinstance(field_id, str):
+        return False
+    protected = config.get("protected_controls")
+    if isinstance(protected, (set, frozenset, tuple, list)):
+        return field_id not in protected
+    return True
 
 
 def control_value_reading(devcode: Any, field_id: Any) -> str | None:

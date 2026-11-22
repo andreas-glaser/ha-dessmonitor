@@ -81,6 +81,15 @@ TEXT_SENSOR_TITLES = {
     # digit, publishing "1.080" as 1.08. This is the one key in SENSOR_TYPES
     # that measures nothing and was still read as a number (#84).
     "Software version",
+    # Devcode 567 answers its own switch with "Stop state" or "On-grid
+    # operation" and its anti-PID module with "Not running". Both are the
+    # vendor's words and neither is a set anything here knows, so they are
+    # text rather than enums (#89).
+    "Inverter Switch Status",
+    "PID Status",
+    # Devcode 659 answers whether it restarts itself with "Automatically
+    # Boot". Another word, and the vendor documents no set of them (#92).
+    "Automatic Startup",
 }
 
 

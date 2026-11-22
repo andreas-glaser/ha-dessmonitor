@@ -92,6 +92,43 @@ PARAMETER_SENSOR_NAMES: set[str] = set()
 
 SETTING_READINGS: set[str] = set()
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 24 fields, and unlike its siblings it mixes
+# owner settings with the factory calibration coefficients. A coefficient
+# does not change the inverter's behaviour, it changes what the inverter
+# reports, so a nudged one falsifies every reading downstream of it with
+# nothing to say so.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        "battery_voltage_calibration_coefficient",
+        "buf_voltage_calibration_coefficient",
+        "control_current_calibration_coefficient",
+        "grid_current_calibration_coefficient",
+        "grid_voltage_calibration_coefficient",
+        "inverter_current_calibration_coefficient",
+        "inverter_voltage_calibration_coefficient",
+        "load_current_calibration_coefficient",
+        # Offgrid Switch
+        "shutdown",
+        # Ongrid Switch
+        "shutdown_work",
+        # the grid compliance standard the unit was approved against
+        "grid_protect_standard",
+        # the inverter's own serial number
+        "sn",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -103,4 +140,6 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

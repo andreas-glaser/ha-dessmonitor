@@ -1,0 +1,408 @@
+{
+  "data": {
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "device_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "3.0.0",
+        "devcode": 2500,
+        "device_identity": "sha256:b8a3df446e1f",
+        "collector_identity": "sha256:b62216dfbec5",
+        "device_address": 4,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 23,
+          "unresolved": 2,
+          "total": 25,
+          "excluded": {
+            "attribute_readings": 2,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 23,
+          "unresolved_with_unit": [
+            {
+              "title": "Accumulated PV Power",
+              "unit": "kWh",
+              "sample": "2556.30"
+            },
+            {
+              "title": "accumulated PV_sell power",
+              "unit": "kWh",
+              "sample": "58"
+            }
+          ],
+          "unresolved_without_unit": []
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-21 06:20:49",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "53.4",
+            "unit": "V",
+            "resolved_key": "Battery Voltage"
+          },
+          {
+            "title": "PV Voltage",
+            "value": "57.3",
+            "unit": "V",
+            "resolved_key": "PV Voltage"
+          },
+          {
+            "title": "Inverter Voltage",
+            "value": "238.8",
+            "unit": "V",
+            "resolved_key": "Inverter Voltage"
+          },
+          {
+            "title": "load current",
+            "value": "0.4",
+            "unit": "A",
+            "resolved_key": "load current"
+          },
+          {
+            "title": "Batt Current",
+            "value": "1",
+            "unit": "A",
+            "resolved_key": "Batt Current"
+          },
+          {
+            "title": "Charger Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Charger Current"
+          },
+          {
+            "title": "Charger Power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": "Charger Power"
+          },
+          {
+            "title": "PLoad",
+            "value": "53",
+            "unit": "W",
+            "resolved_key": "PLoad"
+          },
+          {
+            "title": "PGrid",
+            "value": "-20",
+            "unit": "W",
+            "resolved_key": "PGrid"
+          },
+          {
+            "title": "work state",
+            "value": "Grid-Tie",
+            "unit": "",
+            "resolved_key": "work state"
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "239.5",
+            "unit": "V",
+            "resolved_key": "Grid Voltage"
+          },
+          {
+            "title": "rated power",
+            "value": "5000",
+            "unit": "W",
+            "resolved_key": "rated power"
+          },
+          {
+            "title": "grid current",
+            "value": "0.6",
+            "unit": "A",
+            "resolved_key": "grid current"
+          },
+          {
+            "title": "PInverter",
+            "value": "31",
+            "unit": "W",
+            "resolved_key": "PInverter"
+          },
+          {
+            "title": "Accumulated Sell Power",
+            "value": "58",
+            "unit": "kWh",
+            "resolved_key": "Accumulated Sell Power"
+          },
+          {
+            "title": "Accumulated Load Power",
+            "value": "9363",
+            "unit": "kWh",
+            "resolved_key": "Accumulated Load Power"
+          },
+          {
+            "title": "Accumulated Self_Use Power",
+            "value": "1351",
+            "unit": "kWh",
+            "resolved_key": "Accumulated Self_Use Power"
+          },
+          {
+            "title": "accumulated PV_sell power",
+            "value": "58",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "batt power",
+            "value": "82",
+            "unit": "W",
+            "resolved_key": "batt power"
+          },
+          {
+            "title": "charger work enable",
+            "value": "ON",
+            "unit": "",
+            "resolved_key": "charger work enable"
+          },
+          {
+            "title": "Accumulated PV Power",
+            "value": "2556.30",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "2556.3000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [
+          {
+            "name": "Absorb voltage",
+            "value": "56.4",
+            "unit": "",
+            "id": "absorb_voltage"
+          },
+          {
+            "name": "battery high voltage",
+            "value": "60.0",
+            "unit": "",
+            "id": "battery_high_voltage"
+          },
+          {
+            "name": "battery low voltage",
+            "value": "48.0",
+            "unit": "",
+            "id": "battery_low_voltage"
+          },
+          {
+            "name": "Battery stop charging voltage",
+            "value": "56.1",
+            "unit": "",
+            "id": "battery_stop_charging_voltage"
+          },
+          {
+            "name": "Battery stop discharging voltage",
+            "value": "53.3",
+            "unit": "",
+            "id": "battery_stop_discharging_voltage"
+          },
+          {
+            "name": "Battery type",
+            "value": "lithium battery",
+            "unit": "",
+            "options": [
+              "0: no choose",
+              "1: User default battery",
+              "2: lithium battery",
+              "3: SEALED_LEAD battery",
+              "4: AGM battery",
+              "5: GEL battery",
+              "6: FLOODED battery"
+            ],
+            "id": "battery_type"
+          },
+          {
+            "name": "charger source priority",
+            "value": "Solar and Utility",
+            "unit": "",
+            "options": [
+              "0: Solar first",
+              "2: Solar and Utility",
+              "3: Only Solar"
+            ],
+            "id": "charger_source_priority"
+          },
+          {
+            "name": "energy use mode",
+            "value": "SUB",
+            "unit": "",
+            "options": [
+              "1: SBU",
+              "2: SUB",
+              "3: UTI",
+              "4: SOL"
+            ],
+            "id": "energy_use_mode"
+          },
+          {
+            "name": "Float voltage",
+            "value": "56.1",
+            "unit": "",
+            "id": "float_voltage"
+          },
+          {
+            "name": "Grid max charger current set",
+            "value": "30.0",
+            "unit": "",
+            "id": "grid_max_charger_current_set"
+          },
+          {
+            "name": "grid protect standard",
+            "value": "home",
+            "unit": "",
+            "options": [
+              "0: VDE4105",
+              "1: UPS",
+              "2: home",
+              "3: GEN"
+            ],
+            "id": "grid_protect_standard"
+          },
+          {
+            "name": "inverter discharges to the grid to enable",
+            "value": "close",
+            "unit": "",
+            "options": [
+              "0: close",
+              "1: open"
+            ],
+            "id": "inverter_discharges_to_the_grid_to_enable"
+          },
+          {
+            "name": "inverter max discharger current",
+            "value": "21.7",
+            "unit": "",
+            "id": "inverter_max_discharger_current"
+          },
+          {
+            "name": "inverter offline working enable",
+            "value": "ON",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "inverter_offline_working_enable"
+          },
+          {
+            "name": "inverter output frequency Set",
+            "value": "50.00",
+            "unit": "",
+            "id": "inverter_output_frequency_set"
+          },
+          {
+            "name": "inverter output voltage Set",
+            "value": "230.0",
+            "unit": "",
+            "id": "inverter_output_voltage_set"
+          },
+          {
+            "name": "inverter search mode enable",
+            "value": "OFF",
+            "unit": "",
+            "options": [
+              "0: OFF",
+              "1: ON"
+            ],
+            "id": "inverter_search_mode_enable"
+          },
+          {
+            "name": "max combine charger current",
+            "value": "30.0",
+            "unit": "",
+            "id": "max_combine_charger_current"
+          },
+          {
+            "name": "Ongrid Switch",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "0: Deactivate",
+              "1: Enable"
+            ],
+            "id": "shutdown_work"
+          },
+          {
+            "name": "PV Max charger current",
+            "value": "80.0",
+            "unit": "",
+            "id": "pv_max_charger_current"
+          },
+          {
+            "name": "solaruse_aim",
+            "value": "LBU",
+            "unit": "",
+            "options": [
+              "0: LBU",
+              "1: BLU"
+            ],
+            "id": "solaruse_aim"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batt power",
+            "value": "87",
+            "unit": "W",
+            "id": "battery_active_power"
+          },
+          {
+            "name": "Charger Power",
+            "value": "10",
+            "unit": "W",
+            "id": "pv_output_power"
+          },
+          {
+            "name": "PGrid",
+            "value": "0",
+            "unit": "W",
+            "id": "grid_active_power"
+          },
+          {
+            "name": "PLoad",
+            "value": "46",
+            "unit": "W",
+            "id": "load_active_power"
+          }
+        ],
+        "checksum": "a81cd36c542b91c807415b0f7695021c12b10b442aaa0a62f8068d6b4d9608e3"
+      }
+    ]
+  }
+}

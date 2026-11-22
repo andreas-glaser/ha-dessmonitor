@@ -82,6 +82,26 @@ PARAMETER_SENSOR_NAMES: set[str] = {"Battery percentage"}
 # analysis recorded a unit for its first twenty samples only, which is why the
 # coverage guard never saw them.
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 41 owner settings, the Eybond ESS setpoint
+# vocabulary this profile shares with devcodes 6515 and 6544.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Remote switch, which stops the inverter
+        "sys_eybond_read_92",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -91,4 +111,6 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

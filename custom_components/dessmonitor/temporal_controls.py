@@ -21,6 +21,7 @@ from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
 from .control_values import cloud_control_snapshot, control_value, find_control_value
 from .device_support.device_registry import (
+    control_enabled_by_default,
     devcode_has_temporal_controls,
     map_control_field,
     temporal_control_kind,
@@ -166,6 +167,9 @@ class DessMonitorTemporalControl(CoordinatorEntity[DessMonitorDataUpdateCoordina
             )
         )
         self._attr_device_info = create_device_info(serial, device, collector)
+        self._attr_entity_registry_enabled_default = control_enabled_by_default(
+            device.get("devcode"), field_id
+        )
         self._last_cloud_sample = cloud_control_snapshot(coordinator, serial)[0]
         self._last_raw_value = control_value(initial_value)
         self._attr_native_value = self._parse_value(self._last_raw_value)

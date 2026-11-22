@@ -156,6 +156,29 @@ LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
     "bse_output_source_priority": {"0": "0", "1": "1"},
 }
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 41 owner settings: battery voltages and
+# currents, both priorities, the RGB LED, and the AC charger and output
+# schedules.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore To The Default
+        "sys_set_default",
+        # Reset PV energy storaget, which clears a lifetime counter
+        "cts_reset_pv_energy_storage",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -168,4 +191,6 @@ DEVCODE_CONFIG = {
     "setting_readings": SETTING_READINGS,
     "temporal_controls": TEMPORAL_CONTROLS,
     "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

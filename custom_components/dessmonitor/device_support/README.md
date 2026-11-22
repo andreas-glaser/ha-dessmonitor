@@ -6,9 +6,12 @@ This directory contains device profiles for inverters connected through DessMoni
 
 ## Currently Supported Collectors
 
+- **devcode 659**: Known to pair with the Windon LT21HD, a three-phase on-grid string inverter with two trackers, on ShineMonitor behind a Wi-Fi Plug Pro-13. It measures each phase separately - voltage, current, frequency, active power and apparent power - and reports a phase voltage rather than a line-to-line one, so its three voltages reach the Grid L1/L2/L3 keys where devcode 567's reach the line-to-line pair. Like 567 it leaves the plant summary's `outpower`, `energyToday` and `energyTotal` at `0.0000` while reporting the real figures itself, so all three summary titles are mapped onto the device's own readings. Its per-phase apparent power is labelled `W` by the collector and published in volt-amperes, which the magnitudes support. The platform answers `queryDeviceCtrlField` with ERR_FORBIDDEN for the reporting account, so no control template was recorded. The six `Debugging Information` words and the three MCU firmware strings stay unmapped: none carries a unit, no report decodes the debug words, and the single `Software version` key cannot hold three firmware strings.
+- **devcode 567**: Three-phase on-grid string inverter with up to four trackers and twenty strings, on ShineMonitor; the reported unit is 10 kW at 400 V and its brand is not yet recorded. No battery, charger or priority readings. This devcode leaves the plant summary's `outpower`, `energyToday` and `energyTotal` at `0.0000` while reporting the real figures itself, so all three summary titles are mapped onto the device's own readings. Its whole AC side is labelled in kW and kVar, which the generic unit scale converts to the watts and volt-amperes its sensors publish. The two clock controls are declared in `TEMPORAL_CONTROLS`. The firmware version strings and the two inverter timestamps stay unmapped: they carry no unit, and the single `Software version` key cannot hold four firmware strings. The 96 control fields this devcode advertises, including shutdown, restart, upgrade and the grid protection setpoints, are the subject of issue #90.
 - **devcode 518**: Known to pair with BYD BYD-S-1P5K-2M through Q0025-series collectors on ShineMonitor; local protocol and writes are not verified.
 - **devcode 632**: Grid-connected PV inverter with up to three strings and an optional export meter, on ShineMonitor; inverter brand and model not yet confirmed. No battery, charger or priority readings. `DCI`, `GFCI` and `ISO` stay unmapped because the analysis records no unit for them.
 - **devcode 684**: Known to pair with the Panther Solar PES-3000TL-SS, a 3 kW single-phase grid-connected PV inverter on ShineMonitor; its nameplate ratings match what the collector reports. No battery, charger or priority readings, and the platform reports no control template for it, so it publishes sensors only. The seven `fault information` words stay unmapped: they are raw bitmasks and no report carries the vendor fault table for this protocol.
+- **devcode 2500**: Known to pair with the MUST PH18 5.5KW, a grid-tied hybrid on DessMonitor behind a WI-FI PLUG14 RTU. It speaks the same vocabulary as devcode 697, so twenty-three of its twenty-five readings resolve without a mapping; the profile adds the lifetime array counter and the exported counter attributed to the array. That second one reads the same figure as `Accumulated Sell Power` in the committed download and still gets its own sensor: a system exporting only solar agrees on both whether or not they are one register. `work state` keeps its own key rather than being mapped onto `Operating mode`, which would change a unique id on every installation already running this devcode.
 - **devcode 697**: Known to pair with the PV1800 MD PV18-5048 VHM, a 5 kW 48 V off-grid inverter on ShineMonitor (sold as CYMPOWER). Eighteen of its twenty-one readings resolve without a mapping; the profile adds the lifetime PV counter and the battery-side charger current and power, which keep the vendor's names because the collector does not say which source is charging.
 - **devcode 4743**: Single-phase grid-connected PV inverter with up to three strings, on ShineMonitor; inverter brand and model not yet confirmed. No battery readings. The R phase is mapped to the grid sensors, and the S and T phases, the S and T load voltages and the unconnected string powers are declared in `ABSENT_READINGS`: the reported hardware is single-phase with one string, so the collector returns those fields at zero and they are not dropped readings. Map them when a three-phase or multi-string unit on this devcode is reported.
 
@@ -34,6 +37,26 @@ This directory contains device profiles for inverters connected through DessMoni
 ### Device Metadata
 
 Each `devcode_XXXX.py` exposes a `DEVICE_INFO` block that describes the collector. When known, populate the optional `known_inverters` list with inverter model names (e.g., `["POW-HVM6.2K-48V-LIP"]`) so contributors quickly see which hardware has been validated for that devcode.
+
+## Control entities and the review declaration
+
+A control entity is created **disabled** unless the devcode's profile declares
+that someone has read its control template. Every field the vendor platform
+advertises for an account becomes an entity, and on devcode 567 that is 96 of
+them including shutdown, reset, firmware upgrade and the grid protection
+setpoints, which used to arrive ready to use (#90).
+
+A profile declares `controls_reviewed` plus a `protected_controls` set of the
+fields that stay disabled within a reviewed template - restoring defaults,
+clearing a lifetime counter, switching the inverter off, a grid-compliance
+setting, or devcode 697's factory calibration coefficients. Devcodes 518 and
+567 declare nothing on purpose: both templates are an installer's throughout.
+
+The declaration affects only entities being registered for the first time, so
+it never changes what an existing installation publishes. See
+[docs/ADDING_DEVCODES.md](../../../docs/ADDING_DEVCODES.md) section 6.2 for how
+to decide one, and `tests/test_control_default_enabled.py` for what is
+enforced.
 
 ## Adding Support for a New Devcode
 

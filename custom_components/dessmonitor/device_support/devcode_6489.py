@@ -167,6 +167,28 @@ SETTING_READINGS: set[str] = {
 
 ABSENT_READINGS: dict[str, str] = {}
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 14 owner settings: the battery undervoltage
+# points, the charging currents and both priorities.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore the default value
+        "cltd_restore_default",
+        # Controls the inverter switch
+        "cltd_inverter_remote_switch",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -179,4 +201,6 @@ DEVCODE_CONFIG = {
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "setting_readings": SETTING_READINGS,
     "absent_readings": ABSENT_READINGS,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

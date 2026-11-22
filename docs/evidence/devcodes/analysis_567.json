@@ -1,0 +1,2295 @@
+{
+  "data": {
+    "integration": {
+      "version": "3.1.0-rc.1",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "local_control": "disabled",
+      "api_profile": "shinemonitor_solar"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 3,
+      "devices_in_snapshot": 1,
+      "hybrid": false,
+      "local_only": false,
+      "devices_on_a_retained_cloud_payload": 0
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "shinemonitor_solar",
+        "integration_version": "3.1.0-rc.1",
+        "devcode": 567,
+        "device_identity": "sha256:d921627098e9",
+        "collector_identity": "sha256:023ea7205c91",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 11,
+          "unresolved": 56,
+          "total": 67,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 11,
+          "unresolved_with_unit": [
+            {
+              "title": "AC Active Power",
+              "unit": "kW",
+              "sample": "0.07"
+            },
+            {
+              "title": "AC Reactive Power",
+              "unit": "kVar",
+              "sample": "0.00"
+            },
+            {
+              "title": "CO2 Reduction",
+              "unit": "kg",
+              "sample": "24.02"
+            },
+            {
+              "title": "Cumulative power generation",
+              "unit": "kWh",
+              "sample": "24096.62"
+            },
+            {
+              "title": "Cumulative Running Time",
+              "unit": "Hour",
+              "sample": "14443.65"
+            },
+            {
+              "title": "Daily power generation",
+              "unit": "kWh",
+              "sample": "0.00"
+            },
+            {
+              "title": "Daily Running Time",
+              "unit": "Hour",
+              "sample": "0.52"
+            },
+            {
+              "title": "DC Input Power",
+              "unit": "kW",
+              "sample": "0.08"
+            },
+            {
+              "title": "Grid A Phase Current (Ia)",
+              "unit": "A",
+              "sample": "0.7"
+            },
+            {
+              "title": "Grid AB Line Voltage",
+              "unit": "V",
+              "sample": "409.6"
+            },
+            {
+              "title": "Grid B Phase Current (Ib)",
+              "unit": "A",
+              "sample": "0.7"
+            },
+            {
+              "title": "Grid BC Line Voltage",
+              "unit": "V",
+              "sample": "408.7"
+            },
+            {
+              "title": "Grid C Phase Current (Ic)",
+              "unit": "A",
+              "sample": "0.8"
+            },
+            {
+              "title": "Grid CA Line Voltage",
+              "unit": "V",
+              "sample": "411.0"
+            },
+            {
+              "title": "Insulation Resistance",
+              "unit": "KΩ",
+              "sample": "946.0"
+            },
+            {
+              "title": "Internal Temperature",
+              "unit": "°C",
+              "sample": "39.6"
+            },
+            {
+              "title": "Inverter Efficiency",
+              "unit": "%",
+              "sample": "79.79"
+            },
+            {
+              "title": "MPPT1 Input Power",
+              "unit": "kW",
+              "sample": "0.09"
+            },
+            {
+              "title": "MPPT1 input voltage",
+              "unit": "V",
+              "sample": "455.6"
+            },
+            {
+              "title": "MPPT2 Input Power",
+              "unit": "kW",
+              "sample": "0.00"
+            },
+            {
+              "title": "MPPT2 input voltage",
+              "unit": "V",
+              "sample": "12.7"
+            },
+            {
+              "title": "MPPT3 Input Power",
+              "unit": "kW",
+              "sample": "0.00"
+            },
+            {
+              "title": "MPPT3 input voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "MPPT4 Input Power",
+              "unit": "kW",
+              "sample": "0.00"
+            },
+            {
+              "title": "MPPT4 input voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "String01 Input Current",
+              "unit": "A",
+              "sample": "0.21"
+            },
+            {
+              "title": "String02 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String03 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String04 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String05 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String06 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String07 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String08 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String09 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String10 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String11 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String12 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String13 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String14 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String15 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String16 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String17 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String18 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String19 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "String20 Input Current",
+              "unit": "A",
+              "sample": "0.00"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Communication protocol version",
+            "Inverter Boot Time",
+            "Inverter Shutdown Time",
+            "Inverter Switch Status",
+            "Parameter version_DC_AC",
+            "Parameter version_DC_DC",
+            "PID status",
+            "Software version_bootloader",
+            "Software version_DC_AC",
+            "Software version_DC_DC",
+            "Software version_FPGA"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-20 10:35:59",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT1 input voltage",
+            "value": "455.6",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT2 input voltage",
+            "value": "12.7",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT3 input voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT4 input voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String01 Input Current",
+            "value": "0.21",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String02 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String03 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String04 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String05 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String06 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String07 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String08 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String09 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String10 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String11 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String12 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String13 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String14 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String15 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String16 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String17 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String18 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String19 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "String20 Input Current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT1 Input Power",
+            "value": "0.09",
+            "unit": "kW",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT2 Input Power",
+            "value": "0.00",
+            "unit": "kW",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT3 Input Power",
+            "value": "0.00",
+            "unit": "kW",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "MPPT4 Input Power",
+            "value": "0.00",
+            "unit": "kW",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid AB Line Voltage",
+            "value": "409.6",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid BC Line Voltage",
+            "value": "408.7",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid CA Line Voltage",
+            "value": "411.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid A Phase Current (Ia)",
+            "value": "0.7",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid B Phase Current (Ib)",
+            "value": "0.7",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid C Phase Current (Ic)",
+            "value": "0.8",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid Frequency",
+            "value": "49.99",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency",
+            "sensor_unit": "Hz"
+          },
+          {
+            "title": "bus voltage",
+            "value": "653.0",
+            "unit": "V",
+            "resolved_key": "Bus Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "Positive bus voltage",
+            "value": "327.0",
+            "unit": "V",
+            "resolved_key": "Positive Bus Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "AC Active Power",
+            "value": "0.07",
+            "unit": "kW",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "AC Reactive Power",
+            "value": "0.00",
+            "unit": "kVar",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "DC Input Power",
+            "value": "0.08",
+            "unit": "kW",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Inverter Efficiency",
+            "value": "79.79",
+            "unit": "%",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Power Factor",
+            "value": "1.000",
+            "unit": "",
+            "resolved_key": "Power Factor",
+            "sensor_unit": null
+          },
+          {
+            "title": "Internal Temperature",
+            "value": "39.6",
+            "unit": "°C",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Insulation Resistance",
+            "value": "946.0",
+            "unit": "KΩ",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Inverter Switch Status",
+            "value": "On-grid operation",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Inverter status",
+            "value": "On-grid operation",
+            "unit": "",
+            "resolved_key": "Inverter Status",
+            "sensor_unit": null
+          },
+          {
+            "title": "Daily power generation",
+            "value": "0.00",
+            "unit": "kWh",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Cumulative power generation",
+            "value": "24096.62",
+            "unit": "kWh",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "CO2 Reduction",
+            "value": "24.02",
+            "unit": "kg",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Daily Running Time",
+            "value": "0.52",
+            "unit": "Hour",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Cumulative Running Time",
+            "value": "14443.65",
+            "unit": "Hour",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Inverter Boot Time",
+            "value": "2026-11-20 10:35:33",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Inverter Shutdown Time",
+            "value": "2026-11-20 10:34:43",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PID status",
+            "value": "Not running",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Device e-SN",
+            "value": "",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Software version_DC_AC",
+            "value": "V106.014.000",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Software version_DC_DC",
+            "value": "V569.010.000",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Software version_FPGA",
+            "value": "V508.000.000",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Parameter version_DC_AC",
+            "value": "V045.106.033",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Software version_bootloader",
+            "value": "V102.004.000",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Communication protocol version",
+            "value": "V001.000.000",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Parameter version_DC_DC",
+            "value": "V045.106.033",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Rated power",
+            "value": "10",
+            "unit": "kW",
+            "resolved_key": "rated power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "Rated voltage",
+            "value": "400",
+            "unit": "V",
+            "resolved_key": "rated voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower",
+            "sensor_unit": "kW"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source",
+            "sensor_unit": null
+          }
+        ],
+        "observed_values": {
+          "Communication protocol version": {
+            "values": [
+              "V001.000.000"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Inverter status": {
+            "values": [
+              "On-grid operation"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Inverter Switch Status": {
+            "values": [
+              "On-grid operation"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Parameter version_DC_AC": {
+            "values": [
+              "V045.106.033"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Parameter version_DC_DC": {
+            "values": [
+              "V045.106.033"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "PID status": {
+            "values": [
+              "Not running"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Software version_bootloader": {
+            "values": [
+              "V102.004.000"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Software version_DC_AC": {
+            "values": [
+              "V106.014.000"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Software version_DC_DC": {
+            "values": [
+              "V569.010.000"
+            ],
+            "observations": 3,
+            "truncated": false
+          },
+          "Software version_FPGA": {
+            "values": [
+              "V508.000.000"
+            ],
+            "observations": 3,
+            "truncated": false
+          }
+        },
+        "entity_inventory": {
+          "by_sensor": {
+            "Bus Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Data Source": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Grid Frequency": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Inverter Status": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Last Reading Received": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Positive Bus Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Power Factor": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "active_power_ratio_regulation": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "active_power_regulation_mode": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "active_power_value_regulation": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "anti_backflow_ct_ratio": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "anti_backflow_failure_enable": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "anti_backflow_failure_power_percentage": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "anti_backflow_power": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "anti_reverse_current_meter_type": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "battery_string_actual_configuration_(read_only)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "battery_string_installation_configuration_(settings)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "boost_side_alarm_mask_word_1(read_only)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "boost_side_alarm_mask_word_1(settings)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "boost_side_fault_mask_word_1(read_only)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "boost_side_fault_mask_word_1(settings)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "boost_side_fault_mask_word_2(read_only)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "boost_side_fault_mask_word_2(settings)": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "bus_voltage_setting": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "coeffiency_of_residual_current_at_continuous_overlimit_condition": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "communication_baud_rate": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "communication_method": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "communication_site_address": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "confirmation_time_of_residual_current's_primary_sudden_change_over_the_threshold_limit": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "confirmation_time_of_residual_current's_secondary_sudden_change_over_the_threshold_limi": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "confirmation_time_of_residual_current's_tertiary_sudden_change_over_the_threshold_limit": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "confirmation_time_of_residual_current_at_continuous_overlimit_condition": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "detection_delay_of_pid_power_supply_fault": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "earilest_nominal_shutdown_time_of_inverter": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "enable_automatic_detection_of_each_string": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "energyToday": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "energyTotal": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "grid_fault_delay_operation_enable": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_fault_delay_operation_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_level_overfrequency_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_level_overfrequency_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_level_underfrequency_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_level_underfrequency_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_primary_overvoltage_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_primary_overvoltage_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_primary_undervoltage_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_primary_undervoltage_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_overfrequency_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_overfrequency_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_overvoltage_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_overvoltage_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_underfrequency_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_underfrequency_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_undervoltage_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_secondary_undervoltage_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_tertiary_overvoltage_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_tertiary_overvoltage_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_three_level_overfrequency_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_three_level_overfrequency_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_three_level_underfrequency_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_three_stage_underfrequency_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_three_stage_undervoltage_protection_point": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "grid_side_three_stage_undervoltage_protection_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "insulation_impedance_fault_limit": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "insulation_impedance_fault_voltage_percentage_limit": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "internal_debugging_parameters_1": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "internal_debugging_parameters_2": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "internal_debugging_parameters_3": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "internal_debugging_parameters_4": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_alarm_enable_word_2": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_alarm_enable_word_3": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_alarm_enable_word_4": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_alarm_enable_word_5": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_fault_mask_word_1": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_fault_mask_word_2": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_fault_mask_word_3": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_fault_mask_word_4": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "inverter_fault_mask_word_5": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "latest_nominal_shutdown_time_of_inverter": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "m4_maintenance_command": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "m4_restart_command": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "network_side_fault_allows_automatic_reset_enable_word": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "nominal_shutdown_time_range_of_inverter": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "outpower": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "pid_enable": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "power_factor_regulation": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "range_of_pid_run_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "rated power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "rated voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "reactive_power_kvar_regulation": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "reactive_power_ratio_regulation": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "reactive_power_regulation_mode": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "reset_command": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "residual_current's_primary_sudden_change_over_the_threshold_limit": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "residual_current's_secondary_sudden_changeover_the_threshold_limit": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "residual_current's_tertiary_sudden_change_over_the_threshold_limit": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "residual_current_detection_enable": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "saving_and_curing_program_parameters_command": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "secondary_fault_detection_delay_of_pid_power_supply": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "shutdown_command": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "single_machine_anti_backflow_enable": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "start_command": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "status": {
+              "platform": "binary_sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "svg_startup": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "system_configuration_parameter_setting_word": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "upgrade_command": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            }
+          }
+        },
+        "control_fields": [
+          {
+            "name": "Active power ratio regulation",
+            "value": "110.00",
+            "unit": "",
+            "id": "active_proportional_adjustment"
+          },
+          {
+            "name": "Active power regulation mode",
+            "value": "active power  value regulation",
+            "unit": "",
+            "options": [
+              "0: no active power regulation",
+              "1: active power  value regulation",
+              "2: active power ratio regulation"
+            ],
+            "id": "active_regulation"
+          },
+          {
+            "name": "Active power value regulation",
+            "value": "11.00",
+            "unit": "",
+            "id": "actual_adjustment_power"
+          },
+          {
+            "name": "Anti-backflow CT ratio",
+            "value": "1",
+            "unit": "",
+            "id": "anti_backflow_ratio"
+          },
+          {
+            "name": "Anti-backflow failure enable",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "anti_backflow_failure_enable"
+          },
+          {
+            "name": "Anti-backflow failure power percentage",
+            "value": "4.00",
+            "unit": "",
+            "id": "anti_backflow_percentage"
+          },
+          {
+            "name": "Anti-backflow power",
+            "value": "200",
+            "unit": "",
+            "id": "anti_backflow_power"
+          },
+          {
+            "name": "Anti-reverse current meter type",
+            "value": "Enric Electric Meter",
+            "unit": "",
+            "options": [
+              "1: Enric Electric Meter",
+              "2: Donghong Technology Electric Meter"
+            ],
+            "id": "anti_reverse_current_meter_type"
+          },
+          {
+            "name": "Battery string actual configuration (read only)",
+            "value": "0000000000000001",
+            "unit": "",
+            "id": "battery_string_actual_configuration"
+          },
+          {
+            "name": "Battery string installation configuration (Settings)",
+            "value": "0000000000000000",
+            "unit": "",
+            "id": "battery_string_installation_configuration_high_position"
+          },
+          {
+            "name": "Boost side alarm mask word 1(read-only)",
+            "value": "1100000011110001",
+            "unit": "",
+            "id": "boost_side_alarm_mask_word_1_read"
+          },
+          {
+            "name": "Boost side alarm mask word 1(Settings)",
+            "value": "0000000000000000",
+            "unit": "",
+            "id": "boost_side_alarm_mask_word_1_set"
+          },
+          {
+            "name": "Boost side fault mask word 1(read only)",
+            "value": "1100000011110001",
+            "unit": "",
+            "id": "boost_side_fault_mask_word_1_read"
+          },
+          {
+            "name": "Boost side fault mask word 1(Settings)",
+            "value": "0000000000000000",
+            "unit": "",
+            "id": "boost_side_fault_mask_word_1_set"
+          },
+          {
+            "name": "Boost side fault mask word 2(read-only)",
+            "value": "1100000011110001",
+            "unit": "",
+            "id": "boost_side_fault_mask_word_2_read"
+          },
+          {
+            "name": "Boost side fault mask word 2(Settings)",
+            "value": "0000000000000000",
+            "unit": "",
+            "id": "boost_side_fault_mask_word_2_set"
+          },
+          {
+            "name": "Bus voltage setting",
+            "value": "650.0",
+            "unit": "",
+            "id": "bus_voltage_setting"
+          },
+          {
+            "name": "Coeffiency of residual current at continuous overlimit condition",
+            "value": "10",
+            "unit": "",
+            "id": "residual_current_continuous_overrun_coefficient"
+          },
+          {
+            "name": "Communication baud rate",
+            "value": "9600bps",
+            "unit": "",
+            "options": [
+              "9600: 9600bps",
+              "19200: 19200bps",
+              "38400: 38400bps",
+              "57600: 57600bps",
+              "115200: 115200bps"
+            ],
+            "id": "modbus_communication_baud_rate"
+          },
+          {
+            "name": "Communication method",
+            "value": "RS485",
+            "unit": "",
+            "options": [
+              "0: RS485",
+              "1: PLC"
+            ],
+            "id": "communication_method_selection"
+          },
+          {
+            "name": "Communication site address",
+            "value": "1",
+            "unit": "",
+            "id": "communication_site_address"
+          },
+          {
+            "name": "Confirmation time of residual current at continuous overlimit condition",
+            "value": "160",
+            "unit": "",
+            "id": "residual_current_continuous_over_limit_confirmation_time"
+          },
+          {
+            "name": "Confirmation time of residual current's primary sudden change over the threshold limit",
+            "value": "80",
+            "unit": "",
+            "id": "residual_current_primary_mutation_confirmation_time"
+          },
+          {
+            "name": "Confirmation time of residual current's secondary sudden change over the threshold limi",
+            "value": "60",
+            "unit": "",
+            "id": "residual_current_secondary_mutation_confirmation_time"
+          },
+          {
+            "name": "Confirmation time of residual current's tertiary sudden change over the threshold limit",
+            "value": "40",
+            "unit": "",
+            "id": "residual_current_tertiary_mutation_confirmation_time"
+          },
+          {
+            "name": "Current date and time",
+            "value": "2026-11-20 10:31:06",
+            "unit": "A",
+            "id": "current_date_and_time"
+          },
+          {
+            "name": "Date time settings",
+            "value": "2026-11-20 09:57:46",
+            "unit": "",
+            "id": "system_time"
+          },
+          {
+            "name": "Detection delay of PID power supply fault",
+            "value": "1.00",
+            "unit": "",
+            "id": "pid_power_failure_detection_delay"
+          },
+          {
+            "name": "Device e-SN",
+            "value": "",
+            "unit": "",
+            "id": "sn",
+            "val": ""
+          },
+          {
+            "name": "Earilest nominal shutdown time of inverter",
+            "value": "16",
+            "unit": "",
+            "id": "lower_limit_of_normal_shutdown_time_of_inverter"
+          },
+          {
+            "name": "enable automatic detection of each string",
+            "value": "closed",
+            "unit": "",
+            "options": [
+              "0: closed",
+              "1: open"
+            ],
+            "id": "automatic_string_detection_enable"
+          },
+          {
+            "name": "Grid fault delay operation enable",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "grid_fault_delay_enable"
+          },
+          {
+            "name": "Grid fault delay operation time",
+            "value": "49393",
+            "unit": "",
+            "id": "grid_fault_delay_time"
+          },
+          {
+            "name": "Grid-side level overfrequency protection point",
+            "value": "50.50",
+            "unit": "",
+            "id": "grid_level_overfrequency_protection_point"
+          },
+          {
+            "name": "Grid-side level overfrequency protection time",
+            "value": "240",
+            "unit": "",
+            "id": "grid_level_overfrequency_protection_time"
+          },
+          {
+            "name": "Grid-side level underfrequency protection point",
+            "value": "48.50",
+            "unit": "",
+            "id": "grid_level_underfrequency_protection_point"
+          },
+          {
+            "name": "Grid-side level underfrequency protection time",
+            "value": "600",
+            "unit": "",
+            "id": "grid_level_underfrequency_protection_time"
+          },
+          {
+            "name": "Grid-side primary overvoltage protection point",
+            "value": "130.0",
+            "unit": "",
+            "id": "grid_level_overvoltage_protection_point"
+          },
+          {
+            "name": "Grid-side primary overvoltage protection time",
+            "value": "12000",
+            "unit": "",
+            "id": "grid_level_overvoltage_protection_time"
+          },
+          {
+            "name": "Grid-side primary undervoltage protection point",
+            "value": "75.0",
+            "unit": "",
+            "id": "grid_level_undervoltage_protection_point"
+          },
+          {
+            "name": "Grid-side primary undervoltage protection time",
+            "value": "1000",
+            "unit": "",
+            "id": "grid_level_undervoltage_protection_time"
+          },
+          {
+            "name": "Grid-side secondary overfrequency protection point",
+            "value": "51.00",
+            "unit": "",
+            "id": "grid_secondary_overfrequency_protection_point"
+          },
+          {
+            "name": "Grid-side secondary overfrequency protection time",
+            "value": "60",
+            "unit": "",
+            "id": "grid_secondary_overfrequency_protection_time"
+          },
+          {
+            "name": "Grid-side secondary overvoltage protection point",
+            "value": "130.0",
+            "unit": "",
+            "id": "grid_secondary_overvoltage_protection_point"
+          },
+          {
+            "name": "Grid-side secondary overvoltage protection time",
+            "value": "600",
+            "unit": "",
+            "id": "grid_secondary_overvoltage_protection_time"
+          },
+          {
+            "name": "Grid-side secondary underfrequency protection point",
+            "value": "47.50",
+            "unit": "",
+            "id": "grid_secondary_underfrequency_protection_point"
+          },
+          {
+            "name": "Grid-side secondary underfrequency protection time",
+            "value": "30",
+            "unit": "",
+            "id": "grid_secondary_underfrequency_protection_time"
+          },
+          {
+            "name": "Grid-side secondary undervoltage protection point",
+            "value": "50.0",
+            "unit": "",
+            "id": "grid_secondary_undervoltage_protection_point"
+          },
+          {
+            "name": "Grid-side secondary undervoltage protection time",
+            "value": "50",
+            "unit": "",
+            "id": "grid_secondary_undervoltage_protection_time"
+          },
+          {
+            "name": "Grid-side tertiary overvoltage protection point",
+            "value": "132.0",
+            "unit": "",
+            "id": "grid_three_level_overvoltage_protection_point"
+          },
+          {
+            "name": "Grid-side tertiary overvoltage protection time",
+            "value": "5",
+            "unit": "",
+            "id": "grid_three_stage_overvoltage_protection_time"
+          },
+          {
+            "name": "Grid-side three-level overfrequency protection point",
+            "value": "51.50",
+            "unit": "",
+            "id": "grid_three_level_overfrequency_protection_point"
+          },
+          {
+            "name": "Grid-side three-level overfrequency protection time",
+            "value": "25",
+            "unit": "",
+            "id": "grid_three_level_overfrequency_protection_time"
+          },
+          {
+            "name": "Grid-side three-level underfrequency protection point",
+            "value": "46.50",
+            "unit": "",
+            "id": "grid_three_level_underfrequency_protection_point"
+          },
+          {
+            "name": "Grid-side three-stage underfrequency protection time",
+            "value": "25",
+            "unit": "",
+            "id": "grid_three_stage_underfrequency_protection_time"
+          },
+          {
+            "name": "Grid-side three-stage undervoltage protection point",
+            "value": "20.0",
+            "unit": "",
+            "id": "grid_three_stage_undervoltage_protection_point"
+          },
+          {
+            "name": "Grid-side three-stage undervoltage protection time",
+            "value": "5",
+            "unit": "",
+            "id": "grid_three_stage_undervoltage_protection_time"
+          },
+          {
+            "name": "Insulation impedance fault limit",
+            "value": "0.0",
+            "unit": "",
+            "id": "insulation_resistance_fault_threshold"
+          },
+          {
+            "name": "Insulation impedance fault-voltage percentage limit",
+            "value": "0",
+            "unit": "",
+            "id": "insulation_resistance_fault_voltage_percentage_threshold"
+          },
+          {
+            "name": "Internal debugging parameters 1",
+            "value": "0.00",
+            "unit": "",
+            "id": "internal_debugging_parameters_1"
+          },
+          {
+            "name": "Internal debugging parameters 2",
+            "value": "24096.62",
+            "unit": "",
+            "id": "internal_debugging_parameters_2"
+          },
+          {
+            "name": "Internal debugging parameters 3",
+            "value": "0.44",
+            "unit": "",
+            "id": "internal_debugging_parameters_3"
+          },
+          {
+            "name": "Internal debugging parameters 4",
+            "value": "14443.57",
+            "unit": "",
+            "id": "internal_debugging_parameters_4"
+          },
+          {
+            "name": "Inverter alarm enable word 2",
+            "value": "0000010001000000",
+            "unit": "",
+            "id": "inverter_alarm_enable_word_2"
+          },
+          {
+            "name": "Inverter alarm enable word 3",
+            "value": "0000000000000000",
+            "unit": "",
+            "id": "inverter_alarm_enable_word_3"
+          },
+          {
+            "name": "Inverter alarm enable word 4",
+            "value": "0000000100000100",
+            "unit": "",
+            "id": "inverter_alarm_enable_word_4"
+          },
+          {
+            "name": "Inverter alarm enable word 5",
+            "value": "0000000001100000",
+            "unit": "",
+            "id": "inverter_alarm_enable_word_5"
+          },
+          {
+            "name": "Inverter fault mask word 1",
+            "value": "0000000000000000",
+            "unit": "",
+            "id": "inverter_fault_mask_word_1"
+          },
+          {
+            "name": "Inverter fault mask word 2",
+            "value": "0011110011000000",
+            "unit": "",
+            "id": "inverter_fault_mask_word_2"
+          },
+          {
+            "name": "Inverter fault mask word 3",
+            "value": "0101100010000000",
+            "unit": "",
+            "id": "inverter_fault_mask_word_3"
+          },
+          {
+            "name": "Inverter fault mask word 4",
+            "value": "0000000100000100",
+            "unit": "",
+            "id": "inverter_fault_mask_word_4"
+          },
+          {
+            "name": "Inverter fault mask word 5",
+            "value": "0000000001110000",
+            "unit": "",
+            "id": "inverter_fault_mask_word_5"
+          },
+          {
+            "name": "Latest nominal shutdown time of inverter",
+            "value": "22",
+            "unit": "",
+            "id": "the_upper_limit_of_the_normal_shutdown_time_of_the_inverter"
+          },
+          {
+            "name": "M4 maintenance command",
+            "value": "do not restore",
+            "unit": "",
+            "options": [
+              "0: do not restore",
+              "1: restore M4 upgrade profile",
+              "2: format M4 SPI flash",
+              "3: Delete fault log",
+              "4: Reboot DC-DC boost (DSP28062)"
+            ],
+            "id": "restore_upgrade_configuration_file"
+          },
+          {
+            "name": "M4 restart command",
+            "value": "0",
+            "unit": "",
+            "id": "m4_restart_command"
+          },
+          {
+            "name": "Network side fault allows automatic reset enable word",
+            "value": "0000000000000110",
+            "unit": "",
+            "id": "automatic_reset_enable_word"
+          },
+          {
+            "name": "Nominal shutdown time range of inverter",
+            "value": "120",
+            "unit": "",
+            "id": "inverter_normal_downtime_threshold"
+          },
+          {
+            "name": "PID enable",
+            "value": "closed",
+            "unit": "",
+            "options": [
+              "0: closed",
+              "1: open"
+            ],
+            "id": "pid_enable"
+          },
+          {
+            "name": "Power factor regulation",
+            "value": "1.0000",
+            "unit": "",
+            "id": "power_factor_adjustment"
+          },
+          {
+            "name": "Range of PID run time",
+            "value": "300",
+            "unit": "",
+            "id": "pid_running_time_threshold"
+          },
+          {
+            "name": "Reactive power kVar regulation",
+            "value": "0.0",
+            "unit": "",
+            "id": "reactive_kvar_adjustment"
+          },
+          {
+            "name": "Reactive power ratio regulation",
+            "value": "0.00",
+            "unit": "",
+            "id": "reactive_proportional_control"
+          },
+          {
+            "name": "Reactive power regulation mode",
+            "value": "reactive kVar regulation",
+            "unit": "",
+            "options": [
+              "0: no reactive power output",
+              "1: power factor regulation",
+              "2: reactive kVar regulation",
+              "3: reactive power ratio regulation"
+            ],
+            "id": "reactive_regulation"
+          },
+          {
+            "name": "Reset command",
+            "value": "invalid",
+            "unit": "",
+            "options": [
+              "0: invalid",
+              "1: Reset"
+            ],
+            "id": "reset"
+          },
+          {
+            "name": "Residual current detection enable",
+            "value": "open",
+            "unit": "",
+            "options": [
+              "0: closed",
+              "1: open"
+            ],
+            "id": "residual_current_detection_enable"
+          },
+          {
+            "name": "Residual current's primary sudden change over the threshold limit",
+            "value": "27",
+            "unit": "",
+            "id": "residual_current_primary_mutation_threshold"
+          },
+          {
+            "name": "Residual current's secondary sudden changeover the threshold limit",
+            "value": "58",
+            "unit": "",
+            "id": "residual_current_secondary_mutation_threshold"
+          },
+          {
+            "name": "Residual current's tertiary  sudden change over the threshold limit",
+            "value": "145",
+            "unit": "",
+            "id": "residual_current_three_level_mutation_threshold"
+          },
+          {
+            "name": "Saving and Curing program parameters command ",
+            "value": "do not save",
+            "unit": "",
+            "options": [
+              "0: do not save",
+              "1: save current parameters",
+              "2: restore default parameters"
+            ],
+            "id": "curing_parameter"
+          },
+          {
+            "name": "Secondary fault detection delay of PID power supply",
+            "value": "30",
+            "unit": "",
+            "id": "pid_power_supply_secondary_fault_detection_delay"
+          },
+          {
+            "name": "Shutdown command",
+            "value": "invalid",
+            "unit": "",
+            "options": [
+              "0: invalid",
+              "1: Shutdown"
+            ],
+            "id": "shutdown"
+          },
+          {
+            "name": "Single machine anti-backflow enable",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "0: Disable",
+              "1: Enable"
+            ],
+            "id": "aingle_machiney_enable"
+          },
+          {
+            "name": "Start command",
+            "value": "invalid",
+            "unit": "",
+            "options": [
+              "0: invalid",
+              "1: start"
+            ],
+            "id": "boot"
+          },
+          {
+            "name": "SVG startup",
+            "value": "invalid",
+            "unit": "",
+            "options": [
+              "0: invalid",
+              "1: valid"
+            ],
+            "id": "svg_startup"
+          },
+          {
+            "name": "System configuration parameter setting word",
+            "value": "1000000000000001",
+            "unit": "",
+            "id": "system_configuration_parameter_setting_word"
+          },
+          {
+            "name": "Upgrade command",
+            "value": "0",
+            "unit": "",
+            "id": "upgrade_command"
+          }
+        ],
+        "parameters": [],
+        "checksum": "fb284ea0b0018eebfb76c2d550fee5065f32696fa2fbd5251de6b65bac4f8957",
+        "control_reads": {
+          "fields": 96,
+          "without_a_value": 1,
+          "rounds_that_recovered_nothing": 0,
+          "rounds_allowed": 3,
+          "still_trying": true,
+          "last_round_went_unanswered": false
+        },
+        "data_source": "Cloud",
+        "last_update": "2026-11-20 10:35:59",
+        "cloud_status": {
+          "code": 0,
+          "text": "online"
+        }
+      }
+    ]
+  }
+}

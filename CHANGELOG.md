@@ -47,6 +47,69 @@ publishes, and the cloud's own titles behind a local overlay. None of that
 changes an entity.
 
 ### Added
+- **Devcode 659 is supported**: a Windon LT21HD three-phase on-grid string
+  inverter with two trackers, reported through ShineMonitor (#92, thanks to
+  @Position59 for the download). Four of its forty-three readings reached a
+  sensor; every one of the twenty-eight that carry a unit now does, which is
+  all three phases, both trackers, the day and lifetime energy counters and
+  both heatsinks. Like devcode 567 it leaves the plant summary's `outpower`,
+  `energyToday` and `energyTotal` at `0.0000` while reporting 984 W and
+  79241.471 kWh itself, so Output Power and both energy sensors read zero on
+  a working inverter; all three summary titles are mapped onto the device's
+  own readings.
+
+  Thirteen new canonical sensors come with it, all for quantities this
+  collector measures per phase or per tracker where the existing keys hold
+  one figure: a grid frequency, active power and apparent power for each of
+  the three phases, an insulation resistance for each of the two trackers,
+  both heatsink temperatures, and whether the inverter restarts itself. The
+  per-phase apparent power is published in volt-amperes although the
+  collector labels it `W`, because 366 against 333 W of active power on the
+  same phase is the order the two come in.
+- **Devcode 2500 is supported**: a MUST PH18 5.5KW grid-tied hybrid on
+  DessMonitor, behind a WI-FI PLUG14 RTU (#91, thanks to @spintexroad for the
+  download). It speaks the same vocabulary as devcode 697, so twenty-three of
+  its twenty-five readings already reached a sensor; the two that did not are
+  the lifetime array counter, 2556.30 kWh, and the exported counter
+  attributed to the array, both of which carry a unit and so held the Repairs
+  card open. One new sensor comes with it, **Accumulated PV Sell Energy**.
+  That counter reads the same figure as Accumulated Sell Energy in the
+  download and still gets a sensor of its own, because a system exporting
+  only solar reports the same figure on both whether or not they are one
+  register.
+- **Devcode 567 is supported**: a three-phase on-grid string inverter with up
+  to four trackers and twenty strings, reported through ShineMonitor (#89,
+  thanks to @eimantasq for the download, for naming the unit as the cause of
+  the nameplate figure, and for finding the serial number in their own file
+  before attaching it). Of the 53 readings that carry a unit, 45 reached no
+  sensor at all and every one of them now does: the whole three-phase AC side
+  including the line-to-line voltages, all four trackers, all twenty string
+  currents, both energy counters, the efficiency, the insulation resistance
+  and the running times.
+  The plant summary's `outpower`, `energyToday` and `energyTotal` read
+  `0.0000` on this devcode while the inverter reports the real figures, which
+  is why Output Power and both energy sensors read zero on a working
+  inverter; all three summary titles are mapped onto the device's own
+  readings, so the zero stops publishing an entity beside the real one.
+
+  Twelve new canonical sensors come with it, plus the twenty string currents,
+  none of which existed: the three line-to-line grid voltages, the three grid
+  phase currents, per-tracker DC power, inverter efficiency, insulation
+  resistance, daily running time, the inverter switch status, the PID status
+  and the vendor's CO2 figure. The per-tracker keys are named `MPPT1 Power`
+  to `MPPT4 Power` rather than `PV1 Power`: devcodes 4743 and 6544 already
+  send that title and 4743 declares its three in `ABSENT_READINGS` because
+  the collector reports 0 while the string produces, so a key of that name
+  would have given those installations three sensors reading zero in
+  daylight. The CO2 figure is published in tonnes although the collector
+  labels it kg: it is the lifetime generation counter times 0.997 divided by
+  a thousand, and the owner's app shows 24024.3 kg against the collector's
+  24.02 for the same moment (#89).
+
+  Its two clock controls are declared in `TEMPORAL_CONTROLS`, which retires
+  the number entity a clock value cannot be shown in. *Upgrade note:* that
+  applies only to devcode 567, which no release has published controls for
+  under a profile, so no existing entity moves.
 - **The download records what a device actually publishes**, keyed by sensor
   rather than by name: how many entities exist for each sensor, how many are
   disabled, whether each reads a value or `unknown` or `unavailable`, whether
@@ -159,6 +222,45 @@ changes an entity.
   declaration has to state (#87, #63).
 
 ### Changed
+- **A control entity on a devcode whose template nobody has reviewed is now
+  created disabled** (#90, reported by @eimantasq in #89, who found it on
+  their own account and disabled all of it before anything was written).
+  Every field an account's control template advertises becomes an entity, and
+  the template belongs to the vendor's platform. On devcode 567 that is 96
+  fields, among them shutdown, start, reset, firmware upgrade, "format M4 SPI
+  flash", four internal debugging parameters and three levels each of grid
+  over- and undervoltage and over- and underfrequency protection with their
+  trip times - the settings a grid operator approves a three-phase unit
+  against. They were all created ready to use.
+
+  So the default is now off, and a devcode profile turns it on for the
+  template it has actually read. Eleven profiles declare theirs reviewed -
+  devcodes 2376, 2449, 2452, 2477, 2500, 6416, 6489, 6513, 6514, 6544 and
+  697 - and within those, 30 individual fields are still created disabled:
+  restoring factory defaults, clearing a lifetime generation counter,
+  switching the inverter off, a grid-compliance standard, and devcode 697's
+  nine factory calibration coefficients, which do not change what the
+  inverter does but change what it reports. Devcodes 518 and 567 were read
+  and declare nothing on purpose: both advertise installer templates and not
+  one field in either is an owner's setting.
+
+  A rule on the field itself was tried first and the committed templates rule
+  it out. Searching all of them for shutdown, restart, upgrade and reset
+  matches 25 fields of which 19 are ordinary settings - six spellings of
+  "Overload automatic restart" alone - while the field that restores factory
+  defaults is called `eybond_ctrl_99`. The ids collide outright: `shutdown`
+  is "Shutdown command" on devcode 567 and "Offgrid Switch" on devcode 697,
+  so a rule keyed on it would disable the wrong control.
+
+  *Upgrade note:* **nothing an existing installation publishes changes.** The
+  default applies only to an entity being registered for the first time, so
+  every control you already have stays exactly as it is, enabled or disabled
+  as you left it. It takes effect on a new installation, on a new inverter
+  added to an account, and on a control a devcode starts advertising. If a
+  control you want is missing on a new install, enable it in **Settings >
+  Devices & services > Entities**; on a devcode not in the list above, that
+  is because no diagnostics download of its control template has been
+  contributed yet, and attaching one is what turns it on for everybody.
 - **The Software Version sensor publishes the version the collector sent,
   as text.** It was the one key in `SENSOR_TYPES` that measures nothing and
   was still read as a number, so a version written `V1.08`, `1.08.3` or
@@ -180,6 +282,17 @@ changes an entity.
   either way.
 
 ### Fixed
+- **Devcode 2449's Charging Source Priority now writes over the local link**
+  when settings control over the local link is on, instead of going through
+  the cloud (#88, thanks to @DennisAppelman for testing the candidate and for
+  the download that settled it). The platform spells it "Charging Source
+  Priority" and the inverter's own PI30 command is "Charger Source Priority",
+  one letter apart, so the two names did not pair and nothing declared them.
+  The download shows the inverter reporting the setting under `PCP` at the
+  value the reporter had just set from Home Assistant, which confirms the
+  option codes on hardware rather than by decoding them, and shows the
+  pairing report finding no candidate of its own. A local write is reported
+  only once the inverter has acknowledged it and read the new value back.
 - A reading a collector labels in kilowatts now reaches its watt sensor as
   watts. The devcode 567 download in #89 comes from a 10 kW three-phase
   grid-tie inverter that labels its whole AC side in kW and kVar, and its

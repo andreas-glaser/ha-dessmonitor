@@ -1,0 +1,2952 @@
+{
+  "data": {
+    "integration": {
+      "version": "3.1.0-rc.1",
+      "connection_type": "cloud",
+      "local_mode": "prefer_local",
+      "local_control": "enabled",
+      "api_profile": "dessmonitor_ess"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 600.0,
+      "cloud_revision": 24,
+      "devices_in_snapshot": 1,
+      "hybrid": true,
+      "local_only": false,
+      "devices_on_a_retained_cloud_payload": 0
+    },
+    "local": {
+      "setup_errors": [],
+      "transports": [
+        {
+          "connected": true,
+          "last_update_success": true,
+          "device_code": 2452,
+          "devices": 1,
+          "devices_seen": [
+            {
+              "device_identity": "sha256:e50c44b6d2b5",
+              "collector_identity": "sha256:a62230c51791",
+              "device_address": 1,
+              "address_verified": true,
+              "protocol": "pi30",
+              "readings": 23,
+              "disabled_queries": [],
+              "optional_query_failures": {},
+              "collector_address": 1,
+              "settings_error": null,
+              "polled": true
+            }
+          ],
+          "poll_interval_seconds": 5,
+          "driver": "pi30",
+          "tunnel_device_code": 2452,
+          "control_enabled": true,
+          "configured_device_address": 1,
+          "seconds_since_a_successful_poll": 2,
+          "inverter_silent": false,
+          "session": {
+            "connected": true,
+            "request_timeout_seconds": 3.0,
+            "abandoned_reply_grace_seconds": 9.0,
+            "heartbeat_interval_seconds": 60.0,
+            "session_seconds": 8443,
+            "seconds_since_heartbeat": 43,
+            "answers_late": true,
+            "requests_in_flight": 0,
+            "identified": true
+          },
+          "discovery": {
+            "probe_id": "94322ff2d05c",
+            "attempts": [
+              {
+                "protocol": "pi30",
+                "command": "QPI",
+                "device_code": 258,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": 7,
+                "elapsed_ms": 340,
+                "outcome": "unsupported_command",
+                "details": {}
+              },
+              {
+                "protocol": "pi30",
+                "command": "QPI",
+                "device_code": 2452,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": 8,
+                "elapsed_ms": 369,
+                "outcome": "success",
+                "details": {}
+              },
+              {
+                "protocol": "pi30",
+                "command": "QPIGS",
+                "device_code": 2452,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": 112,
+                "elapsed_ms": 841,
+                "outcome": "success",
+                "details": {}
+              },
+              {
+                "protocol": "pi30",
+                "command": "QID",
+                "device_code": 2452,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": 18,
+                "elapsed_ms": 349,
+                "outcome": "success",
+                "details": {}
+              },
+              {
+                "protocol": "pi30",
+                "command": "QVFW",
+                "device_code": 2452,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": 18,
+                "elapsed_ms": 627,
+                "outcome": "success",
+                "details": {}
+              },
+              {
+                "protocol": "pi30",
+                "command": "QPIRI",
+                "device_code": 2452,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": 111,
+                "elapsed_ms": 1066,
+                "outcome": "success",
+                "details": {}
+              }
+            ],
+            "outcomes": {
+              "unsupported_command": 1,
+              "success": 5
+            },
+            "dropped_attempts": 0
+          }
+        }
+      ]
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "3.1.0-rc.1",
+        "devcode": 2449,
+        "device_identity": "sha256:e50c44b6d2b5",
+        "collector_identity": "sha256:a62230c51791",
+        "device_address": 1,
+        "support": {
+          "status": "supported",
+          "profile": "Eybond Data Collector (devcode 2449)",
+          "known_inverters": [
+            "EASUN 8KWA",
+            "EASUN 11KWA",
+            "SILA MAX 7200MH",
+            "WKS Evo MAX II 10kVA 48V"
+          ],
+          "resolved": 39,
+          "unresolved": 6,
+          "total": 45,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 10,
+            "declared_absent": 0
+          },
+          "sensors": 39,
+          "unresolved_with_unit": [],
+          "unresolved_without_unit": [
+            "Inverter Fault",
+            "Machine Type",
+            "Main CPU Firmware Version",
+            "Model",
+            "Parallel Max Num",
+            "Secondary CPU Firmware Version"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-20T12:59:35.151726+00:00",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "SN",
+            "value": "",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Machine Type",
+            "value": "Off Grid",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Main CPU Firmware Version",
+            "value": "00073.08",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Secondary CPU Firmware Version",
+            "value": "00012.29",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid Voltage",
+            "value": "234.7",
+            "unit": "V",
+            "resolved_key": "Grid Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "Grid Frequency",
+            "value": "49.8",
+            "unit": "Hz",
+            "resolved_key": "Grid Frequency",
+            "sensor_unit": "Hz"
+          },
+          {
+            "title": "PV1 Input Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "PV1 Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "PV2 Voltage",
+            "value": "90.0",
+            "unit": "V",
+            "resolved_key": "PV2 Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "PV1 Charger Power",
+            "value": "0.0",
+            "unit": "W",
+            "resolved_key": "PV1 Charger Power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "PV2 Charger Power",
+            "value": "44.0",
+            "unit": "W",
+            "resolved_key": "PV2 Charger Power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "Battery Voltage",
+            "value": "52.6",
+            "unit": "V",
+            "resolved_key": "Battery Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "State of Charge",
+            "value": "68.0",
+            "unit": "%",
+            "resolved_key": "State of Charge",
+            "sensor_unit": "%"
+          },
+          {
+            "title": "Battery Charging Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Charging Current",
+            "sensor_unit": "A"
+          },
+          {
+            "title": "Battery Discharge Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "Battery Discharge Current",
+            "sensor_unit": "A"
+          },
+          {
+            "title": "Output Voltage",
+            "value": "234.7",
+            "unit": "V",
+            "resolved_key": "Output Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "Output Frequency",
+            "value": "49.8",
+            "unit": "Hz",
+            "resolved_key": "Output Frequency",
+            "sensor_unit": "Hz"
+          },
+          {
+            "title": "Output Apparent Power",
+            "value": "1783.0",
+            "unit": "VA",
+            "resolved_key": "Output Apparent Power",
+            "sensor_unit": "VA"
+          },
+          {
+            "title": "Output Active Power",
+            "value": "1612.0",
+            "unit": "W",
+            "resolved_key": "Output Active Power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "Load Percent",
+            "value": "16.0",
+            "unit": "%",
+            "resolved_key": "Load Percent",
+            "sensor_unit": "%"
+          },
+          {
+            "title": "Grid Rating Voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": "grid rated voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "Grid Rating Current",
+            "value": "47.8",
+            "unit": "A",
+            "resolved_key": "grid rated current",
+            "sensor_unit": "A"
+          },
+          {
+            "title": "Battery Rating Voltage",
+            "value": "48.0",
+            "unit": "V",
+            "resolved_key": "battery rated voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "AC Output Rating Voltage",
+            "value": "230.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "AC Output Rating Current",
+            "value": "47.8",
+            "unit": "A",
+            "resolved_key": "rated current",
+            "sensor_unit": "A"
+          },
+          {
+            "title": "AC Output Rating Frequency",
+            "value": "50.0",
+            "unit": "Hz",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "AC Output Rating Apparent Power",
+            "value": "11000",
+            "unit": "VA",
+            "resolved_key": "rated apparent power",
+            "sensor_unit": "VA"
+          },
+          {
+            "title": "AC Output Rating Active Power",
+            "value": "11000",
+            "unit": "W",
+            "resolved_key": "rated power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "Battery Re-Charge Voltage",
+            "value": "50.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Battery Bulk Voltage",
+            "value": "57.6",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Battery Float Voltage",
+            "value": "57.6",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Battery Type",
+            "value": "Pylon",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Max AC Charging Current",
+            "value": "80.0",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Max Charging Current",
+            "value": "140.0",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "AC Input Range",
+            "value": "Appliance",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Output Source Priority",
+            "value": "Solar Bat Utility",
+            "unit": "",
+            "resolved_key": "Output priority",
+            "sensor_unit": null
+          },
+          {
+            "title": "Charger Source Priority",
+            "value": "Only Solar Charging Permitted",
+            "unit": "",
+            "resolved_key": "Charger Source Priority",
+            "sensor_unit": null
+          },
+          {
+            "title": "Parallel Max Num",
+            "value": "6",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Battery Re-Discharge Voltage",
+            "value": "54.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "BUS Voltage",
+            "value": "365",
+            "unit": "v",
+            "resolved_key": "Bus Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "PV1 Input Current",
+            "value": "0",
+            "unit": "A",
+            "resolved_key": "PV1 Charger Current",
+            "sensor_unit": "A"
+          },
+          {
+            "title": "Battery Voltage From SCC",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "Battery Voltage From SCC",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "Load Status",
+            "value": "Load on",
+            "unit": "",
+            "resolved_key": "Load Status",
+            "sensor_unit": null
+          },
+          {
+            "title": "Solar Feed To Grid Power",
+            "value": "-",
+            "unit": "W",
+            "resolved_key": "Grid Power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "PV2 Charger Current",
+            "value": "0.4",
+            "unit": "A",
+            "resolved_key": "PV2 Charger Current",
+            "sensor_unit": "A"
+          },
+          {
+            "title": "Model",
+            "value": "Line Mode",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Total generation",
+            "value": "6057300",
+            "unit": "Wh",
+            "resolved_key": "Energy Total",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "Today generation",
+            "value": "5416",
+            "unit": "Wh",
+            "resolved_key": "Energy Today",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "Inverter Fault",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0520",
+            "unit": "kW",
+            "resolved_key": "outpower",
+            "sensor_unit": "kW"
+          },
+          {
+            "title": "Inverter Heat Sink Temperature",
+            "value": "60.0",
+            "unit": "°C",
+            "resolved_key": "Inverter Heat Sink Temperature",
+            "sensor_unit": "°C"
+          },
+          {
+            "title": "Operating mode",
+            "value": "Line",
+            "unit": "",
+            "resolved_key": "Operating mode",
+            "sensor_unit": null
+          },
+          {
+            "title": "PV Charge Power",
+            "value": "0.0",
+            "unit": "W",
+            "resolved_key": "PV Charge Power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "PV Charging Current",
+            "value": "0.0",
+            "unit": "A",
+            "resolved_key": "PV charging current",
+            "sensor_unit": "A"
+          },
+          {
+            "title": "PV Total Charger Power",
+            "value": "44.0",
+            "unit": "W",
+            "resolved_key": "PV Total Charger Power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "PV Voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": "PV Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "Data Source",
+            "value": "Local",
+            "unit": "",
+            "resolved_key": "Data Source",
+            "sensor_unit": null
+          }
+        ],
+        "cloud_under_overlay": {
+          "readings": [
+            {
+              "title": "id",
+              "value": "",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Timestamp",
+              "value": "2026-11-20 14:55:06",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "SN",
+              "value": "",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Machine Type",
+              "value": "Off Grid",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Main CPU Firmware Version",
+              "value": "00073.08",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Secondary CPU Firmware Version",
+              "value": "00012.29",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Grid Voltage",
+              "value": "234.0",
+              "unit": "V",
+              "resolved_key": "Grid Voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "Grid Frequency",
+              "value": "49.8",
+              "unit": "Hz",
+              "resolved_key": "Grid Frequency",
+              "sensor_unit": "Hz"
+            },
+            {
+              "title": "PV1 Input Voltage",
+              "value": "0.0",
+              "unit": "V",
+              "resolved_key": "PV1 Voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "PV2 Input voltage",
+              "value": "103.4",
+              "unit": "V",
+              "resolved_key": "PV2 Voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "PV1 Charging Power",
+              "value": "0",
+              "unit": "W",
+              "resolved_key": "PV1 Charger Power",
+              "sensor_unit": "W"
+            },
+            {
+              "title": "PV2 Charging power",
+              "value": "62",
+              "unit": "W",
+              "resolved_key": "PV2 Charger Power",
+              "sensor_unit": "W"
+            },
+            {
+              "title": "Battery Voltage",
+              "value": "52.6",
+              "unit": "V",
+              "resolved_key": "Battery Voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "Battery Capacity",
+              "value": "69",
+              "unit": "%",
+              "resolved_key": "State of Charge",
+              "sensor_unit": "%"
+            },
+            {
+              "title": "Battery Charging Current",
+              "value": "0",
+              "unit": "A",
+              "resolved_key": "Battery Charging Current",
+              "sensor_unit": "A"
+            },
+            {
+              "title": "Battery Discharge Current",
+              "value": "0",
+              "unit": "A",
+              "resolved_key": "Battery Discharge Current",
+              "sensor_unit": "A"
+            },
+            {
+              "title": "AC Output Voltage",
+              "value": "234.0",
+              "unit": "V",
+              "resolved_key": "Output Voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "AC Output Frequency",
+              "value": "49.8",
+              "unit": "Hz",
+              "resolved_key": "Output Frequency",
+              "sensor_unit": "Hz"
+            },
+            {
+              "title": "AC Output Apparent Power",
+              "value": "1932",
+              "unit": "VA",
+              "resolved_key": "Output Apparent Power",
+              "sensor_unit": "VA"
+            },
+            {
+              "title": "AC Output Active Power",
+              "value": "1932",
+              "unit": "W",
+              "resolved_key": "Output Active Power",
+              "sensor_unit": "W"
+            },
+            {
+              "title": "Output Load Percent",
+              "value": "17",
+              "unit": "%",
+              "resolved_key": "Load Percent",
+              "sensor_unit": "%"
+            },
+            {
+              "title": "Grid Rating Voltage",
+              "value": "230.0",
+              "unit": "V",
+              "resolved_key": "grid rated voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "Grid Rating Current",
+              "value": "47.8",
+              "unit": "A",
+              "resolved_key": "grid rated current",
+              "sensor_unit": "A"
+            },
+            {
+              "title": "Battery Rating Voltage",
+              "value": "48.0",
+              "unit": "V",
+              "resolved_key": "battery rated voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "AC Output Rating Voltage",
+              "value": "230.0",
+              "unit": "V",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "AC Output Rating Current",
+              "value": "47.8",
+              "unit": "A",
+              "resolved_key": "rated current",
+              "sensor_unit": "A"
+            },
+            {
+              "title": "AC Output Rating Frequency",
+              "value": "50.0",
+              "unit": "Hz",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "AC Output Rating Apparent Power",
+              "value": "11000",
+              "unit": "VA",
+              "resolved_key": "rated apparent power",
+              "sensor_unit": "VA"
+            },
+            {
+              "title": "AC Output Rating Active Power",
+              "value": "11000",
+              "unit": "W",
+              "resolved_key": "rated power",
+              "sensor_unit": "W"
+            },
+            {
+              "title": "Battery Re-Charge Voltage",
+              "value": "50.0",
+              "unit": "V",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Battery Bulk Voltage",
+              "value": "57.6",
+              "unit": "V",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Battery Float Voltage",
+              "value": "57.6",
+              "unit": "V",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Battery Type",
+              "value": "Pylon",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Max AC Charging Current",
+              "value": "80.0",
+              "unit": "A",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Max Charging Current",
+              "value": "140.0",
+              "unit": "A",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "AC Input Range",
+              "value": "Appliance",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Output Source Priority",
+              "value": "Solar Bat Utility",
+              "unit": "",
+              "resolved_key": "Output priority",
+              "sensor_unit": null
+            },
+            {
+              "title": "Charger Source Priority",
+              "value": "Only Solar Charging Permitted",
+              "unit": "",
+              "resolved_key": "Charger Source Priority",
+              "sensor_unit": null
+            },
+            {
+              "title": "Parallel Max Num",
+              "value": "6",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Battery Re-Discharge Voltage",
+              "value": "54.0",
+              "unit": "V",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "BUS Voltage",
+              "value": "365",
+              "unit": "v",
+              "resolved_key": "Bus Voltage",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "PV1 Input Current",
+              "value": "0",
+              "unit": "A",
+              "resolved_key": "PV1 Charger Current",
+              "sensor_unit": "A"
+            },
+            {
+              "title": "Battery Voltage From SCC",
+              "value": "0.0",
+              "unit": "V",
+              "resolved_key": "Battery Voltage From SCC",
+              "sensor_unit": "V"
+            },
+            {
+              "title": "Load Status",
+              "value": "Load on",
+              "unit": "",
+              "resolved_key": "Load Status",
+              "sensor_unit": null
+            },
+            {
+              "title": "Solar Feed To Grid Power",
+              "value": "-",
+              "unit": "W",
+              "resolved_key": "Grid Power",
+              "sensor_unit": "W"
+            },
+            {
+              "title": "PV2 Input current",
+              "value": "0.5",
+              "unit": "A",
+              "resolved_key": "PV2 Charger Current",
+              "sensor_unit": "A"
+            },
+            {
+              "title": "Model",
+              "value": "Line Mode",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "Total generation",
+              "value": "6057300",
+              "unit": "Wh",
+              "resolved_key": "Energy Total",
+              "sensor_unit": "kWh"
+            },
+            {
+              "title": "Today generation",
+              "value": "5416",
+              "unit": "Wh",
+              "resolved_key": "Energy Today",
+              "sensor_unit": "kWh"
+            },
+            {
+              "title": "Inverter Fault",
+              "value": "0",
+              "unit": "",
+              "resolved_key": null,
+              "sensor_unit": null
+            },
+            {
+              "title": "outpower",
+              "value": "0.0520",
+              "unit": "kW",
+              "resolved_key": "outpower",
+              "sensor_unit": "kW"
+            }
+          ],
+          "coverage": {
+            "resolved": 32,
+            "unresolved": 6,
+            "total": 38,
+            "excluded": {
+              "attribute_readings": 3,
+              "declared_settings": 10,
+              "declared_absent": 0
+            },
+            "sensors": 32,
+            "unresolved_with_unit": [],
+            "unresolved_without_unit": [
+              "Inverter Fault",
+              "Machine Type",
+              "Main CPU Firmware Version",
+              "Model",
+              "Parallel Max Num",
+              "Secondary CPU Firmware Version"
+            ]
+          }
+        },
+        "observed_values": {
+          "AC Input Range": {
+            "values": [
+              "Appliance"
+            ],
+            "observations": 24,
+            "truncated": false
+          },
+          "Battery Type": {
+            "values": [
+              "Pylon"
+            ],
+            "observations": 24,
+            "truncated": false
+          },
+          "Charger Source Priority": {
+            "values": [
+              "Only Solar Charging Permitted"
+            ],
+            "observations": 24,
+            "truncated": false
+          },
+          "Load Status": {
+            "values": [
+              "Load on"
+            ],
+            "observations": 24,
+            "truncated": false
+          },
+          "Machine Type": {
+            "values": [
+              "Off Grid"
+            ],
+            "observations": 24,
+            "truncated": false
+          },
+          "Model": {
+            "values": [
+              "Line Mode",
+              "Battery Mode"
+            ],
+            "observations": 24,
+            "truncated": false
+          },
+          "Output Source Priority": {
+            "values": [
+              "Utility Solar Bat",
+              "Solar Bat Utility"
+            ],
+            "observations": 24,
+            "truncated": false
+          },
+          "Solar Feed To Grid Power": {
+            "values": [
+              "-"
+            ],
+            "observations": 24,
+            "truncated": false
+          }
+        },
+        "entity_inventory": {
+          "by_sensor": {
+            "Battery Charging Current": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Battery Discharge Current": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Battery Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Battery Voltage From SCC": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Bus Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Charger Source Priority": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Data Source": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Energy Today": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "Energy Total": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "Grid Frequency": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Grid Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "unknown"
+              ]
+            },
+            "Grid Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Inverter Heat Sink Temperature": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Last Reading Received": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Load Percent": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Load Status": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Operating mode": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Output Active Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Output Apparent Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Output Frequency": {
+              "platform": "sensor",
+              "entities": 2,
+              "disabled": 1,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Output Voltage": {
+              "platform": "sensor",
+              "entities": 2,
+              "disabled": 1,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Output priority": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "PV Charge Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "PV Total Charger Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "PV Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "PV charging current": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "PV1 Charger Current": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "PV1 Charger Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "PV1 Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "PV2 Charger Current": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "PV2 Charger Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "PV2 Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "State of Charge": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "ac_input_range": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "ac_output_mode": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "back_to_discharge_voltage": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "back_to_grid_voltage": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "backlight": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "battery rated voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "battery_cut_off_voltage": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "battery_equalization": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "battery_equalization_time": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "battery_equalization_time_out": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "battery_type": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "beeps_while_primary_source_interrupt": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "bulk_charging_voltage": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "buzzer": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "bypass_function": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "charging_source_priority": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "equalization_period": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "equalization_voltage": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "fault_code_record": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "float_charging_voltage": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "grid rated current": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "grid rated voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "lcd_auto_return_to_main_screen": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_brightness": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_color_1": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_color_2": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_color_3": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_data": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_effect": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_speed": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "led_status": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "max._ac_charging_current": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "max._charging_current": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "maximum_battery_discharge_current": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "outpower": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "output_source_priority": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "over_temperature_auto_restart": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "overload_auto_restart": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "rated apparent power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "rated current": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "rated power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "real_time_activate_battery_equalization": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "restore_to_default": {
+              "platform": "button",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "unknown"
+              ]
+            },
+            "solar_feed_to_grid": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "status": {
+              "platform": "binary_sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            }
+          }
+        },
+        "control_fields": [
+          {
+            "name": "AC Input Range",
+            "value": "Appliance",
+            "unit": "",
+            "options": [
+              "12336: Appliance",
+              "12337: UPS"
+            ],
+            "id": "bse_ac_input_range"
+          },
+          {
+            "name": "AC Output mode",
+            "value": "Single Machine Output",
+            "unit": "",
+            "options": [
+              "00: Single Machine Output",
+              "01: Parallel Output",
+              "02: Phase 1 Of 3 Phase Output",
+              "03: Phase 2 Of 3 Phase Output",
+              "04: Phase 3 Of 3 Phase Output",
+              "05: Phase 1 Of 2 Phase Output",
+              "06: Phase 2 Of 2 Phase Output(120°)",
+              "07: Phase 2 Of 2 Phase Output(180°)"
+            ],
+            "id": "bse_ac_output_mode"
+          },
+          {
+            "name": "Back to Discharge Voltage",
+            "value": "54.0",
+            "unit": "",
+            "options": [
+              "0.0: FULL",
+              "24.0: 24.0",
+              "24.5: 24.5",
+              "25.0: 25.0",
+              "25.5: 25.5",
+              "26.0: 26.0",
+              "26.5: 26.5",
+              "27.0: 27.0",
+              "27.5: 27.5",
+              "28.0: 28.0",
+              "28.5: 28.5",
+              "29.0: 29.0",
+              "29.5: 29.5",
+              "30.0: 30.0",
+              "30.5: 30.5",
+              "31.0: 31.0",
+              "31.5: 31.5",
+              "32.0: 32.0",
+              "48.0: 48.0",
+              "49.0: 49.0",
+              "50.0: 50.0",
+              "51.0: 51.0",
+              "52.0: 52.0",
+              "53.0: 53.0",
+              "54.0: 54.0",
+              "55.0: 55.0",
+              "56.0: 56.0",
+              "57.0: 57.0",
+              "58.0: 58.0",
+              "59.0: 59.0",
+              "60.0: 60.0",
+              "61.0: 61.0",
+              "62.0: 62.0",
+              "63.0: 63.0",
+              "64.0: 64.0"
+            ],
+            "id": "bat_battery_dischargevoltage"
+          },
+          {
+            "name": "Back to Grid Voltage",
+            "value": "50.0",
+            "unit": "",
+            "options": [
+              "22.0: 22.0",
+              "22.5: 22.5",
+              "23.0: 23.0",
+              "23.5: 23.5",
+              "24.0: 24.0",
+              "24.5: 24.5",
+              "25.0: 25.0",
+              "25.5: 25.5",
+              "26.0: 26.0",
+              "26.5: 26.5",
+              "27.0: 27.0",
+              "27.5: 27.5",
+              "28.0: 28.0",
+              "28.5: 28.5",
+              "44.0: 44.0",
+              "45.0: 45.0",
+              "46.0: 46.0",
+              "47.0: 47.0",
+              "48.0: 48.0",
+              "49.0: 49.0",
+              "50.0: 50.0",
+              "51.0: 51.0",
+              "52.0: 52.0",
+              "53.0: 53.0",
+              "54.0: 54.0",
+              "55.0: 55.0",
+              "56.0: 56.0",
+              "57.0: 57.0"
+            ],
+            "id": "bat_battery_charging_voltage"
+          },
+          {
+            "name": "Backlight",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_backlight_function_ctrl_x"
+          },
+          {
+            "name": "Battery Cut-off Voltage",
+            "value": "48.0",
+            "unit": "V",
+            "id": "bat_battery_cut_off_voltage"
+          },
+          {
+            "name": "Battery Equalization",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "48: Disable",
+              "49: Enable"
+            ],
+            "id": "bat_battery_equalization"
+          },
+          {
+            "name": "Battery Equalization Time",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "005: 5",
+              "010: 10",
+              "015: 15",
+              "020: 20",
+              "025: 25",
+              "030: 30",
+              "035: 35",
+              "040: 40",
+              "045: 45",
+              "050: 50",
+              "055: 55",
+              "060: 60",
+              "065: 65",
+              "070: 70",
+              "075: 75",
+              "080: 80",
+              "085: 85",
+              "090: 90",
+              "095: 95",
+              "100: 100",
+              "105: 105",
+              "110: 110",
+              "115: 115",
+              "120: 120",
+              "125: 125",
+              "130: 130",
+              "135: 135",
+              "140: 140",
+              "145: 145",
+              "150: 150",
+              "155: 155",
+              "160: 160",
+              "165: 165",
+              "170: 170",
+              "175: 175",
+              "180: 180",
+              "185: 185",
+              "190: 190",
+              "195: 195",
+              "200: 200",
+              "205: 205",
+              "210: 210",
+              "215: 215",
+              "220: 220",
+              "225: 225",
+              "230: 230",
+              "235: 235",
+              "240: 240",
+              "245: 245",
+              "250: 250",
+              "255: 255",
+              "260: 260",
+              "265: 265",
+              "270: 270",
+              "275: 275",
+              "280: 280",
+              "285: 285",
+              "290: 290",
+              "295: 295",
+              "300: 300",
+              "305: 305",
+              "310: 310",
+              "315: 315",
+              "320: 320",
+              "325: 325",
+              "330: 330",
+              "335: 335",
+              "340: 340",
+              "345: 345",
+              "350: 350",
+              "355: 355",
+              "360: 360",
+              "365: 365",
+              "370: 370",
+              "375: 375",
+              "380: 380",
+              "385: 385",
+              "390: 390",
+              "395: 395",
+              "400: 400",
+              "405: 405",
+              "410: 410",
+              "415: 415",
+              "420: 420",
+              "425: 425",
+              "430: 430",
+              "435: 435",
+              "440: 440",
+              "445: 445",
+              "450: 450",
+              "455: 455",
+              "460: 460",
+              "465: 465",
+              "470: 470",
+              "475: 475",
+              "480: 480",
+              "485: 485",
+              "490: 490",
+              "495: 495",
+              "500: 500",
+              "505: 505",
+              "510: 510",
+              "515: 515",
+              "520: 520",
+              "525: 525",
+              "530: 530",
+              "535: 535",
+              "540: 540",
+              "545: 545",
+              "550: 550",
+              "555: 555",
+              "560: 560",
+              "565: 565",
+              "570: 570",
+              "575: 575",
+              "580: 580",
+              "585: 585",
+              "590: 590",
+              "595: 595",
+              "600: 600",
+              "605: 605",
+              "610: 610",
+              "615: 615",
+              "620: 620",
+              "625: 625",
+              "630: 630",
+              "635: 635",
+              "640: 640",
+              "645: 645",
+              "650: 650",
+              "655: 655",
+              "660: 660",
+              "665: 665",
+              "670: 670",
+              "675: 675",
+              "680: 680",
+              "685: 685",
+              "690: 690",
+              "695: 695",
+              "700: 600",
+              "705: 705",
+              "710: 710",
+              "715: 715",
+              "720: 720",
+              "725: 725",
+              "730: 730",
+              "735: 735",
+              "740: 740",
+              "745: 745",
+              "750: 750",
+              "755: 755",
+              "760: 760",
+              "765: 765",
+              "770: 770",
+              "775: 775",
+              "780: 780",
+              "785: 785",
+              "790: 790",
+              "795: 795",
+              "800: 800",
+              "805: 805",
+              "810: 810",
+              "815: 815",
+              "820: 820",
+              "825: 825",
+              "830: 830",
+              "835: 835",
+              "840: 840",
+              "845: 845",
+              "850: 850",
+              "855: 855",
+              "860: 860",
+              "865: 865",
+              "870: 870",
+              "875: 875",
+              "880: 880",
+              "885: 885",
+              "890: 890",
+              "895: 895",
+              "900: 900"
+            ],
+            "id": "bat_equalization_time"
+          },
+          {
+            "name": "Battery Equalization Time Out",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "005: 5",
+              "010: 10",
+              "015: 15",
+              "020: 20",
+              "025: 25",
+              "030: 30",
+              "035: 35",
+              "040: 40",
+              "045: 45",
+              "050: 50",
+              "055: 55",
+              "060: 60",
+              "065: 65",
+              "070: 70",
+              "075: 75",
+              "080: 80",
+              "085: 85",
+              "090: 90",
+              "095: 95",
+              "100: 100",
+              "105: 105",
+              "110: 110",
+              "115: 115",
+              "120: 120",
+              "125: 125",
+              "130: 130",
+              "135: 135",
+              "140: 140",
+              "145: 145",
+              "150: 150",
+              "155: 155",
+              "160: 160",
+              "165: 165",
+              "170: 170",
+              "175: 175",
+              "180: 180",
+              "185: 185",
+              "190: 190",
+              "195: 195",
+              "200: 200",
+              "205: 205",
+              "210: 210",
+              "215: 215",
+              "220: 220",
+              "225: 225",
+              "230: 230",
+              "235: 235",
+              "240: 240",
+              "245: 245",
+              "250: 250",
+              "255: 255",
+              "260: 260",
+              "265: 265",
+              "270: 270",
+              "275: 275",
+              "280: 280",
+              "285: 285",
+              "290: 290",
+              "295: 295",
+              "300: 300",
+              "305: 305",
+              "310: 310",
+              "315: 315",
+              "320: 320",
+              "325: 325",
+              "330: 330",
+              "335: 335",
+              "340: 340",
+              "345: 345",
+              "350: 350",
+              "355: 355",
+              "360: 360",
+              "365: 365",
+              "370: 370",
+              "375: 375",
+              "380: 380",
+              "385: 385",
+              "390: 390",
+              "395: 395",
+              "400: 400",
+              "405: 405",
+              "410: 410",
+              "415: 415",
+              "420: 420",
+              "425: 425",
+              "430: 430",
+              "435: 435",
+              "440: 440",
+              "445: 445",
+              "450: 450",
+              "455: 455",
+              "460: 460",
+              "465: 465",
+              "470: 470",
+              "475: 475",
+              "480: 480",
+              "485: 485",
+              "490: 490",
+              "495: 495",
+              "500: 500",
+              "505: 505",
+              "510: 510",
+              "515: 515",
+              "520: 520",
+              "525: 525",
+              "530: 530",
+              "535: 535",
+              "540: 540",
+              "545: 545",
+              "550: 550",
+              "555: 555",
+              "560: 560",
+              "565: 565",
+              "570: 570",
+              "575: 575",
+              "580: 580",
+              "585: 585",
+              "590: 590",
+              "595: 595",
+              "600: 600",
+              "605: 605",
+              "610: 610",
+              "615: 615",
+              "620: 620",
+              "625: 625",
+              "630: 630",
+              "635: 635",
+              "640: 640",
+              "645: 645",
+              "650: 650",
+              "655: 655",
+              "660: 660",
+              "665: 665",
+              "670: 670",
+              "675: 675",
+              "680: 680",
+              "685: 685",
+              "690: 690",
+              "695: 695",
+              "700: 600",
+              "705: 705",
+              "710: 710",
+              "715: 715",
+              "720: 720",
+              "725: 725",
+              "730: 730",
+              "735: 735",
+              "740: 740",
+              "745: 745",
+              "750: 750",
+              "755: 755",
+              "760: 760",
+              "765: 765",
+              "770: 770",
+              "775: 775",
+              "780: 780",
+              "785: 785",
+              "790: 790",
+              "795: 795",
+              "800: 800",
+              "805: 805",
+              "810: 810",
+              "815: 815",
+              "820: 820",
+              "825: 825",
+              "830: 830",
+              "835: 835",
+              "840: 840",
+              "845: 845",
+              "850: 850",
+              "855: 855",
+              "860: 860",
+              "865: 865",
+              "870: 870",
+              "875: 875",
+              "880: 880",
+              "885: 885",
+              "890: 890",
+              "895: 895",
+              "900: 900"
+            ],
+            "id": "bat_equalization_time_out"
+          },
+          {
+            "name": "Battery Type",
+            "value": "Pylon",
+            "unit": "",
+            "options": [
+              "48: AGM",
+              "49: Flooded",
+              "50: User",
+              "51: Pylon",
+              "52: SH",
+              "53: Weco",
+              "54: Soltaro",
+              "56: Lib",
+              "57: Lic",
+              "58: Isc",
+              "12336: AGM",
+              "12337: Flooded",
+              "12338: User",
+              "12339: Pylon",
+              "12340: SH",
+              "12341: Weco",
+              "12342: Soltaro",
+              "12344: Lib",
+              "12345: Lic",
+              "12346: Isc"
+            ],
+            "id": "bat_battery_type"
+          },
+          {
+            "name": "Beeps While Primary Source Interrupt",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_primary_source_alarm_ctrl_y"
+          },
+          {
+            "name": "Bulk Charging Voltage",
+            "value": "57.6",
+            "unit": "V",
+            "id": "bat_charging_bulk_voltage"
+          },
+          {
+            "name": "Buzzer",
+            "value": "Disable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_buzzer_ctrl_a"
+          },
+          {
+            "name": "Bypass Function",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_bypass_function_ctrl_b"
+          },
+          {
+            "name": "Charging Source Priority",
+            "value": "Only Solar Charging Permitted",
+            "unit": "",
+            "options": [
+              "12337: Solar First",
+              "12338: Solar + Utility",
+              "12339: Only Solar Charging Permitted"
+            ],
+            "id": "bat_charging_source"
+          },
+          {
+            "name": "Equalization Period",
+            "value": "Not read",
+            "unit": "",
+            "id": "bat_equalization_period"
+          },
+          {
+            "name": "Equalization Voltage",
+            "value": "58.4",
+            "unit": "V",
+            "id": "bat_equalization_voltage"
+          },
+          {
+            "name": "Fault Code Record",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_fault_code_record_ctrl_z"
+          },
+          {
+            "name": "Float Charging Voltage",
+            "value": "57.6",
+            "unit": "V",
+            "id": "bat_charging_float_voltage"
+          },
+          {
+            "name": "LCD Auto-return to Main Screen",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_lcd_display_ctrl_k"
+          },
+          {
+            "name": "LED Brightness",
+            "value": "Means Normal",
+            "unit": "",
+            "options": [
+              "0: Means Low",
+              "1: Means Normal",
+              "2: Means High",
+              "5: Means Normal",
+              "9: Means High"
+            ],
+            "id": "sled_led_brightness"
+          },
+          {
+            "name": "LED Color 1",
+            "value": "Violet-White-Sky Blue",
+            "unit": "",
+            "options": [
+              "000000255: Blue",
+              "000139139: Sky Blue",
+              "000255000: Green",
+              "148000211: Violet-White-Sky Blue",
+              "148000255: Purple",
+              "255000147: Pink-Honey",
+              "255020147: Pink",
+              "255069000: Orange",
+              "255180000: Yellow",
+              "255255255: White-Yellow-Green",
+              "000000255255255000: Royal Blue-Lime Yellow",
+              "255000147255064000: Pink-Honey",
+              "148000211255255255000255255: Violet-White-Sky Blue",
+              "255255255255205032000255000: White-Yellow-Green"
+            ],
+            "id": "sled_led_color"
+          },
+          {
+            "name": "LED Color 2",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "000000255: Blue",
+              "000139139: Sky Blue",
+              "000255000: Green",
+              "148000255: Purple",
+              "255020147: Pink",
+              "255069000: Orange",
+              "255180000: Yellow"
+            ],
+            "id": "sled_led_color_2"
+          },
+          {
+            "name": "LED Color 3",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "000000255: Blue",
+              "000139139: Sky Blue",
+              "000255000: Green",
+              "148000255: Purple",
+              "255020147: Pink",
+              "255069000: Orange",
+              "255180000: Yellow"
+            ],
+            "id": "sled_led_color_3"
+          },
+          {
+            "name": "LED Data",
+            "value": "Energy Source",
+            "unit": "",
+            "options": [
+              "0: PV Input Power",
+              "1: Battery Capacity Percentage",
+              "2: Load Percentage",
+              "3: Energy Source",
+              "4: Battery Charge/Discharge Status"
+            ],
+            "id": "sled_led_total_number_of_colors"
+          },
+          {
+            "name": "LED Effect",
+            "value": "Means Solid (not one of the options offered)",
+            "unit": "",
+            "options": [
+              "0: Cycling",
+              "1: Wheel",
+              "2: Chasing",
+              "3: Solid on"
+            ],
+            "id": "sled_led_effect"
+          },
+          {
+            "name": "LED Speed",
+            "value": "Means Normal",
+            "unit": "",
+            "options": [
+              "48: Means Low",
+              "49: Means Normal",
+              "50: Means High"
+            ],
+            "id": "sled_led_speed"
+          },
+          {
+            "name": "LED Status",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "48: Disable",
+              "49: Enable"
+            ],
+            "id": "sled_led_status"
+          },
+          {
+            "name": "Max. AC Charging Current",
+            "value": "80.0",
+            "unit": "",
+            "options": [
+              "02: 2.0",
+              "0002: 2.0",
+              "002: 2.0",
+              "0010: 10.0",
+              "10: 10.0",
+              "010: 10.0",
+              "0020: 20.0",
+              "20: 20.0",
+              "020: 20.0",
+              "030: 30.0",
+              "0030: 30.0",
+              "30: 30.0",
+              "040: 40.0",
+              "0040: 40.0",
+              "40: 40.0",
+              "0050: 50.0",
+              "50: 50.0",
+              "050: 50.0",
+              "0060: 60.0",
+              "60: 60.0",
+              "060: 60.0",
+              "070: 70.0",
+              "0070: 70.0",
+              "70: 70.0",
+              "080: 80.0",
+              "0080: 80.0",
+              "80: 80.0",
+              "0090: 90.0",
+              "090: 90.0",
+              "0100: 100.0",
+              "100: 100.0",
+              "110: 110.0",
+              "0110: 110.0",
+              "120: 120.0",
+              "0120: 120.0",
+              "0130: 130.0",
+              "130: 130.0",
+              "0140: 140.0",
+              "140: 140.0",
+              "150: 150.0",
+              "0150: 150.0",
+              "160: 160.0",
+              "0160: 160.0",
+              "0170: 170.0",
+              "170: 170.0",
+              "0180: 180.0",
+              "180: 180.0",
+              "190: 190.0",
+              "0190: 190.0",
+              "0200: 200.0",
+              "200: 200.0"
+            ],
+            "id": "bat_ac_charging_current"
+          },
+          {
+            "name": "Max. Charging Current",
+            "value": "140.0",
+            "unit": "",
+            "options": [
+              "010: 10.0",
+              "020: 20.0",
+              "030: 30.0",
+              "040: 40.0",
+              "050: 50.0",
+              "060: 60.0",
+              "070: 70.0",
+              "080: 80.0",
+              "090: 90.0",
+              "100: 100.0",
+              "110: 110.0",
+              "120: 120.0",
+              "130: 130.0",
+              "140: 140.0",
+              "150: 150.0",
+              "160: 160.0",
+              "170: 170.0",
+              "180: 180.0",
+              "190: 190.0",
+              "200: 200.0"
+            ],
+            "id": "bat_max_charging_current"
+          },
+          {
+            "name": "Maximum Battery Discharge Current",
+            "value": "120.0",
+            "unit": "",
+            "options": [
+              "000: Disable",
+              "030: 30.0",
+              "040: 40.0",
+              "050: 50.0",
+              "060: 60.0",
+              "070: 70.0",
+              "080: 80.0",
+              "090: 90.0",
+              "100: 100.0",
+              "110: 110.0",
+              "120: 120.0",
+              "130: 130.0",
+              "140: 140.0",
+              "150: 150.0"
+            ],
+            "id": "bat_maximum_battery_discharge_current"
+          },
+          {
+            "name": "Output Frequency",
+            "value": "50.0",
+            "unit": "",
+            "options": [
+              "13616: 50.0",
+              "13872: 60.0"
+            ],
+            "id": "gd_bse_output_frequency"
+          },
+          {
+            "name": "Output Source Priority",
+            "value": "Solar Bat Utility",
+            "unit": "",
+            "options": [
+              "12336: Utility Solar Bat",
+              "12337: Solar Utility Bat",
+              "12338: Solar Bat Utility"
+            ],
+            "id": "bse_output_source_priority"
+          },
+          {
+            "name": "Output Voltage",
+            "value": "230.0",
+            "unit": "",
+            "options": [
+              "110: 110.0",
+              "120: 120.0",
+              "127: 127.0",
+              "220: 220.0",
+              "230: 230.0",
+              "240: 240.0",
+              "2200: 220.0",
+              "2300: 230.0",
+              "2400: 240.0"
+            ],
+            "id": "gd_bse_input_voltage"
+          },
+          {
+            "name": "Over Temperature Auto Restart",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_temperature_restart_ctrl_v"
+          },
+          {
+            "name": "Overload Auto Restart",
+            "value": "Enable",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_overload_restart_ctrl_u"
+          },
+          {
+            "name": "Real-time Activate Battery Equalization",
+            "value": "Cancel",
+            "unit": "",
+            "options": [
+              "48: Cancel",
+              "49: Activation"
+            ],
+            "id": "bat_activate_battery_equalization"
+          },
+          {
+            "name": "Restore To Default",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "48: Restore To The Default"
+            ],
+            "id": "sys_set_default"
+          },
+          {
+            "name": "Solar Feed To Grid",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "68: Disable",
+              "69: Enable"
+            ],
+            "id": "std_solar_feed_to_grid_ctrl_d"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Battery Capacity",
+            "value": "69",
+            "unit": "%",
+            "id": "bt_battery_capacity"
+          },
+          {
+            "name": "Battery Charging Current",
+            "value": "0",
+            "unit": "A",
+            "id": "bt_battery_charging_current"
+          },
+          {
+            "name": "Battery Voltage",
+            "value": "52.6",
+            "unit": "V",
+            "id": "bt_battery_voltage"
+          },
+          {
+            "name": "PV2 Charging power",
+            "value": "62",
+            "unit": "W",
+            "id": "bt_input_power_1"
+          },
+          {
+            "name": "Today generation",
+            "value": "5416",
+            "unit": "Wh",
+            "id": "energy_today"
+          }
+        ],
+        "summary_not_merged": [
+          {
+            "title": "energyToday",
+            "value": "5.4160",
+            "unit": "kWh"
+          },
+          {
+            "title": "energyTotal",
+            "value": "6057.3000",
+            "unit": "kWh"
+          }
+        ],
+        "checksum": "186b5714976dd266b8937cbbda4c6f31dd63ea70a4705ae4cd1b0f14f78f99d5",
+        "control_reads": {
+          "fields": 39,
+          "without_a_value": 7,
+          "rounds_that_recovered_nothing": 12,
+          "rounds_allowed": 12,
+          "still_trying": false,
+          "last_round_went_unanswered": true
+        },
+        "local_control": {
+          "enabled": true,
+          "protocol": "pi30",
+          "reported": {
+            "output_source_priority": "2",
+            "charger_source_priority": "3",
+            "grid_working_range": "0",
+            "output_frequency": "50",
+            "max_ac_charging_current": "080",
+            "battery_recharge_voltage": "50.0",
+            "battery_redischarge_voltage": "54.0",
+            "battery_cutoff_voltage": "48.0",
+            "battery_bulk_voltage": "57.6",
+            "battery_float_voltage": "57.6"
+          },
+          "not_reported": [
+            "battery_type"
+          ],
+          "accepted_values": {
+            "QMUCHGCR": [
+              "002",
+              "010",
+              "020",
+              "030",
+              "040",
+              "050",
+              "060",
+              "070",
+              "080",
+              "090",
+              "100",
+              "110",
+              "120",
+              "130",
+              "140",
+              "150"
+            ]
+          },
+          "cloud_pairing": [
+            {
+              "setting": "output_source_priority",
+              "name": "Output Source Priority",
+              "command": "POP",
+              "kind": "options",
+              "unit": null,
+              "reported": "2",
+              "paired_by_name": "bse_output_source_priority",
+              "candidates": [
+                {
+                  "control": "Output Source Priority",
+                  "id": "bse_output_source_priority",
+                  "value": "Solar Bat Utility",
+                  "name_matches": true
+                }
+              ],
+              "options": {
+                "0": "Utility first",
+                "1": "Solar first",
+                "2": "Solar → Battery → Utility"
+              }
+            },
+            {
+              "setting": "charger_source_priority",
+              "name": "Charger Source Priority",
+              "command": "PCP",
+              "kind": "options",
+              "unit": null,
+              "reported": "3",
+              "paired_by_name": null,
+              "candidates": [],
+              "options": {
+                "0": "Utility first",
+                "1": "Solar first",
+                "2": "Solar and Utility",
+                "3": "Only Solar"
+              }
+            },
+            {
+              "setting": "battery_type",
+              "name": "Battery Type",
+              "command": "PBT",
+              "kind": "options",
+              "unit": null,
+              "reported": null,
+              "paired_by_name": "bat_battery_type",
+              "candidates": [
+                {
+                  "control": "Battery Type",
+                  "id": "bat_battery_type",
+                  "value": "Pylon",
+                  "name_matches": true
+                }
+              ],
+              "options": {
+                "0": "AGM",
+                "1": "Flooded",
+                "2": "User"
+              }
+            },
+            {
+              "setting": "grid_working_range",
+              "name": "AC Input Range",
+              "command": "PGR",
+              "kind": "options",
+              "unit": null,
+              "reported": "0",
+              "paired_by_name": "bse_ac_input_range",
+              "candidates": [
+                {
+                  "control": "AC Input Range",
+                  "id": "bse_ac_input_range",
+                  "value": "Appliance",
+                  "name_matches": true
+                }
+              ],
+              "options": {
+                "0": "Appliance",
+                "1": "UPS"
+              }
+            },
+            {
+              "setting": "output_frequency",
+              "name": "AC Output Rating Frequency",
+              "command": "F",
+              "kind": "options",
+              "unit": "Hz",
+              "reported": "50",
+              "paired_by_name": null,
+              "candidates": [],
+              "options": {
+                "50": "50 Hz",
+                "60": "60 Hz"
+              }
+            },
+            {
+              "setting": "max_ac_charging_current",
+              "name": "Max AC Charging Current",
+              "command": "MUCHGC",
+              "kind": "options",
+              "unit": "A",
+              "reported": "080",
+              "paired_by_name": null,
+              "candidates": [],
+              "options": {
+                "002": "2 A",
+                "010": "10 A",
+                "020": "20 A",
+                "030": "30 A",
+                "040": "40 A",
+                "050": "50 A",
+                "060": "60 A",
+                "070": "70 A",
+                "080": "80 A",
+                "090": "90 A"
+              }
+            },
+            {
+              "setting": "battery_recharge_voltage",
+              "name": "Battery Re-Charge Voltage",
+              "command": "PBCV",
+              "kind": "value",
+              "unit": "V",
+              "reported": "50.0",
+              "paired_by_name": null,
+              "candidates": [
+                {
+                  "control": "Output Frequency",
+                  "id": "gd_bse_output_frequency",
+                  "value": "50.0",
+                  "name_matches": false
+                },
+                {
+                  "control": "Back to Grid Voltage",
+                  "id": "bat_battery_charging_voltage",
+                  "value": "50.0",
+                  "name_matches": false
+                }
+              ]
+            },
+            {
+              "setting": "battery_redischarge_voltage",
+              "name": "Battery Re-Discharge Voltage",
+              "command": "PBDV",
+              "kind": "value",
+              "unit": "V",
+              "reported": "54.0",
+              "paired_by_name": null,
+              "candidates": [
+                {
+                  "control": "Back to Discharge Voltage",
+                  "id": "bat_battery_dischargevoltage",
+                  "value": "54.0",
+                  "name_matches": false
+                }
+              ]
+            },
+            {
+              "setting": "battery_cutoff_voltage",
+              "name": "Battery Cut-Off Voltage",
+              "command": "PSDV",
+              "kind": "value",
+              "unit": "V",
+              "reported": "48.0",
+              "paired_by_name": "bat_battery_cut_off_voltage",
+              "candidates": [
+                {
+                  "control": "Battery Cut-off Voltage",
+                  "id": "bat_battery_cut_off_voltage",
+                  "value": "48.0",
+                  "name_matches": true
+                }
+              ]
+            },
+            {
+              "setting": "battery_bulk_voltage",
+              "name": "Battery Bulk Voltage",
+              "command": "PCVV",
+              "kind": "value",
+              "unit": "V",
+              "reported": "57.6",
+              "paired_by_name": null,
+              "candidates": [
+                {
+                  "control": "Bulk Charging Voltage",
+                  "id": "bat_charging_bulk_voltage",
+                  "value": "57.6",
+                  "name_matches": false
+                },
+                {
+                  "control": "Float Charging Voltage",
+                  "id": "bat_charging_float_voltage",
+                  "value": "57.6",
+                  "name_matches": false
+                }
+              ]
+            },
+            {
+              "setting": "battery_float_voltage",
+              "name": "Battery Float Voltage",
+              "command": "PBFT",
+              "kind": "value",
+              "unit": "V",
+              "reported": "57.6",
+              "paired_by_name": null,
+              "candidates": [
+                {
+                  "control": "Bulk Charging Voltage",
+                  "id": "bat_charging_bulk_voltage",
+                  "value": "57.6",
+                  "name_matches": false
+                },
+                {
+                  "control": "Float Charging Voltage",
+                  "id": "bat_charging_float_voltage",
+                  "value": "57.6",
+                  "name_matches": false
+                }
+              ]
+            }
+          ],
+          "writes": [
+            {
+              "setting": "output_source_priority",
+              "command": "POP",
+              "requested": "2",
+              "acknowledged": true,
+              "verified": true,
+              "reported": "2",
+              "error": null,
+              "elapsed_ms": 2064
+            },
+            {
+              "setting": "output_source_priority",
+              "command": "POP",
+              "requested": "1",
+              "acknowledged": true,
+              "verified": true,
+              "reported": "1",
+              "error": null,
+              "elapsed_ms": 1961
+            },
+            {
+              "setting": "output_source_priority",
+              "command": "POP",
+              "requested": "2",
+              "acknowledged": true,
+              "verified": true,
+              "reported": "2",
+              "error": null,
+              "elapsed_ms": 3354
+            }
+          ]
+        },
+        "data_source": "Local",
+        "last_update": "2026-11-20T12:59:35.151726+00:00",
+        "cloud_status": {
+          "code": 0,
+          "text": "online"
+        }
+      }
+    ]
+  }
+}
