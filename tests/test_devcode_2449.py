@@ -22,6 +22,8 @@ from typing import Any
 from custom_components.dessmonitor.device_support import is_setting_reading
 from custom_components.dessmonitor.device_support.device_registry import (
     is_devcode_supported,
+    local_control_options,
+    local_control_setting,
 )
 from custom_components.dessmonitor.support_report import resolved_key_for
 
@@ -163,3 +165,107 @@ def test_no_other_devcode_inherits_these_declarations() -> None:
     profile that declares no setting at all."""
     assert not is_setting_reading(684, "Battery Bulk Voltage")
     assert not is_setting_reading(684, "Max Charging Current")
+
+
+# The second committed download for this devcode, taken on different hardware
+# with local control enabled, which is what shows the inverter's own side of a
+# pairing (#88). ``analysis_2449.json`` was taken before the download carried
+# a ``local_control`` section at all.
+LOCAL_EVIDENCE = (
+    Path(__file__).resolve().parent.parent
+    / "docs/evidence/devcodes/analysis_2449_local_control.json"
+)
+
+
+def _local_control_report() -> dict[str, Any]:
+    payload = json.loads(LOCAL_EVIDENCE.read_text("utf-8"))
+    devices = payload["data"]["devices"]
+    assert len(devices) == 1
+    assert devices[0]["devcode"] == DEVCODE
+    return devices[0]["local_control"]
+
+
+def test_the_charger_priority_is_paired_with_the_pi30_command() -> None:
+    """Its two names differ by a letter, so nothing pairs it on spelling.
+
+    "Charging Source Priority" on the platform against "Charger Source
+    Priority" on the inverter: the declaration is what sends the write down
+    the local link instead of through the cloud (#88).
+    """
+    assert local_control_setting(DEVCODE, "bat_charging_source") == (
+        "charger_source_priority"
+    )
+
+
+def test_the_paired_setting_is_one_the_inverter_reports() -> None:
+    """A pairing names a key in the inverter's own rating reply or nothing.
+
+    This is the half of the evidence a declaration cannot be written without:
+    the setting has to exist and carry a value, because the hybrid route only
+    takes the local link for a setting the snapshot has a value for. A typo
+    here would silently keep every write on the cloud.
+    """
+    report = _local_control_report()
+
+    assert "charger_source_priority" in report["reported"]
+    assert "charger_source_priority" not in report["not_reported"]
+
+
+def test_nothing_else_on_the_platform_could_be_the_paired_control() -> None:
+    """The other half: the pairing report found no candidate of its own.
+
+    Where it does find one, the hybrid coordinator pairs them without a
+    declaration. An empty candidate list is why this one needed evidence.
+    """
+    report = _local_control_report()
+    entry = next(
+        item
+        for item in report["cloud_pairing"]
+        if item["setting"] == "charger_source_priority"
+    )
+
+    assert entry["command"] == "PCP"
+    assert entry["paired_by_name"] is None
+    assert entry["candidates"] == []
+
+
+def test_every_declared_option_is_one_the_local_command_accepts() -> None:
+    """A code the command does not offer is refused, and the write stays put.
+
+    The declared vocabulary is read back against the option list the inverter
+    itself reported, so a renumbered list - devcode 2477's charger codes are
+    not the PI30 ones - cannot pass unnoticed here (#87).
+    """
+    report = _local_control_report()
+    entry = next(
+        item
+        for item in report["cloud_pairing"]
+        if item["setting"] == "charger_source_priority"
+    )
+    accepted = set(entry["options"])
+
+    declared = local_control_options(DEVCODE, "bat_charging_source")
+    assert declared
+    assert set(declared.values()) <= accepted
+
+
+def test_the_option_the_owner_set_is_the_one_the_inverter_reported() -> None:
+    """The entry that is observed rather than decoded from the ASCII rule.
+
+    The reporter set Charging Source Priority to "Only Solar Charging
+    Permitted" from Home Assistant and then took this download. The cloud
+    control holds that value and the inverter reports 3 under PCP, which is
+    "Only Solar" in its own list, so 12339 -> 3 is confirmed on hardware.
+    """
+    report = _local_control_report()
+    entry = next(
+        item
+        for item in report["cloud_pairing"]
+        if item["setting"] == "charger_source_priority"
+    )
+
+    assert entry["reported"] == "3"
+    assert entry["options"]["3"] == "Only Solar"
+    declared = local_control_options(DEVCODE, "bat_charging_source")
+    assert declared
+    assert declared["12339"] == "3"
