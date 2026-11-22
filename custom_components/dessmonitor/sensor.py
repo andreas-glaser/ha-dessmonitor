@@ -87,6 +87,9 @@ TEXT_SENSOR_TITLES = {
     # text rather than enums (#89).
     "Inverter Switch Status",
     "PID Status",
+    # Devcode 659 answers whether it restarts itself with "Automatically
+    # Boot". Another word, and the vendor documents no set of them (#92).
+    "Automatic Startup",
 }
 
 

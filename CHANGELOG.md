@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Devcode 659 is supported**: a Windon LT21HD three-phase on-grid string
+  inverter with two trackers, reported through ShineMonitor (#92, thanks to
+  @Position59 for the download). Four of its forty-three readings reached a
+  sensor; every one of the twenty-eight that carry a unit now does, which is
+  all three phases, both trackers, the day and lifetime energy counters and
+  both heatsinks. Like devcode 567 it leaves the plant summary's `outpower`,
+  `energyToday` and `energyTotal` at `0.0000` while reporting 984 W and
+  79241.471 kWh itself, so Output Power and both energy sensors read zero on
+  a working inverter; all three summary titles are mapped onto the device's
+  own readings.
+
+  Thirteen new canonical sensors come with it, all for quantities this
+  collector measures per phase or per tracker where the existing keys hold
+  one figure: a grid frequency, active power and apparent power for each of
+  the three phases, an insulation resistance for each of the two trackers,
+  both heatsink temperatures, and whether the inverter restarts itself. The
+  per-phase apparent power is published in volt-amperes although the
+  collector labels it `W`, because 366 against 333 W of active power on the
+  same phase is the order the two come in.
 - **Devcode 2500 is supported**: a MUST PH18 5.5KW grid-tied hybrid on
   DessMonitor, behind a WI-FI PLUG14 RTU (#91, thanks to @spintexroad for the
   download). It speaks the same vocabulary as devcode 697, so twenty-three of
