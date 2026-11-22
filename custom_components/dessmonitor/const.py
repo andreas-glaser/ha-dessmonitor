@@ -1026,6 +1026,21 @@ SENSOR_TYPES = {
         "state_class": "total_increasing",
         "icon": "mdi:transmission-tower-export",
     },
+    # The share of the exported lifetime counter that came from the array,
+    # which devcode 2500 reports beside "Accumulated Sell Power" (#91). Both
+    # read 58 kWh in the committed download, so they may well be the same
+    # register under two spellings, but one capture of an equal figure cannot
+    # show that: on a system exporting only solar they agree whether or not
+    # they are the same counter. It gets its own sensor rather than being
+    # mapped onto the one beside it, because a mapping would silently publish
+    # whichever of the two the merge preferred if they ever diverged.
+    "Accumulated PV Sell Power": {
+        "name": "Accumulated PV Sell Energy",
+        "unit": UNITS["ENERGY"],
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "icon": "mdi:transmission-tower-export",
+    },
     "accumulated buy power": {
         "name": "Accumulated Buy Energy",
         "unit": UNITS["ENERGY"],
