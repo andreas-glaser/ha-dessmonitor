@@ -71,6 +71,8 @@ from .device_support import (
     control_value_reading,
     get_parameter_sensor_names,
     is_devcode_supported,
+    local_control_options,
+    local_control_setting,
     map_sensor_title,
     needs_parameter_fetch,
 )
@@ -1581,7 +1583,12 @@ async def async_get_device_diagnostics(
     if control_error:
         diagnostics["battery_config_error"] = control_error
 
-    local_control = _local_control_diagnostics(coordinator, device_sn, control_config)
+    local_control = _local_control_diagnostics(
+        coordinator,
+        device_sn,
+        control_config,
+        device_info.get("device", {}).get("devcode"),
+    )
     if local_control is not None:
         diagnostics["local_control"] = local_control
 
@@ -2002,7 +2009,9 @@ async def _build_device_support_report(
     # device button produced it, so an owner who attached the entry file - the
     # one the support guide names first - sent nothing about the settings
     # their inverter reports or the writes it refused (#87).
-    local_control = _local_control_diagnostics(coordinator, serial, control_fields)
+    local_control = _local_control_diagnostics(
+        coordinator, serial, control_fields, device_meta.get("devcode")
+    )
     if local_control is not None:
         report["local_control"] = local_control
     report["data_source"] = _extract_sensor_value(readings, "Data Source")
@@ -2152,14 +2161,15 @@ def _local_control_diagnostics(
     coordinator: Any,
     device_sn: str,
     control_fields: dict[str, Any],
+    devcode: Any = None,
 ) -> dict[str, Any] | None:
     """Report what the inverter itself says about its writable settings.
 
     This is the evidence a devcode profile's ``local_control_settings`` is
     declared from, and the evidence a failed write is diagnosed from, so it
-    carries three things: the settings the inverter reported, the cloud
-    controls each one looks like, and the outcome of every local write this
-    session attempted.
+    carries four things: the settings the inverter reported, the cloud
+    controls each one looks like, what this devcode's profile already
+    declares, and the outcome of every local write this session attempted.
     """
     from .local.settings import pairing_candidates
 
@@ -2175,6 +2185,13 @@ def _local_control_diagnostics(
             for config in control_fields.values()
             if isinstance(config, dict) and config.get("id")
         }
+        declared_settings: dict[str, str] = {}
+        declared_option_values: dict[str, dict[str, str]] = {}
+        for field_id in cloud_values:
+            if setting := local_control_setting(devcode, field_id):
+                declared_settings[field_id] = setting
+            if options := local_control_options(devcode, field_id):
+                declared_option_values[field_id] = options
         return {
             "enabled": local.control_enabled,
             "protocol": local.driver_key,
@@ -2190,6 +2207,8 @@ def _local_control_diagnostics(
                 control_fields,
                 cloud_values,
                 snapshot.enumerations,
+                declared_settings,
+                declared_option_values,
             ),
             "writes": local.write_history(serial),
         }

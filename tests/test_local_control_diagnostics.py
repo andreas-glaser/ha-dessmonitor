@@ -360,6 +360,71 @@ async def test_the_entry_download_carries_the_local_control_section(
     ] == ("p17")
 
 
+def test_the_download_reads_the_declarations_off_the_devcode_profile() -> None:
+    """The section is built for one device, so it reports that devcode's own.
+
+    The profile is reached through the devcode the download already carries
+    for the device; devcode 2449 is the one whose charger priority is paired
+    by declaration (#88).
+    """
+    from custom_components.dessmonitor import _local_control_diagnostics
+
+    coordinator = _local_coordinator(_snapshot())
+    controls = {
+        "Charging Source Priority": {"id": "bat_charging_source", "value": "12339"},
+        "Battery Bulk Voltage": {"id": "bse_bulk", "value": "56.0"},
+    }
+
+    report = _local_control_diagnostics(coordinator, SERIAL, controls, 2449)
+    pairing = {item["setting"]: item for item in report["cloud_pairing"]}
+
+    assert pairing["charger_source_priority"]["declared_by_profile"] == (
+        "bat_charging_source"
+    )
+    assert pairing["charger_source_priority"]["declared_option_values"] == {
+        "12337": "1",
+        "12338": "2",
+        "12339": "3",
+    }
+    assert pairing["battery_bulk_voltage"]["declared_by_profile"] is None
+
+
+def test_the_pairing_report_names_what_the_profile_already_declares() -> None:
+    """A declared pairing read as an absence until it was reported (#88).
+
+    Devcode 2449's charger priority is paired by declaration, because the
+    cloud spells it "Charging Source Priority" against the command's "Charger
+    Source Priority". Its entry carried ``paired_by_name`` null and no
+    candidates - indistinguishable from a setting nothing pairs with, which
+    is what the maintainer reading this section is looking for.
+    """
+    snapshot = _snapshot()
+    controls = {"Charging Source Priority": {"id": "bat_charging_source"}}
+
+    report = {
+        item["setting"]: item
+        for item in pairing_candidates(
+            snapshot.settings,
+            snapshot.values,
+            controls,
+            {"bat_charging_source": "12339"},
+            snapshot.enumerations,
+            {"bat_charging_source": "charger_source_priority"},
+            {"bat_charging_source": {"12339": "3"}},
+        )
+    }
+
+    charger = report["charger_source_priority"]
+    assert charger["paired_by_name"] is None
+    assert charger["declared_by_profile"] == "bat_charging_source"
+    # The vocabulary is the second declaration, and a pairing without it
+    # still sends the selection over the cloud (#87).
+    assert charger["declared_option_values"] == {"12339": "3"}
+    # A setting the profile says nothing about reports the absence plainly.
+    assert report["battery_bulk_voltage"]["declared_by_profile"] is None
+    assert "declared_option_values" not in report["output_source_priority"]
+
+
 def test_the_pairing_report_names_both_option_vocabularies() -> None:
     """A selection code means nothing without the list it came from (#87).
 

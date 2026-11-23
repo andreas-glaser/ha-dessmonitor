@@ -379,6 +379,8 @@ def pairing_candidates(
     cloud_controls: Mapping[str, Any],
     cloud_values: Mapping[str, Any],
     enumerations: Mapping[str, tuple[str, ...]] | None = None,
+    declared_settings: Mapping[str, str] | None = None,
+    declared_option_values: Mapping[str, Mapping[str, str]] | None = None,
 ) -> list[dict[str, Any]]:
     """Report which cloud control each local setting looks like.
 
@@ -392,9 +394,20 @@ def pairing_candidates(
     A maintainer reads this and adds the pairing to the devcode profile's
     ``local_control_settings``, after which that control's writes take the
     local link on every installation of that devcode.
+
+    What the profile already declares is reported too, because inference and
+    declaration are the only two ways a pairing exists and a report showing
+    one of them reads as an absence. Devcode 2449's charger priority is
+    declared, since "Charging Source Priority" and the command's "Charger
+    Source Priority" differ by a letter, and its entry still said
+    ``paired_by_name`` null against an empty candidate list - the shape of a
+    setting nothing pairs with (#88).
     """
     by_name = {
         normalized_name(name): (name, config) for name, config in cloud_controls.items()
+    }
+    declared_by_setting = {
+        setting: field_id for field_id, setting in (declared_settings or {}).items()
     }
     report: list[dict[str, Any]] = []
     for setting in settings:
@@ -430,6 +443,7 @@ def pairing_candidates(
             "unit": setting.unit,
             "reported": local_value,
             "paired_by_name": matched[1].get("id") if matched else None,
+            "declared_by_profile": declared_by_setting.get(setting.key),
             "candidates": candidates,
         }
         if setting.kind == KIND_OPTIONS:
@@ -439,5 +453,13 @@ def pairing_candidates(
             # PI30 command takes 0, 1 and 2 - and a report showing one side
             # only is not enough to declare the mapping from (#87).
             entry["options"] = dict(setting.options_in(enumerations or {}))
+            # And which of them the profile says each cloud option code is.
+            # A pairing alone does not send a selection down the local link:
+            # without this vocabulary the write takes the cloud path, so the
+            # two declarations have to be readable apart (#87, #88).
+            paired = entry["declared_by_profile"] or entry["paired_by_name"]
+            declared_options = (declared_option_values or {}).get(paired)
+            if declared_options:
+                entry["declared_option_values"] = dict(declared_options)
         report.append(entry)
     return report
