@@ -10,6 +10,7 @@ import time
 import weakref
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
+from typing import Any
 from uuid import uuid4
 
 from .network import normalize_local_ipv4
@@ -231,6 +232,39 @@ class CollectorServer:
     def connected(self) -> bool:
         """Return whether an identified collector is connected."""
         return bool(self._connection and self._connection.ready_notified)
+
+    @property
+    def session_facts(self) -> dict[str, Any]:
+        """Describe the collector session, with no payload and no address.
+
+        Three of these decide a local-mode diagnosis and none of them reached
+        the diagnostics file: whether this collector has been seen to answer a
+        query we had already given up on, which is the flag the #53 fix turns
+        on and the reason a short polling interval can fail where a long one
+        works; how long the session has been up, which separates a flapping
+        collector from a steady one; and how long ago its last heartbeat was,
+        which separates a quiet tunnel from a dead session.
+        """
+        connection = self._connection
+        facts: dict[str, Any] = {
+            "connected": self.connected,
+            "request_timeout_seconds": self.request_timeout,
+            "abandoned_reply_grace_seconds": self.abandoned_reply_grace,
+            "heartbeat_interval_seconds": self.heartbeat_interval,
+        }
+        if connection is None:
+            return facts
+        now = time.monotonic()
+        facts.update(
+            {
+                "session_seconds": round(now - connection.started),
+                "seconds_since_heartbeat": round(now - connection.last_heartbeat),
+                "answers_late": connection.answers_late,
+                "requests_in_flight": len(connection.pending),
+                "identified": connection.ready_notified,
+            }
+        )
+        return facts
 
     @property
     def listening_port(self) -> int:

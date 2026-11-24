@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator
+from datetime import datetime
 from typing import Any, cast
 
 from homeassistant.components.sensor import (
@@ -20,11 +21,12 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN, SENSOR_TYPES, UNITS
@@ -73,12 +75,32 @@ TEXT_SENSOR_TITLES = {
     "PV Status",
     "Grid Status",
     "Load Status",
+    # A version is a label, not a quantity. Read as a number it either
+    # vanished - "V1.08", "1.08.3" and "0080-A" cannot survive float(), so
+    # the sensor read unknown with nothing in the log to say why - or lost a
+    # digit, publishing "1.080" as 1.08. This is the one key in SENSOR_TYPES
+    # that measures nothing and was still read as a number (#84).
+    "Software version",
+    # Devcode 567 answers its own switch with "Stop state" or "On-grid
+    # operation" and its anti-PID module with "Not running". Both are the
+    # vendor's words and neither is a set anything here knows, so they are
+    # text rather than enums (#89).
+    "Inverter Switch Status",
+    "PID Status",
+    # Devcode 659 answers whether it restarts itself with "Automatically
+    # Boot". Another word, and the vendor documents no set of them (#92).
+    "Automatic Startup",
 }
 
 
 # How many values one enum sensor may collect beyond the registered ones.
 # A vendor's state set is small; a number misread as an enumeration is not.
 _MAX_ENUM_OPTIONS = 64
+
+# The synthetic diagnostic sensor that says when a device last reported
+# something new, and the reading it watches for movement.
+LAST_READING_KEY = "Last Reading Received"
+_TIMESTAMP_TITLE_KEY = normalize_sensor_title("Timestamp")
 
 
 def _name_marker(device_sn: str, sensor_type: str) -> str:
@@ -148,6 +170,26 @@ async def async_setup_entry(
     config_entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
 
 
+def _carries_a_timestamp(device_data: Any) -> bool:
+    """Return whether this payload carries the vendor's own timestamp.
+
+    The freshness sensor watches that field for movement, so a device whose
+    payload has none gets no sensor rather than one that could only ever
+    report when the entry was set up.
+    """
+    return isinstance(device_data, list) and any(
+        isinstance(point, dict) and _is_timestamp_title(point.get("title"))
+        for point in device_data
+    )
+
+
+def _is_timestamp_title(title: Any) -> bool:
+    """Return whether a reading's title is the vendor's own timestamp."""
+    return (
+        isinstance(title, str) and normalize_sensor_title(title) == _TIMESTAMP_TITLE_KEY
+    )
+
+
 def _build_sensor_entities(
     coordinator: DessMonitorDataUpdateCoordinator, known_sensors: set[str]
 ) -> list[DessMonitorSensor]:
@@ -169,6 +211,19 @@ def _build_sensor_entities(
 
         supported_sensors = 0
         duplicate_sensors = 0
+
+        freshness_key = f"{device_sn}_{LAST_READING_KEY}"
+        if freshness_key not in known_sensors and _carries_a_timestamp(device_data):
+            known_sensors.add(freshness_key)
+            known_sensors.add(_name_marker(device_sn, LAST_READING_KEY))
+            entities.append(
+                DessMonitorLastReadingSensor(
+                    coordinator=coordinator,
+                    device_sn=device_sn,
+                    device_meta=device_meta,
+                    collector_meta=collector_meta,
+                )
+            )
 
         devcode = _normalize_devcode(device_meta.get("devcode"))
         devcode_supported = devcode is not None and is_devcode_supported(devcode)
@@ -378,6 +433,8 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
             self._attr_options = self._build_enum_options(
                 sensor_config, initial_data_point
             )
+        elif sensor_config.get("device_class") == "timestamp":
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
 
         state_class = sensor_config.get("state_class")
         if state_class == "measurement":
@@ -641,3 +698,106 @@ class DessMonitorSensor(CoordinatorEntity, SensorEntity):
                     attrs["operating_mode"] = data_point.get("val")
 
         return attrs if attrs else None
+
+
+class DessMonitorLastReadingSensor(DessMonitorSensor):
+    """When this integration last saw a device report something new.
+
+    The vendor cloud answers ``queryDeviceLastData`` with the reading it
+    stored before a collector went quiet. The fetch succeeds, the device stays
+    in the snapshot, Data Source still says ``Cloud``, and every entity goes
+    on publishing values that are no longer live - which is what #78 was filed
+    for, after a reporter's collector dropped off Wi-Fi and their automations
+    kept acting on the numbers.
+
+    What this does not do is decide anything for anybody. Marking measurement
+    entities unavailable past some age is the obvious lever and the wrong one:
+    it would change what 13,000 installations publish, on a threshold nobody
+    has the evidence to pick, and entities going unavailable is the symptom
+    #54 and #55 were filed for. So this is additive - one diagnostic sensor,
+    no existing entity touched - and the threshold belongs to the automation
+    that reads it.
+
+    The value is this host's clock, never the vendor's. The payload's own
+    Timestamp is the inverter's wall clock in a timezone this integration
+    deliberately does not assume, which is also why the clock controls are
+    text entities; comparing it against ``now()`` would mark every device on
+    an account offline for the sake of a timezone. What is used instead is
+    that the string *changes*: a collector taken off the network held
+    ``2026-11-16 18:26:52`` for its whole outage and advanced it on the next
+    frame, so movement is the signal and this records when it last moved.
+
+    On startup, and on a device that has not moved since, the state is the
+    time this integration first saw the reading. The age it implies is
+    therefore a lower bound, which ``observed_change`` says plainly rather
+    than leaving to be guessed at.
+    """
+
+    def __init__(
+        self,
+        coordinator: DessMonitorDataUpdateCoordinator,
+        device_sn: str,
+        device_meta: dict[str, Any],
+        collector_meta: dict[str, Any],
+    ) -> None:
+        """Start the measurement from the reading the device reports now."""
+        super().__init__(
+            coordinator=coordinator,
+            device_sn=device_sn,
+            device_meta=device_meta,
+            collector_meta=collector_meta,
+            sensor_type=LAST_READING_KEY,
+            data_point={"title": LAST_READING_KEY, "val": None},
+            source_titles={LAST_READING_KEY},
+        )
+        self._stamp: str | None = None
+        self._seen_at: datetime = dt_util.utcnow()
+        self._observed_change = False
+        self._note_reported_stamp()
+
+    def _note_reported_stamp(self) -> None:
+        """Record the stamp this device reports now, and when it changed."""
+        stamp = self._reported_stamp()
+        if stamp is None or stamp == self._stamp:
+            return
+        if self._stamp is not None:
+            self._observed_change = True
+        self._stamp = stamp
+        self._seen_at = dt_util.utcnow()
+
+    def _reported_stamp(self) -> str | None:
+        """Return the vendor timestamp in this device's current payload."""
+        payload = self._get_device_payload() or {}
+        for point in payload.get("data", []):
+            if not isinstance(point, dict):
+                continue
+            if not _is_timestamp_title(point.get("title")):
+                continue
+            value = point.get("val")
+            if value in (None, ""):
+                continue
+            return str(value)
+        return None
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Measure before publishing, so the state is this cycle's answer."""
+        self._note_reported_stamp()
+        super()._handle_coordinator_update()
+
+    @property
+    def native_value(self) -> datetime:  # type: ignore[override]
+        """Return when this device last reported something new."""
+        return self._seen_at
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Report what the measurement is made of, not just its result."""
+        return {
+            # The vendor's own string, unparsed and in its own timezone.
+            "payload_timestamp": self._stamp,
+            # False until the string has been seen to move, which means the
+            # state is the time this integration started watching rather than
+            # the time the device reported.
+            "observed_change": self._observed_change,
+        }

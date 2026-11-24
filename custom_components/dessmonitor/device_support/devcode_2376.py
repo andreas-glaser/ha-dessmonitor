@@ -70,6 +70,30 @@ CONTROL_VALUE_READINGS: dict[str, str] = {
     "bse_eybond_ctrl_64": "Output Voltage Setting",
 }
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 39 owner settings: battery voltages and
+# currents, the two priorities, equalization, the display and the buzzer.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Reset User Settings
+        "sys_eybond_ctrl_96",
+        # Clear Record
+        "sys_eybond_ctrl_95",
+        # Output control, which stops the AC output
+        "sys_eybond_ctrl_97",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -79,4 +103,6 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "control_value_readings": CONTROL_VALUE_READINGS,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

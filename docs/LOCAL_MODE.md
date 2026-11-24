@@ -179,6 +179,27 @@ retention never keeps hardware alive that was taken off the account. Readings
 labelled `Cached Cloud` can be arbitrarily old; the device's `Timestamp` sensor
 shows when the cloud last answered for it.
 
+A collector that has gone quiet is a different condition and has its own
+signal. Nothing fails there: the cloud answers with the reading it stored
+before the collector went silent, so `Data Source` still says `Cloud` and the
+numbers are historical. The `Last Reading Received` diagnostic sensor carries
+when this integration last saw that device report something new, measured on
+this host's clock from the payload's own timestamp *changing* rather than from
+its value, because the inverter's wall clock is in a timezone this integration
+does not assume. An automation can gate on an age of its own choosing:
+
+```yaml
+condition:
+  - condition: template
+    value_template: >
+      {{ now() - states('sensor.my_inverter_last_reading_received') | as_datetime
+         < timedelta(minutes=15) }}
+```
+
+Its `observed_change` attribute is `false` until the timestamp has been seen to
+move, which is the case just after a restart: the state is then when the
+integration started watching, so the age it implies is a lower bound.
+
 If one inverter's status poll fails while another on the same collector succeeds,
 only the responding inverter contributes to the new local snapshot. Hybrid uses
 cloud data for the failed inverter until it responds again. Its device and sensor
@@ -384,14 +405,35 @@ particular transport.
 A cloud control and a local setting are the same register under two names, and
 nothing in either payload says they are the same one. The pairing is made only
 on evidence: a declaration in the devcode profile, or names that normalise to
-the same string. A device diagnostics download reports the candidates it saw,
-which is how a declaration gets added; see
+the same string. A diagnostics download reports the candidates it saw, which
+is how a declaration gets added; see
 [ADDING_DEVCODES.md](ADDING_DEVCODES.md).
+
+A hybrid download is also full devcode evidence. The overlay keeps the local
+driver's own title for every reading it replaces, so the published readings
+carry the local spellings and the vendor's names for those same readings used
+to be gone - which made a working hybrid setup the weakest kind of file to
+answer a devcode question from. The report now carries a
+`cloud_under_overlay` section: the cloud's own title, value and unit for each
+reading behind the overlay, classified against the devcode profile rather than
+against the local driver, so the file says what the devcode covers as well as
+what the local link delivers.
+
+A dropdown needs one more thing than a setpoint does. The platform's option
+codes are its own: devcode 2449 offers Output Source Priority as 12336, 12337
+and 12338 where the PI30 command takes 0, 1 and 2, and sending the platform's
+code was refused outright (#87). So a selection takes the local link only
+where its two vocabularies are tied together - by a declaration, or by a
+label that is the same word on both sides - while a quantity offered as a
+list, such as a charging current, pairs on its figure. An undeclared
+selection takes the cloud path, and `control_transport` on the entity says
+which transport carried the write.
 
 ### Diagnosing a write
 
 **Settings → Devices & services → DessMonitor → your inverter → Download
-diagnostics** carries a `local_control` section with the settings the inverter
+diagnostics**, or the download on the integration card, carries a
+`local_control` section with the settings the inverter
 reported, the limits it says it accepts, the ones it did not report, the cloud
 controls each setting looks like, and the outcome of every local write this
 session attempted - including the command name, whether it was acknowledged

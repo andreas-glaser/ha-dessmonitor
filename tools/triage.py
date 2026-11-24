@@ -41,6 +41,7 @@ from analysis_coverage import coverage  # noqa: E402
 from custom_components.dessmonitor.support_report import (  # noqa: E402
     normalized_reports,
     scale_disagreements,
+    unmapped_state_words,
 )
 
 _DEFAULT_REPO = "andreas-glaser/ha-dessmonitor"
@@ -168,6 +169,13 @@ def triage(path: Path) -> int:
                 "One of the two is scaled wrongly."
             )
             findings += 1
+        for title, words in unmapped_state_words(device).items():
+            print(
+                f"      ! {title}: sent {', '.join(words)}, which its enum "
+                "sensor does not offer, so the sensor reads Unknown. Needs a "
+                "value mapping in the devcode profile."
+            )
+            findings += len(words)
     return findings
 
 

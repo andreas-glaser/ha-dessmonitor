@@ -137,6 +137,18 @@ def _load_device_configurations() -> None:
 
         _register_devcode(6489, config_6489)
 
+        from .devcode_567 import DEVCODE_CONFIG as config_567
+
+        _register_devcode(567, config_567)
+
+        from .devcode_2500 import DEVCODE_CONFIG as config_2500
+
+        _register_devcode(2500, config_2500)
+
+        from .devcode_659 import DEVCODE_CONFIG as config_659
+
+        _register_devcode(659, config_659)
+
     except ImportError as err:
         _LOGGER.error("Failed to import device configuration: %s", err)
 
@@ -245,6 +257,52 @@ def _temporal_controls(devcode: Any) -> dict[str, str]:
     return controls if isinstance(controls, dict) else {}
 
 
+def control_enabled_by_default(devcode: Any, field_id: Any) -> bool:
+    """Return whether a control entity should be registered already enabled.
+
+    Every field an account's control template advertises becomes an entity,
+    and the template is the platform's, not ours. On a devcode nobody has
+    read a template for, that is 96 fields of unknown purpose published ready
+    to use: the devcode 567 account in #89 was handed shutdown, start, reset,
+    firmware upgrade, "format M4 SPI flash", four internal debugging
+    parameters and three levels each of grid over- and undervoltage and over-
+    and underfrequency protection with their trip times (#90). The owner
+    found them and disabled them by hand.
+
+    So the default is off, and a profile turns it on for the template it has
+    actually read. The alternative was a rule on the field, and the committed
+    templates rule it out: searching all of them for shutdown, restart,
+    upgrade, reset and the rest matches 25 fields of which 19 are ordinary
+    settings - six spellings of "Overload automatic restart" alone - while
+    the field that restores factory defaults is called ``eybond_ctrl_99``.
+    The ids collide outright: ``shutdown`` is "Shutdown command" on devcode
+    567 and "Offgrid Switch" on devcode 697, so a rule keyed on it would
+    disable the wrong control. Only a person reading one vendor's template
+    can tell those apart, and this is where that reading is recorded.
+
+    Devcodes 518 and 567 declare nothing on purpose rather than for want of
+    evidence: both advertise installer templates - grid protection
+    thresholds, safety standard, insulation limits, HMI password - and not
+    one field in either is an owner's setting, so every one of them stays
+    disabled.
+
+    ``entity_registry_enabled_default`` applies only to an entity being
+    registered for the first time, so nothing an installation already
+    publishes is affected: an owner using a control this would have disabled
+    keeps it, because its registry entry already exists.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config or not config.get("controls_reviewed"):
+        return False
+    if not isinstance(field_id, str):
+        return False
+    protected = config.get("protected_controls")
+    if isinstance(protected, (set, frozenset, tuple, list)):
+        return field_id not in protected
+    return True
+
+
 def control_value_reading(devcode: Any, field_id: Any) -> str | None:
     """Return the reading title that carries a control's value, if declared.
 
@@ -298,6 +356,33 @@ def local_control_setting(devcode: Any, field_id: Any) -> str | None:
         return None
     setting = declared.get(field_id)
     return setting if isinstance(setting, str) and setting.strip() else None
+
+
+def local_control_options(devcode: Any, field_id: Any) -> dict[str, str] | None:
+    """Return the local option each of a cloud control's options means.
+
+    Keyed by the platform's own option code, valued by the wire value the
+    local command takes. ``None`` means no profile declares this control's
+    vocabulary, and a selection code is then written over the cloud rather
+    than guessed at (#87).
+
+    Declare only from a download that shows both vocabularies: the cloud
+    control's options are in the device report's ``control_fields``, and the
+    local setting's are in ``local_control.cloud_pairing``. A wrong entry
+    changes a setting the owner did not choose, and the inverter's own
+    read-back agrees with it, so nothing downstream can catch it.
+    """
+    key = _as_devcode(devcode)
+    config = get_devcode_config(key) if key is not None else None
+    if not config or not isinstance(field_id, str):
+        return None
+    declared = config.get("local_control_option_values")
+    if not isinstance(declared, dict):
+        return None
+    options = declared.get(field_id)
+    if not isinstance(options, dict) or not options:
+        return None
+    return {str(code): str(local) for code, local in options.items()}
 
 
 def filter_control_options(
@@ -365,13 +450,32 @@ def map_operating_mode(devcode: int, api_value: str) -> str:
 # counter goes into long-term statistics, and multiplying 15.0452 MWh by 1000.0
 # yields 15045.199999999999 where dividing keeps the figure the vendor sent.
 #
-# Only the energy scales are listed, because those are the only ones any
-# evidence in this repository shows a collector disagreeing with the sensor
-# about, and a factor applied to a reading that did not need one is a
-# thousand-fold error in the other direction. Add a pair here when a committed
-# download shows it, not in anticipation.
+# A pair is listed only once a committed download shows a collector declaring
+# it, because a factor applied to a reading that did not need one is a
+# thousand-fold error in the other direction.
+#
+# The energy pair came from devcode 2449's generation counters (#71). The two
+# kilo-prefixed pairs below came from the devcode 567 download in #89, a 10 kW
+# three-phase grid-tie inverter that labels its whole AC side in kW and kVar:
+# its nameplate "Rated power" of 10 kW was published as 10.0 W, which is what
+# the owner reported, and its live AC Active Power of 0.95 kW would have been
+# published as 0.95 W.
+#
+# Reactive power is scaled onto VA because that is the unit SENSOR_TYPES
+# publishes it in, which is a decision of its own: a grid-tie inverter reports
+# reactive power in the unit its apparent power uses. The devcode 567 download
+# was taken after sunset and its reactive power reads 0.00, so the kVar label
+# is the evidence here and no figure confirms it.
+#
+# ("kva", "va") deliberately does not belong here: an apparent-power reading
+# labelled kVA is already converted at the entity, in
+# ``DessMonitorSensor.native_value``, so a pair here would scale it a second
+# time and publish 0.080 kVA as 80000 VA. That is the only reading with a
+# converter of its own.
 _UNIT_SCALES: dict[tuple[str, str], tuple[int, int]] = {
     ("wh", "kwh"): (1, 1000),
+    ("kw", "w"): (1000, 1),
+    ("kvar", "va"): (1000, 1),
 }
 
 
@@ -464,13 +568,36 @@ def normalize_reading_scale(devcode: Any, transformed_data: dict[str, Any]) -> N
     transformed_data["unit"] = canonical
 
 
+# Device codes that name a local collector tunnel rather than a cloud devcode.
+# A local driver resolves every title itself, so no profile is missing for one,
+# and the warning below would tell the owner to request support for a number
+# the cloud's own devcode table does not contain: a local PI30 entry reported
+# "Unsupported devcode 258" while publishing all 23 of its readings (#86).
+_LOCAL_TRANSPORT_DEVCODES: set[int] = set()
+
+
+def note_local_transport_devcode(devcode: Any) -> None:
+    """Record that a device code came from a local tunnel, not from the cloud."""
+    key = _as_devcode(devcode)
+    if key is not None:
+        _LOCAL_TRANSPORT_DEVCODES.add(key)
+
+
+def is_local_transport_devcode(devcode: Any) -> bool:
+    """Return whether this device code was reported by a local collector."""
+    return _as_devcode(devcode) in _LOCAL_TRANSPORT_DEVCODES
+
+
 def apply_devcode_transformations(
     devcode: int, sensor_data: dict[str, Any]
 ) -> dict[str, Any]:
     """Apply all devcode-specific transformations to sensor data."""
     config = get_devcode_config(devcode)
     if not config:
-        if devcode not in _WARNED_UNSUPPORTED_DEVCODES:
+        if (
+            devcode not in _WARNED_UNSUPPORTED_DEVCODES
+            and not is_local_transport_devcode(devcode)
+        ):
             _LOGGER.warning(
                 "Unsupported devcode %s - no device-specific mappings available. "
                 "Using raw sensor titles and values; sensor support may be limited. "

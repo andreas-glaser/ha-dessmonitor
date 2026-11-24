@@ -184,12 +184,61 @@ def test_the_checksum_covers_the_report_it_ships_with() -> None:
         ("id", True),
         ("collector alias", True),
         ("token", True),
+        # Devcode 567's electronic serial number, under both spellings the
+        # download carried it (#89).
+        ("Device e-SN", True),
+        ("e-SN", True),
+        ("sn", True),
         ("Battery Voltage", False),
         ("Grid frequency", False),
     ],
 )
 def test_identifier_names_are_recognized(name: str, expected: bool) -> None:
     assert is_identifier_name(name) is expected
+
+
+def test_the_electronic_serial_number_does_not_reach_the_file() -> None:
+    """Devcode 567 reports it as a reading and advertises it as a control.
+
+    Neither seam blanked it, so the serial was in the attached file in plain
+    text and the owner removed it by hand - which broke the checksum their
+    report is signed with, and with it the only thing that makes a committed
+    evidence file checkable (#89).
+    """
+    serial = "ESN-0001-REPORTER"
+    report = build_support_report(
+        devcode=567,
+        readings=[
+            {"title": "Device e-SN", "val": serial, "unit": ""},
+            {"title": "Grid Frequency", "val": "49.97", "unit": "Hz"},
+        ],
+        control_fields={"Device e-SN": {"value": serial, "unit": "", "id": "sn"}},
+    )
+
+    assert serial not in json.dumps(report)
+    assert report["readings"][0] == {
+        "title": "Device e-SN",
+        "value": "",
+        "unit": "",
+        "resolved_key": None,
+        "sensor_unit": None,
+    }
+    assert report["control_fields"][0]["value"] == ""
+
+
+def test_a_control_whose_identifying_name_is_only_its_id_is_blanked() -> None:
+    """The id and the display name are two spellings of one field.
+
+    Matching on the name alone let devcode 567's serial through under a
+    display name no suffix rule would catch.
+    """
+    report = build_support_report(
+        devcode=567,
+        readings=[],
+        control_fields={"Machine code": {"value": "ESN-0001", "id": "device_sn"}},
+    )
+
+    assert report["control_fields"][0]["value"] == ""
 
 
 def test_the_module_loads_without_the_integration_package() -> None:
@@ -471,3 +520,83 @@ def test_a_device_with_nothing_dropped_carries_no_such_section() -> None:
     )
 
     assert "summary_not_merged" not in report
+
+
+def test_the_clouds_own_titles_survive_a_local_overlay() -> None:
+    """Item 3 of #63: a hybrid download was weak devcode evidence.
+
+    The overlay keeps the local driver's title for every reading it replaces,
+    so a hybrid owner's file carried "Battery Voltage" from the PI30 driver
+    and the vendor's own spelling for that same reading was gone - and the
+    better their setup worked, the less their file said about their devcode.
+    """
+    report = build_support_report(
+        devcode=6515,
+        readings=[
+            {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+            {"title": "SOC", "val": "37", "unit": "%"},
+        ],
+        cloud_readings=[
+            {"title": "Battery voltage", "val": "53.0", "unit": "V"},
+            {"title": "Battery capacity", "val": "37", "unit": "%"},
+            {"title": "Fan speed 1", "val": "2400", "unit": "RPM"},
+        ],
+    )
+
+    overlay = report["cloud_under_overlay"]
+    assert [row["title"] for row in overlay["readings"]] == [
+        "Battery voltage",
+        "Battery capacity",
+        "Fan speed 1",
+    ]
+    assert overlay["coverage"]["total"] == 3
+    assert overlay["readings"][0]["resolved_key"] == "Battery Voltage"
+    # Classified against the devcode, not the local driver, so this says what
+    # the profile covers. The local driver resolves its own state of charge
+    # and devcode 6515 does not map the cloud's "Battery capacity", which is
+    # the kind of gap this section exists to make visible.
+    assert {item["title"] for item in overlay["coverage"]["unresolved_with_unit"]} == {
+        "Battery capacity",
+        "Fan speed 1",
+    }
+    # The published readings are untouched by it.
+    assert [row["title"] for row in report["readings"]] == ["Battery Voltage", "SOC"]
+
+
+def test_the_overlay_section_is_absent_without_one() -> None:
+    """A cloud-only entry publishes the cloud readings themselves."""
+    report = build_support_report(devcode=6515, readings=_readings())
+
+    assert "cloud_under_overlay" not in report
+    assert (
+        "cloud_under_overlay"
+        not in build_support_report(devcode=6515, readings=[], cloud_readings=[])
+    )
+
+
+def test_the_overlay_section_discloses_no_identifier() -> None:
+    """It is readings, so it is redacted as readings are."""
+    report = build_support_report(
+        devcode=6515,
+        readings=[{"title": "SOC", "val": "37", "unit": "%"}],
+        cloud_readings=[
+            {"title": "Devise serial number", "val": SERIAL, "unit": ""},
+            {"title": "Device e-SN", "val": SERIAL, "unit": ""},
+        ],
+    )
+
+    assert SERIAL not in json.dumps(report)
+
+
+def test_the_overlay_section_is_inside_the_checksum() -> None:
+    report = build_support_report(
+        devcode=6515,
+        readings=[{"title": "SOC", "val": "37", "unit": "%"}],
+        cloud_readings=[{"title": "Battery capacity", "val": "37", "unit": "%"}],
+    )
+
+    assert report["checksum"] == report_checksum(report)
+
+    edited = json.loads(json.dumps(report))
+    edited["cloud_under_overlay"]["readings"][0]["title"] = "Something else"
+    assert edited["checksum"] != report_checksum(edited)

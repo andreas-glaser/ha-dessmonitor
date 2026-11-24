@@ -140,6 +140,74 @@ SETTING_READINGS: set[str] = {
     "Max Charging Current",
 }
 
+# Which local PI30 option each of this platform's option codes means.
+#
+# This collector offers its selection codes as numbers above 12288, and they
+# are not an enumeration: each one is the two ASCII digits of the inverter's
+# own PI30 parameter read as a big-endian 16-bit integer. "00" is 0x3030 =
+# 12336, "01" is 12337, "02" is 12338, and the same rule decodes the other
+# option lists in the committed download - AC Input Range at 12336 and 12337
+# for PGR00 and PGR01, Battery Type from 12336 for PBT00, and Output
+# Frequency at 13616 and 13872, which are "50" and "60".
+#
+# Every label agrees with the code that rule produces: 12338 is POP02, the
+# SBU order the vendor spells "Solar Bat Utility", and the reporter in #87
+# watched the inverter move to battery about ten seconds after that write
+# went through the cloud. The local link refused 12338 outright - "this
+# inverter accepts 0, 1, 2" - which is also what confirms that the cloud
+# control and the PI30 command are paired by name on this devcode.
+#
+# The charger list starts at 12337, so it decodes to PCP01, PCP02 and PCP03,
+# and those are exactly the three the labels name; PCP00, utility first, is
+# the one the platform does not offer.
+LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
+    "bse_output_source_priority": {"12336": "0", "12337": "1", "12338": "2"},
+    "bat_charging_source": {"12337": "1", "12338": "2", "12339": "3"},
+}
+
+# Which local setting each cloud control writes, where the two names are not
+# spelled alike. The hybrid coordinator pairs the rest itself.
+#
+# "Charging Source Priority" against the command's "Charger Source Priority":
+# one letter, so the two do not normalise to the same string and no pairing
+# was inferred. The download in #88 is what settles it rather than the
+# spelling. On that capture the inverter reported ``charger_source_priority``
+# as 3 under the PCP command, whose own option list is 0 utility first, 1
+# solar first, 2 solar and utility, 3 only solar, while the cloud control
+# ``bat_charging_source`` read "Only Solar Charging Permitted", which is
+# 12339. That is the 12339 -> 3 entry above, observed on the hardware rather
+# than decoded from the ASCII rule, and the reporter had set the control to
+# that value from Home Assistant minutes earlier.
+#
+# The pairing report named no candidate for this setting at all
+# (``paired_by_name`` null, ``candidates`` empty), which is the other half of
+# the evidence: nothing else on this platform could be the register PCP
+# writes.
+LOCAL_CONTROL_SETTINGS: dict[str, str] = {
+    "bat_charging_source": "charger_source_priority",
+}
+
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 39 owner settings: the battery voltages and
+# currents this profile already declares as setpoint readings, both
+# priorities, equalization, the LED strip and the bypass switches.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore To Default
+        "sys_set_default",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -149,4 +217,8 @@ DEVCODE_CONFIG = {
     "value_transformations": VALUE_TRANSFORMATIONS,
     "source_units": SOURCE_UNITS,
     "setting_readings": SETTING_READINGS,
+    "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
+    "local_control_settings": LOCAL_CONTROL_SETTINGS,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

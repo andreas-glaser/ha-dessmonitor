@@ -7,6 +7,731 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-24
+
+This stable release includes all changes since 3.0.0, including everything
+shipped in 3.1.0-rc.1 and 3.1.0-rc.2.
+
+**No entity moves.** Nothing an existing installation publishes is renamed or
+removed, no unit, device class, state class or entity category changes, and no
+control you already have changes its enabled state. Three devcodes gain
+support, every device gains one diagnostic sensor, and the new default for a
+control template nobody has reviewed applies only to an entity being
+registered for the first time.
+
+Measured against v3.0.0 by building every sensor the integration publishes for
+every device under `docs/evidence/devcodes/`: 131 sensors added, none removed,
+and none changed in name, unit, device class, state class or category. 114 of
+those additions are the three new devcodes - 567, 659 and 2500 - and on every
+devcode already covered by committed evidence the addition is the single
+`Last Reading Received` diagnostic sensor. Devcode 2449 gains one line beyond
+it, `PV Total Charger Power`, because this release commits that devcode's
+first local-mode downloads, not because a cloud entry publishes anything new.
+
+Two sensors do change the state they publish, each with its own upgrade note
+under Changed and Fixed: **Software Version** carries the collector's own
+string rather than a number, and a power reading a collector labels in
+kilowatts is scaled onto its watt sensor, which makes that one figure a
+thousand times larger - and correct. Neither is known to affect any of the
+downloads committed here.
+
+What a test harness cannot reach is local mode and the vendor cloud's control
+path, which is why this went out as two candidates first. Both were tested on
+reporters' own hardware: local writes on a PI30 inverter through #88, and the
+three new devcodes on the accounts that reported them.
+
+### Added
+- **Devcode 659 is supported**: a Windon LT21HD three-phase on-grid string
+  inverter with two trackers, reported through ShineMonitor (#92, thanks to
+  @Position59 for the download). Four of its forty-three readings reached a
+  sensor; every one of the twenty-eight that carry a unit now does, which is
+  all three phases, both trackers, the day and lifetime energy counters and
+  both heatsinks. Like devcode 567 it leaves the plant summary's `outpower`,
+  `energyToday` and `energyTotal` at `0.0000` while reporting 984 W and
+  79241.471 kWh itself, so Output Power and both energy sensors read zero on
+  a working inverter; all three summary titles are mapped onto the device's
+  own readings.
+
+  Thirteen new canonical sensors come with it, all for quantities this
+  collector measures per phase or per tracker where the existing keys hold
+  one figure: a grid frequency, active power and apparent power for each of
+  the three phases, an insulation resistance for each of the two trackers,
+  both heatsink temperatures, and whether the inverter restarts itself. The
+  per-phase apparent power is published in volt-amperes although the
+  collector labels it `W`, because 366 against 333 W of active power on the
+  same phase is the order the two come in.
+- **Devcode 2500 is supported**: a MUST PH18 5.5KW grid-tied hybrid on
+  DessMonitor, behind a WI-FI PLUG14 RTU (#91, thanks to @spintexroad for the
+  download). It speaks the same vocabulary as devcode 697, so twenty-three of
+  its twenty-five readings already reached a sensor; the two that did not are
+  the lifetime array counter, 2556.30 kWh, and the exported counter
+  attributed to the array, both of which carry a unit and so held the Repairs
+  card open. One new sensor comes with it, **Accumulated PV Sell Energy**.
+  That counter reads the same figure as Accumulated Sell Energy in the
+  download and still gets a sensor of its own, because a system exporting
+  only solar reports the same figure on both whether or not they are one
+  register.
+- **Devcode 567 is supported**: a three-phase on-grid string inverter with up
+  to four trackers and twenty strings, reported through ShineMonitor (#89,
+  thanks to @eimantasq for the download, for naming the unit as the cause of
+  the nameplate figure, and for finding the serial number in their own file
+  before attaching it). Of the 53 readings that carry a unit, 45 reached no
+  sensor at all and every one of them now does: the whole three-phase AC side
+  including the line-to-line voltages, all four trackers, all twenty string
+  currents, both energy counters, the efficiency, the insulation resistance
+  and the running times.
+  The plant summary's `outpower`, `energyToday` and `energyTotal` read
+  `0.0000` on this devcode while the inverter reports the real figures, which
+  is why Output Power and both energy sensors read zero on a working
+  inverter; all three summary titles are mapped onto the device's own
+  readings, so the zero stops publishing an entity beside the real one.
+
+  Twelve new canonical sensors come with it, plus the twenty string currents,
+  none of which existed: the three line-to-line grid voltages, the three grid
+  phase currents, per-tracker DC power, inverter efficiency, insulation
+  resistance, daily running time, the inverter switch status, the PID status
+  and the vendor's CO2 figure. The per-tracker keys are named `MPPT1 Power`
+  to `MPPT4 Power` rather than `PV1 Power`: devcodes 4743 and 6544 already
+  send that title and 4743 declares its three in `ABSENT_READINGS` because
+  the collector reports 0 while the string produces, so a key of that name
+  would have given those installations three sensors reading zero in
+  daylight. The CO2 figure is published in tonnes although the collector
+  labels it kg: it is the lifetime generation counter times 0.997 divided by
+  a thousand, and the owner's app shows 24024.3 kg against the collector's
+  24.02 for the same moment (#89).
+
+  Its two clock controls are declared in `TEMPORAL_CONTROLS`, which retires
+  the number entity a clock value cannot be shown in. *Upgrade note:* that
+  applies only to devcode 567, which no release has published controls for
+  under a profile, so no existing entity moves.
+- **The download records what a device actually publishes**, keyed by sensor
+  rather than by name: how many entities exist for each sensor, how many are
+  disabled, whether each reads a value or `unknown` or `unavailable`, whether
+  the owner has renamed one, and any display name that more than one sensor
+  publishes. The file said which readings reach a sensor and nothing about the
+  entities, and two defects cost weeks for want of it - a reporter was asked
+  twice for an entity id from Developer tools because a renamed entity and a
+  recorder problem cannot be told apart from a download (#53), and a device
+  published two entities under one name with the one the plant summary fed
+  reading 0 kWh, which nobody saw until an owner happened to look at the pair
+  (#58). That second defect now names itself in the file (#63, item 4).
+
+  No entity id and no friendly name go in it. Both carry whatever the owner
+  called the thing and these files are attached to public issues, so the
+  section is keyed by the integration's own sensor key and says only *that*
+  something was renamed.
+- **The download records every value a reading has been seen to answer with
+  a word**, per device, with how many times it was seen since the entry was
+  loaded. A snapshot carries whichever value was current when it was taken,
+  and the mapping tables - `OPERATING_MODE_MAPPING` and the two priority
+  tables - are written from the *set* of values a collector emits, so a
+  download taken at midday said nothing about the other six modes. This is
+  the one thing the integration can report that no snapshot can, because it
+  polls continuously (#63, item 2). `tools/triage.py` now names the values an
+  enum sensor would reject outright, which is a sensor reading `Unknown` on
+  the owner's system whether or not anyone has noticed.
+
+  Bounded and narrow by design: text only, never a number and never a clock
+  or a date, at most twelve distinct values per reading and 128 readings per
+  device, with a flag on any reading that reached the cap. Identifying titles
+  are excluded as they are everywhere else in the file, and only what a
+  collector sent is kept - never a value this integration derived.
+- **A hybrid download is now full devcode evidence.** The local overlay keeps
+  the local driver's own title for every reading it replaces, so the readings
+  in the file carried the local spellings and the vendor's names for those
+  same readings were gone - which made a working hybrid setup the weakest
+  kind of file to answer a devcode question from, and in the #53 download it
+  left nothing of the cloud's own titles but the readings no local driver
+  answers. The report now carries a `cloud_under_overlay` section with the
+  cloud's title, value and unit for each reading behind the overlay,
+  classified against the devcode profile rather than against the local
+  driver, and inside the report's checksum. `tools/triage.py` and
+  `tools/analysis_coverage.py` read those titles with the published ones, so
+  a hybrid owner's download guards their devcode's mappings as a cloud
+  owner's does (#63, item 3). It is the cloud snapshot already in memory and
+  it discloses nothing the readings did not: the serial, the collector
+  product number and the network addresses are redacted there as they are
+  everywhere else in the file.
+- **A `Last Reading Received` diagnostic sensor per device, carrying when this
+  integration last saw that device report something new.** The vendor cloud
+  answers `queryDeviceLastData` with the reading it stored before a collector
+  went quiet, so the refresh succeeds, the device stays in the snapshot, Data
+  Source still says `Cloud`, and every entity goes on publishing values that
+  are no longer live - which is what #78 was filed for, after a collector
+  dropped off Wi-Fi and automations kept acting on the numbers.
+
+  The value is this host's clock, never the vendor's: the payload's own
+  timestamp is the inverter's wall clock in a timezone this integration
+  deliberately does not assume, so what is used is that the string *changes*.
+  @ballhtml's measurement is what made that possible - a collector taken off
+  the network held its stored timestamp for the whole outage and advanced it
+  on the next frame.
+
+  No existing entity's availability is touched, and no threshold is chosen
+  here: marking measurement entities unavailable past some age would change
+  what 13,000 installations publish on a figure nobody has the evidence to
+  pick, and entities going unavailable is the symptom #54 and #55 were filed
+  for. The threshold belongs to the automation that reads the sensor, and
+  README.md and docs/LOCAL_MODE.md show one. The `observed_change` attribute
+  is `false` until the timestamp has been seen to move, which says plainly
+  that the age implied just after a restart is a lower bound.
+- **The download carries the local-mode evidence that used to exist only in
+  the debug log.** Per transport: the bounded, payload-free probe record from
+  discovery - every query with its protocol, command, response size, elapsed
+  milliseconds and outcome - and the last failed discovery beside the last
+  one, because a collector that failed twice and then worked leaves the
+  diagnosis in the failure. Also the collector session: how long it has been
+  up, how long since its last heartbeat, how many requests are in flight,
+  the request timeout, and whether this collector has been seen to answer a
+  query we had already given up on, which is the flag that explains a
+  collector failing at a short polling interval and working at a long one
+  (#53). Also the configured poll interval and how long ago a poll last
+  succeeded. Per inverter: the queries its driver has stopped sending and the
+  optional ones it has seen fail, which is what answers "my PV2 sensors
+  stopped". All of it was already in memory; none of it reached the file
+  (#63).
+- `tools/entity_inventory.py` builds every sensor the integration would
+  publish for every device under `docs/evidence/`, one line per entity with
+  its unique id, name, unit, device class, state class and category, so two
+  checkouts can be diffed. That comparison is how a release states what it
+  moves, and it was done by hand until now; docs/RELEASE_GUIDE.md makes it a
+  pre-release step. Against v3.0.0 this release adds 131 sensors and changes
+  or removes none, which is the measurement quoted at the top of this
+  section.
+- Every reading row in a support report names the unit its entity publishes
+  beside the unit the payload declared. The row carried the raw unit and the
+  resolved key, so a value sitting on a sensor of a different scale was
+  invisible until someone noticed a wrong figure: the PI18 watt-hour total on
+  a kWh sensor had to be inferred by comparing it against the cloud's own
+  parameters (#63, item 5).
+- The download on the integration card carries the `local_control` section
+  per device - the settings the inverter reported, the limits it accepts, the
+  cloud control each one pairs with, and the outcome of every local write in
+  the session. Only the device button produced it, while the support guide
+  names the entry download first, so an owner who attached that file sent
+  nothing about local control at all (#87, #63).
+- The pairing report names both option vocabularies: the values the local
+  command takes, beside the cloud control's own. One list alone cannot be
+  read as a mapping, which is what a `local_control_option_values`
+  declaration has to state (#87, #63).
+
+### Changed
+- **A control entity on a devcode whose template nobody has reviewed is now
+  created disabled** (#90, reported by @eimantasq in #89, who found it on
+  their own account and disabled all of it before anything was written).
+  Every field an account's control template advertises becomes an entity, and
+  the template belongs to the vendor's platform. On devcode 567 that is 96
+  fields, among them shutdown, start, reset, firmware upgrade, "format M4 SPI
+  flash", four internal debugging parameters and three levels each of grid
+  over- and undervoltage and over- and underfrequency protection with their
+  trip times - the settings a grid operator approves a three-phase unit
+  against. They were all created ready to use.
+
+  So the default is now off, and a devcode profile turns it on for the
+  template it has actually read. Eleven profiles declare theirs reviewed -
+  devcodes 2376, 2449, 2452, 2477, 2500, 6416, 6489, 6513, 6514, 6544 and
+  697 - and within those, 30 individual fields are still created disabled:
+  restoring factory defaults, clearing a lifetime generation counter,
+  switching the inverter off, a grid-compliance standard, and devcode 697's
+  nine factory calibration coefficients, which do not change what the
+  inverter does but change what it reports. Devcodes 518 and 567 were read
+  and declare nothing on purpose: both advertise installer templates and not
+  one field in either is an owner's setting.
+
+  A rule on the field itself was tried first and the committed templates rule
+  it out. Searching all of them for shutdown, restart, upgrade and reset
+  matches 25 fields of which 19 are ordinary settings - six spellings of
+  "Overload automatic restart" alone - while the field that restores factory
+  defaults is called `eybond_ctrl_99`. The ids collide outright: `shutdown`
+  is "Shutdown command" on devcode 567 and "Offgrid Switch" on devcode 697,
+  so a rule keyed on it would disable the wrong control.
+
+  *Upgrade note:* **nothing an existing installation publishes changes.** The
+  default applies only to an entity being registered for the first time, so
+  every control you already have stays exactly as it is, enabled or disabled
+  as you left it. It takes effect on a new installation, on a new inverter
+  added to an account, and on a control a devcode starts advertising. If a
+  control you want is missing on a new install, enable it in **Settings >
+  Devices & services > Entities**; on a devcode not in the list above, that
+  is because no diagnostics download of its control template has been
+  contributed yet, and attaching one is what turns it on for everybody.
+- **The Software Version sensor publishes the version the collector sent,
+  as text.** It was the one key in `SENSOR_TYPES` that measures nothing and
+  was still read as a number, so a version written `V1.08`, `1.08.3` or
+  `0080-A` could not survive `float()` and the sensor read unknown with
+  nothing in the log to say why - the same defect the four per-subsystem
+  status sensors had (#81) - while a version written `1.080` was published as
+  1.08, losing the vendor's last digit (#84).
+
+  *Upgrade note:* no entity is added, renamed or removed, and no unit, device
+  class, state class or category changes. On an installation whose collector
+  answers a numeric-looking version the published state changes from `1.08`
+  to the vendor's own `1.080`, so a template or automation that compares it
+  as a number needs to compare it as a string instead. On one whose collector
+  answers anything else the sensor starts carrying a value for the first
+  time. None of the nineteen downloads committed under
+  `docs/evidence/devcodes/` carries this reading at all, so no account is
+  known to publish the sensor; this was shipped separately from #81 rather
+  than ridden along with it because it is a change to a published state
+  either way.
+
+### Fixed
+- **Devcode 2449's Charging Source Priority now writes over the local link**
+  when settings control over the local link is on, instead of going through
+  the cloud (#88, thanks to @DennisAppelman for testing the candidate and for
+  the download that settled it). The platform spells it "Charging Source
+  Priority" and the inverter's own PI30 command is "Charger Source Priority",
+  one letter apart, so the two names did not pair and nothing declared them.
+  The download shows the inverter reporting the setting under `PCP` at the
+  value the reporter had just set from Home Assistant, which confirms the
+  option codes on hardware rather than by decoding them, and shows the
+  pairing report finding no candidate of its own. A local write is reported
+  only once the inverter has acknowledged it and read the new value back.
+- **A diagnostics download's pairing report now names the pairings the
+  devcode profile declares**, not only the ones it infers from a name or a
+  figure (#88). Inference and declaration are the only two ways a cloud
+  control reaches the local link, and a report carrying one of them reads as
+  an absence: on the devcode 2449 download above, the charger priority that
+  now writes locally still appeared with no match and no candidate - the
+  exact shape of a setting nothing pairs with, which is what the section is
+  read to find. Each entry gains `declared_by_profile` and, for a selection,
+  the `declared_option_values` the profile maps its cloud codes to, because a
+  pairing without that vocabulary still sends the write over the cloud (#87).
+  Diagnostics only; no entity changes.
+- A reading a collector labels in kilowatts now reaches its watt sensor as
+  watts. The devcode 567 download in #89 comes from a 10 kW three-phase
+  grid-tie inverter that labels its whole AC side in kW and kVar, and its
+  nameplate rating was published as **10.0 W** (#89, thanks to @eimantasq for
+  the report and for naming the unit as the cause). This uses the same
+  mechanism as the watt-hour scale from #71: the unit the collector declares
+  decides it, so a collector that already reports watts is untouched. None of
+  the twenty downloads committed under `docs/evidence/devcodes/` carries a
+  kilowatt-labelled reading on a watt sensor, so no supported devcode is
+  known to change what it publishes.
+
+  *Upgrade note:* no entity is added, renamed or removed. On an installation
+  whose collector labels a power reading in kilowatts, that sensor's state
+  becomes a thousand times larger - which is the correct figure - and its
+  long-term statistics carry the old one before the upgrade. The summary
+  endpoint's **Inverter Output Power** is unaffected: it is the one power
+  sensor whose own unit is kilowatts.
+- The inverter's electronic serial number no longer reaches the diagnostics
+  download in plain text. Devcode 567 reports it as a reading titled
+  `Device e-SN` and advertises it as a control field with the id `sn`, and
+  neither seam blanked it: the reading matched none of the identifying names,
+  and a control was matched on its display name alone rather than on its id
+  as well (#89, thanks to @eimantasq for spotting it in their own file before
+  attaching it). The cost was not only the disclosure. Removing it by hand is
+  what the support guide asks for, and it breaks the checksum the report is
+  signed with, which is the one thing that makes a committed evidence file
+  checkable - so a carefully redacted download could no longer be committed
+  as the evidence for the devcode it was taken for.
+- A dropdown written over the local link now sends the value the inverter's
+  own command takes. A cloud control and a local setting are the same
+  register, and their option vocabularies are not: devcode 2449 offers Output
+  Source Priority as 12336, 12337 and 12338, which are the two ASCII digits
+  of the PI30 parameter read as one 16-bit number, where the POP command
+  takes 0, 1 and 2. The platform's code went to the inverter unchanged, was
+  refused, and the write fell back to the cloud (#87, thanks to
+  @DennisAppelman for the report and for naming the mapping). Devcodes 2449,
+  2452, 2477 and 6416 declare the vocabularies their downloads show, and a
+  label that is the same word on both sides - `UPS`, `AGM` - pairs without a
+  declaration, as does a quantity offered as a list.
+- **A selection the platform and the inverter number differently is no longer
+  written over the local link at all.** This is the same defect without the
+  refusal, and it is the worse half: devcode 2477 offers Charger Source
+  Priority as 0, 1 and 2 labelled "Solar priority", "Solar and mains" and
+  "Solar only", which are the PI30 codes 1, 2 and 3, so a write of "Solar
+  priority" sent PCP00 and set utility first - and the inverter reported that
+  value back, so the write was reported as verified (#87). An undeclared
+  selection now has no local route and takes the cloud path it took before
+  local control existed. Local control is off by default, so this affected
+  only entries that had turned it on.
+- "Download diagnostics" works on a local-only entry. Both downloads read a
+  cloud-only counter off the coordinator, so the request failed with
+  `AttributeError: 'DessMonitorLocalCoordinator' object has no attribute
+  'stale_cloud_serials'` and Home Assistant answered HTTP 500 - on the one
+  mode whose owners are asked for a download most often (#86, thanks to
+  @onslaugh2 for reporting it on an Axpert VM IV 6 kW). A local entry's file
+  now also carries its transport, the inverters the local side saw and their
+  protocol, which no local download used to contain at all. The entry
+  download drops `devices_on_a_retained_cloud_payload` on a local entry
+  rather than inventing a figure: retention is a cloud mechanism and there is
+  no cloud payload to retain. The tests for both buttons now run against the
+  real local coordinator, because a mock answers for any attribute, which is
+  how this reached a stable release.
+- A local entry no longer reports its collector's tunnel code as an
+  unsupported devcode. The log asked the owner to request devcode support for
+  the number 258 while the entry published all of its readings, because a
+  PI30 or P17 device has no cloud devcode profile and reports the tunnel code
+  in its place; a local driver resolves every title itself, so nothing is
+  missing (#86). A device download on a local entry also stops reporting a
+  failed API call for control fields there is no cloud client to ask for.
+
+## [3.1.0-rc.2] - 2026-11-23
+
+### Added
+- **Devcode 659 is supported**: a Windon LT21HD three-phase on-grid string
+  inverter with two trackers, reported through ShineMonitor (#92, thanks to
+  @Position59 for the download). Four of its forty-three readings reached a
+  sensor; every one of the twenty-eight that carry a unit now does, which is
+  all three phases, both trackers, the day and lifetime energy counters and
+  both heatsinks. Like devcode 567 it leaves the plant summary's `outpower`,
+  `energyToday` and `energyTotal` at `0.0000` while reporting 984 W and
+  79241.471 kWh itself, so Output Power and both energy sensors read zero on
+  a working inverter; all three summary titles are mapped onto the device's
+  own readings.
+
+  Thirteen new canonical sensors come with it, all for quantities this
+  collector measures per phase or per tracker where the existing keys hold
+  one figure: a grid frequency, active power and apparent power for each of
+  the three phases, an insulation resistance for each of the two trackers,
+  both heatsink temperatures, and whether the inverter restarts itself. The
+  per-phase apparent power is published in volt-amperes although the
+  collector labels it `W`, because 366 against 333 W of active power on the
+  same phase is the order the two come in.
+- **Devcode 2500 is supported**: a MUST PH18 5.5KW grid-tied hybrid on
+  DessMonitor, behind a WI-FI PLUG14 RTU (#91, thanks to @spintexroad for the
+  download). It speaks the same vocabulary as devcode 697, so twenty-three of
+  its twenty-five readings already reached a sensor; the two that did not are
+  the lifetime array counter, 2556.30 kWh, and the exported counter
+  attributed to the array, both of which carry a unit and so held the Repairs
+  card open. One new sensor comes with it, **Accumulated PV Sell Energy**.
+  That counter reads the same figure as Accumulated Sell Energy in the
+  download and still gets a sensor of its own, because a system exporting
+  only solar reports the same figure on both whether or not they are one
+  register.
+- **Devcode 567 is supported**: a three-phase on-grid string inverter with up
+  to four trackers and twenty strings, reported through ShineMonitor (#89,
+  thanks to @eimantasq for the download, for naming the unit as the cause of
+  the nameplate figure, and for finding the serial number in their own file
+  before attaching it). Of the 53 readings that carry a unit, 45 reached no
+  sensor at all and every one of them now does: the whole three-phase AC side
+  including the line-to-line voltages, all four trackers, all twenty string
+  currents, both energy counters, the efficiency, the insulation resistance
+  and the running times.
+  The plant summary's `outpower`, `energyToday` and `energyTotal` read
+  `0.0000` on this devcode while the inverter reports the real figures, which
+  is why Output Power and both energy sensors read zero on a working
+  inverter; all three summary titles are mapped onto the device's own
+  readings, so the zero stops publishing an entity beside the real one.
+
+  Twelve new canonical sensors come with it, plus the twenty string currents,
+  none of which existed: the three line-to-line grid voltages, the three grid
+  phase currents, per-tracker DC power, inverter efficiency, insulation
+  resistance, daily running time, the inverter switch status, the PID status
+  and the vendor's CO2 figure. The per-tracker keys are named `MPPT1 Power`
+  to `MPPT4 Power` rather than `PV1 Power`: devcodes 4743 and 6544 already
+  send that title and 4743 declares its three in `ABSENT_READINGS` because
+  the collector reports 0 while the string produces, so a key of that name
+  would have given those installations three sensors reading zero in
+  daylight. The CO2 figure is published in tonnes although the collector
+  labels it kg: it is the lifetime generation counter times 0.997 divided by
+  a thousand, and the owner's app shows 24024.3 kg against the collector's
+  24.02 for the same moment (#89).
+
+  Its two clock controls are declared in `TEMPORAL_CONTROLS`, which retires
+  the number entity a clock value cannot be shown in. *Upgrade note:* that
+  applies only to devcode 567, which no release has published controls for
+  under a profile, so no existing entity moves.
+
+### Changed
+- **A control entity on a devcode whose template nobody has reviewed is now
+  created disabled** (#90, reported by @eimantasq in #89, who found it on
+  their own account and disabled all of it before anything was written).
+  Every field an account's control template advertises becomes an entity, and
+  the template belongs to the vendor's platform. On devcode 567 that is 96
+  fields, among them shutdown, start, reset, firmware upgrade, "format M4 SPI
+  flash", four internal debugging parameters and three levels each of grid
+  over- and undervoltage and over- and underfrequency protection with their
+  trip times - the settings a grid operator approves a three-phase unit
+  against. They were all created ready to use.
+
+  So the default is now off, and a devcode profile turns it on for the
+  template it has actually read. Eleven profiles declare theirs reviewed -
+  devcodes 2376, 2449, 2452, 2477, 2500, 6416, 6489, 6513, 6514, 6544 and
+  697 - and within those, 30 individual fields are still created disabled:
+  restoring factory defaults, clearing a lifetime generation counter,
+  switching the inverter off, a grid-compliance standard, and devcode 697's
+  nine factory calibration coefficients, which do not change what the
+  inverter does but change what it reports. Devcodes 518 and 567 were read
+  and declare nothing on purpose: both advertise installer templates and not
+  one field in either is an owner's setting.
+
+  A rule on the field itself was tried first and the committed templates rule
+  it out. Searching all of them for shutdown, restart, upgrade and reset
+  matches 25 fields of which 19 are ordinary settings - six spellings of
+  "Overload automatic restart" alone - while the field that restores factory
+  defaults is called `eybond_ctrl_99`. The ids collide outright: `shutdown`
+  is "Shutdown command" on devcode 567 and "Offgrid Switch" on devcode 697,
+  so a rule keyed on it would disable the wrong control.
+
+  *Upgrade note:* **nothing an existing installation publishes changes.** The
+  default applies only to an entity being registered for the first time, so
+  every control you already have stays exactly as it is, enabled or disabled
+  as you left it. It takes effect on a new installation, on a new inverter
+  added to an account, and on a control a devcode starts advertising. If a
+  control you want is missing on a new install, enable it in **Settings >
+  Devices & services > Entities**; on a devcode not in the list above, that
+  is because no diagnostics download of its control template has been
+  contributed yet, and attaching one is what turns it on for everybody.
+
+### Fixed
+- **Devcode 2449's Charging Source Priority now writes over the local link**
+  when settings control over the local link is on, instead of going through
+  the cloud (#88, thanks to @DennisAppelman for testing the candidate and for
+  the download that settled it). The platform spells it "Charging Source
+  Priority" and the inverter's own PI30 command is "Charger Source Priority",
+  one letter apart, so the two names did not pair and nothing declared them.
+  The download shows the inverter reporting the setting under `PCP` at the
+  value the reporter had just set from Home Assistant, which confirms the
+  option codes on hardware rather than by decoding them, and shows the
+  pairing report finding no candidate of its own. A local write is reported
+  only once the inverter has acknowledged it and read the new value back.
+
+## [3.1.0-rc.1] - 2026-11-20
+
+First candidate for 3.1.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v3.1.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+Nothing in it moves, renames or removes an entity. `tools/entity_inventory.py`
+builds every sensor the integration would publish for all twenty devices in
+the committed evidence, and against v3.0.0 this branch changes and removes no
+line; the twenty it adds are the freshness sensor, one per device.
+
+**Testing focus:** one change here cannot be verified without hardware, and it
+is the reason this is a candidate rather than a release.
+
+Power readings a collector labels in kilowatts are now scaled to the watts
+their sensor publishes. That is the #89 fix - a 10 kW inverter whose nameplate
+rating read 10.0 W - and like the watt-hour scale in 2.8.0 it is deliberately
+generic, so it applies to any collector that labels a reading that way rather
+than to one devcode. If your power figures were already correct they must stay
+correct: a power sensor that suddenly reads a thousand times high is the thing
+to report, and please report it with a diagnostics download. None of the twenty
+committed downloads carries a kilowatt-labelled reading on a watt sensor, so no
+supported devcode is expected to change what it publishes.
+
+Two reporters have a specific check each:
+
+- @DennisAppelman (#87, #88): with **Settings control over the local link** on,
+  set Output Source Priority and then Charging Source Priority, and attach a
+  diagnostics download from the integration card. The questions are whether
+  `control_transport` reads `local` for the first, and what
+  `local_control.cloud_pairing` reports for the second, which is what #88 is
+  waiting on.
+- @eimantasq (#89): take a diagnostics download and check that `Device e-SN` is
+  blank in it before attaching anything, and that **Rated Power** now reads
+  10 kW rather than 10.0 W.
+
+Everything else in this candidate is the diagnostics download: it now carries
+the values a collector has been seen to send, what each device actually
+publishes, and the cloud's own titles behind a local overlay. None of that
+changes an entity.
+
+### Added
+- **The download records what a device actually publishes**, keyed by sensor
+  rather than by name: how many entities exist for each sensor, how many are
+  disabled, whether each reads a value or `unknown` or `unavailable`, whether
+  the owner has renamed one, and any display name that more than one sensor
+  publishes. The file said which readings reach a sensor and nothing about the
+  entities, and two defects cost weeks for want of it - a reporter was asked
+  twice for an entity id from Developer tools because a renamed entity and a
+  recorder problem cannot be told apart from a download (#53), and a device
+  published two entities under one name with the one the plant summary fed
+  reading 0 kWh, which nobody saw until an owner happened to look at the pair
+  (#58). That second defect now names itself in the file (#63, item 4).
+
+  No entity id and no friendly name go in it. Both carry whatever the owner
+  called the thing and these files are attached to public issues, so the
+  section is keyed by the integration's own sensor key and says only *that*
+  something was renamed.
+- **The download records every value a reading has been seen to answer with
+  a word**, per device, with how many times it was seen since the entry was
+  loaded. A snapshot carries whichever value was current when it was taken,
+  and the mapping tables - `OPERATING_MODE_MAPPING` and the two priority
+  tables - are written from the *set* of values a collector emits, so a
+  download taken at midday said nothing about the other six modes. This is
+  the one thing the integration can report that no snapshot can, because it
+  polls continuously (#63, item 2). `tools/triage.py` now names the values an
+  enum sensor would reject outright, which is a sensor reading `Unknown` on
+  the owner's system whether or not anyone has noticed.
+
+  Bounded and narrow by design: text only, never a number and never a clock
+  or a date, at most twelve distinct values per reading and 128 readings per
+  device, with a flag on any reading that reached the cap. Identifying titles
+  are excluded as they are everywhere else in the file, and only what a
+  collector sent is kept - never a value this integration derived.
+- **A hybrid download is now full devcode evidence.** The local overlay keeps
+  the local driver's own title for every reading it replaces, so the readings
+  in the file carried the local spellings and the vendor's names for those
+  same readings were gone - which made a working hybrid setup the weakest
+  kind of file to answer a devcode question from, and in the #53 download it
+  left nothing of the cloud's own titles but the readings no local driver
+  answers. The report now carries a `cloud_under_overlay` section with the
+  cloud's title, value and unit for each reading behind the overlay,
+  classified against the devcode profile rather than against the local
+  driver, and inside the report's checksum. `tools/triage.py` and
+  `tools/analysis_coverage.py` read those titles with the published ones, so
+  a hybrid owner's download guards their devcode's mappings as a cloud
+  owner's does (#63, item 3). It is the cloud snapshot already in memory and
+  it discloses nothing the readings did not: the serial, the collector
+  product number and the network addresses are redacted there as they are
+  everywhere else in the file.
+- **A `Last Reading Received` diagnostic sensor per device, carrying when this
+  integration last saw that device report something new.** The vendor cloud
+  answers `queryDeviceLastData` with the reading it stored before a collector
+  went quiet, so the refresh succeeds, the device stays in the snapshot, Data
+  Source still says `Cloud`, and every entity goes on publishing values that
+  are no longer live - which is what #78 was filed for, after a collector
+  dropped off Wi-Fi and automations kept acting on the numbers.
+
+  The value is this host's clock, never the vendor's: the payload's own
+  timestamp is the inverter's wall clock in a timezone this integration
+  deliberately does not assume, so what is used is that the string *changes*.
+  @ballhtml's measurement is what made that possible - a collector taken off
+  the network held its stored timestamp for the whole outage and advanced it
+  on the next frame.
+
+  No existing entity's availability is touched, and no threshold is chosen
+  here: marking measurement entities unavailable past some age would change
+  what 13,000 installations publish on a figure nobody has the evidence to
+  pick, and entities going unavailable is the symptom #54 and #55 were filed
+  for. The threshold belongs to the automation that reads the sensor, and
+  README.md and docs/LOCAL_MODE.md show one. The `observed_change` attribute
+  is `false` until the timestamp has been seen to move, which says plainly
+  that the age implied just after a restart is a lower bound.
+- **The download carries the local-mode evidence that used to exist only in
+  the debug log.** Per transport: the bounded, payload-free probe record from
+  discovery - every query with its protocol, command, response size, elapsed
+  milliseconds and outcome - and the last failed discovery beside the last
+  one, because a collector that failed twice and then worked leaves the
+  diagnosis in the failure. Also the collector session: how long it has been
+  up, how long since its last heartbeat, how many requests are in flight,
+  the request timeout, and whether this collector has been seen to answer a
+  query we had already given up on, which is the flag that explains a
+  collector failing at a short polling interval and working at a long one
+  (#53). Also the configured poll interval and how long ago a poll last
+  succeeded. Per inverter: the queries its driver has stopped sending and the
+  optional ones it has seen fail, which is what answers "my PV2 sensors
+  stopped". All of it was already in memory; none of it reached the file
+  (#63).
+- `tools/entity_inventory.py` builds every sensor the integration would
+  publish for every device under `docs/evidence/`, one line per entity with
+  its unique id, name, unit, device class, state class and category, so two
+  checkouts can be diffed. That comparison is how a release states what it
+  moves, and it was done by hand until now; docs/RELEASE_GUIDE.md makes it a
+  pre-release step. Against v3.0.0 this branch adds 20 lines - the new
+  freshness sensor, one per device in the committed evidence - and changes or
+  removes none.
+- Every reading row in a support report names the unit its entity publishes
+  beside the unit the payload declared. The row carried the raw unit and the
+  resolved key, so a value sitting on a sensor of a different scale was
+  invisible until someone noticed a wrong figure: the PI18 watt-hour total on
+  a kWh sensor had to be inferred by comparing it against the cloud's own
+  parameters (#63, item 5).
+- The download on the integration card carries the `local_control` section
+  per device - the settings the inverter reported, the limits it accepts, the
+  cloud control each one pairs with, and the outcome of every local write in
+  the session. Only the device button produced it, while the support guide
+  names the entry download first, so an owner who attached that file sent
+  nothing about local control at all (#87, #63).
+- The pairing report names both option vocabularies: the values the local
+  command takes, beside the cloud control's own. One list alone cannot be
+  read as a mapping, which is what a `local_control_option_values`
+  declaration has to state (#87, #63).
+
+### Changed
+- **The Software Version sensor publishes the version the collector sent,
+  as text.** It was the one key in `SENSOR_TYPES` that measures nothing and
+  was still read as a number, so a version written `V1.08`, `1.08.3` or
+  `0080-A` could not survive `float()` and the sensor read unknown with
+  nothing in the log to say why - the same defect the four per-subsystem
+  status sensors had (#81) - while a version written `1.080` was published as
+  1.08, losing the vendor's last digit (#84).
+
+  *Upgrade note:* no entity is added, renamed or removed, and no unit, device
+  class, state class or category changes. On an installation whose collector
+  answers a numeric-looking version the published state changes from `1.08`
+  to the vendor's own `1.080`, so a template or automation that compares it
+  as a number needs to compare it as a string instead. On one whose collector
+  answers anything else the sensor starts carrying a value for the first
+  time. None of the nineteen downloads committed under
+  `docs/evidence/devcodes/` carries this reading at all, so no account is
+  known to publish the sensor; this was shipped separately from #81 rather
+  than ridden along with it because it is a change to a published state
+  either way.
+
+### Fixed
+- A reading a collector labels in kilowatts now reaches its watt sensor as
+  watts. The devcode 567 download in #89 comes from a 10 kW three-phase
+  grid-tie inverter that labels its whole AC side in kW and kVar, and its
+  nameplate rating was published as **10.0 W** (#89, thanks to @eimantasq for
+  the report and for naming the unit as the cause). This uses the same
+  mechanism as the watt-hour scale from #71: the unit the collector declares
+  decides it, so a collector that already reports watts is untouched. None of
+  the twenty downloads committed under `docs/evidence/devcodes/` carries a
+  kilowatt-labelled reading on a watt sensor, so no supported devcode is
+  known to change what it publishes.
+
+  *Upgrade note:* no entity is added, renamed or removed. On an installation
+  whose collector labels a power reading in kilowatts, that sensor's state
+  becomes a thousand times larger - which is the correct figure - and its
+  long-term statistics carry the old one before the upgrade. The summary
+  endpoint's **Inverter Output Power** is unaffected: it is the one power
+  sensor whose own unit is kilowatts.
+- The inverter's electronic serial number no longer reaches the diagnostics
+  download in plain text. Devcode 567 reports it as a reading titled
+  `Device e-SN` and advertises it as a control field with the id `sn`, and
+  neither seam blanked it: the reading matched none of the identifying names,
+  and a control was matched on its display name alone rather than on its id
+  as well (#89, thanks to @eimantasq for spotting it in their own file before
+  attaching it). The cost was not only the disclosure. Removing it by hand is
+  what the support guide asks for, and it breaks the checksum the report is
+  signed with, which is the one thing that makes a committed evidence file
+  checkable - so a carefully redacted download could no longer be committed
+  as the evidence for the devcode it was taken for.
+- A dropdown written over the local link now sends the value the inverter's
+  own command takes. A cloud control and a local setting are the same
+  register, and their option vocabularies are not: devcode 2449 offers Output
+  Source Priority as 12336, 12337 and 12338, which are the two ASCII digits
+  of the PI30 parameter read as one 16-bit number, where the POP command
+  takes 0, 1 and 2. The platform's code went to the inverter unchanged, was
+  refused, and the write fell back to the cloud (#87, thanks to
+  @DennisAppelman for the report and for naming the mapping). Devcodes 2449,
+  2452, 2477 and 6416 declare the vocabularies their downloads show, and a
+  label that is the same word on both sides - `UPS`, `AGM` - pairs without a
+  declaration, as does a quantity offered as a list.
+- **A selection the platform and the inverter number differently is no longer
+  written over the local link at all.** This is the same defect without the
+  refusal, and it is the worse half: devcode 2477 offers Charger Source
+  Priority as 0, 1 and 2 labelled "Solar priority", "Solar and mains" and
+  "Solar only", which are the PI30 codes 1, 2 and 3, so a write of "Solar
+  priority" sent PCP00 and set utility first - and the inverter reported that
+  value back, so the write was reported as verified (#87). An undeclared
+  selection now has no local route and takes the cloud path it took before
+  local control existed. Local control is off by default, so this affected
+  only entries that had turned it on.
+- "Download diagnostics" works on a local-only entry. Both downloads read a
+  cloud-only counter off the coordinator, so the request failed with
+  `AttributeError: 'DessMonitorLocalCoordinator' object has no attribute
+  'stale_cloud_serials'` and Home Assistant answered HTTP 500 - on the one
+  mode whose owners are asked for a download most often (#86, thanks to
+  @onslaugh2 for reporting it on an Axpert VM IV 6 kW). A local entry's file
+  now also carries its transport, the inverters the local side saw and their
+  protocol, which no local download used to contain at all. The entry
+  download drops `devices_on_a_retained_cloud_payload` on a local entry
+  rather than inventing a figure: retention is a cloud mechanism and there is
+  no cloud payload to retain. The tests for both buttons now run against the
+  real local coordinator, because a mock answers for any attribute, which is
+  how this reached a stable release.
+- A local entry no longer reports its collector's tunnel code as an
+  unsupported devcode. The log asked the owner to request devcode support for
+  the number 258 while the entry published all of its readings, because a
+  PI30 or P17 device has no cloud devcode profile and reports the tunnel code
+  in its place; a local driver resolves every title itself, so nothing is
+  missing (#86). A device download on a local entry also stops reporting a
+  failed API call for control fields there is no cloud client to ask for.
+
 ## [3.0.0] - 2026-11-17
 
 This stable release includes all changes since 2.8.0, including everything
@@ -2769,7 +3494,10 @@ First release candidate for 2.4.0. See the [HACS prerelease installation steps](
 - Code quality enforcement (Black, isort, flake8)
 - Hassfest and HACS validation
 
-[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0...v3.1.0
+[3.1.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.1.0-rc.1...v3.1.0-rc.2
+[3.1.0-rc.1]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0...v3.1.0-rc.1
 [3.0.0]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v2.8.0...v3.0.0
 [3.0.0-rc.3]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0-rc.2...v3.0.0-rc.3
 [3.0.0-rc.2]: https://github.com/andreas-glaser/ha-dessmonitor/compare/v3.0.0-rc.1...v3.0.0-rc.2

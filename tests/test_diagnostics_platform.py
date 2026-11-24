@@ -285,6 +285,18 @@ async def test_the_hub_report_is_json_serializable(hass: HomeAssistant) -> None:
     local = MagicMock()
     local.connected = True
     local.last_update_success = True
+    # Local control is off on this entry, which is the default, so the local
+    # side offers no settings; a mock that answers for every attribute would
+    # otherwise put objects in the file that cannot be written as JSON.
+    local.control_enabled = False
+    local.settings_snapshot.return_value = None
+    local.settings_error.return_value = None
+    local.diagnostics.return_value = {
+        "poll_interval_seconds": 60,
+        "driver": "p17",
+        "session": {"connected": True, "answers_late": False},
+        "devices": {},
+    }
     local.device_code = 2452
     local.data = {"SN-1": {}}
     coordinator.locals = (local,)
@@ -331,6 +343,18 @@ async def test_a_local_transport_reports_the_devices_it_saw(
     local = MagicMock()
     local.connected = True
     local.last_update_success = True
+    # Local control is off on this entry, which is the default, so the local
+    # side offers no settings; a mock that answers for every attribute would
+    # otherwise put objects in the file that cannot be written as JSON.
+    local.control_enabled = False
+    local.settings_snapshot.return_value = None
+    local.settings_error.return_value = None
+    local.diagnostics.return_value = {
+        "poll_interval_seconds": 60,
+        "driver": "p17",
+        "session": {"connected": True, "answers_late": False},
+        "devices": {},
+    }
     local.device_code = 258
     local.data = {
         "LOCAL-SN": {
@@ -473,9 +497,9 @@ async def test_diagnostics_report_the_control_values_the_entities_show(
     hass.data[DOMAIN] = {"entry-1": coordinator}
     device = DeviceEntry(identifiers={(DOMAIN, "SN-1")})
 
-    config = (await diagnostics_platform.async_get_device_diagnostics(hass, entry, device))[
-        "configuration"
-    ]
+    config = (
+        await diagnostics_platform.async_get_device_diagnostics(hass, entry, device)
+    )["configuration"]
 
     # Read through an explicit control read, and reported as its label.
     assert config["Buzzer Mode"]["value"] == "Beeps only in fault mode"
@@ -565,9 +589,7 @@ async def test_a_local_setup_error_does_not_print_an_address(
     assert "private ipv4 in subnet 1" in error
     # The subnet numbering is shared with the options, so a reader can still
     # see that the failing bind and the configured listen address are one.
-    assert report["entry_options"][CONF_LOCAL_LISTEN_IP] == (
-        "private ipv4 in subnet 1"
-    )
+    assert report["entry_options"][CONF_LOCAL_LISTEN_IP] == ("private ipv4 in subnet 1")
     assert "8899" in error and "Errno 98" in error
 
 
@@ -587,8 +609,7 @@ def test_every_config_key_is_classified() -> None:
     reporter's collector and listen addresses ended up in an attachment. Adding
     a `CONF_*` constant now fails here until its disclosure is decided.
     """
-    from custom_components.dessmonitor import _ENTRY_DISCLOSURE
-    from custom_components.dessmonitor import const
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, const
 
     config_keys = {
         getattr(const, name)
@@ -614,8 +635,7 @@ async def test_no_configured_value_reaches_the_download_verbatim(
     This sets every known configuration key to a recognisable value and
     asserts that none of them appears in the file as written.
     """
-    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, _PUBLISH
-    from custom_components.dessmonitor import const
+    from custom_components.dessmonitor import _ENTRY_DISCLOSURE, _PUBLISH, const
 
     sentinels: dict[str, str] = {}
     for name in dir(const):
@@ -737,3 +757,243 @@ async def test_a_device_download_is_read_as_evidence(hass: HomeAssistant) -> Non
     assert [record["devcode"] for record in records] == [2341]
     assert records[0]["units"] == {"Battery Capacity": "%"}
     assert records[0]["checksum_valid"] is True
+
+
+def _local_only_coordinator(hass: HomeAssistant, entry_data: dict[str, object]):
+    """Build the real local coordinator, without binding any socket."""
+    from custom_components.dessmonitor.local.coordinator import (
+        DessMonitorLocalCoordinator,
+    )
+
+    coordinator = DessMonitorLocalCoordinator(hass, entry_data)
+    coordinator.async_set_updated_data(
+        {
+            "SN-LOCAL-1": {
+                "collector": {"pn": "Q0000PN0001", "ip": "192.168.18.27"},
+                "device": {
+                    "devcode": 258,
+                    "devaddr": 1,
+                    "local_protocol": "pi30",
+                    "local_address_verified": True,
+                    "connection_type": "local",
+                },
+                "data": [
+                    {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+                    {"title": "Data Source", "val": "Local", "unit": ""},
+                    {"title": "Timestamp", "val": "2026-11-17 18:29:05", "unit": ""},
+                ],
+            }
+        }
+    )
+    return coordinator
+
+
+@pytest.mark.usefixtures("socket_enabled")
+async def test_a_local_only_entry_can_be_downloaded(hass: HomeAssistant) -> None:
+    """The hub download raised AttributeError on every local-only entry (#86).
+
+    Asserted against the real local coordinator rather than a mock of one:
+    a mock answers for any attribute, which is why the entry download could
+    reach a stable release while failing on the mode whose owners are asked
+    for a download most often.
+    """
+    entry_data: dict[str, object] = {
+        "connection_type": "local",
+        CONF_LOCAL_LISTEN_IP: "192.168.18.134",
+        "local_collector_ip": "192.168.18.27",
+        "local_tcp_port": 0,
+        "local_udp_port": 58899,
+        "local_poll_interval": 60,
+        "local_device_address": 1,
+    }
+    coordinator = _local_only_coordinator(hass, entry_data)
+    entry = MagicMock()
+    entry.entry_id = "entry-local"
+    entry.data = dict(entry_data)
+    entry.options = {}
+    hass.data[DOMAIN] = {"entry-local": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    serialized = json.dumps(report)
+    assert "192.168.18.134" not in serialized
+    assert "192.168.18.27" not in serialized
+    assert report["coordinator"]["local_only"] is True
+    assert report["coordinator"]["hybrid"] is False
+    # Retention is a cloud mechanism and a local entry has no cloud payload,
+    # so the counter that depends on one is absent rather than invented.
+    assert "devices_on_a_retained_cloud_payload" not in report["coordinator"]
+    (transport,) = report["local"]["transports"]
+    assert transport["devices"] == 1
+    (seen,) = transport["devices_seen"]
+    assert seen["protocol"] == "pi30"
+    assert seen["device_identity"].startswith("sha256:")
+    (device,) = report["devices"]
+    assert device["devcode"] == 258
+    # No cloud client exists here, so the file says nothing was asked for
+    # rather than reporting a failed API call.
+    assert "control_error" not in device
+
+
+@pytest.mark.usefixtures("socket_enabled")
+async def test_a_local_device_can_be_downloaded(hass: HomeAssistant) -> None:
+    """The device button has to work on a local entry too (#86)."""
+    coordinator = _local_only_coordinator(
+        hass,
+        {
+            "connection_type": "local",
+            CONF_LOCAL_LISTEN_IP: "192.168.18.134",
+            "local_collector_ip": "192.168.18.27",
+            "local_tcp_port": 0,
+        },
+    )
+    entry = MagicMock()
+    entry.entry_id = "entry-local"
+    entry.data = {}
+    entry.options = {}
+    hass.data[DOMAIN] = {"entry-local": coordinator}
+    device = DeviceEntry(identifiers={(DOMAIN, "SN-LOCAL-1")})
+
+    report = await diagnostics_platform.async_get_device_diagnostics(
+        hass, entry, device
+    )
+
+    assert report["support_report"]["devcode"] == 258
+    assert "battery_config_error" not in report
+    assert report["local_control"] == {"enabled": False}
+
+
+def test_a_local_tunnel_code_is_not_a_missing_devcode_profile(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The log told owners to request support for a collector tunnel code (#86)."""
+    from custom_components.dessmonitor.device_support.device_registry import (
+        _WARNED_UNSUPPORTED_DEVCODES,
+        apply_devcode_transformations,
+        note_local_transport_devcode,
+    )
+
+    _WARNED_UNSUPPORTED_DEVCODES.discard(258)
+    note_local_transport_devcode(258)
+    with caplog.at_level("WARNING"):
+        point = apply_devcode_transformations(258, {"title": "Battery Voltage"})
+
+    assert point["title"] == "Battery Voltage"
+    assert "Unsupported devcode" not in caplog.text
+
+
+@pytest.mark.usefixtures("socket_enabled")
+async def test_a_local_entry_download_carries_the_probe_evidence(
+    hass: HomeAssistant,
+) -> None:
+    """The highest-value gap in #63, asserted on the real objects.
+
+    ``ProbeDiagnostics.as_dict()`` reached the debug log and nothing else, and
+    so did the queries a driver had stopped sending, the collector session and
+    the poll age. That is the difference between a local-mode thread costing
+    one attached file and costing two weeks of logs.
+    """
+    from custom_components.dessmonitor.local.diagnostics import (
+        ProbeAttempt,
+        ProbeDiagnostics,
+    )
+    from custom_components.dessmonitor.local.drivers import LocalDevice
+
+    entry_data: dict[str, object] = {
+        "connection_type": "local",
+        CONF_LOCAL_LISTEN_IP: "192.168.18.134",
+        "local_collector_ip": "192.168.18.27",
+        "local_tcp_port": 0,
+        "local_poll_interval": 30,
+    }
+    coordinator = _local_only_coordinator(hass, entry_data)
+    probe = ProbeDiagnostics()
+    probe.record(
+        ProbeAttempt(
+            protocol="pi30",
+            command="QPIRI",
+            device_code=258,
+            collector_address=1,
+            device_address=1,
+            response_bytes=98,
+            elapsed_ms=240,
+        )
+    )
+    probe.record(
+        ProbeAttempt(
+            protocol="pi30",
+            command="QPIGS",
+            device_code=258,
+            collector_address=1,
+            device_address=1,
+            outcome="timeout",
+        )
+    )
+    coordinator._probe = probe
+    coordinator._devices = {
+        "SN-LOCAL-1": LocalDevice(
+            driver_key="pi30",
+            transport_device_code=258,
+            collector_address=1,
+            device_address=1,
+            entity_device_code=258,
+            serial="SN-LOCAL-1",
+            model="PI30 inverter",
+            firmware="00073.08",
+            disabled_queries={"QPIGS2"},
+            optional_query_failures={"QPIGS2": 3},
+        )
+    }
+    coordinator._polled_serials = {"SN-LOCAL-1"}
+    entry = MagicMock()
+    entry.entry_id = "entry-local"
+    entry.data = dict(entry_data)
+    entry.options = {}
+    hass.data[DOMAIN] = {"entry-local": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(hass, entry)
+
+    (transport,) = report["local"]["transports"]
+    assert transport["poll_interval_seconds"] == 30
+    assert transport["discovery"]["outcomes"] == {"success": 1, "timeout": 1}
+    assert [attempt["command"] for attempt in transport["discovery"]["attempts"]] == [
+        "QPIRI",
+        "QPIGS",
+    ]
+    assert transport["session"]["request_timeout_seconds"] == 3.0
+    assert transport["seconds_since_a_successful_poll"] is None
+    (seen,) = transport["devices_seen"]
+    assert seen["disabled_queries"] == ["QPIGS2"]
+    assert seen["optional_query_failures"] == {"QPIGS2": 3}
+
+    # Payload-free and identifier-free, like the rest of the file: command
+    # names and numbers only, no serial, no collector product number, no
+    # network address.
+    serialized = json.dumps(report)
+    for secret in ("SN-LOCAL-1", "Q0000PN0001", "192.168.18.27", "192.168.18.134"):
+        assert secret not in serialized
+
+
+def test_a_reading_row_carries_the_unit_its_entity_publishes() -> None:
+    """Item 5 of #63: the raw unit alone could not show a scale mismatch.
+
+    The PI18 watt-hour total sitting on a kWh sensor had to be inferred by
+    comparing it against the cloud's own parameters; with both units on the
+    row it is legible at a glance.
+    """
+    from custom_components.dessmonitor.support_report import build_support_report
+
+    report = build_support_report(
+        devcode=6515,
+        readings=[
+            {"title": "Energy Total", "val": "10104399", "unit": "Wh"},
+            {"title": "Battery Voltage", "val": "53.1", "unit": "V"},
+            {"title": "Timestamp", "val": "2026-11-16 18:26:52", "unit": ""},
+        ],
+    )
+
+    rows = {row["title"]: row for row in report["readings"]}
+    assert rows["Energy Total"]["sensor_unit"] == "kWh"
+    assert rows["Battery Voltage"]["sensor_unit"] == "V"
+    # A row that reaches no sensor has no sensor unit to report.
+    assert rows["Timestamp"]["sensor_unit"] is None

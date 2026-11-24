@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import re
+from collections.abc import Mapping
 from typing import Any
 
 # Intentionally no intra-package imports at module scope. The contributor CLI
@@ -96,31 +97,116 @@ def resolved_key_for(devcode: Any, point: dict[str, Any]) -> str | None:
     return resolve_sensor_key(mapped, title)
 
 
-def build_support_report(
-    *,
-    devcode: Any,
-    readings: list[dict[str, Any]],
-    device_serial: Any = None,
-    collector_product_number: Any = None,
-    device_address: Any = None,
-    control_fields: dict[str, Any] | None = None,
-    parameters: dict[str, Any] | None = None,
-    local: dict[str, Any] | None = None,
-    summary_not_merged: list[dict[str, Any]] | None = None,
-    api_profile: str | None = None,
-    integration_version: str | None = None,
-    source: str = "integration_diagnostics",
-) -> dict[str, Any]:
-    """Build one device's support report from readings already in hand.
+def _sensor_unit_for(key: str | None) -> str | None:
+    """Return the unit the entity for this key publishes, if it has one."""
+    if not key:
+        return None
+    from .const import SENSOR_TYPES
 
-    ``readings`` are raw cloud or local data points, each with ``title``,
-    ``val`` and ``unit``. Every reading carries its unit here, where a CLI
-    analysis records one only for the first twenty, so a report built from this
-    is the better evidence for the coverage guard (#60).
+    config = SENSOR_TYPES.get(key)
+    if not isinstance(config, Mapping):
+        return None
+    unit = str(config.get("unit") or "").strip()
+    return unit or None
+
+
+# How many distinct values one reading may collect, and how many readings one
+# device may collect them for. A vendor's state set is small - the canonical
+# operating mode list is eight long - so a reading that reaches the cap is
+# reporting something other than a state, and the cap is what stops it growing
+# without bound. Both are per device.
+OBSERVED_VALUES_PER_READING = 12
+OBSERVED_READINGS_PER_DEVICE = 128
+
+# A value that is a date or a clock. These are not states: an inverter clock
+# reading fills the cap with twelve different strings inside twelve minutes and
+# evicts the state words the cap exists to hold. The schedule boundaries on a
+# devcode 6515 account read "16:32" and "OFF" through one sensor, and it is
+# "OFF" that a mapping needs.
+_TEMPORAL_VALUE = re.compile(r"^\s*(\d{4}-\d{2}-\d{2}|\d{1,2}:\d{2}(:\d{2})?)\b")
+
+
+def is_enum_shaped_value(value: Any) -> bool:
+    """Return whether a value is a vendor's word for a state.
+
+    A reading the vendor answers with a word needs a mapping - its operating
+    mode, its priorities, its status texts - and the set of words a collector
+    emits is what a mapping is written from. A number needs none, and a number
+    collected as if it were a state is how an enumeration ends up with a
+    hundred options, so this is deliberately narrow: text, not a number, not a
+    clock.
+    """
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if not text or len(text) > 64:
+        return False
+    try:
+        float(text)
+    except ValueError:
+        pass
+    else:
+        return False
+    return not _TEMPORAL_VALUE.match(text)
+
+
+def record_observed_values(
+    store: dict[str, dict[str, Any]], readings: list[dict[str, Any]]
+) -> None:
+    """Add this refresh's state words to what a device has been seen to send.
+
+    The mapping tables need the set of values a collector emits, and a CLI
+    analysis collects a few of them where the diagnostics download carried
+    only whichever value was current when it was taken. The integration runs
+    continuously, so it can do better than either: no single snapshot can
+    produce this (#63, item 2).
+
+    ``store`` is mutated in place and is bounded in both directions. It holds
+    only what a collector sent, never a value this integration derived, so a
+    mapping can be written from it.
+    """
+    for point in readings:
+        title = point.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        title = title.strip()
+        if is_identifier_name(title) or is_attribute_reading(title):
+            continue
+        value = point.get("val", point.get("value"))
+        if not is_enum_shaped_value(value):
+            continue
+        text = str(value).strip()
+        record = store.get(title)
+        if record is None:
+            if len(store) >= OBSERVED_READINGS_PER_DEVICE:
+                continue
+            record = {"values": [], "observations": 0, "truncated": False}
+            store[title] = record
+        record["observations"] += 1
+        values: list[str] = record["values"]
+        if text in values:
+            continue
+        if len(values) >= OBSERVED_VALUES_PER_READING:
+            # Kept rather than rotated: the first values a collector sends are
+            # the ones a mapping is written from, and a reading that overflows
+            # this is not reporting a state. The flag says so in the file.
+            record["truncated"] = True
+            continue
+        values.append(text)
+
+
+def _classify_readings(
+    devcode: Any, readings: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Return one row per reading, and what those rows cover.
+
+    Separated from ``build_support_report`` because a hybrid device's download
+    classifies two sets of readings: the ones Home Assistant published and the
+    cloud's own, which the local overlay replaced (#63).
     """
     from .device_support import is_absent_reading, is_setting_reading
 
-    reading_rows: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     unresolved_with_unit: list[dict[str, str]] = []
     unresolved_without_unit: list[str] = []
     resolved_keys: set[str] = set()
@@ -142,11 +228,23 @@ def build_support_report(
         title = title.strip()
         unit = str(point.get("unit") or "").strip()
         identifying = is_identifier_name(title)
-        value = "" if identifying else _as_text(point.get("val"))
+        value = "" if identifying else _as_text(point.get("val", point.get("value")))
         key = resolved_key_for(devcode, point)
 
-        reading_rows.append(
-            {"title": title, "value": value, "unit": unit, "resolved_key": key}
+        rows.append(
+            {
+                "title": title,
+                "value": value,
+                "unit": unit,
+                "resolved_key": key,
+                # The unit the entity publishes, beside the one the payload
+                # declared. A row carried the raw unit and the key and not
+                # this, so a value sitting on a sensor of a different scale
+                # was invisible until someone noticed a wrong figure: the
+                # PI18 watt-hour total on a kWh sensor had to be inferred by
+                # comparing it against the cloud's own parameters (#63, #71).
+                "sensor_unit": _sensor_unit_for(key),
+            }
         )
 
         if key:
@@ -154,23 +252,70 @@ def build_support_report(
             resolved_rows += 1
         elif is_attribute_reading(title):
             attribute_rows += 1
-            continue
         elif is_setting_reading(devcode, title):
             setting_rows += 1
-            continue
         elif is_absent_reading(devcode, title):
             # A field the protocol defines that this hardware never fills: an
             # unused phase, or a per-string power the collector leaves at zero.
             # Counting it as a reading that reaches no entity told the owner in
             # #58 that sixteen readings were missing when none were.
             absent_rows += 1
-            continue
         elif unit:
             unresolved_rows += 1
             unresolved_with_unit.append({"title": title, "unit": unit, "sample": value})
         else:
             unresolved_rows += 1
             unresolved_without_unit.append(title)
+
+    coverage = {
+        "resolved": resolved_rows,
+        # Rows, so that resolved + unresolved == total exactly, even where
+        # a collector repeats a title and the lists below deduplicate it.
+        "unresolved": unresolved_rows,
+        "total": len(rows) - attribute_rows - setting_rows - absent_rows,
+        "excluded": {
+            "attribute_readings": attribute_rows,
+            "declared_settings": setting_rows,
+            "declared_absent": absent_rows,
+        },
+        "sensors": len(resolved_keys),
+        "unresolved_with_unit": sorted(
+            unresolved_with_unit, key=lambda item: item["title"].casefold()
+        ),
+        "unresolved_without_unit": sorted(
+            set(unresolved_without_unit), key=str.casefold
+        ),
+    }
+    return rows, coverage
+
+
+def build_support_report(
+    *,
+    devcode: Any,
+    readings: list[dict[str, Any]],
+    cloud_readings: list[dict[str, Any]] | None = None,
+    observed_values: dict[str, dict[str, Any]] | None = None,
+    entity_inventory: dict[str, Any] | None = None,
+    device_serial: Any = None,
+    collector_product_number: Any = None,
+    device_address: Any = None,
+    control_fields: dict[str, Any] | None = None,
+    parameters: dict[str, Any] | None = None,
+    local: dict[str, Any] | None = None,
+    summary_not_merged: list[dict[str, Any]] | None = None,
+    api_profile: str | None = None,
+    integration_version: str | None = None,
+    source: str = "integration_diagnostics",
+) -> dict[str, Any]:
+    """Build one device's support report from readings already in hand.
+
+    ``readings`` are raw cloud or local data points, each with ``title``,
+    ``val`` and ``unit``. Every reading carries its unit here, where a CLI
+    analysis records one only for the first twenty, so a report built from this
+    is the better evidence for the coverage guard (#60).
+    """
+
+    reading_rows, coverage = _classify_readings(devcode, readings)
 
     profile = _profile_facts(devcode)
     report: dict[str, Any] = {
@@ -183,29 +328,52 @@ def build_support_report(
         "collector_identity": short_identity(collector_product_number),
         "device_address": device_address,
         "support": {
-            "status": classify_support(devcode, unresolved_with_unit),
+            "status": classify_support(devcode, coverage["unresolved_with_unit"]),
             "profile": profile["name"],
             "known_inverters": profile["known_inverters"],
-            "resolved": resolved_rows,
-            # Rows, so that resolved + unresolved == total exactly, even where
-            # a collector repeats a title and the lists below deduplicate it.
-            "unresolved": unresolved_rows,
-            "total": len(reading_rows) - attribute_rows - setting_rows - absent_rows,
-            "excluded": {
-                "attribute_readings": attribute_rows,
-                "declared_settings": setting_rows,
-                "declared_absent": absent_rows,
-            },
-            "sensors": len(resolved_keys),
-            "unresolved_with_unit": sorted(
-                unresolved_with_unit, key=lambda item: item["title"].casefold()
-            ),
-            "unresolved_without_unit": sorted(
-                set(unresolved_without_unit), key=str.casefold
-            ),
+            **coverage,
         },
         "readings": reading_rows,
     }
+
+    if cloud_readings:
+        # What the cloud sent for a device a local overlay is publishing. The
+        # overlay keeps the local title for every reading it replaces, so a
+        # hybrid owner's download carried the local spellings and the vendor's
+        # own titles for those same readings were gone - which made the file
+        # weak devcode evidence precisely because their setup works well
+        # (#63). It is the same row shape as ``readings`` so the tooling reads
+        # one and the other alike, and it is classified against the same
+        # profile so this says what the devcode covers rather than what the
+        # local driver does.
+        cloud_rows, cloud_coverage = _classify_readings(devcode, cloud_readings)
+        report["cloud_under_overlay"] = {
+            "readings": cloud_rows,
+            "coverage": cloud_coverage,
+        }
+
+    if observed_values:
+        # Every value this collector has been seen to answer a word with,
+        # since the entry was last loaded. A download records whichever value
+        # was current when it was taken, and the mapping tables need the set:
+        # OPERATING_MODE_MAPPING for a mode an enum sensor would otherwise
+        # reject, and the priority tables for a label the vendor spells its
+        # own way. The integration polls continuously, so this is the one
+        # thing it can report that no snapshot can (#63, item 2).
+        report["observed_values"] = {
+            title: dict(record)
+            for title, record in sorted(
+                observed_values.items(), key=lambda item: item[0].casefold()
+            )
+        }
+
+    if entity_inventory:
+        # What this device actually publishes, keyed by sensor rather than by
+        # entity id. The report said which readings reach a sensor and nothing
+        # about the entities, so a renamed entity could not be told from a
+        # recorder fault (#53) and two entities under one name went unnoticed
+        # until an owner saw one of the pair reading zero (#58).
+        report["entity_inventory"] = entity_inventory
 
     if control_fields is not None:
         report["control_fields"] = _redacted_controls(control_fields)
@@ -361,7 +529,11 @@ def _redacted_controls(fields: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for name, config in fields.items():
         row = {"name": str(name), **copy.deepcopy(config or {})}
-        if is_identifier_name(str(name)):
+        # The vendor's display name and the field id are two spellings of the
+        # same field and either can be the identifying one: devcode 567's
+        # serial is advertised as a control named "Device e-SN" with the id
+        # "sn", and matching on the name alone let it through (#89).
+        if is_identifier_name(str(name)) or is_identifier_name(str(row.get("id", ""))):
             row["val"] = ""
             row["value"] = ""
         rows.append(row)
@@ -407,6 +579,18 @@ def is_identifier_name(name: str) -> bool:
         "devicesn",
         "collectorsn",
         "invertersn",
+        # The electronic serial number, which devcode 567 reports both as a
+        # reading titled "Device e-SN" and as a control field, and which
+        # reached the file in plain text because neither spelling matched the
+        # names above nor the suffixes below. The owner redacted it by hand,
+        # which broke the checksum their file is signed with and made it
+        # uncommittable as evidence (#89). Listed exactly rather than as an
+        # "esn" suffix: a three-letter suffix is the kind of rule that blanks
+        # a reading nobody meant it to.
+        "esn",
+        "deviceesn",
+        "collectoresn",
+        "inverteresn",
         "pn",
         "collectorpn",
         "mac",
@@ -539,7 +723,20 @@ def normalized_reports(payload: dict[str, Any]) -> list[dict[str, Any]]:
         ]
 
     if "readings" in payload:
-        readings = payload.get("readings") or []
+        # A hybrid device's own rows carry the local driver's spellings, and
+        # the cloud's titles for the same readings sit in the overlay section
+        # beside them. Both are this devcode's evidence, so the record carries
+        # the union: without it a hybrid owner's file guards none of the cloud
+        # titles their devcode sends, which is the shape of evidence #63 item
+        # 3 set out to fix.
+        readings = list(payload.get("readings") or [])
+        overlay = payload.get("cloud_under_overlay")
+        if isinstance(overlay, dict):
+            readings += [
+                reading
+                for reading in overlay.get("readings") or []
+                if isinstance(reading, dict)
+            ]
         return [
             {
                 "devcode": payload.get("devcode"),
@@ -619,3 +816,68 @@ def _units_from_analysis(analysis: dict[str, Any]) -> dict[str, str]:
             if title and unit:
                 units[str(title)] = unit
     return units
+
+
+def unmapped_state_words(report: dict[str, Any]) -> dict[str, list[str]]:
+    """Return the state words a device sent that its enum sensor would reject.
+
+    An enum sensor publishes a fixed option list and Home Assistant discards
+    anything that is not on it, so a mode or priority the vendor spells its
+    own way reads Unknown with nothing in the log to say why. The value that
+    happened to be current when a download was taken says nothing about the
+    rest, which is why this reads ``observed_values`` (#63, item 2): with the
+    set in the file, a missing ``OPERATING_MODE_MAPPING`` entry is visible
+    without waiting for the owner to catch the sensor in that state.
+    """
+    from .const import SENSOR_TYPES
+    from .device_support import (
+        get_all_charger_priorities,
+        get_all_operating_modes,
+        get_all_output_priorities,
+    )
+
+    observed = report.get("observed_values")
+    if not isinstance(observed, Mapping):
+        return {}
+    devcode = report.get("devcode")
+
+    option_sources = {
+        "Operating mode": get_all_operating_modes,
+        "work state": get_all_operating_modes,
+        "Output priority": get_all_output_priorities,
+        "Charger Source Priority": get_all_charger_priorities,
+    }
+
+    rejected: dict[str, list[str]] = {}
+    for title, record in observed.items():
+        if not isinstance(record, Mapping):
+            continue
+        key = resolved_key_for(devcode, {"title": title})
+        config = SENSOR_TYPES.get(key) if key else None
+        if not isinstance(config, Mapping) or config.get("device_class") != "enum":
+            continue
+        source = option_sources.get(str(key))
+        options = set(source() if source else config.get("options") or [])
+        unknown = [
+            str(value)
+            for value in record.get("values") or []
+            # The devcode's own value mapping runs first: that is what an
+            # entity reads, so a value a profile already translates is not a
+            # gap.
+            if _mapped_value(devcode, title, str(value)) not in options
+        ]
+        if unknown:
+            rejected[title] = unknown
+    return rejected
+
+
+def _mapped_value(devcode: Any, title: str, value: str) -> str:
+    """Return a reading's value as the entity reads it, after the profile."""
+    from .device_support import apply_devcode_transformations
+
+    if not devcode:
+        return value
+    mapped = apply_devcode_transformations(
+        int(devcode), {"title": title, "val": value}
+    ).get("val")
+    return str(mapped)

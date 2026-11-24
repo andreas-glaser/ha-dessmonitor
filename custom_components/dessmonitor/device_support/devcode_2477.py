@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from .eybond_voltronic import (
     CHARGER_PRIORITY_MAPPING,
+    LOCAL_CONTROL_OPTION_VALUES,
     OUTPUT_PRIORITY_MAPPING,
     SENSOR_TITLE_MAPPINGS,
     SETTING_READINGS,
@@ -47,6 +48,28 @@ OPERATING_MODE_MAPPING: dict[str, str] = {"Line Mode": "Line"}
 VALUE_TRANSFORMATIONS: dict = {}
 PARAMETER_SENSOR_NAMES: set[str] = set()
 
+# This devcode's control template has been read against the committed
+# evidence, so its controls are registered enabled rather than left for the
+# owner to find (#90).
+#
+# The committed template is 36 owner settings: battery voltages and
+# currents, both priorities, equalization, the LCD and the grid-tie pair.
+#
+# The fields below are registered disabled instead. Each is destructive,
+# irreversible or a grid-compliance setting, and none is something to change
+# by accident; an owner who wants one enables it once.
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore Defaults
+        "cts_restore_defaults",
+        # Clear All Historical Power Generation
+        "pvs_clear_all_generation",
+    }
+)
+
+
 DEVCODE_CONFIG = {
     "device_info": DEVICE_INFO,
     "output_priority_mapping": OUTPUT_PRIORITY_MAPPING,
@@ -57,4 +80,7 @@ DEVCODE_CONFIG = {
     "parameter_sensor_names": PARAMETER_SENSOR_NAMES,
     "control_options_filter": filter_control_options,
     "setting_readings": SETTING_READINGS,
+    "local_control_option_values": LOCAL_CONTROL_OPTION_VALUES,
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
 }

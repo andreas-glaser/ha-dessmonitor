@@ -35,7 +35,15 @@ multi-inverter account, because it covers all of them at once.
 company key and token are redacted, and serial numbers, collector aliases and
 collector product numbers appear only as a `sha256:` correlation hash, so two
 downloads of the same account can still be compared without disclosing either.
-Review it before attaching it, as you should with any diagnostics file.
+The names you have given your own entities are not in it either: the file
+records what each sensor publishes, keyed by the integration's own name for
+it, and says only *that* one was renamed. Review it before attaching it, as
+you should with any diagnostics file.
+
+If you do redact something further, say so in the issue. It changes the
+checksum the report is signed with, and a file that no longer matches its own
+checksum cannot be committed as the evidence for your devcode, so a
+maintainer will ask for a fresh one.
 
 If Home Assistant shows a **Repairs** card saying a devcode has no mappings or
 is missing readings, that card is raised by this check and links here.
@@ -102,6 +110,7 @@ to test. To contribute the mappings yourself, continue with the workflow below.
 4. Write devcode_XXXX.py following the sibling pattern
 5. Register in device_registry.py
 6. Check sensor coverage against the analysis and close the remaining gaps
+6b. Review the control template so its controls are not created disabled
 7. Commit the redacted analysis under docs/evidence/devcodes/  (required)
 8. Update README.md, device_support/README.md, CHANGELOG.md
 9. Run lint/type/format checks
@@ -282,6 +291,15 @@ The Home Assistant enum sensor marks any value outside this list as `unavailable
 - Map a collector-specific value to a new label that you want to expose as-is (e.g. `"Inverter Mode": "Off-grid Mode"`).
 
 Only list modes that are either (a) observed in the analysis, or (b) documented in the inverter manual and likely to appear.
+
+A diagnostics download carries an `observed_values` section per device: every
+value a reading has answered with a word rather than a number since the entry
+was loaded, with how many times it was seen. That is the set this mapping is
+written from, and it is what no single snapshot can show - a download taken
+at midday records one mode and says nothing about the other six. Run
+`tools/triage.py` on the file and it names the values an enum sensor would
+reject outright, which is a sensor reading `Unknown` on the owner's system
+whether or not they have noticed yet.
 
 ### 4.4 `SENSOR_TITLE_MAPPINGS`
 
@@ -628,6 +646,128 @@ The setting keys are the ones declared in
 `custom_components/dessmonitor/local/pi30_settings.py` and
 `local/p17_settings.py`, and `docs/LOCAL_MODE.md` lists them with the command
 that writes each.
+
+### Pairing the options as well as the control
+
+Pairing a control names the register. It does not say what its values mean,
+and for a selection that is a second declaration. The pairing report carries
+both lists for an option setting - the `options` the local command takes, and
+the cloud control's own `options` under `control_fields` - because the two
+vocabularies are usually different:
+
+```json
+{"setting": "output_source_priority", "name": "Output Source Priority",
+ "command": "POP", "kind": "options", "reported": "1",
+ "options": {"0": "Utility first", "1": "Solar first",
+             "2": "Solar → Battery → Utility"}}
+```
+
+against a cloud control offering `12336: Utility Solar Bat`,
+`12337: Solar Utility Bat` and `12338: Solar Bat Utility`. Declare which is
+which:
+
+```python
+LOCAL_CONTROL_OPTION_VALUES: dict[str, dict[str, str]] = {
+    "bse_output_source_priority": {"12336": "0", "12337": "1", "12338": "2"},
+}
+```
+
+wired in as `"local_control_option_values": LOCAL_CONTROL_OPTION_VALUES`.
+
+Two option sets pair themselves and need no declaration: a quantity offered
+as a list, such as a charging current or an output frequency, because one of
+the platform's code and its label is the figure; and a selection whose label
+is the same word on both sides, such as `UPS` or `AGM`.
+
+Everything else is undeclared until a download shows it, and an undeclared
+selection has no local route - the write takes the cloud path it always took.
+That is deliberate. A positional guess is not safe here: devcode 2477 offers
+Charger Source Priority as 0, 1 and 2 labelled "Solar priority", "Solar and
+mains" and "Solar only", which are the PI30 codes 1, 2 and 3, so sending the
+platform's own code would set utility first when the owner asked for solar -
+and the inverter reports that value back, so the write is verified. A refused
+write is visible; this one would not be (#87).
+
+## 6.2 Review the control template
+
+Do this whenever the download carries a `control_fields` section. Until a
+profile declares the review, **every control entity for that devcode is
+created disabled**, so an owner on a new install finds no controls at all.
+That default is deliberate - see below - but it is not where a supported
+devcode should stay.
+
+Every field the account's template advertises becomes an entity, and the
+template is the vendor platform's. Devcode 567 advertises 96 fields including
+shutdown, start, reset, firmware upgrade, "format M4 SPI flash", four internal
+debugging parameters and three levels each of grid over- and undervoltage and
+over- and underfrequency protection with their trip times. Those last ones are
+the settings a grid operator approves a three-phase unit against. All of them
+used to be created ready to use (#90).
+
+No rule on the field itself works. Searching every committed template for
+shutdown, restart, upgrade and reset matches 25 fields of which 19 are
+ordinary settings - six spellings of "Overload automatic restart" alone -
+while the field that restores factory defaults is called `eybond_ctrl_99`.
+The ids collide outright: `shutdown` is "Shutdown command" on devcode 567 and
+**"Offgrid Switch"** on devcode 697. Only a person reading one vendor's
+template can tell them apart, which is what this declaration records.
+
+Read the `control_fields` list in the download and decide, field by field:
+
+```python
+CONTROLS_REVIEWED = True
+
+PROTECTED_CONTROLS: frozenset[str] = frozenset(
+    {
+        # Restore To Default
+        "sys_set_default",
+    }
+)
+```
+
+and register both in `DEVCODE_CONFIG`:
+
+```python
+    "controls_reviewed": CONTROLS_REVIEWED,
+    "protected_controls": PROTECTED_CONTROLS,
+```
+
+Protect a field when it acts rather than sets. The four shapes already
+declared are:
+
+- **Restoring factory defaults** - `sys_set_default`, `cts_restore_defaults`,
+  `cltd_restore_default`, `sys_eybond_ctrl_96` ("Reset User Settings").
+- **Clearing a lifetime counter** - `pvs_clear_all_generation`,
+  `cts_reset_pv_energy_storage`, `sys_eybond_ctrl_44026`, `sys_eybond_ctrl_95`.
+  Irreversible, and the energy dashboard reads those counters.
+- **Switching the inverter off** - `shutdown`/`shutdown_work` where they are
+  the Offgrid and Ongrid switches, `cltd_inverter_remote_switch`, the
+  "Remote switch" fields, `sys_eybond_ctrl_97` ("Output control").
+- **A grid-compliance setting** - `grid_protect_standard`, `safety_standards`,
+  any over/under voltage or frequency threshold or trip time, the
+  residual-current and insulation limits. A grid operator approved the unit
+  against these.
+
+Devcode 697 adds a fifth: nine **calibration coefficients**. A coefficient
+does not change what the inverter does, it changes what the inverter reports,
+so a nudged one falsifies every reading downstream of it and nothing says so.
+
+If every field in the template falls into those shapes, the template is an
+installer's and not an owner's. Declare nothing at all rather than reviewing
+it and protecting all of it - that is what devcodes 518 and 567 do, and
+`tests/test_control_default_enabled.py` asserts both end up with nothing
+enabled.
+
+Two tests guard the declaration. One fails if a protected id matches no field
+in that devcode's committed template, because a typo there leaves a
+destructive control enabled and nothing else would show it. The other fails if
+a profile claims a review for a devcode with no committed template at all.
+
+*What this does to existing installations: nothing.*
+`entity_registry_enabled_default` applies only to an entity being registered
+for the first time, so an owner already using a control keeps it whatever this
+declaration says. It decides what a new install, a newly added inverter, or a
+newly advertised field starts out as.
 
 ## 7. Commit the analysis as evidence
 

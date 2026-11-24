@@ -20,6 +20,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -70,6 +71,8 @@ from .device_support import (
     control_value_reading,
     get_parameter_sensor_names,
     is_devcode_supported,
+    local_control_options,
+    local_control_setting,
     map_sensor_title,
     needs_parameter_fetch,
 )
@@ -80,6 +83,7 @@ from .support_report import UNSUPPORTED as SUPPORT_UNSUPPORTED
 from .support_report import (
     build_support_report,
     device_support_status,
+    record_observed_values,
     report_checksum,
     short_identity,
 )
@@ -514,6 +518,10 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
         self._support_issues: set[int] = set()
         self._allow_cached_fallback = allow_cached_fallback
         self._cached_cloud_data: dict[str, Any] = {}
+        # Per device, every value a reading has been seen to answer with a
+        # word rather than a number, since this entry was loaded. Bounded in
+        # support_report; see record_observed_values (#63, item 2).
+        self.observed_reading_values: dict[str, dict[str, dict[str, Any]]] = {}
         self._cloud_snapshot_store: Store[dict[str, Any]] | None = (
             Store(hass, 1, f"{DOMAIN}_{entry_id}_cloud_snapshot") if entry_id else None
         )
@@ -625,6 +633,49 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
             await self._cloud_snapshot_store.async_save({"data": data})
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.warning("Unable to save cached DessMonitor snapshot: %s", err)
+
+    def _record_observed_values(self, data: dict[str, Any]) -> None:
+        """Collect the state words each device has sent, for the download.
+
+        A snapshot records whichever value was current when it was taken, and
+        a mapping is written from the set: this runs on every successful cloud
+        refresh so the file carries what no single snapshot can (#63, item 2).
+        A device the account stops listing keeps what it sent until the entry
+        is reloaded, which is also what the cached-cloud fallback does with
+        its payload.
+        """
+        for serial, payload in data.items():
+            if not isinstance(payload, dict):
+                continue
+            readings = payload.get("data")
+            if not isinstance(readings, list):
+                continue
+            record_observed_values(
+                self.observed_reading_values.setdefault(serial, {}), readings
+            )
+
+    def cloud_readings_under_overlay(self, device_sn: str) -> list[dict[str, Any]]:
+        """Return the cloud's own readings for a device a local overlay publishes.
+
+        The hybrid overlay keeps the local title for every reading it replaces,
+        so the published snapshot no longer carries the vendor's spellings and
+        a hybrid owner's download was weak devcode evidence (#63). The cloud
+        snapshot behind the overlay is already in memory; this is what reaches
+        the file. An entry with no overlay publishes the cloud readings
+        themselves, so there is nothing to add and this returns nothing.
+        """
+        if not self.local_overlay_active:
+            return []
+        payload = self._cached_cloud_data.get(device_sn)
+        if not isinstance(payload, dict):
+            return []
+        readings = payload.get("data")
+        return readings if isinstance(readings, list) else []
+
+    @property
+    def local_overlay_active(self) -> bool:
+        """Whether local readings are overlaid on the cloud snapshot."""
+        return False
 
     def _cached_cloud_fallback(self, err: Exception) -> dict[str, Any] | None:
         """Return an explicitly stale snapshot when API-only continuity is enabled."""
@@ -1064,6 +1115,7 @@ class DessMonitorDataUpdateCoordinator(DataUpdateCoordinator):
                 len(self.stale_cloud_serials),
             )
             await self._async_store_cloud_snapshot(data)
+            self._record_observed_values(data)
             self.cloud_revision += 1
             self._async_update_support_issues(data)
             for sn in self.ctrl_field_cache:
@@ -1531,7 +1583,12 @@ async def async_get_device_diagnostics(
     if control_error:
         diagnostics["battery_config_error"] = control_error
 
-    local_control = _local_control_diagnostics(coordinator, device_sn, control_config)
+    local_control = _local_control_diagnostics(
+        coordinator,
+        device_sn,
+        control_config,
+        device_info.get("device", {}).get("devcode"),
+    )
     if local_control is not None:
         diagnostics["local_control"] = local_control
 
@@ -1548,6 +1605,9 @@ async def async_get_device_diagnostics(
     diagnostics["support_report"] = build_support_report(
         devcode=device_info.get("device", {}).get("devcode"),
         readings=device_data,
+        cloud_readings=_cloud_readings_under_overlay(coordinator, device_sn),
+        observed_values=_observed_values(coordinator, device_sn),
+        entity_inventory=_entity_inventory(hass, entry, device_sn),
         device_serial=device_sn,
         collector_product_number=device_info.get("collector", {}).get("pn"),
         device_address=device_info.get("device", {}).get("devaddr"),
@@ -1748,6 +1808,8 @@ async def async_get_config_entry_diagnostics(
         report["error"] = "The config entry is not loaded"
         return report
 
+    local_only = getattr(coordinator, "is_local", False) is True
+    hybrid = getattr(coordinator, "is_hybrid", False) is True
     report["coordinator"] = {
         "last_update_success": coordinator.last_update_success,
         "update_interval_seconds": (
@@ -1757,47 +1819,79 @@ async def async_get_config_entry_diagnostics(
         ),
         "cloud_revision": coordinator.cloud_revision,
         "devices_in_snapshot": len(coordinator.data or {}),
-        "devices_on_a_retained_cloud_payload": len(coordinator.stale_cloud_serials),
-        "hybrid": getattr(coordinator, "is_hybrid", False),
+        "hybrid": hybrid,
+        "local_only": local_only,
     }
+    if not local_only:
+        # Retention is a cloud mechanism: a local-only entry has no stored
+        # cloud payload to keep. Reading the attribute unconditionally made
+        # "Download diagnostics" fail with an ``AttributeError`` on every
+        # local-only entry, which is the mode whose owners are asked for a
+        # download most often (#86).
+        report["coordinator"]["devices_on_a_retained_cloud_payload"] = len(
+            coordinator.stale_cloud_serials
+        )
 
-    if getattr(coordinator, "is_hybrid", False):
+    if local_only or hybrid:
+        # A hybrid entry reports this even when no transport started, because
+        # why none started is the whole diagnosis; a local-only entry is its
+        # own single transport.
+        transports = (
+            [coordinator] if local_only else list(getattr(coordinator, "locals", ()))
+        )
         report["local"] = {
             "setup_errors": [
                 _redacted_message(error, subnets)
                 for error in getattr(coordinator, "local_setup_errors", ())
             ],
-            "transports": [
-                {
-                    "connected": local.connected,
-                    "last_update_success": local.last_update_success,
-                    "device_code": local.device_code,
-                    "devices": len(local.data or {}),
-                    # What the local side actually saw. The hybrid overlay
-                    # matches a local device to a cloud one by serial, or by
-                    # collector and RS485 address together, and a device that
-                    # matches nothing stays on cloud telemetry in silence. The
-                    # file recorded only that a transport was connected, so a
-                    # mismatch between an inverter answering locally at one
-                    # address and the cloud listing it at another could not be
-                    # seen in it at all (#61).
-                    "devices_seen": [
-                        _local_device_facts(serial, payload)
-                        for serial, payload in sorted((local.data or {}).items())
-                    ],
-                }
-                for local in getattr(coordinator, "locals", ())
-            ],
+            "transports": [_local_transport_facts(local) for local in transports],
         }
 
     report["devices"] = [
-        await _build_device_support_report(coordinator, entry, serial, payload)
+        await _build_device_support_report(hass, coordinator, entry, serial, payload)
         for serial, payload in sorted((coordinator.data or {}).items())
     ]
     return report
 
 
-def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _local_transport_facts(local: Any) -> dict[str, Any]:
+    """Describe one local transport, for a hybrid entry or a local-only one.
+
+    A local-only entry carried no local section at all, so the file an owner
+    in local mode attached said nothing about the only transport the entry
+    has (#86).
+    """
+    # What the transport itself recorded: the probe evidence from discovery,
+    # the collector session, the poll interval and age, and the queries each
+    # inverter has stopped answering. All of it was already in memory and
+    # reached nothing but the debug log, which is why the local-mode threads
+    # cost weeks of log files (#63).
+    recorded = local.diagnostics()
+    query_state = recorded.pop("devices", {})
+    facts = {
+        "connected": local.connected,
+        "last_update_success": local.last_update_success,
+        "device_code": local.device_code,
+        "devices": len(local.data or {}),
+        # What the local side actually saw. The hybrid overlay matches a local
+        # device to a cloud one by serial, or by collector and RS485 address
+        # together, and a device that matches nothing stays on cloud telemetry
+        # in silence. The file recorded only that a transport was connected,
+        # so a mismatch between an inverter answering locally at one address
+        # and the cloud listing it at another could not be seen in it at all
+        # (#61).
+        "devices_seen": [
+            _local_device_facts(serial, payload, query_state.get(serial))
+            for serial, payload in sorted((local.data or {}).items())
+        ],
+    }
+    facts.update(recorded)
+    return facts
+
+
+def _local_device_facts(
+    serial: str, payload: dict[str, Any], recorded: Any = None
+) -> dict[str, Any]:
     """Describe one locally seen device, without naming it.
 
     Identities are the same correlation hashes the device reports carry, so a
@@ -1806,7 +1900,7 @@ def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
     """
     device = payload.get("device") or {}
     collector = payload.get("collector") or {}
-    return {
+    facts: dict[str, Any] = {
         "device_identity": short_identity(serial),
         "collector_identity": short_identity(collector.get("pn")),
         "device_address": device.get("devaddr"),
@@ -1814,6 +1908,13 @@ def _local_device_facts(serial: str, payload: dict[str, Any]) -> dict[str, Any]:
         "protocol": device.get("local_protocol"),
         "readings": len(payload.get("data") or []),
     }
+    if recorded:
+        # The driver's own state for this inverter, including the queries it
+        # has stopped sending: "my PV2 sensors stopped" is answered by those
+        # and by nothing else in the file (#63). Absent for a device the local
+        # side published and has since dropped from its own device list.
+        facts.update(recorded)
+    return facts
 
 
 def _control_read_state(
@@ -1862,6 +1963,7 @@ def _int_for(mapping: Any, key: str) -> int:
 
 
 async def _build_device_support_report(
+    hass: HomeAssistant,
     coordinator: DessMonitorDataUpdateCoordinator,
     entry: ConfigEntry,
     serial: str,
@@ -1890,6 +1992,9 @@ async def _build_device_support_report(
     report = build_support_report(
         devcode=device_meta.get("devcode"),
         readings=readings,
+        cloud_readings=_cloud_readings_under_overlay(coordinator, serial),
+        observed_values=_observed_values(coordinator, serial),
+        entity_inventory=_entity_inventory(hass, entry, serial),
         device_serial=serial,
         collector_product_number=collector_meta.get("pn"),
         device_address=device_meta.get("devaddr"),
@@ -1900,6 +2005,15 @@ async def _build_device_support_report(
         integration_version=VERSION,
     )
     report["control_reads"] = _control_read_state(coordinator, serial, control_fields)
+    # The same local-control evidence the device download carries. Only the
+    # device button produced it, so an owner who attached the entry file - the
+    # one the support guide names first - sent nothing about the settings
+    # their inverter reports or the writes it refused (#87).
+    local_control = _local_control_diagnostics(
+        coordinator, serial, control_fields, device_meta.get("devcode")
+    )
+    if local_control is not None:
+        report["local_control"] = local_control
     report["data_source"] = _extract_sensor_value(readings, "Data Source")
     report["last_update"] = _extract_sensor_value(readings, "Timestamp", "Unknown")
     # What the platform says about this device, beside what it sent for it. A
@@ -1994,6 +2108,41 @@ def _categorize_device_data(
     return configuration, status
 
 
+def _cloud_readings_under_overlay(
+    coordinator: Any, serial: str
+) -> list[dict[str, Any]]:
+    """Return the cloud's own readings for a device an overlay is publishing.
+
+    Only a cloud-backed coordinator has them, and only a hybrid one overlays
+    anything. Asked of a local-only entry this is nothing, and asking for the
+    attribute unconditionally is what broke "Download diagnostics" on exactly
+    the entries whose owners are asked for a download most often (#86).
+    """
+    reader = getattr(coordinator, "cloud_readings_under_overlay", None)
+    if not callable(reader):
+        return []
+    readings = reader(serial)
+    # A list, or nothing. The #86 defect reached a stable release because a
+    # mock answers for any attribute, so the shape is checked here rather than
+    # trusted.
+    return readings if isinstance(readings, list) else []
+
+
+def _observed_values(coordinator: Any, serial: str) -> dict[str, dict[str, Any]]:
+    """Return the state words a device has been seen to send, if any were kept.
+
+    Only a cloud-backed coordinator collects them. A local-only entry has
+    none, and reaching for the attribute unconditionally is what broke
+    "Download diagnostics" on exactly the entries whose owners are asked for a
+    download most often (#86).
+    """
+    observed = getattr(coordinator, "observed_reading_values", None)
+    if not isinstance(observed, dict):
+        return {}
+    record = observed.get(serial)
+    return record if isinstance(record, dict) else {}
+
+
 def _summary_not_merged(coordinator: Any, serial: str) -> list[dict[str, Any]] | None:
     """Return the unmerged summary points for a device, where there are any.
 
@@ -2012,14 +2161,15 @@ def _local_control_diagnostics(
     coordinator: Any,
     device_sn: str,
     control_fields: dict[str, Any],
+    devcode: Any = None,
 ) -> dict[str, Any] | None:
     """Report what the inverter itself says about its writable settings.
 
     This is the evidence a devcode profile's ``local_control_settings`` is
     declared from, and the evidence a failed write is diagnosed from, so it
-    carries three things: the settings the inverter reported, the cloud
-    controls each one looks like, and the outcome of every local write this
-    session attempted.
+    carries four things: the settings the inverter reported, the cloud
+    controls each one looks like, what this devcode's profile already
+    declares, and the outcome of every local write this session attempted.
     """
     from .local.settings import pairing_candidates
 
@@ -2035,6 +2185,13 @@ def _local_control_diagnostics(
             for config in control_fields.values()
             if isinstance(config, dict) and config.get("id")
         }
+        declared_settings: dict[str, str] = {}
+        declared_option_values: dict[str, dict[str, str]] = {}
+        for field_id in cloud_values:
+            if setting := local_control_setting(devcode, field_id):
+                declared_settings[field_id] = setting
+            if options := local_control_options(devcode, field_id):
+                declared_option_values[field_id] = options
         return {
             "enabled": local.control_enabled,
             "protocol": local.driver_key,
@@ -2045,7 +2202,13 @@ def _local_control_diagnostics(
                 for command, values in snapshot.enumerations.items()
             },
             "cloud_pairing": pairing_candidates(
-                snapshot.settings, snapshot.values, control_fields, cloud_values
+                snapshot.settings,
+                snapshot.values,
+                control_fields,
+                cloud_values,
+                snapshot.enumerations,
+                declared_settings,
+                declared_option_values,
             ),
             "writes": local.write_history(serial),
         }
@@ -2097,6 +2260,13 @@ async def _fetch_control_details(
     device_data: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     """Fetch control fields and parameters for diagnostics."""
+    if getattr(coordinator, "is_local", False) is True:
+        # There is no cloud client on a local-only entry. Asking for one
+        # raised an ``AttributeError`` that was caught and then logged as a
+        # failed API call, which is not what happened: the settings this
+        # inverter reports are in the ``local_control`` section instead.
+        return {}, {}, None
+
     collector_meta = device_info.get("collector", {})
     device_meta = device_info.get("device", {})
 
@@ -2344,3 +2514,93 @@ def _build_diagnostics_summary(
         "control_fields_found": len(diagnostics.get("configuration", {})),
         "parameters_found": len(diagnostics.get("parameters", {})),
     }
+
+
+# The entity state Home Assistant publishes when it has nothing to show.
+_UNAVAILABLE_STATES = {"unavailable", "unknown"}
+
+
+def _entity_inventory(
+    hass: HomeAssistant, entry: ConfigEntry, device_sn: str
+) -> dict[str, Any] | None:
+    """Return what this device publishes, keyed by sensor rather than by name.
+
+    The download recorded which readings reach a sensor and nothing about the
+    entities themselves, and two defects cost weeks for want of it. In #53 the
+    reporter was asked twice for the Data Source entity id from Developer
+    tools, because a renamed entity and a recorder problem cannot be told
+    apart from here. In #58 a device published two entities under one name and
+    the one the summary fed read 0 kWh, which nobody saw until an owner
+    happened to look at the pair.
+
+    It is keyed by the sensor key, with no entity id and no friendly name:
+    both carry whatever the owner called the thing, and these files are
+    attached to public issues. What #53 actually needed is answered without an
+    entity id at all: the entity either exists and holds a value, which makes
+    it a recorder question, or it does not. ``name_customised`` says the owner
+    has renamed one, so an assumption about what it is called does not hold,
+    and ``names_published_by_more_than_one_sensor`` is the #58 defect itself
+    (#63, item 4).
+    """
+    registry = er.async_get(hass)
+    entries = [
+        entity
+        for entity in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if entity.unique_id.startswith(f"{device_sn}_")
+    ]
+    if not entries:
+        return None
+
+    from .const import SENSOR_TYPES
+    from .utils import entity_unique_id_suffix
+
+    # A sensor's unique id is its device serial and its SENSOR_TYPES key, so
+    # the key is recoverable from the registry without the entity id.
+    sensor_key_for = {entity_unique_id_suffix(key): key for key in SENSOR_TYPES}
+    names: dict[str, set[str]] = {}
+    by_key: dict[str, dict[str, Any]] = {}
+    for entity in entries:
+        suffix = entity.unique_id[len(device_sn) + 1 :]
+        key = sensor_key_for.get(suffix, suffix)
+        record = by_key.setdefault(
+            key,
+            {
+                "platform": entity.domain,
+                "entities": 0,
+                "disabled": 0,
+                "name_customised": False,
+                "states": [],
+            },
+        )
+        record["entities"] += 1
+        if entity.disabled_by is not None:
+            record["disabled"] += 1
+            continue
+        if entity.name is not None:
+            # The owner has given this entity a name of their own, so an
+            # assumption about what it is called does not hold. The name
+            # itself stays out of the file.
+            record["name_customised"] = True
+        state = hass.states.get(entity.entity_id)
+        record["states"].append(
+            "absent"
+            if state is None
+            else (
+                state.state
+                if state.state in _UNAVAILABLE_STATES
+                else ("ok" if state.state else "empty")
+            )
+        )
+        display = entity.original_name
+        if display:
+            names.setdefault(str(display), set()).add(key)
+
+    collisions = {name: sorted(keys) for name, keys in names.items() if len(keys) > 1}
+    inventory: dict[str, Any] = {
+        "by_sensor": {key: by_key[key] for key in sorted(by_key)},
+    }
+    if collisions:
+        # Two keys publishing one name is the #58 defect: Home Assistant keeps
+        # both entities, one of them fed by a source the vendor leaves at zero.
+        inventory["names_published_by_more_than_one_sensor"] = collisions
+    return inventory

@@ -51,9 +51,20 @@ def create_device_info(
     )
 
 
-def control_entity_suffix(name: str) -> str:
-    """Build the unique-id suffix a control entity is registered under."""
+def entity_unique_id_suffix(name: str) -> str:
+    """Build the unique-id suffix an entity is registered under.
+
+    A sensor derives it from its ``SENSOR_TYPES`` key and a control from the
+    name the vendor reports for the field, by the same rule, which is what
+    lets the diagnostics inventory read an entity's unique id back into the
+    sensor or the field it belongs to.
+    """
     return name.lower().replace(" ", "_").replace("-", "_")
+
+
+# The name the control platforms have always called it. Kept as an alias so
+# this reads as what it is at a control's call site.
+control_entity_suffix = entity_unique_id_suffix
 
 
 def async_migrate_control_unique_ids(

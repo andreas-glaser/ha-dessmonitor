@@ -34,7 +34,9 @@ CLOUD_SERIAL = "CLOUD-SERIAL"
 LOCAL_SERIAL = "LOCAL-SERIAL"
 
 
-def _hybrid(hass: HomeAssistant, *, control: bool = True) -> DessMonitorHybridCoordinator:
+def _hybrid(
+    hass: HomeAssistant, *, control: bool = True
+) -> DessMonitorHybridCoordinator:
     """Create a hybrid coordinator without opening sockets."""
     api = MagicMock(token="token", secret="secret", close=AsyncMock())
     api.set_device_control_value = AsyncMock(return_value={"err": 0})
@@ -96,7 +98,9 @@ def _wire_local(coordinator, *, snapshot=None, writes=None) -> MagicMock:
             }
         }
     )
-    local._settings[LOCAL_SERIAL] = snapshot if snapshot is not None else _local_snapshot()
+    local._settings[LOCAL_SERIAL] = (
+        snapshot if snapshot is not None else _local_snapshot()
+    )
     local.async_set_control_value = writes or AsyncMock(
         return_value=ControlWriteResult(
             value="57.0", transport=TRANSPORT_LOCAL, verified=True
@@ -180,7 +184,9 @@ async def test_a_declared_pairing_routes_a_differently_named_control(
 
         declared.assert_called_once_with(2452, "vendor_bulk")
         assert result.transport == TRANSPORT_LOCAL
-        assert local.async_set_control_value.await_args.args[1] == "battery_bulk_voltage"
+        assert (
+            local.async_set_control_value.await_args.args[1] == "battery_bulk_voltage"
+        )
     finally:
         await coordinator.async_shutdown()
 
@@ -330,5 +336,174 @@ async def test_the_profile_renamed_control_is_paired_too(hass: HomeAssistant) ->
             )
 
         assert result.transport == TRANSPORT_LOCAL
+    finally:
+        await coordinator.async_shutdown()
+
+
+def _pi30_hybrid(hass: HomeAssistant, devcode: int) -> DessMonitorHybridCoordinator:
+    """A hybrid entry whose cloud device is a PI30 one, with its own options."""
+    coordinator = _hybrid(hass)
+    coordinator.data[CLOUD_SERIAL]["device"]["devcode"] = devcode
+    coordinator.ctrl_field_cache = {
+        CLOUD_SERIAL: {
+            "Output Source Priority": {
+                "id": "bse_output_source_priority",
+                "type": "options",
+                "options": {
+                    "12336": "Utility Solar Bat",
+                    "12337": "Solar Utility Bat",
+                    "12338": "Solar Bat Utility",
+                },
+            },
+            "AC Input Range": {
+                "id": "bse_ac_input_range",
+                "type": "options",
+                "options": {"12336": "Appliance", "12337": "UPS"},
+            },
+            "Charger Source Priority": {
+                "id": "bat_charger_source_priority",
+                "type": "options",
+                "options": {
+                    "0": "Solar priority",
+                    "1": "Solar and mains",
+                    "2": "Solar only",
+                },
+            },
+        }
+    }
+    return coordinator
+
+
+def _pi30_snapshot():
+    """A PI30 settings snapshot, as the rating reply would produce it."""
+    from custom_components.dessmonitor.local.pi30_settings import settings_for
+    from custom_components.dessmonitor.local.writer import SettingsSnapshot
+
+    ratings = (
+        "230.0 21.7 230.0 50.0 21.7 5000 4000 48.0 44.0 42.0 56.4 54.0 2 030 "
+        "0 1 2 1 0 0 1 0 48.0"
+    ).split()
+    settings = settings_for(tuple(ratings))
+    enumerations = {"QMUCHGCR": ("002", "010", "030")}
+    reported = {
+        setting.key: decoded
+        for setting in settings
+        if (decoded := setting.decode(ratings[setting.index], enumerations)) is not None
+    }
+    return SettingsSnapshot(settings, reported, enumerations, ())
+
+
+async def test_a_declared_vocabulary_writes_the_inverters_own_code(
+    hass: HomeAssistant,
+) -> None:
+    """The cloud code 12338 is POP02 on this devcode, not the value 12338 (#87).
+
+    The platform's option code is the two ASCII digits of the PI30 parameter
+    read as one 16-bit number, so devcode 2449 offers 12336, 12337 and 12338
+    for POP00, POP01 and POP02. Handing the code itself to the local link was
+    refused with "this inverter accepts 0, 1, 2" and the write fell back to
+    the cloud.
+    """
+    coordinator = _pi30_hybrid(hass, 2449)
+    local = _wire_local(coordinator, snapshot=_pi30_snapshot())
+    try:
+        result = await coordinator.async_set_control_value(
+            CLOUD_SERIAL,
+            "bse_output_source_priority",
+            "12338",
+            control_name="Output Source Priority",
+        )
+
+        assert result.transport == TRANSPORT_LOCAL
+        assert local.async_set_control_value.await_args.args[:3] == (
+            LOCAL_SERIAL,
+            "output_source_priority",
+            "2",
+        )
+        coordinator.api.set_device_control_value.assert_not_awaited()
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_the_same_word_on_both_sides_pairs_an_option(
+    hass: HomeAssistant,
+) -> None:
+    """A label that is the same word in both vocabularies needs no declaration."""
+    coordinator = _pi30_hybrid(hass, 2449)
+    local = _wire_local(coordinator, snapshot=_pi30_snapshot())
+    try:
+        result = await coordinator.async_set_control_value(
+            CLOUD_SERIAL,
+            "bse_ac_input_range",
+            "12337",
+            control_name="AC Input Range",
+        )
+
+        assert result.transport == TRANSPORT_LOCAL
+        # The cloud offers 12337 as "UPS"; the PGR command takes 1 for it.
+        assert local.async_set_control_value.await_args.args[:3] == (
+            LOCAL_SERIAL,
+            "grid_working_range",
+            "1",
+        )
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_an_undeclared_selection_code_is_not_written_locally(
+    hass: HomeAssistant,
+) -> None:
+    """The quiet half of #87, and the dangerous one.
+
+    Devcode 2477 offers Charger Source Priority as 0, 1 and 2 labelled "Solar
+    priority", "Solar and mains" and "Solar only", which are PCP01, PCP02 and
+    PCP03: the list leaves utility first out. The name pairs the two sides, so
+    the code went to the PCP command as it stood, the inverter accepted it,
+    reported it back, and a write of "Solar priority" was reported as verified
+    after setting utility first. With no declaration there is now no local
+    route for it and the cloud carries it.
+    """
+    coordinator = _pi30_hybrid(hass, 2477)
+    local = _wire_local(coordinator, snapshot=_pi30_snapshot())
+    try:
+        result = await coordinator.async_set_control_value(
+            CLOUD_SERIAL,
+            "bat_charger_source_priority",
+            "0",
+            control_name="Charger Source Priority",
+        )
+
+        assert result.transport == TRANSPORT_CLOUD
+        local.async_set_control_value.assert_not_awaited()
+        coordinator.api.set_device_control_value.assert_awaited_once()
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_a_quantity_offered_as_a_list_pairs_on_its_figure(
+    hass: HomeAssistant,
+) -> None:
+    """A current is a number in both vocabularies, whichever way it is spelled."""
+    coordinator = _pi30_hybrid(hass, 2449)
+    coordinator.ctrl_field_cache[CLOUD_SERIAL]["Max AC Charging Current"] = {
+        "id": "bat_ac_charging_current",
+        "type": "options",
+        "options": {"0030": "30.0", "0010": "10.0"},
+    }
+    local = _wire_local(coordinator, snapshot=_pi30_snapshot())
+    try:
+        result = await coordinator.async_set_control_value(
+            CLOUD_SERIAL,
+            "bat_ac_charging_current",
+            "0010",
+            control_name="Max AC Charging Current",
+        )
+
+        assert result.transport == TRANSPORT_LOCAL
+        assert local.async_set_control_value.await_args.args[:3] == (
+            LOCAL_SERIAL,
+            "max_ac_charging_current",
+            "010",
+        )
     finally:
         await coordinator.async_shutdown()

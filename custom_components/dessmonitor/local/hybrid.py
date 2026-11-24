@@ -17,12 +17,16 @@ from ..api import DessMonitorAPI
 from ..const import CONF_LOCAL_COLLECTOR_IP, CONF_LOCAL_COLLECTOR_IPS
 from ..control_values import ControlWriteResult
 from ..data_sources import with_data_source
-from ..device_support import local_control_setting, map_sensor_title
+from ..device_support import (
+    local_control_options,
+    local_control_setting,
+    map_sensor_title,
+)
 from ..device_support.device_registry import map_control_field
 from ..sensor_titles import cumulative_sensor_key
 from .coordinator import DessMonitorLocalCoordinator
 from .protocol import ProtocolError
-from .settings import SettingNotWritable, normalized_name
+from .settings import SettingNotWritable, local_option_for, normalized_name
 from .writer import SettingsSnapshot
 
 _LOGGER = logging.getLogger(__name__)
@@ -245,12 +249,12 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         to the cloud, which is what this installation did before local control
         existed.
         """
-        route = self._local_control_route(sn, param_id)
+        route = self._local_control_route(sn, param_id, value)
         if route is not None:
-            local, local_serial, key = route
+            local, local_serial, key, local_value = route
             try:
                 return await local.async_set_control_value(
-                    local_serial, key, value, control_name=control_name or key
+                    local_serial, key, local_value, control_name=control_name or key
                 )
             except (
                 SettingNotWritable,
@@ -271,9 +275,15 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         )
 
     def _local_control_route(
-        self, sn: str, param_id: str
-    ) -> tuple[DessMonitorLocalCoordinator, str, str] | None:
-        """Return the local transport that can write this cloud control, if any."""
+        self, sn: str, param_id: str, value: str
+    ) -> tuple[DessMonitorLocalCoordinator, str, str, str] | None:
+        """Return the local transport that can write this value, if any.
+
+        The value is part of the route, not an afterthought: a control whose
+        local setting is known but whose option this inverter's own command
+        has no equivalent for has no local route for *that* write, and takes
+        the cloud path (#87).
+        """
         cloud_payload = (self.data or {}).get(sn)
         if not isinstance(cloud_payload, dict) or not param_id:
             return None
@@ -291,12 +301,67 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
             snapshot = local.settings_snapshot(local_serial)
             if snapshot is None:
                 continue
-            if declared and declared in snapshot.values:
-                return local, local_serial, declared
-            named = _setting_named(snapshot, candidates)
-            if named is not None:
-                return local, local_serial, named
+            key = (
+                declared
+                if declared and declared in snapshot.values
+                else _setting_named(snapshot, candidates)
+            )
+            if key is None:
+                continue
+            local_value = self._local_value_for(
+                sn, param_id, devcode, snapshot, key, value
+            )
+            if local_value is None:
+                continue
+            return local, local_serial, key, local_value
         return None
+
+    def _local_value_for(
+        self,
+        sn: str,
+        param_id: str,
+        devcode: Any,
+        snapshot: SettingsSnapshot,
+        key: str,
+        value: str,
+    ) -> str | None:
+        """Translate a cloud control's value into the local command's own."""
+        setting = next(
+            (item for item in snapshot.settings if item.key == key),
+            None,
+        )
+        if setting is None:
+            return None
+        local_value = local_option_for(
+            setting,
+            value,
+            self._cloud_control_options(sn, param_id),
+            snapshot.enumerations,
+            local_control_options(devcode, param_id),
+        )
+        if local_value is None:
+            # Reported at debug and not as a warning: the write still happens,
+            # over the transport it took before local control existed, and the
+            # pairing report in a diagnostics download is where the missing
+            # declaration is read off (#87).
+            _LOGGER.debug(
+                "Cloud control %s offers %r, which the local %s command has no "
+                "equivalent for, so this write takes the cloud path",
+                param_id,
+                value,
+                setting.command,
+            )
+        return local_value
+
+    def _cloud_control_options(self, sn: str, param_id: str) -> dict[str, str]:
+        """Return the options the platform offers for one cloud control."""
+        for config in self.ctrl_field_cache.get(sn, {}).values():
+            if config.get("id") != param_id:
+                continue
+            options = config.get("options")
+            if isinstance(options, dict):
+                return {str(code): str(label) for code, label in options.items()}
+        return {}
 
     def _control_names(self, sn: str, param_id: str, devcode: Any) -> frozenset[str]:
         """Return the names this cloud control is known by, normalised.
@@ -352,6 +417,11 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         # it here would postpone cloud refreshes forever. Notify listeners
         # directly and leave the existing cloud schedule untouched.
         self.async_update_listeners()
+
+    @property
+    def local_overlay_active(self) -> bool:
+        """Whether a healthy local snapshot is being overlaid right now."""
+        return bool(self._current_local_data())
 
     def _current_local_data(self) -> dict[str, Any]:
         """Combine only healthy local snapshots without losing duplicate serials."""

@@ -1,0 +1,496 @@
+{
+  "data": {
+    "integration": {
+      "version": "3.0.0",
+      "connection_type": "cloud",
+      "local_mode": "disabled",
+      "local_control": "disabled",
+      "api_profile": "shinemonitor_solar"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 300.0,
+      "cloud_revision": 3,
+      "devices_in_snapshot": 1,
+      "devices_on_a_retained_cloud_payload": 0,
+      "hybrid": false
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "shinemonitor_solar",
+        "integration_version": "3.0.0",
+        "devcode": 659,
+        "device_identity": "sha256:d0865daadd27",
+        "collector_identity": "sha256:e4132968d88b",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 4,
+          "unresolved": 39,
+          "total": 43,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 4,
+          "unresolved_with_unit": [
+            {
+              "title": "AC Phase A Apparent Power",
+              "unit": "W",
+              "sample": "366"
+            },
+            {
+              "title": "AC Phase B Apparent Power",
+              "unit": "W",
+              "sample": "371"
+            },
+            {
+              "title": "AC Phase C Apparent Power",
+              "unit": "W",
+              "sample": "359"
+            },
+            {
+              "title": "AC Side A Active Power",
+              "unit": "W",
+              "sample": "333"
+            },
+            {
+              "title": "AC Side A Phase Current",
+              "unit": "A",
+              "sample": "1.5"
+            },
+            {
+              "title": "AC Side A Phase Frequency",
+              "unit": "Hz",
+              "sample": "50.00"
+            },
+            {
+              "title": "AC Side A Phase Voltage",
+              "unit": "V",
+              "sample": "234.1"
+            },
+            {
+              "title": "AC Side B Active Power",
+              "unit": "W",
+              "sample": "332"
+            },
+            {
+              "title": "AC Side B Phase Current",
+              "unit": "A",
+              "sample": "1.5"
+            },
+            {
+              "title": "AC Side B Phase Frequency",
+              "unit": "Hz",
+              "sample": "49.98"
+            },
+            {
+              "title": "AC Side B Phase Voltage",
+              "unit": "V",
+              "sample": "233.3"
+            },
+            {
+              "title": "AC Side C Active Power",
+              "unit": "W",
+              "sample": "319"
+            },
+            {
+              "title": "AC Side C Phase Current",
+              "unit": "A",
+              "sample": "1.5"
+            },
+            {
+              "title": "AC Side C Phase Frequency",
+              "unit": "Hz",
+              "sample": "49.95"
+            },
+            {
+              "title": "AC Side C Phase Voltage",
+              "unit": "V",
+              "sample": "232.6"
+            },
+            {
+              "title": "AC total Active Power",
+              "unit": "W",
+              "sample": "984"
+            },
+            {
+              "title": "Day Electricity",
+              "unit": "kWh",
+              "sample": "11.379"
+            },
+            {
+              "title": "DC Input 1 current",
+              "unit": "A",
+              "sample": "1.5"
+            },
+            {
+              "title": "DC Input 1 Power",
+              "unit": "W",
+              "sample": "726"
+            },
+            {
+              "title": "DC Input 1 Voltage",
+              "unit": "V",
+              "sample": "482.7"
+            },
+            {
+              "title": "DC Input 2 current",
+              "unit": "A",
+              "sample": "1.0"
+            },
+            {
+              "title": "DC Input 2 Power",
+              "unit": "W",
+              "sample": "520"
+            },
+            {
+              "title": "DC Input 2 Voltage",
+              "unit": "V",
+              "sample": "498.5"
+            },
+            {
+              "title": "PV1 Insulation Resistance",
+              "unit": "KΩ",
+              "sample": "719"
+            },
+            {
+              "title": "PV2 Insulation Resistance",
+              "unit": "KΩ",
+              "sample": "717"
+            },
+            {
+              "title": "Radiator 1 Temperature",
+              "unit": "°C",
+              "sample": "31.0"
+            },
+            {
+              "title": "Radiator 2 Temperature",
+              "unit": "°C",
+              "sample": "20.0"
+            },
+            {
+              "title": "Total Power Generation",
+              "unit": "kWh",
+              "sample": "79241.471"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Automatic Startup",
+            "Debugging Information 1",
+            "Debugging Information 2",
+            "Debugging Information 3",
+            "Debugging Information 4",
+            "Debugging Information 5",
+            "Debugging Information 6",
+            "MCU1(DSP) software version",
+            "MCU2(ARM1) software version",
+            "MCU3(ARM2) software version",
+            "mode inquiry"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-21 13:10:02",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "PV1 Insulation Resistance",
+            "value": "719",
+            "unit": "KΩ",
+            "resolved_key": null
+          },
+          {
+            "title": "PV2 Insulation Resistance",
+            "value": "717",
+            "unit": "KΩ",
+            "resolved_key": null
+          },
+          {
+            "title": "DC Input 1 Power",
+            "value": "726",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "DC Input 2 Power",
+            "value": "520",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "DC Input 1 Voltage",
+            "value": "482.7",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "DC Input 1 current",
+            "value": "1.5",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "DC Input 2 Voltage",
+            "value": "498.5",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "DC Input 2 current",
+            "value": "1.0",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "Radiator 1 Temperature",
+            "value": "31.0",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "Radiator 2 Temperature",
+            "value": "20.0",
+            "unit": "°C",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side A Phase Voltage",
+            "value": "234.1",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side A Phase Current",
+            "value": "1.5",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side B Phase Voltage",
+            "value": "233.3",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side B Phase Current",
+            "value": "1.5",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side C Phase Voltage",
+            "value": "232.6",
+            "unit": "V",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side C Phase Current",
+            "value": "1.5",
+            "unit": "A",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side A Phase Frequency",
+            "value": "50.00",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side B Phase Frequency",
+            "value": "49.98",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side C Phase Frequency",
+            "value": "49.95",
+            "unit": "Hz",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side A Active Power",
+            "value": "333",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side B Active Power",
+            "value": "332",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Side C Active Power",
+            "value": "319",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "AC total Active Power",
+            "value": "984",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Phase A Apparent Power",
+            "value": "366",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Phase B Apparent Power",
+            "value": "371",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "AC Phase C Apparent Power",
+            "value": "359",
+            "unit": "W",
+            "resolved_key": null
+          },
+          {
+            "title": "Day Electricity",
+            "value": "11.379",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "Total Power Generation",
+            "value": "79241.471",
+            "unit": "kWh",
+            "resolved_key": null
+          },
+          {
+            "title": "MCU1(DSP) software version",
+            "value": "234",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "MCU2(ARM1) software version",
+            "value": "227",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "MCU3(ARM2) software version",
+            "value": "146",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Debugging Information 1",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Debugging Information 2",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Debugging Information 3",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Debugging Information 4",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Debugging Information 5",
+            "value": "637",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Debugging Information 6",
+            "value": "0",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "mode inquiry",
+            "value": "Grid",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "SN",
+            "value": "",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "Automatic Startup",
+            "value": "Automatically Boot",
+            "unit": "",
+            "resolved_key": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source"
+          }
+        ],
+        "control_fields": [],
+        "parameters": [],
+        "checksum": "75bc77d32338400a3464e33354d9cb5d84329eaeaf9213168e03a2eee6c4d761",
+        "control_reads": {
+          "fields": 0,
+          "without_a_value": 0,
+          "rounds_that_recovered_nothing": 0,
+          "rounds_allowed": 3,
+          "still_trying": true,
+          "last_round_went_unanswered": false
+        },
+        "data_source": "Cloud",
+        "last_update": "2026-11-21 13:10:02",
+        "cloud_status": {
+          "code": 0,
+          "text": "online"
+        },
+        "control_error": "ERR_FORBIDDEN"
+      }
+    ]
+  }
+}

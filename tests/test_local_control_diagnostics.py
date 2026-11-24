@@ -24,8 +24,8 @@ from custom_components.dessmonitor.const import (
     DOMAIN,
     LOCAL_CONTROL_ENABLED,
 )
-from custom_components.dessmonitor.local.writer import SettingsSnapshot, WriteOutcome
 from custom_components.dessmonitor.local.settings import pairing_candidates
+from custom_components.dessmonitor.local.writer import SettingsSnapshot, WriteOutcome
 
 SERIAL = "SN-LOCAL"
 
@@ -56,6 +56,14 @@ def _local_coordinator(snapshot: SettingsSnapshot | None = None) -> MagicMock:
     coordinator.is_hybrid = False
     coordinator.control_enabled = True
     coordinator.driver_key = "p17"
+    # What the entry download reads off the coordinator itself. A local entry
+    # is its own single transport, so the same object answers for both.
+    coordinator.last_update_success = True
+    coordinator.update_interval = None
+    coordinator.cloud_revision = 3
+    coordinator.connected = True
+    coordinator.device_code = 258
+    coordinator.local_setup_errors = ()
     coordinator.data = {
         SERIAL: {
             "collector": {"pn": "PN-LOCAL", "fireware": "Local"},
@@ -325,3 +333,128 @@ async def test_a_hybrid_entry_reports_the_paired_local_inverter(
     # what a maintainer declares in the devcode profile.
     pairing = {item["setting"]: item for item in local_control["cloud_pairing"]}
     assert pairing["battery_bulk_voltage"]["paired_by_name"] == "bse_bulk"
+
+
+async def test_the_entry_download_carries_the_local_control_section(
+    hass: HomeAssistant,
+) -> None:
+    """Only the device button produced this evidence (#87).
+
+    The support guide names the entry download first, and an owner who
+    attached it sent nothing about the settings their inverter reports, the
+    writes it refused, or which cloud control each setting pairs with - which
+    is what a local-control report needs to be answered from one file.
+    """
+    coordinator = _local_coordinator(_snapshot())
+    hass.data[DOMAIN] = {"entry-local": coordinator}
+
+    report = await diagnostics_platform.async_get_config_entry_diagnostics(
+        hass, _entry()
+    )
+
+    (device,) = report["devices"]
+    assert device["local_control"]["enabled"] is True
+    assert device["local_control"]["reported"]["battery_bulk_voltage"] == "56.0"
+    assert json.loads(json.dumps(report))["devices"][0]["local_control"][
+        "protocol"
+    ] == ("p17")
+
+
+def test_the_download_reads_the_declarations_off_the_devcode_profile() -> None:
+    """The section is built for one device, so it reports that devcode's own.
+
+    The profile is reached through the devcode the download already carries
+    for the device; devcode 2449 is the one whose charger priority is paired
+    by declaration (#88).
+    """
+    from custom_components.dessmonitor import _local_control_diagnostics
+
+    coordinator = _local_coordinator(_snapshot())
+    controls = {
+        "Charging Source Priority": {"id": "bat_charging_source", "value": "12339"},
+        "Battery Bulk Voltage": {"id": "bse_bulk", "value": "56.0"},
+    }
+
+    report = _local_control_diagnostics(coordinator, SERIAL, controls, 2449)
+    pairing = {item["setting"]: item for item in report["cloud_pairing"]}
+
+    assert pairing["charger_source_priority"]["declared_by_profile"] == (
+        "bat_charging_source"
+    )
+    assert pairing["charger_source_priority"]["declared_option_values"] == {
+        "12337": "1",
+        "12338": "2",
+        "12339": "3",
+    }
+    assert pairing["battery_bulk_voltage"]["declared_by_profile"] is None
+
+
+def test_the_pairing_report_names_what_the_profile_already_declares() -> None:
+    """A declared pairing read as an absence until it was reported (#88).
+
+    Devcode 2449's charger priority is paired by declaration, because the
+    cloud spells it "Charging Source Priority" against the command's "Charger
+    Source Priority". Its entry carried ``paired_by_name`` null and no
+    candidates - indistinguishable from a setting nothing pairs with, which
+    is what the maintainer reading this section is looking for.
+    """
+    snapshot = _snapshot()
+    controls = {"Charging Source Priority": {"id": "bat_charging_source"}}
+
+    report = {
+        item["setting"]: item
+        for item in pairing_candidates(
+            snapshot.settings,
+            snapshot.values,
+            controls,
+            {"bat_charging_source": "12339"},
+            snapshot.enumerations,
+            {"bat_charging_source": "charger_source_priority"},
+            {"bat_charging_source": {"12339": "3"}},
+        )
+    }
+
+    charger = report["charger_source_priority"]
+    assert charger["paired_by_name"] is None
+    assert charger["declared_by_profile"] == "bat_charging_source"
+    # The vocabulary is the second declaration, and a pairing without it
+    # still sends the selection over the cloud (#87).
+    assert charger["declared_option_values"] == {"12339": "3"}
+    # A setting the profile says nothing about reports the absence plainly.
+    assert report["battery_bulk_voltage"]["declared_by_profile"] is None
+    assert "declared_option_values" not in report["output_source_priority"]
+
+
+def test_the_pairing_report_names_both_option_vocabularies() -> None:
+    """A selection code means nothing without the list it came from (#87).
+
+    Declaring ``local_control_option_values`` means stating which local option
+    each cloud option code is, and a report that shows the cloud's list and
+    not the command's cannot be read that way round.
+    """
+    snapshot = _snapshot()
+    report = {
+        item["setting"]: item
+        for item in pairing_candidates(
+            snapshot.settings,
+            snapshot.values,
+            {
+                "Output Source Priority": {
+                    "id": "bse_output_source_priority",
+                    "type": "options",
+                    "options": {"0": "Solar-Utility-Battery"},
+                }
+            },
+            {"bse_output_source_priority": "0"},
+            snapshot.enumerations,
+        )
+    }
+
+    assert report["output_source_priority"]["options"] == {
+        "0": "Solar → Utility → Battery",
+        "1": "Solar → Battery → Utility",
+    }
+    # An enumerated quantity is reported as the inverter listed it, not empty.
+    assert report["max_charging_current"]["options"] == {"010": "10 A", "060": "60 A"}
+    # A setpoint has no option list to report.
+    assert "options" not in report["battery_bulk_voltage"]

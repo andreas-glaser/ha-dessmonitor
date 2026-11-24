@@ -15,7 +15,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DessMonitorDataUpdateCoordinator
 from .const import DOMAIN
-from .device_support.device_registry import map_control_field
+from .device_support.device_registry import (
+    control_enabled_by_default,
+    map_control_field,
+)
 from .entity_loader import async_setup_dynamic_entities
 from .utils import (
     async_migrate_control_unique_ids,
@@ -174,6 +177,9 @@ class DessMonitorButton(CoordinatorEntity, ButtonEntity):
             device_sn, device_meta, collector_meta
         )
         self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_entity_registry_enabled_default = control_enabled_by_default(
+            device_meta.get("devcode"), param_id
+        )
 
     @property
     def legacy_unique_id(self) -> str:

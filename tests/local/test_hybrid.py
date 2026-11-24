@@ -718,3 +718,47 @@ def test_holding_a_counter_does_not_touch_the_cached_cloud_snapshot(
     points = {point["title"]: point["val"] for point in merged["CLOUD-SERIAL"]["data"]}
     assert points["Energy Total"] == 10113.896
     assert coordinator._cached_cloud_data == before
+
+
+async def test_the_download_keeps_the_clouds_titles_under_an_overlay(
+    hass: HomeAssistant,
+) -> None:
+    """Item 3 of #63, end to end through the real coordinator.
+
+    The overlay keeps the local driver's spelling for every reading it
+    replaces, so the published snapshot says "Grid Voltage" and "Output
+    Active Power" and the cloud's own "Grid voltage" and "AC output active
+    power" were nowhere in the file. A hybrid owner's download was therefore
+    weak devcode evidence exactly because their setup works well, and
+    "Cloud only" - the one reading no local driver answers - was all that
+    survived of what the vendor sends.
+    """
+    coordinator = _hybrid_coordinator(hass)
+    coordinator._cached_cloud_data = _cloud_payload()
+    coordinator.local.async_set_updated_data(_local_payload())
+    try:
+        overlaid = coordinator.cloud_readings_under_overlay("CLOUD-SERIAL")
+        assert [row["title"] for row in overlaid] == [
+            "Grid voltage",
+            "AC output active power",
+            "Cloud only",
+        ]
+        assert coordinator.cloud_readings_under_overlay("NO-SUCH-SERIAL") == []
+    finally:
+        await coordinator.async_shutdown()
+
+
+async def test_no_cloud_titles_are_recorded_without_a_live_overlay(
+    hass: HomeAssistant,
+) -> None:
+    """With no local data the published readings are the cloud's own.
+
+    Recording them twice would only grow the file.
+    """
+    coordinator = _hybrid_coordinator(hass)
+    coordinator._cached_cloud_data = _cloud_payload()
+    try:
+        assert coordinator.local_overlay_active is False
+        assert coordinator.cloud_readings_under_overlay("CLOUD-SERIAL") == []
+    finally:
+        await coordinator.async_shutdown()
