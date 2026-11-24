@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A diagnostics download's pairing report now names the pairings the
+  devcode profile declares**, not only the ones it infers from a name or a
+  figure (#88). Inference and declaration are the only two ways a cloud
+  control reaches the local link, and a report carrying one of them reads as
+  an absence: on the devcode 2449 download above, the charger priority that
+  now writes locally still appeared with no match and no candidate - the
+  exact shape of a setting nothing pairs with, which is what the section is
+  read to find. Each entry gains `declared_by_profile` and, for a selection,
+  the `declared_option_values` the profile maps its cloud codes to, because a
+  pairing without that vocabulary still sends the write over the cloud (#87).
+  Diagnostics only; no entity changes.
+
 ## [3.1.0-rc.2] - 2026-11-23
 
 ### Added
