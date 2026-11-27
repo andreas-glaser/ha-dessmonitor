@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0-rc.1] - 2026-11-27
+
+First candidate for 3.2.0. See the [HACS prerelease installation steps](https://github.com/andreas-glaser/ha-dessmonitor/blob/v3.2.0-rc.1/docs/RELEASE_CANDIDATES.md#install-the-rc-manually-in-hacs).
+
+**No entity moves.** `tools/entity_inventory.py` builds every sensor the
+integration would publish for each of the twenty-eight device reports in the
+committed evidence, and against v3.1.0 this branch removes and changes no
+line. The thirty-two it adds are all under the two new devcodes' own evidence
+files, so no existing installation gains, loses or renames an entity, and no
+unit, device class, state class, entity category or control enabled state
+changes.
+
+**Testing focus:** one change here cannot be verified without hardware, and it
+is the reason this is a candidate rather than a release.
+
+A setting the inverter reports over the local link is now published from its
+own read-back rather than from the cloud snapshot. It applies only to a hybrid
+entry with **Settings control over the local link** turned on, which is off by
+default, so an installation that has never touched that option is unaffected.
+Four gates decide whether a reading is replaced, three of which are about
+which reading belongs to which register rather than about the value, and
+anything the chain cannot close keeps the cloud's own figure.
+
+The failure to watch for is a priority sensor landing on a mode the inverter
+is not in. That is the half of #87 that cannot be seen from outside, because
+the inverter's own read-back would agree with it, so please report it with a
+diagnostics download taken before changing anything back.
+
+One reporter has a specific check:
+
+- @DennisAppelman (#93): with local control on, switch Output Source Priority
+  from Home Assistant and time how long `sensor.…_output_priority` takes to
+  follow. Then attach a diagnostics download from the integration card. The
+  questions are whether the sensor follows within seconds instead of waiting
+  for the cloud refresh, and whether the word it lands on is the one it showed
+  before for that mode. `local_control.reported` beside `cloud_under_overlay`
+  carries both halves.
+
+The two new devcodes need no hardware check beyond their owners confirming
+their own readings: both profiles are built from a committed download and
+neither touches another devcode.
+
 ### Changed
 - **A setting the inverter reports locally is published from its own
   read-back** rather than from the cloud snapshot, where local control is on
