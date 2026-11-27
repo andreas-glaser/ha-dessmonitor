@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A setting the inverter reports locally is published from its own
+  read-back** rather than from the cloud snapshot, where local control is on
+  (#93, thanks to @DennisAppelman for the measurement and for #87 and #88
+  before it). A setting the collector returns among the telemetry is only as
+  fresh as the cloud refresh that carried it: on an account polling every ten
+  minutes because anything shorter times out, Output Priority showed a mode
+  the inverter had left eight minutes earlier while the local link had the
+  new value in two and a half seconds. An automation reading that sensor to
+  decide whether to switch sends the same command again.
+
+  The word published is the platform's own, not the inverter's, so an
+  automation comparing the sensor against the string it has always read still
+  matches: the PI30 command calls its option 1 "Solar first" where the
+  platform calls it "Solar Utility Bat", which devcode 2449's profile maps on
+  to "Solar → Utility → Battery". No entity, unit, state class or option is
+  added, and the select entities still show what the platform reports.
+
+  Nothing is inferred, because the two sides' option lists are two different
+  vocabularies and pairing one positionally sets the wrong register (#87). A
+  reading is replaced only where local control is on for the entry, the
+  collector is answering now, the cloud control and the local setting are the
+  same register on this devcode's evidence, exactly one of the platform's
+  option codes translates to the reported value through the same table a
+  write uses, and the reading already carries one of that control's own
+  option labels that no other control offers. Anything else keeps the cloud's
+  figure. Local control is off by default, so no installation starts doing
+  this on an upgrade.
+
+  A setting changed in the vendor app or on the inverter's panel is picked up
+  on the local settings cycle, about two minutes at the default poll
+  interval; a write made from Home Assistant is published as soon as the
+  inverter confirms it.
+
 ### Added
 - **Devcode 752 is supported**: a Kstar KSG 5K DM single-phase on-grid string
   inverter with three trackers, reported through ShineMonitor (#95, thanks to
