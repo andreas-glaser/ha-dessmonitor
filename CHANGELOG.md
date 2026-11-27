@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Devcode 752 is supported**: a Kstar KSG 5K DM single-phase on-grid string
+  inverter with three trackers, reported through ShineMonitor (#95, thanks to
+  @Unkie-NL for the download). Five of its thirty-two readings reached a
+  sensor; every one of the twenty-two that carry a unit now either does or is
+  declared as a field this hardware does not fill. That is all three
+  trackers, the array total, the R-phase grid voltage and current, the
+  heatsink, the DC bus, the lifetime energy counter and the day's peak
+  output.
+
+  **The energy sensors read zero because the plant summary did.** `Total
+  energy` stood at 33057 kWh in the same payload where the summary's
+  `energyTotal` read `0.0000`, and the summary is what fed the sensor. The
+  inverter's own counter now feeds Energy Total, and the summary's
+  `energyTotal` and `outpower` are mapped onto the readings they duplicate so
+  the zero stops publishing an entity beside the real one. `energyToday` has
+  no counterpart on this collector - it reports no daily energy figure at all
+  - so that one keeps reading the vendor's unset zero.
+
+  One new canonical sensor, Today Peak Power, for the day's highest output:
+  2232 W against 486 W live, which is a high-water mark nothing already here
+  holds. It is published without a state class, because it steps down to the
+  day's first reading at midnight.
+
+  The S and T phases, `NBUS voltage` and `Module temperature` are declared
+  absent rather than mapped, so they no longer count as missing readings and
+  no sensor is published that would read zero for ever: the unit is
+  single-phase, `PBUS voltage` reads 375.2 V and so is a whole DC link rather
+  than half of a split one, and a module at 0.0 degrees beside a heatsink at
+  34.8 is an unfitted sensor. `Grid connected number` stays unmapped because
+  it carries no unit and no report says what it counts.
 - **Devcode 2394 is supported**: a 24 V off-grid inverter/charger sold as an
   MPPT24V-60A-5000W, reported through DessMonitor (#94, thanks to @Alixgrim
   for the download). It reports the smallest vocabulary any committed
