@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Devcode 2394 is supported**: a 24 V off-grid inverter/charger sold as an
+  MPPT24V-60A-5000W, reported through DessMonitor (#94, thanks to @Alixgrim
+  for the download). It reports the smallest vocabulary any committed
+  download carries - ten readings in all - and seven of them already reached
+  a sensor. The three that did not all carry a unit, which is what held the
+  Repairs card open: the mains voltage and frequency now reach Grid Voltage
+  and Grid Frequency, and the collector's single unqualified `temperature`
+  reaches the inverter module temperature, the same key devcode 6513's one
+  temperature reaches. No new canonical sensor and no entity move.
+
+  The plant summary's `outpower`, `energyToday` and `energyTotal` read
+  `0.0000` on this account and stay that way: unlike devcodes 567 and 659
+  this collector reports no power or energy figure of its own for them to be
+  mapped onto. The three control fields it advertises are the inverter's AC
+  power switch, so all three remain registered disabled.
+
 ## [3.1.0] - 2026-11-24
 
 This stable release includes all changes since 3.0.0, including everything

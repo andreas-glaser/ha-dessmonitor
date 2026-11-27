@@ -1,0 +1,278 @@
+{
+  "data": {
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "device_diagnostics",
+        "api_profile": "dessmonitor_ess",
+        "integration_version": "3.1.0",
+        "devcode": 2394,
+        "device_identity": "sha256:b7a5198e7ae2",
+        "collector_identity": "sha256:61a8aa1c3133",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 7,
+          "unresolved": 3,
+          "total": 10,
+          "excluded": {
+            "attribute_readings": 2,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 7,
+          "unresolved_with_unit": [
+            {
+              "title": "Input frequency",
+              "unit": "Hz",
+              "sample": "50.0"
+            },
+            {
+              "title": "Input voltage",
+              "unit": "V",
+              "sample": "219.0"
+            },
+            {
+              "title": "temperature",
+              "unit": "℃",
+              "sample": "27.0"
+            }
+          ],
+          "unresolved_without_unit": []
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-25 20:20:01",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Input voltage",
+            "value": "219.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Output voltage",
+            "value": "219.0",
+            "unit": "V",
+            "resolved_key": "Output Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "Load percentage",
+            "value": "6",
+            "unit": "%",
+            "resolved_key": "Load Percent",
+            "sensor_unit": "%"
+          },
+          {
+            "title": "Input frequency",
+            "value": "50.0",
+            "unit": "Hz",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "temperature",
+            "value": "27.0",
+            "unit": "℃",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Battery voltage",
+            "value": "27.6",
+            "unit": "V",
+            "resolved_key": "Battery Voltage",
+            "sensor_unit": "V"
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower",
+            "sensor_unit": "kW"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source",
+            "sensor_unit": null
+          }
+        ],
+        "entity_inventory": {
+          "by_sensor": {
+            "Battery Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Data Source": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Last Reading Received": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Load Percent": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Output Voltage": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "energyToday": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "energyTotal": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "outpower": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "standby": {
+              "platform": "button",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "status": {
+              "platform": "binary_sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "turn_on": {
+              "platform": "button",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            },
+            "turned_off": {
+              "platform": "button",
+              "entities": 1,
+              "disabled": 1,
+              "name_customised": false,
+              "states": []
+            }
+          }
+        },
+        "control_fields": [
+          {
+            "name": "Standby",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "2: Turn off the AC output (AC output is available in the mains state)"
+            ],
+            "id": "turn_off_the_inverter"
+          },
+          {
+            "name": "Turn on",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "1: Turn on AC output"
+            ],
+            "id": "turn_on_the_inverter"
+          },
+          {
+            "name": "Turned off",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "3: Turn off the AC output (no AC output in the mains state)"
+            ],
+            "id": "stops_the_inverter"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Output voltage",
+            "value": "219",
+            "unit": "V",
+            "id": "output_voltage_value"
+          }
+        ],
+        "checksum": "1b0e229f427dbbef3d367074e089057f123746873bc55dd461c217c7eeee26c7"
+      }
+    ]
+  }
+}
