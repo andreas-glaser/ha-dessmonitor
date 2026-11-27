@@ -329,6 +329,44 @@ def local_option_for(
     return None
 
 
+def cloud_option_for(
+    setting: LocalSetting,
+    reported: str,
+    cloud_options: Mapping[str, str],
+    enumerations: Mapping[str, tuple[str, ...]] | None = None,
+    declared: Mapping[str, str] | None = None,
+) -> str | None:
+    """Return the one cloud option code that means this reported local value.
+
+    ``local_option_for`` translates a cloud control's option into the wire
+    value the inverter's own command takes. This is that translation read
+    backwards, for the opposite question: the inverter has reported a setting
+    and the cloud snapshot has to be told what the platform calls it.
+
+    It is built out of the forward translation rather than beside it, because
+    the forward one is where every piece of evidence about a vocabulary lives
+    - the devcode profile's declaration, the label that is the same word on
+    both sides, the figure a quantity is offered as - and a second table would
+    be a second thing to get wrong. Devcode 2477's charger list is renumbered
+    against the PI30 codes, so an inverse computed positionally would name an
+    option the inverter is not set to and the platform's own read-back would
+    agree with it (#87).
+
+    ``None`` whenever the answer is not unique: no cloud option translates to
+    this reported value, or more than one does. A caller that gets ``None``
+    leaves the cloud's own figure alone, which is what it published before.
+    """
+    if setting.kind != KIND_OPTIONS:
+        return None
+    matches = [
+        code
+        for code in cloud_options
+        if local_option_for(setting, code, cloud_options, enumerations, declared)
+        == reported
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def template_for(
     settings: tuple[LocalSetting, ...],
     readback: Mapping[str, str],

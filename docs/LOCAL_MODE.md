@@ -429,6 +429,40 @@ list, such as a charging current, pairs on its figure. An undeclared
 selection takes the cloud path, and `control_transport` on the entity says
 which transport carried the write.
 
+#### Settings the inverter reports back
+
+A setting the collector returns among the telemetry is as stale as the cloud
+refresh that carried it. On an account polling the cloud every ten minutes,
+an Output Priority sensor showed a mode the inverter had left eight minutes
+earlier, while the local link had the new value in two and a half seconds
+(#93). With local control on, that sensor is published from the inverter's
+own read-back instead.
+
+The word published is the platform's, not the inverter's: the PI30 command
+calls its option 1 "Solar first" while the platform calls it "Solar Utility
+Bat", and the devcode profile maps that on to "Solar → Utility → Battery".
+An automation comparing the sensor against the string it has always read
+still matches, and no entity, unit or option is added.
+
+The read-back replaces a reading only where all of these hold, and the
+cloud's own figure stands otherwise:
+
+- Local control is on for the entry, and the collector is answering now. A
+  collector that has gone quiet never overrides a live cloud reading.
+- The cloud control and the local setting are the same register on this
+  devcode's evidence.
+- Exactly one of the platform's option codes translates to the value the
+  inverter reported, through the same table a write uses. Devcode 2477's
+  charger list is renumbered against the PI30 codes, so that devcode's
+  selections pair with nothing until a download declares them.
+- The reading already carries one of that control's own option labels, and no
+  other control on the device offers that label.
+
+A setting changed in the vendor app or on the inverter's panel is picked up on
+the local settings cycle, which is every 24 polls, so about two minutes at the
+default five-second interval. A write made from Home Assistant is published as
+soon as the inverter confirms it.
+
 ### Diagnosing a write
 
 **Settings → Devices & services → DessMonitor → your inverter → Download

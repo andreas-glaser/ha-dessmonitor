@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
-from collections.abc import Container
+from collections.abc import Container, Iterator
 from math import isfinite
 from typing import Any
 
@@ -26,7 +26,12 @@ from ..device_support.device_registry import map_control_field
 from ..sensor_titles import cumulative_sensor_key
 from .coordinator import DessMonitorLocalCoordinator
 from .protocol import ProtocolError
-from .settings import SettingNotWritable, local_option_for, normalized_name
+from .settings import (
+    SettingNotWritable,
+    cloud_option_for,
+    local_option_for,
+    normalized_name,
+)
 from .writer import SettingsSnapshot
 
 _LOGGER = logging.getLogger(__name__)
@@ -194,9 +199,11 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         local_data: dict[str, Any],
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """Overlay local telemetry, then arbitrate the cumulative counters."""
+        """Overlay local telemetry and settings, then arbitrate the totals."""
         return self._hold_cumulative_totals(
-            merge_cloud_and_local(cloud_data, local_data, **kwargs)
+            self._overlay_local_settings(
+                merge_cloud_and_local(cloud_data, local_data, **kwargs)
+            )
         )
 
     def _hold_cumulative_totals(self, merged: dict[str, Any]) -> dict[str, Any]:
@@ -285,9 +292,39 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
         the cloud path (#87).
         """
         cloud_payload = (self.data or {}).get(sn)
-        if not isinstance(cloud_payload, dict) or not param_id:
+        if not isinstance(cloud_payload, dict):
             return None
         devcode = cloud_payload.get("device", {}).get("devcode")
+        for pairing in self._paired_local_settings(
+            sn, cloud_payload, param_id, devcode
+        ):
+            local, local_serial, snapshot, key = pairing
+            local_value = self._local_value_for(
+                sn, param_id, devcode, snapshot, key, value
+            )
+            if local_value is None:
+                continue
+            return local, local_serial, key, local_value
+        return None
+
+    def _paired_local_settings(
+        self, sn: str, cloud_payload: dict[str, Any], param_id: str, devcode: Any
+    ) -> Iterator[tuple[DessMonitorLocalCoordinator, str, SettingsSnapshot, str]]:
+        """Yield every local setting this cloud control is the same register as.
+
+        The pairing is made only on evidence: a declaration in the devcode
+        profile, or names that normalise to the same string. Where neither
+        holds nothing is yielded, and the caller keeps doing what it did
+        before local control existed.
+
+        There is normally one, but a transport is not filtered on health here
+        because the two callers want different things from an unhealthy one: a
+        write may still be worth attempting, while reading a setting back off
+        a collector that has stopped answering would publish a stale figure
+        over a live cloud one for as long as it stayed down.
+        """
+        if not param_id:
+            return
         declared = local_control_setting(devcode, param_id)
         candidates = self._control_names(sn, param_id, devcode)
         for local in self.locals:
@@ -308,13 +345,7 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
             )
             if key is None:
                 continue
-            local_value = self._local_value_for(
-                sn, param_id, devcode, snapshot, key, value
-            )
-            if local_value is None:
-                continue
-            return local, local_serial, key, local_value
-        return None
+            yield local, local_serial, snapshot, key
 
     def _local_value_for(
         self,
@@ -352,6 +383,99 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
                 setting.command,
             )
         return local_value
+
+    def _overlay_local_settings(self, merged: dict[str, Any]) -> dict[str, Any]:
+        """Publish the inverter's own reading of a setting it reports locally.
+
+        A setting the collector returns among the telemetry is as stale as the
+        cloud refresh that carried it, and that refresh is minutes apart: the
+        account in #93 polls the cloud every ten minutes because it times out
+        at anything shorter, so Output Priority showed a mode the inverter had
+        left eight minutes earlier while the local link had the new value in
+        two and a half seconds. An automation reading that sensor to decide
+        whether to switch sends the same command again.
+
+        Nothing here is inferred. The reading is rewritten only where all of
+        these hold, and a sensor is left on the cloud's own figure otherwise:
+
+        * The owner turned local control on for this entry, which is off by
+          default, and the collector is answering right now.
+        * The cloud control and the local setting are the same register on
+          this devcode's evidence - a declaration, or one name.
+        * Exactly one of the platform's option codes translates to the value
+          the inverter reported, through the same table a write uses.
+        * The reading currently carries one of that control's own option
+          labels, and no other control on the device offers that label. A
+          reading that is not the read-back of this control is never touched,
+          and the label written is the platform's own word for the setting, so
+          an automation comparing against the old string still matches.
+
+        This publishes no new entity and changes no unit, and a reading the
+        chain cannot close is published exactly as the cloud sent it.
+        """
+        if not any(local.control_enabled for local in self.locals):
+            # The default for every entry, and the only cost this merge then
+            # carries. The checks below are cheap but they run on every local
+            # push, which is seconds apart.
+            return merged
+        for sn, payload in merged.items():
+            if not isinstance(payload, dict):
+                continue
+            controls = self.ctrl_field_cache.get(sn) or {}
+            points = payload.get("data")
+            if not controls or not isinstance(points, list):
+                continue
+            owners = _controls_by_option_label(controls)
+            if not owners:
+                continue
+            devcode = payload.get("device", {}).get("devcode")
+            for point in points:
+                if not isinstance(point, dict):
+                    continue
+                param_id = owners.get(normalized_name(str(point.get("val", ""))))
+                if param_id is None:
+                    continue
+                label = self._reported_option_label(sn, payload, param_id, devcode)
+                if label is None or label == point.get("val"):
+                    continue
+                _LOGGER.debug(
+                    "%s on %s reads %r from the cloud and %r from the "
+                    "inverter itself; publishing the inverter's",
+                    point.get("title"),
+                    sn,
+                    point.get("val"),
+                    label,
+                )
+                point["val"] = label
+        return merged
+
+    def _reported_option_label(
+        self, sn: str, cloud_payload: dict[str, Any], param_id: str, devcode: Any
+    ) -> str | None:
+        """Return the platform's label for the value the inverter reports."""
+        cloud_options = self._cloud_control_options(sn, param_id)
+        if not cloud_options:
+            return None
+        for local, local_serial, snapshot, key in self._paired_local_settings(
+            sn, cloud_payload, param_id, devcode
+        ):
+            if not local.last_update_success:
+                continue
+            setting = snapshot.setting(key)
+            reported = snapshot.values.get(key)
+            if setting is None or reported is None:
+                continue
+            code = cloud_option_for(
+                setting,
+                reported,
+                cloud_options,
+                snapshot.enumerations,
+                local_control_options(devcode, param_id),
+            )
+            if code is None:
+                continue
+            return cloud_options[code]
+        return None
 
     def _cloud_control_options(self, sn: str, param_id: str) -> dict[str, str]:
         """Return the options the platform offers for one cloud control."""
@@ -436,6 +560,32 @@ class DessMonitorHybridCoordinator(DessMonitorDataUpdateCoordinator):
                     key = f"{serial}@{collector_pn}"
                 combined[key] = payload
         return combined
+
+
+def _controls_by_option_label(controls: dict[str, Any]) -> dict[str, str]:
+    """Index one device's control options by label, dropping shared labels.
+
+    A reading is taken to be the read-back of the control whose option list
+    carries its current value, because it is the only link the two payloads
+    offer: devcode 2449 reports "Charger Source Priority" while the control
+    it reads back is called "Charging Source Priority", one letter apart, so
+    the names do not pair even though the register is one (#88).
+
+    A label two controls both offer says nothing about which of them a
+    reading belongs to, so it is dropped rather than guessed at.
+    """
+    owners: dict[str, str | None] = {}
+    for config in controls.values():
+        param_id = config.get("id")
+        options = config.get("options")
+        if not param_id or not isinstance(options, dict):
+            continue
+        for label in options.values():
+            name = normalized_name(str(label))
+            if not name:
+                continue
+            owners[name] = None if name in owners else str(param_id)
+    return {label: owner for label, owner in owners.items() if owner is not None}
 
 
 def _setting_named(
