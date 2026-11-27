@@ -1655,6 +1655,22 @@ SENSOR_TYPES = {
         "icon": "mdi:shield-sun",
         "entity_category": "diagnostic",
     },
+    # The highest output power reached since midnight, which devcode 752
+    # reports beside the live figure: 2232 W against 486 W live (#95). It is
+    # the inverter's own daily high-water mark, so nothing already here holds
+    # it - Output Power is the instantaneous figure and no counter is a
+    # maximum. No other committed download sends a title that normalises to
+    # this key.
+    #
+    # Published without a state class: it steps down to the day's first
+    # reading at midnight, which is neither a measurement Home Assistant
+    # should average over the day nor a total it may treat as resetting.
+    "Today Peak Power": {
+        "name": "Today Peak Power",
+        "unit": UNITS["POWER"],
+        "device_class": "power",
+        "icon": "mdi:chart-bell-curve",
+    },
 }
 
 # Per-string input current, which a multi-tracker grid-tie inverter reports one

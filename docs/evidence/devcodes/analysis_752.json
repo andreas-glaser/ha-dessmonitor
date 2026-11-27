@@ -1,0 +1,747 @@
+{
+  "data": {
+    "integration": {
+      "version": "3.1.0",
+      "connection_type": "cloud",
+      "local_mode": "prefer_local",
+      "local_control": "disabled",
+      "api_profile": "shinemonitor_solar"
+    },
+    "coordinator": {
+      "last_update_success": true,
+      "update_interval_seconds": 60.0,
+      "cloud_revision": 12,
+      "devices_in_snapshot": 1,
+      "hybrid": true,
+      "local_only": false,
+      "devices_on_a_retained_cloud_payload": 0
+    },
+    "local": {
+      "setup_errors": [],
+      "transports": [
+        {
+          "connected": true,
+          "last_update_success": true,
+          "device_code": null,
+          "devices": 0,
+          "devices_seen": [],
+          "poll_interval_seconds": 5,
+          "driver": null,
+          "tunnel_device_code": null,
+          "control_enabled": false,
+          "configured_device_address": 0,
+          "seconds_since_a_successful_poll": null,
+          "inverter_silent": false,
+          "session": {
+            "connected": true,
+            "request_timeout_seconds": 3.0,
+            "abandoned_reply_grace_seconds": 9.0,
+            "heartbeat_interval_seconds": 60.0,
+            "session_seconds": 105,
+            "seconds_since_heartbeat": 105,
+            "answers_late": true,
+            "requests_in_flight": 1,
+            "identified": true
+          },
+          "discovery": {
+            "probe_id": "7925ca1cf8d8",
+            "attempts": [
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 255,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 3002,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 184,
+                  "register_count": 1
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 255,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 3002,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 184,
+                  "register_count": 1
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 255,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 3002,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 201,
+                  "register_count": 34
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 255,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 12003,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 201,
+                  "register_count": 34
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 12004,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 184,
+                  "register_count": 1
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 12003,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 184,
+                  "register_count": 1
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 12003,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 201,
+                  "register_count": 34
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 1,
+                "collector_address": 1,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 12011,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 201,
+                  "register_count": 34
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 258,
+                "collector_address": 255,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 12004,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 184,
+                  "register_count": 1
+                }
+              },
+              {
+                "protocol": "smg_modbus",
+                "command": "read_holding_registers",
+                "device_code": 258,
+                "collector_address": 255,
+                "device_address": 1,
+                "response_bytes": null,
+                "elapsed_ms": 12003,
+                "outcome": "timeout",
+                "details": {
+                  "start_register": 184,
+                  "register_count": 1
+                }
+              }
+            ],
+            "outcomes": {
+              "timeout": 10
+            },
+            "dropped_attempts": 0
+          }
+        }
+      ]
+    },
+    "devices": [
+      {
+        "report_version": 7,
+        "source": "integration_diagnostics",
+        "api_profile": "shinemonitor_solar",
+        "integration_version": "3.1.0",
+        "devcode": 752,
+        "device_identity": "sha256:3289af07b0c7",
+        "collector_identity": "sha256:81211c39d2b9",
+        "device_address": 1,
+        "support": {
+          "status": "unsupported",
+          "profile": null,
+          "known_inverters": [],
+          "resolved": 5,
+          "unresolved": 24,
+          "total": 29,
+          "excluded": {
+            "attribute_readings": 3,
+            "declared_settings": 0,
+            "declared_absent": 0
+          },
+          "sensors": 5,
+          "unresolved_with_unit": [
+            {
+              "title": "Module temperature",
+              "unit": "°C",
+              "sample": "0.0"
+            },
+            {
+              "title": "NBUS voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "PBUS voltage",
+              "unit": "V",
+              "sample": "375.2"
+            },
+            {
+              "title": "PV total input power",
+              "unit": "W",
+              "sample": "502"
+            },
+            {
+              "title": "PV1 input current",
+              "unit": "A",
+              "sample": "1.14"
+            },
+            {
+              "title": "PV1 input power",
+              "unit": "W",
+              "sample": "298"
+            },
+            {
+              "title": "PV1 input voltage",
+              "unit": "V",
+              "sample": "261.6"
+            },
+            {
+              "title": "PV2 input current",
+              "unit": "A",
+              "sample": "0.98"
+            },
+            {
+              "title": "PV2 input power",
+              "unit": "W",
+              "sample": "204"
+            },
+            {
+              "title": "PV2 input voltage",
+              "unit": "V",
+              "sample": "208.1"
+            },
+            {
+              "title": "PV3 input current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "PV3 input power",
+              "unit": "W",
+              "sample": "0"
+            },
+            {
+              "title": "PV3 input voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "R phase grid current",
+              "unit": "A",
+              "sample": "2.00"
+            },
+            {
+              "title": "R phase grid voltage",
+              "unit": "V",
+              "sample": "237.0"
+            },
+            {
+              "title": "Radiator temperature",
+              "unit": "°C",
+              "sample": "34.8"
+            },
+            {
+              "title": "S phase grid current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "S phase grid voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "T phase grid current",
+              "unit": "A",
+              "sample": "0.00"
+            },
+            {
+              "title": "T phase grid voltage",
+              "unit": "V",
+              "sample": "0.0"
+            },
+            {
+              "title": "Today power peak",
+              "unit": "W",
+              "sample": "2232"
+            },
+            {
+              "title": "Total energy",
+              "unit": "kWh",
+              "sample": "33057"
+            }
+          ],
+          "unresolved_without_unit": [
+            "Grid connected number",
+            "Operation mode"
+          ]
+        },
+        "readings": [
+          {
+            "title": "id",
+            "value": "",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Timestamp",
+            "value": "2026-11-26 20:37:23",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Serial number",
+            "value": "",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV1 input voltage",
+            "value": "261.6",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV2 input voltage",
+            "value": "208.1",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV3 input voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV1 input current",
+            "value": "1.14",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV2 input current",
+            "value": "0.98",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV3 input current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV1 input power",
+            "value": "298",
+            "unit": "W",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV2 input power",
+            "value": "204",
+            "unit": "W",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV3 input power",
+            "value": "0",
+            "unit": "W",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PV total input power",
+            "value": "502",
+            "unit": "W",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "PBUS voltage",
+            "value": "375.2",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "NBUS voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "R phase grid voltage",
+            "value": "237.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "S phase grid voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "T phase grid voltage",
+            "value": "0.0",
+            "unit": "V",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "R phase grid current",
+            "value": "2.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "S phase grid current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "T phase grid current",
+            "value": "0.00",
+            "unit": "A",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Output power",
+            "value": "486",
+            "unit": "W",
+            "resolved_key": "Output Active Power",
+            "sensor_unit": "W"
+          },
+          {
+            "title": "Radiator temperature",
+            "value": "34.8",
+            "unit": "°C",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Module temperature",
+            "value": "0.0",
+            "unit": "°C",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Operation mode",
+            "value": "NORMAL",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Grid connected number",
+            "value": "031841",
+            "unit": "",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Total energy",
+            "value": "33057",
+            "unit": "kWh",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "Today power peak",
+            "value": "2232",
+            "unit": "W",
+            "resolved_key": null,
+            "sensor_unit": null
+          },
+          {
+            "title": "outpower",
+            "value": "0.0000",
+            "unit": "kW",
+            "resolved_key": "outpower",
+            "sensor_unit": "kW"
+          },
+          {
+            "title": "energyToday",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyToday",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "energyTotal",
+            "value": "0.0000",
+            "unit": "kWh",
+            "resolved_key": "energyTotal",
+            "sensor_unit": "kWh"
+          },
+          {
+            "title": "Data Source",
+            "value": "Cloud",
+            "unit": "",
+            "resolved_key": "Data Source",
+            "sensor_unit": null
+          }
+        ],
+        "observed_values": {
+          "Operation mode": {
+            "values": [
+              "NORMAL"
+            ],
+            "observations": 12,
+            "truncated": false
+          }
+        },
+        "entity_inventory": {
+          "by_sensor": {
+            "Data Source": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Last Reading Received": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "Output Active Power": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "cancel_remote_shutdown": {
+              "platform": "button",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "unknown"
+              ]
+            },
+            "energyToday": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "energyTotal": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "input_mode_setting": {
+              "platform": "select",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "unknown"
+              ]
+            },
+            "outpower": {
+              "platform": "sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "power_factor_set": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "unknown"
+              ]
+            },
+            "remote_shutdown": {
+              "platform": "button",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "unknown"
+              ]
+            },
+            "status": {
+              "platform": "binary_sensor",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "ok"
+              ]
+            },
+            "system_time": {
+              "platform": "number",
+              "entities": 1,
+              "disabled": 0,
+              "name_customised": false,
+              "states": [
+                "unknown"
+              ]
+            }
+          }
+        },
+        "control_fields": [
+          {
+            "name": "Cancel remote shutdown",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Cancel remote shutdown"
+            ],
+            "id": "cancel_remote_shutdown"
+          },
+          {
+            "name": "Input mode setting",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Independent",
+              "1: Parallel",
+              "2: Mixed"
+            ],
+            "id": "input_mode"
+          },
+          {
+            "name": "Power factor set",
+            "value": "Not read",
+            "unit": "",
+            "id": "power_factor_set"
+          },
+          {
+            "name": "Remote shutdown",
+            "value": "Not read",
+            "unit": "",
+            "options": [
+              "0: Remote shutdown"
+            ],
+            "id": "remote_shutdown"
+          },
+          {
+            "name": "System time",
+            "value": "Not read",
+            "unit": "",
+            "id": "system_time"
+          }
+        ],
+        "parameters": [],
+        "checksum": "5d9127aad57fcea28d7e188018634de1f2c3c0f3ce403607bbac56cf4fb71493",
+        "control_reads": {
+          "fields": 5,
+          "without_a_value": 5,
+          "rounds_that_recovered_nothing": 2,
+          "rounds_allowed": 12,
+          "still_trying": true,
+          "last_round_went_unanswered": true
+        },
+        "data_source": "Cloud",
+        "last_update": "2026-11-26 20:37:23",
+        "cloud_status": {
+          "code": 0,
+          "text": "online"
+        }
+      }
+    ]
+  }
+}
